@@ -469,15 +469,45 @@ end
 
 function M.roll_type_color( roll_type, text )
   if roll_type == M.Types.RollType.MainSpec then
-    return M.colors.green( text or roll_type )
+    return M.colors.green( text or "main-spec" )
   elseif roll_type == M.Types.RollType.OffSpec then
-    return M.colors.grey( text or roll_type )
+    return M.colors.grey( text or "off-spec" )
   elseif roll_type == M.Types.RollType.Transmog then
-    return M.colors.pink( text or roll_type )
+    return M.colors.pink( text or "transmog" )
   elseif roll_type == M.Types.RollType.SoftRes then
-    return M.colors.orange( text or roll_type )
+    return M.colors.orange( text or "soft-res" )
+  else
+    return M.colors.white( text or "PrincessKenny" )
+  end
+end
+
+function M.roll_type_abbrev_chat( roll_type )
+  if roll_type == M.Types.RollType.MainSpec then
+    return "MS"
+  elseif roll_type == M.Types.RollType.OffSpec then
+    return "OS"
+  elseif roll_type == M.Types.RollType.Transmog then
+    return "TMOG"
+  elseif roll_type == M.Types.RollType.SoftRes then
+    return "SR"
   elseif roll_type == M.Types.RollType.RaidRoll then
-    return M.colors.blue( text or roll_type )
+    return "RR"
+  else
+    return M.colors.white( text or roll_type )
+  end
+end
+
+function M.roll_type_abbrev( roll_type )
+  if roll_type == M.Types.RollType.MainSpec then
+    return "MS"
+  elseif roll_type == M.Types.RollType.OffSpec then
+    return "OS"
+  elseif roll_type == M.Types.RollType.Transmog then
+    return "TM"
+  elseif roll_type == M.Types.RollType.SoftRes then
+    return "SR"
+  elseif roll_type == M.Types.RollType.RaidRoll then
+    return "RR"
   else
     return M.colors.white( text or roll_type )
   end

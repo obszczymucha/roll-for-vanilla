@@ -9,11 +9,13 @@ local pretty_print = modules.pretty_print
 local merge = modules.merge
 local take = modules.take
 local rlu = modules.RollingLogicUtils
+local RollType = modules.Types.RollType
+local RollingStrategy = modules.Types.RollingStrategy
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
-function M.new( announce, ace_timer, group_roster, item, count, info, seconds, on_rolling_finished, config )
+function M.new( announce, ace_timer, group_roster, item, count, info, seconds, on_rolling_finished, config, roll_controller )
   local mainspec_rollers, mainspec_rolls = rlu.all_present_players( group_roster ), {}
   local offspec_rollers, offspec_rolls = rlu.copy_rollers( mainspec_rollers ), {}
   local tmog_rollers, tmog_rolls = rlu.copy_rollers( mainspec_rollers ), {}
@@ -62,12 +64,16 @@ function M.new( announce, ace_timer, group_roster, item, count, info, seconds, o
       return
     end
 
-    local sorted_mainspec_rolls = rlu.sort_rolls( mainspec_rolls )
-    local sorted_offspec_rolls = map( rlu.sort_rolls( offspec_rolls ), function( v )
-      v.offspec = true; return v
+    local sorted_mainspec_rolls = map( rlu.sort_rolls( mainspec_rolls, RollType.MainSpec ), function( v )
+      v.roll_type = RollType.MainSpec; return v
     end )
-    local sorted_tmog_rolls = map( rlu.sort_rolls( tmog_rolls ), function( v )
-      v.tmog = true; return v
+
+    local sorted_offspec_rolls = map( rlu.sort_rolls( offspec_rolls, RollType.OffSpec ), function( v )
+      v.roll_type = RollType.OffSpec; return v
+    end )
+
+    local sorted_tmog_rolls = map( rlu.sort_rolls( tmog_rolls, RollType.Transmog ), function( v )
+      v.roll_type = RollType.Transmog; return v
     end )
 
     local winners = take( merge( {}, sorted_mainspec_rolls, sorted_offspec_rolls, sorted_tmog_rolls ), count )
@@ -78,16 +84,21 @@ function M.new( announce, ace_timer, group_roster, item, count, info, seconds, o
   local function on_roll( player_name, roll, min, max )
     if not rolling or min ~= 1 or (max ~= tmog_threshold and max ~= os_threshold and max ~= ms_threshold) then return end
     if max == tmog_threshold and not tmog_rolling_enabled then return end
+
     local ms_roll = max == ms_threshold
     local os_roll = max == os_threshold
+    local roll_type = ms_roll and RollType.MainSpec or os_roll and RollType.OffSpec or RollType.Transmog
+    local player = group_roster.find_player( player_name )
 
     if not rlu.has_rolls_left( ms_roll and mainspec_rollers or os_roll and offspec_rollers or tmog_rollers, player_name ) then
       pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
+      roll_controller.add_ignored( player_name, player and player.class, roll_type, roll, "Rolled too many times." )
       return
     end
 
     rlu.subtract_roll( ms_roll and mainspec_rollers or os_roll and offspec_rollers or tmog_rollers, player_name )
     rlu.record_roll( ms_roll and mainspec_rolls or os_roll and offspec_rolls or tmog_rolls, player_name, roll )
+    roll_controller.add( player_name, player and player.class, roll_type, roll )
 
     if have_all_rolls_been_exhausted() then find_winner() end
   end
@@ -101,16 +112,21 @@ function M.new( announce, ace_timer, group_roster, item, count, info, seconds, o
 
     if seconds_left <= 0 then
       stop_accepting_rolls()
+      return
     elseif seconds_left == 3 then
       announce( "Stopping rolls in 3" )
     elseif seconds_left < 3 then
       announce( seconds_left )
     end
+
+    roll_controller.tick( seconds_left )
   end
 
   local function accept_rolls()
     rolling = true
     timer = ace_timer.ScheduleRepeatingTimer( M, on_timer, 1.7 )
+    roll_controller.start( RollingStrategy.NormalRoll, item, count, info, seconds )
+    roll_controller.show()
   end
 
   local function announce_rolling()
@@ -148,17 +164,18 @@ function M.new( announce, ace_timer, group_roster, item, count, info, seconds, o
       return
     end
 
-    show( "Mainspec", rlu.sort_rolls( mainspec_rolls ) )
-    show( "Offspec", rlu.sort_rolls( offspec_rolls ) )
+    show( "Mainspec", rlu.sort_rolls( mainspec_rolls, RollType.MainSpec ) )
+    show( "Offspec", rlu.sort_rolls( offspec_rolls, RollType.OffSpec ) )
   end
 
-  local function print_rolling_complete( cancelled )
-    pretty_print( string.format( "Rolling for %s has %s.", item.link, cancelled and "been cancelled" or "finished" ) )
+  local function print_rolling_complete( canceled )
+    pretty_print( string.format( "Rolling for %s has %s.", item.link, canceled and "been canceled" or "finished" ) )
   end
 
   local function cancel_rolling()
     stop_listening()
     print_rolling_complete( true )
+    announce( string.format( "Rolling for %s has been canceled.", item.link ) )
   end
 
   local function is_rolling()
@@ -171,7 +188,8 @@ function M.new( announce, ace_timer, group_roster, item, count, info, seconds, o
     show_sorted_rolls = show_sorted_rolls,
     stop_accepting_rolls = stop_accepting_rolls,
     cancel_rolling = cancel_rolling,
-    is_rolling = is_rolling
+    is_rolling = is_rolling,
+    get_rolling_strategy = function() return modules.Types.RollingStrategy.NormalRoll end
   }
 end
 

@@ -44,6 +44,7 @@ function M.subtract_roll( rollers, player_name )
   end
 end
 
+-- TODO: Refactor this and add roll type here.
 function M.record_roll( rolls, player_name, roll )
   if not rolls[ player_name ] or rolls[ player_name ] < roll then
     rolls[ player_name ] = roll
@@ -69,8 +70,8 @@ function M.have_all_players_rolled( rollers )
   return true
 end
 
-function M.sort_rolls( rolls )
-  local function roll_map()
+function M.sort_rolls( rolls, roll_type )
+  local function to_roll_map()
     local result = {}
 
     for _, roll in pairs( rolls ) do
@@ -80,14 +81,14 @@ function M.sort_rolls( rolls )
     return result
   end
 
-  local function to_map( _rolls )
+  local function to_map( roll_map )
     local result = {}
 
-    for k, v in pairs( _rolls ) do
-      if result[ v ] then
-        table.insert( result[ v ][ "players" ], k )
+    for player_name, roll in pairs( roll_map ) do
+      if result[ roll ] then
+        table.insert( result[ roll ].players, player_name )
       else
-        result[ v ] = { roll = v, players = { k } }
+        result[ roll ] = { roll = roll, players = { player_name }, roll_type = roll_type }
       end
     end
 
@@ -113,7 +114,7 @@ function M.sort_rolls( rolls )
     return result
   end
 
-  local sorted_rolls = to_sorted_rolls_array( roll_map() )
+  local sorted_rolls = to_sorted_rolls_array( to_roll_map() )
   local rollmap = to_map( rolls )
 
   return map( sorted_rolls, function( v ) return rollmap[ v ] end )

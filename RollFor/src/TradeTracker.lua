@@ -31,7 +31,7 @@ function M.new( ace_timer, trade_complete_callback )
   local m_items_receiving = {}
   local m_both_parties_accepted = false
   local m_recipient_name = nil
-  local m_trade_cancelled = false
+  local m_trade_canceled = false
   local m_received_trade_close = false -- Server sends multiple ones. Probably server bug.
 
   local pretty_print = modules.pretty_print
@@ -42,8 +42,8 @@ function M.new( ace_timer, trade_complete_callback )
 
   local function finalize_trading()
     if RollFor.settings.trade_tracker_debug then
-      if m_trade_cancelled then
-        pretty_print( string.format( "Trading with %s was cancelled.", highlight( m_recipient_name ) ) )
+      if m_trade_canceled then
+        pretty_print( string.format( "Trading with %s was canceled.", highlight( m_recipient_name ) ) )
         return
       end
 
@@ -58,7 +58,7 @@ function M.new( ace_timer, trade_complete_callback )
       end
     end
 
-    if not m_trade_cancelled then
+    if not m_trade_canceled then
       trade_complete_callback( m_recipient_name, m_items_giving, m_items_receiving )
     end
   end
@@ -93,7 +93,7 @@ function M.new( ace_timer, trade_complete_callback )
 
     m_trading = true
     m_both_parties_accepted = false
-    m_trade_cancelled = false
+    m_trade_canceled = false
     m_items_giving = {}
     m_items_receiving = {}
     m_received_trade_close = false
@@ -132,7 +132,7 @@ function M.new( ace_timer, trade_complete_callback )
       return
     end
 
-    pretty_print( string.format( "Trading with %s was cancelled.", highlight( m_recipient_name ) ) )
+    pretty_print( string.format( "Trading with %s was canceled.", highlight( m_recipient_name ) ) )
     m_trading = false
   end
 
@@ -144,7 +144,7 @@ function M.new( ace_timer, trade_complete_callback )
 
   local function on_trade_request_cancel()
     if not m_trading then return end
-    m_trade_cancelled = true
+    m_trade_canceled = true
   end
 
   return {

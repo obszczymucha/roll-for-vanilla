@@ -190,8 +190,9 @@ function M.new( group_roster, softres, top_threshold, bottom_threshold )
     matched_names = {}
     matched_names_below_threshold = {}
 
-    local present_players = map( group_roster.get_all_players_in_my_group(), function( p ) return p.name end )
-    local softres_player_names = softres.get_all_softres_player_names()
+    local function get_name( player ) return player.name end
+    local present_players = map( group_roster.get_all_players_in_my_group(), get_name )
+    local softres_player_names = map( softres.get_all_players(), get_name )
 
     local present_players_who_did_not_softres = is_in_left_but_not_in_right( present_players, softres_player_names )
     if getn( present_players_who_did_not_softres ) == 0 then return end

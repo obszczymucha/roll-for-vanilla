@@ -91,6 +91,37 @@ local function trade_complete_callback( recipient, items_given, items_received )
   end
 end
 
+local function on_cancel_roll_command()
+  m_rolling_logic.cancel_rolling()
+  M.roll_controller.cancel()
+end
+
+local function on_finish_roll_command()
+  m_rolling_logic.stop_accepting_rolls( true )
+end
+
+local function raid_roll_rolling_logic( item )
+  return m.RaidRollRollingLogic.new(
+    announce,
+    M.ace_timer,
+    M.group_roster,
+    item,
+    M.winner_tracker,
+    M.master_loot_candidates,
+    M.roll_finished_logic.show_popup,
+    M.roll_controller
+  )
+end
+
+local function raid_roll_item( item_link )
+  local item_id = M.item_utils.get_item_id( item_link )
+  local item_name = M.item_utils.get_item_name( item_link )
+  local item = { id = item_id, link = item_link, name = item_name }
+  m_rolling_logic = raid_roll_rolling_logic( item )
+  M.winner_tracker.start_rolling( item.link )
+  m_rolling_logic.announce_rolling()
+end
+
 local function create_components()
   M.ace_timer = lib_stub( "AceTimer-3.0" )
 
@@ -149,6 +180,19 @@ local function create_components()
   M.auto_group_loot = m.AutoGroupLoot.new( M.config, m.BossList.zones )
   M.auto_master_loot = m.AutoMasterLoot.new( M.config, m.BossList.zones )
   M.rolling_tip_popup = m.RollingTipPopup.new( m.CustomPopup.builder, M.config )
+  M.roll_tracker = m.RollTracker.new()
+  M.roll_controller = m.RollController.new( M.roll_tracker )
+  M.softres_roll_gui_data = m.SoftResRollGuiData.new( M.softres, M.group_roster )
+  M.tie_roll_gui_data = m.TieRollGuiData.new( M.group_roster )
+  M.rolling_popup = m.RollingPopup.new( m.CustomPopup.builder, db( "rolling_popup" ), M.config )
+  M.rolling_popup_content = m.RollingPopupContent.new(
+    M.rolling_popup,
+    M.roll_controller,
+    M.roll_tracker,
+    on_finish_roll_command,
+    on_cancel_roll_command,
+    raid_roll_item
+  )
 
   M.config.subscribe( "toggle_ml_warning", function( disabled )
     if disabled then
@@ -172,16 +216,13 @@ local function on_softres_rolls_available( rollers )
     return string.format( "%s (%s)", player.name, rolls )
   end
 
+  M.roll_controller.waiting_for_rolls()
   local message = m.prettify_table( remaining_rollers, transform )
   announce( string.format( "SR rolls remaining: %s", message ) )
 end
 
-local function raid_roll_rolling_logic( item )
-  return m.RaidRollRollingLogic.new( announce, M.ace_timer, M.group_roster, item, M.winner_tracker, M.master_loot_candidates, M.roll_finished_logic.show_popup )
-end
-
 local function non_softres_rolling_logic( item, count, message, seconds, on_rolling_finished )
-  return m.NonSoftResRollingLogic.new( announce, M.ace_timer, M.group_roster, item, count, message, seconds, on_rolling_finished, M.config )
+  return m.NonSoftResRollingLogic.new( announce, M.ace_timer, M.group_roster, item, count, message, seconds, on_rolling_finished, M.config, M.roll_controller )
 end
 
 local function soft_res_rolling_logic( item, count, message, seconds, on_rolling_finished )
@@ -191,7 +232,19 @@ local function soft_res_rolling_logic( item, count, message, seconds, on_rolling
     return non_softres_rolling_logic( item, count, message, seconds, on_rolling_finished )
   end
 
-  return m.SoftResRollingLogic.new( announce, M.ace_timer, softressing_players, item, count, seconds, on_rolling_finished, on_softres_rolls_available )
+  return m.SoftResRollingLogic.new(
+    announce,
+    M.ace_timer,
+    M.group_roster,
+    softressing_players,
+    item,
+    count,
+    seconds,
+    on_rolling_finished,
+    on_softres_rolls_available,
+    M.roll_controller,
+    M.config
+  )
 end
 
 function M.import_encoded_softres_data( data, data_loaded_callback )
@@ -215,15 +268,22 @@ function M.import_encoded_softres_data( data, data_loaded_callback )
 end
 
 function M.there_was_a_tie( item, count, winners, top_roll, rerolling )
-  local players = winners.players
-  table.sort( players )
-  local top_rollers_str = m.prettify_table( players )
-  local top_rollers_str_colored = m.prettify_table( players, hl )
+  local player_names = winners.players
+  table.sort( player_names )
+  local top_rollers_str = m.prettify_table( player_names )
+  local top_rollers_str_colored = m.prettify_table( player_names, hl )
+  local roll_type_str = winners.roll_type == RollType.MainSpec and "" or string.format( " (%s)", m.roll_type_abbrev_chat( winners.roll_type ) )
 
   local message = function( rollers )
-    return string.format( "The %shighest %sroll was %d by %s.", not rerolling and top_roll and "" or "next ",
-      rerolling and "re-" or "", winners.roll, rollers )
+    return string.format( "The %shighest %sroll was %d by %s%s.", not rerolling and top_roll and "" or "next ",
+      rerolling and "re-" or "", winners.roll, rollers, roll_type_str )
   end
+
+  local players = m.map( player_names, function( v )
+    return M.group_roster.find_player( v )
+  end )
+
+  M.roll_controller.tie( players, winners.roll_type, winners.roll )
 
   info( message( top_rollers_str_colored ) )
   announce( message( top_rollers_str ) )
@@ -231,10 +291,24 @@ function M.there_was_a_tie( item, count, winners, top_roll, rerolling )
   local prefix = count > 1 and string.format( "%sx", count ) or ""
   local suffix = count > 1 and string.format( " %s top rolls win.", count ) or ""
 
-  m_rolling_logic = m.TieRollingLogic.new( announce, players, item, count, M.on_rolling_finished )
+  m_rolling_logic = m.TieRollingLogic.new(
+    announce,
+    player_names,
+    item,
+    count,
+    M.on_rolling_finished,
+    winners.roll_type,
+    M.config,
+    M.group_roster,
+    M.roll_controller
+  )
+
+  local roll_threshold_str = M.config.roll_threshold( winners.roll_type ).str
+
   M.ace_timer.ScheduleTimer( M,
     function()
-      m_rolling_logic.announce_rolling( string.format( "%s /roll for %s%s now.%s", top_rollers_str, prefix, item.link, suffix ) )
+      M.roll_controller.tie_start()
+      m_rolling_logic.announce_rolling( string.format( "%s %s for %s%s now.%s", top_rollers_str, roll_threshold_str, prefix, item.link, suffix ) )
     end, 2 )
 end
 
@@ -244,16 +318,31 @@ function M.on_rolling_finished( item, count, winners, rerolling, there_was_no_ro
     local roll = v.roll
     local players = v.players
     table.sort( players )
-    local roll_type = v.offspec and " (OS)" or v.tmog and " (TMOG)" or ""
+    local roll_type_str = v.roll_type == RollType.MainSpec and "" or string.format( " (%s)", m.roll_type_abbrev_chat( v.roll_type ) )
 
     info( string.format( "%s %srolled the %shighest (%s) for %s%s.", m.prettify_table( players, hl ),
-      rerolling and "re-" or "", top_roll and "" or "next ", hl( roll ), item.link, roll_type ) )
+      rerolling and "re-" or "", top_roll and "" or "next ", hl( roll ), item.link, roll_type_str ) )
     announce(
       string.format( "%s %srolled the %shighest (%d) for %s%s.", m.prettify_table( players ),
-        rerolling and "re-" or "", top_roll and "" or "next ", roll, item.link, roll_type ) )
+        rerolling and "re-" or "", top_roll and "" or "next ", roll, item.link, roll_type_str ) )
+
+    -- TODO: Add support for multiple winners.
+    local first_winner = true
 
     for _, player_name in ipairs( players ) do
-      M.winner_tracker.track( player_name, item.link, v.offspec and RollType.OffSpec or v.tmog and RollType.Transmog or RollType.MainSpec, roll )
+      local player = M.group_roster.find_player( player_name )
+
+      if first_winner then
+        M.roll_controller.finish( {
+          name = player_name,
+          class = player.class,
+          roll_type = v.roll_type,
+          roll = v.roll
+        } )
+      end
+
+      M.winner_tracker.track( player_name, item.link, v.roll_type, roll )
+      first_winner = false
     end
 
     local player = M.master_loot_candidates.find( players[ 1 ] )
@@ -261,10 +350,11 @@ function M.on_rolling_finished( item, count, winners, rerolling, there_was_no_ro
   end
 
   if getn( winners ) == 0 then
-    info( string.format( "Nobody rolled for %s.", item.link ) )
-    announce( string.format( "Nobody rolled for %s.", item.link ) )
+    info( string.format( "No one rolled for %s.", item.link ) )
+    announce( string.format( "No one rolled for %s.", item.link ) )
+    M.roll_controller.finish()
 
-    if M.config.auto_raid_roll() then
+    if not rerolling and M.config.auto_raid_roll() then
       m_rolling_logic = raid_roll_rolling_logic( item )
       m_rolling_logic.announce_rolling()
     elseif m_rolling_logic and not m_rolling_logic.is_rolling() then
@@ -278,23 +368,28 @@ function M.on_rolling_finished( item, count, winners, rerolling, there_was_no_ro
 
   for i = 1, getn( winners ) do
     if items_left == 0 then
-      -- This situatin here is weird as fuck
-
-      if i == 1 then
-        -- SR winner / no rolling.
-        M.winner_tracker.track( winners[ i ], item.link, RollType.SoftRes )
-        local player = M.master_loot_candidates.find( winners[ 1 ] )
-        M.roll_finished_logic.show_popup( player, item.link )
-      end
-
+      -- When the fuck does this happen?
       if m_rolling_logic.is_rolling() then return end
 
-      if there_was_no_rolling then
-        info( string.format( "Use %s %s to roll the item and ignore the softres.", hl( "/arf" ), item.link ), nil, "Tip" )
-      else
+      -- Or this?
+      if i > 1 or not there_was_no_rolling then
         info( string.format( "Rolling for %s has finished.", item.link ) )
+        return
       end
 
+      -- SR winner / no rolling.
+      local winner = winners[ 1 ]
+      local player = M.group_roster.find_player( winner )
+      M.winner_tracker.track( player, item.link, RollType.SoftRes )
+      M.roll_controller.finish( {
+        name = player.name,
+        class = player.class
+      } )
+
+      local candidate = M.master_loot_candidates.find( player )
+      M.roll_finished_logic.show_popup( candidate, item.link )
+
+      info( string.format( "Use %s %s to roll the item and ignore the softres.", hl( "/arf" ), item.link ), nil, "Tip" )
       return
     end
 
@@ -337,6 +432,11 @@ local function on_roll_command( roll_slash_command )
 
   return function( args )
     if m_rolling_logic and m_rolling_logic.is_rolling() then
+      if not args or args == "" then
+        M.roll_controller.show()
+        return
+      end
+
       info( "Rolling already in progress." )
       return
     end
@@ -423,14 +523,6 @@ local function in_group_check( f )
 
     f( unpack( arg ) )
   end
-end
-
-local function on_cancel_roll_command()
-  m_rolling_logic.cancel_rolling()
-end
-
-local function on_finish_roll_command()
-  m_rolling_logic.stop_accepting_rolls( true )
 end
 
 local function setup_storage()
@@ -574,19 +666,13 @@ local function on_reset_dropped_loot_announce_command()
   M.dropped_loot_announce.reset()
 end
 
-local function test( args )
-  if not args or args == "" then
-    M.rolling_tip_popup.show()
-    return
-  end
-
-  local player = { name = "Psikutas", class = "Hunter", value = 1 }
-  local item_link = args and args ~= "" and args or "|cffff8000|Hitem:19019:0:0:0|h[Thunderfury, Blessed Blade of the Windseeker]|h|r"
-  M.master_loot_correlation_data.set( item_link, 1 )
-  -- M.winner_tracker.clear()
-  M.winner_tracker.track( player.name, item_link, RollType.MainSpec, 69 )
-
-  M.roll_finished_logic.show_popup( player, item_link )
+local function test()
+  -- local player = { name = "Psikutas", class = "Hunter", value = 1 }
+  -- M.master_loot_correlation_data.set( item_link, 1 )
+  -- -- M.winner_tracker.clear()
+  -- M.winner_tracker.track( player.name, item_link, RollType.MainSpec, 69 )
+  --
+  -- M.roll_finished_logic.show_popup( player, item_link )
 end
 
 local function setup_slash_commands()

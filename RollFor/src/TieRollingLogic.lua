@@ -8,11 +8,13 @@ local count_elements = modules.count_elements
 local pretty_print = modules.pretty_print
 local take = modules.take
 local rlu = modules.RollingLogicUtils
+local RollType = modules.Types.RollType
+local hl = modules.colors.hl
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
-function M.new( announce, players, item, count, on_rolling_finished )
+function M.new( announce, players, item, count, on_rolling_finished, roll_type, config, group_roster, roll_controller )
   local rollers, rolls = map( players, rlu.one_roll ), {}
   local rolling = false
 
@@ -40,16 +42,33 @@ function M.new( announce, players, item, count, on_rolling_finished )
 
     if roll_count == 0 then
       on_rolling_finished( item, count, {}, true )
+      return
     end
 
-    local sorted_rolls = rlu.sort_rolls( rolls )
+    local sorted_rolls = map( rlu.sort_rolls( rolls, roll_type ), function( v )
+      v.roll_type = roll_type; return v
+    end )
     local winners = take( sorted_rolls, count )
 
     on_rolling_finished( item, count, winners, true )
   end
 
   local function on_roll( player_name, roll, min, max )
-    if not rolling or min ~= 1 or max ~= 100 then return end
+    local ms_threshold = config.ms_roll_threshold()
+    local os_threshold = config.os_roll_threshold()
+    local tmog_threshold = config.tmog_roll_threshold()
+
+    if not rolling or min ~= 1 or (max ~= tmog_threshold and max ~= os_threshold and max ~= ms_threshold) then return end
+
+    local ms_roll = max == ms_threshold
+    local os_roll = max == os_threshold
+    local actual_roll_type = ms_roll and RollType.MainSpec or os_roll and RollType.OffSpec or RollType.Transmog
+
+    if actual_roll_type ~= roll_type and not (actual_roll_type == RollType.MainSpec and roll_type == RollType.SoftRes) then
+      local roll_threshold_str = config.roll_threshold( roll_type ).str
+      pretty_print( string.format( "|cffff9f69%s|r didn't %s. This roll (|cffff9f69%s|r) is ignored.", player_name, hl( roll_threshold_str ), roll ) )
+      return
+    end
 
     if not rlu.has_rolls_left( rollers, player_name ) then
       pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
@@ -58,6 +77,9 @@ function M.new( announce, players, item, count, on_rolling_finished )
 
     rlu.subtract_roll( rollers, player_name )
     rlu.record_roll( rolls, player_name, roll )
+
+    local player = group_roster.find_player( player_name )
+    roll_controller.add( player_name, player and player.class, roll_type, roll )
 
     if have_all_rolls_been_exhausted() then find_winner() end
   end
@@ -75,11 +97,11 @@ function M.new( announce, players, item, count, on_rolling_finished )
       end
     end
 
-    show( "Tie", rlu.sort_rolls( rolls ) )
+    show( "Tie", rlu.sort_rolls( rolls, roll_type ) )
   end
 
-  local function print_rolling_complete( cancelled )
-    pretty_print( string.format( "Rolling for %s has %s.", item.link, cancelled and "been cancelled" or "finished" ) )
+  local function print_rolling_complete( canceled )
+    pretty_print( string.format( "Rolling for %s has %s.", item.link, canceled and "been canceled" or "finished" ) )
   end
 
   local function stop_accepting_rolls()
@@ -90,6 +112,7 @@ function M.new( announce, players, item, count, on_rolling_finished )
   local function cancel_rolling()
     stop_listening()
     print_rolling_complete( true )
+    announce( string.format( "Rolling for %s has been canceled.", item.link ) )
   end
 
   local function is_rolling()
@@ -107,7 +130,8 @@ function M.new( announce, players, item, count, on_rolling_finished )
     show_sorted_rolls = show_sorted_rolls,
     stop_accepting_rolls = stop_accepting_rolls,
     cancel_rolling = cancel_rolling,
-    is_rolling = is_rolling
+    is_rolling = is_rolling,
+    get_rolling_strategy = function() return modules.Types.RollingStrategy.TieRoll end
   }
 end
 

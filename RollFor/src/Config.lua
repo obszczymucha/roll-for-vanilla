@@ -7,6 +7,7 @@ local info = m.pretty_print
 local print_header = m.print_header
 local hl = m.colors.hl
 local grey = m.colors.grey
+local RollType = m.Types.RollType
 
 local M = {}
 
@@ -114,6 +115,27 @@ function M.new( db )
     print_rolling_tip_settings()
   end
 
+  local function print_rolling_popup_lock_settings()
+    local status = db.rolling_popup_lock and m.msg.enabled or m.msg.disabled
+    info( string.format( "Rolling popup lock is %s.", status ) )
+  end
+
+  local function toggle_rolling_popup_lock()
+    if db.rolling_popup_lock then
+      db.rolling_popup_lock = false
+    else
+      db.rolling_popup_lock = true
+    end
+
+    print_rolling_popup_lock_settings()
+    notify_subscribers( "rolling_popup_lock", db.rolling_popup_lock )
+  end
+
+  local function reset_rolling_popup()
+    info( "Rolling popup position has been reset." )
+    notify_subscribers( "reset_rolling_popup" )
+  end
+
   local function print_roll_thresholds()
     local ms_threshold = db.ms_roll_threshold
     local os_threshold = db.os_roll_threshold
@@ -144,6 +166,7 @@ function M.new( db )
     print_auto_group_loot_settings()
     print_auto_master_loot_settings()
     print_rolling_tip_settings()
+    print_rolling_popup_lock_settings()
     m.print( string.format( "For more info, type: %s", hl( "/rf config help" ) ) )
   end
 
@@ -206,6 +229,8 @@ function M.new( db )
     m.print( string.format( "%s - toggle auto group loot", hl( "/rf config auto-group-loot" ) ) )
     m.print( string.format( "%s - toggle auto master loot", hl( "/rf config auto-master-loot" ) ) )
     m.print( string.format( "%s - toggle rolling tip window", hl( "/rf config rolling-tip" ) ) )
+    m.print( string.format( "%s - toggle rolling popup lock", hl( "/rf config rolling-popup-lock" ) ) )
+    m.print( string.format( "%s - reset rolling popup position", hl( "/rf config reset-rolling-popup" ) ) )
   end
 
   local function toggle_pfui_integration()
@@ -290,6 +315,16 @@ function M.new( db )
       return
     end
 
+    if args == "config rolling-popup-lock" then
+      toggle_rolling_popup_lock()
+      return
+    end
+
+    if args == "config reset-rolling-popup" then
+      reset_rolling_popup()
+      return
+    end
+
     if args == "config minimap" then
       if db.minimap_button_hidden then
         show_minimap_button()
@@ -338,6 +373,18 @@ function M.new( db )
     table.insert( callbacks[ event ], callback )
   end
 
+  local function roll_threshold( roll_type )
+    local threshold = (roll_type == RollType.MainSpec or roll_type == RollType.SoftRes) and db.ms_roll_threshold or
+        roll_type == RollType.OffSpec and db.os_roll_threshold or
+        db.tmog_roll_threshold
+    local threshold_str = string.format( "/roll%s", threshold == 100 and "" or string.format( " %s", threshold ) )
+
+    return {
+      value = threshold,
+      str = threshold_str
+    }
+  end
+
   init()
 
   return {
@@ -375,7 +422,11 @@ function M.new( db )
     print_help = print_help,
     print_raid_roll_settings = print_raid_roll_settings,
     subscribe = subscribe,
-    on_command = on_command
+    on_command = on_command,
+    roll_threshold = roll_threshold,
+    rolling_popup_locked = function() return db.rolling_popup_lock end,
+    toggle_rolling_popup_lock = toggle_rolling_popup_lock,
+    reset_rolling_popup = reset_rolling_popup
   }
 end
 

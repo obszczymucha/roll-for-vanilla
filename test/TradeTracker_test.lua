@@ -31,7 +31,7 @@ function TradeTrackerIntegrationSpec:should_log_trading_process_when_trade_cance
   -- Then
   assert_messages(
     c( "RollFor: Started trading with Obszczymucha." ),
-    c( "RollFor: Trading with Obszczymucha was cancelled." )
+    c( "RollFor: Trading with Obszczymucha was canceled." )
   )
 end
 
@@ -46,7 +46,7 @@ function TradeTrackerIntegrationSpec:should_log_trading_process_when_trade_cance
   -- Then
   assert_messages(
     c( "RollFor: Started trading with Obszczymucha." ),
-    c( "RollFor: Trading with Obszczymucha was cancelled." )
+    c( "RollFor: Trading with Obszczymucha was canceled." )
   )
 end
 
