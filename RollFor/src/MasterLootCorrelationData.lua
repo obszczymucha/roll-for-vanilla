@@ -19,9 +19,10 @@ local M = {}
 
 function M.new( item_utils )
   local cache = {}
-  local selected
 
   local function set( item_link, slot )
+    if cache[ item_link ] then return end
+
     cache[ item_link ] = {
       slot = slot,
       item_id = item_utils.get_item_id( item_link ),
@@ -41,25 +42,10 @@ function M.new( item_utils )
     modules.clear_table( cache )
   end
 
-  local function set_selected( item_link, slot )
-    selected = {
-      slot = slot,
-      item_link = item_link,
-      item_id = item_utils.get_item_id( item_link ),
-      item_name = item_utils.get_item_name( item_link )
-    }
-  end
-
-  local function get_selected()
-    return selected
-  end
-
   return {
     set = set,
     remove = remove,
     get = get,
-    set_selected = set_selected,
-    get_selected = get_selected,
     reset = reset
   }
 end

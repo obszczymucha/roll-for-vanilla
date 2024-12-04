@@ -7,15 +7,12 @@ local utils = require( "test/utils" )
 
 local M = {}
 
-function M.new()
-  local function register_confirm_callback( callback )
-    utils.register_loot_confirm_callback( callback )
-  end
+function M.new( _, _, callback )
+  utils.register_loot_confirm_callback( callback )
 
   return {
     show = function() end,
     hide = function() end,
-    register_confirm_callback = register_confirm_callback
   }
 end
 

@@ -42,7 +42,7 @@ function M.new( api, db, config )
       if link then
         local item_id = item_utils.get_item_id( link )
 
-        if quality < threshold or config.is_auto_loot() and item_ids[ item_id ] then
+        if quality < threshold or config.auto_loot() and item_ids[ item_id ] then
           local index = find_my_candidate_index()
 
           if index then

@@ -35,8 +35,8 @@ function M.handle_events( main )
       main.version_broadcast.on_group_changed()
       main.on_group_changed()
       main.new_group_event.on_group_changed()
-      --elseif event == "CHAT_MSG_PARTY" then
-      --main.on_chat_msg_system(arg1, arg2, arg3, arg4, arg5)
+      -- elseif event == "CHAT_MSG_PARTY" then
+      --   main.on_chat_msg_system( arg1, arg2, arg3, arg4, arg5 )
     elseif event == "CHAT_MSG_SYSTEM" then
       main.on_chat_msg_system( arg1, arg2, arg3, arg4, arg5 )
     elseif event == "CHAT_MSG_ADDON" then
@@ -67,8 +67,13 @@ function M.handle_events( main )
       local message = arg1
       if message == "That player's inventory is full" then
         main.master_loot.on_recipient_inventory_full()
+        main.roll_controller.player_has_full_bags()
       elseif message == "You are too far away to loot that corpse." then
         main.master_loot.on_player_is_too_far()
+      elseif message == "Player has too many of that item already" then
+        main.roll_controller.player_already_has_unique_item()
+      elseif message == "Player not found" then
+        main.roll_controller.player_not_found()
       else
         main.master_loot.on_unknown_error_message( message )
       end
@@ -83,7 +88,7 @@ function M.handle_events( main )
   frame:RegisterEvent( "GROUP_LEFT" )
   frame:RegisterEvent( "GROUP_FORMED" )
   frame:RegisterEvent( "CHAT_MSG_SYSTEM" )
-  --frame:RegisterEvent( "CHAT_MSG_PARTY" )
+  -- frame:RegisterEvent( "CHAT_MSG_PARTY" )
   frame:RegisterEvent( "LOOT_OPENED" )
   frame:RegisterEvent( "LOOT_CLOSED" )
   frame:RegisterEvent( "OPEN_MASTER_LOOT_LIST" )

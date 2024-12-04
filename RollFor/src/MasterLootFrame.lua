@@ -60,6 +60,15 @@ local function create_main_frame()
   } )
   frame:SetBackdropColor( 0, 0, 0, 1 )
   frame:SetFrameStrata( "DIALOG" )
+
+  if modules.uses_pfui() then
+    ---@diagnostic disable-next-line: undefined-global
+    local button = pfLootButton1
+    if button then
+      frame:SetFrameLevel( button:GetFrameLevel() + 1 )
+    end
+  end
+
   frame:SetWidth( 100 )
   frame:SetHeight( 100 )
   frame:SetPoint( "CENTER", modules.api.UIParent, "Center" )
@@ -143,17 +152,13 @@ local function create_button( parent, index )
   return frame
 end
 
-function M.new( winner_tracker, loot_award_popup, master_loot_correlation_data, roll_finished_logic )
+function M.new( winner_tracker, master_loot_correlation_data, roll_controller )
   local m_frame
   local m_buttons = {}
 
   local function create()
     if m_frame then return end
     m_frame = create_main_frame()
-  end
-
-  local function hide_popup()
-    loot_award_popup.hide()
   end
 
   local function create_candidate_frames( candidates, item_link )
@@ -193,7 +198,7 @@ function M.new( winner_tracker, loot_award_popup, master_loot_correlation_data, 
       button:SetScript( "OnClick", function()
         ---@diagnostic disable-next-line: undefined-global
         local self = button
-        roll_finished_logic.show_popup( self.player, item_link )
+        roll_controller.award_loot( self.player, item_link )
       end )
 
       button:Show()
@@ -242,7 +247,6 @@ function M.new( winner_tracker, loot_award_popup, master_loot_correlation_data, 
 
   local function hide()
     if m_frame then m_frame:Hide() end
-    hide_popup()
   end
 
   local function anchor( frame )
@@ -281,6 +285,12 @@ function M.new( winner_tracker, loot_award_popup, master_loot_correlation_data, 
           return
         end
 
+        if ctrl and not alt and not shift then
+          local item_link = modules.api.GetLootSlotLink( slot )
+          modules.api.DressUpItemLink( item_link )
+          return
+        end
+
         if modules.api.LootSlotIsItem( slot ) then
           local item_link = modules.api.GetLootSlotLink( slot )
           show_loot_candidates_frame( slot, item_link, button )
@@ -316,6 +326,12 @@ function M.new( winner_tracker, loot_award_popup, master_loot_correlation_data, 
 
           if alt and not ctrl and not shift then
             prepare_rolling_slash_command( slot, modules.Types.RollSlashCommand.RaidRoll )
+            return
+          end
+
+          if ctrl and not alt and not shift then
+            local item_link = modules.api.GetLootSlotLink( slot )
+            modules.api.DressUpItemLink( item_link )
             return
           end
 

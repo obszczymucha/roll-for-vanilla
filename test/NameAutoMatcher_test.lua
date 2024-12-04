@@ -1,4 +1,4 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/Libs/?.lua;../RollFor/Libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
@@ -35,7 +35,7 @@ NameAutoMatcherSpec = {}
 
 utils.mock_libraries()
 utils.load_real_stuff()
-require( "Libs/LibDeflate/LibDeflate" )
+require( "libs/LibDeflate/LibDeflate" )
 require( "src/Json" )
 
 os.exit( lu.LuaUnit.run() )

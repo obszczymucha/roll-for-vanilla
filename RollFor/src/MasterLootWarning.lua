@@ -59,7 +59,7 @@ function M.new( api, config, boss_list )
   end
 
   local function toggle()
-    if not modules.is_player_master_looter() and not modules.is_player_a_leader() or config.is_auto_master_loot() then
+    if not modules.is_player_master_looter() and not modules.is_player_a_leader() or config.auto_master_loot() then
       if is_visible then hide() end
       return
     end

@@ -1,4 +1,4 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/Libs/?.lua;../RollFor/Libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
@@ -17,6 +17,7 @@ local tick = utils.tick
 utils.load_libstub()
 require( "src/modules" )
 local mod = require( "src/TradeTracker" )
+mod.debug_enabled = true
 
 TradeTrackerIntegrationSpec = {}
 
@@ -31,7 +32,7 @@ function TradeTrackerIntegrationSpec:should_log_trading_process_when_trade_cance
   -- Then
   assert_messages(
     c( "RollFor: Started trading with Obszczymucha." ),
-    c( "RollFor: Trading with Obszczymucha was cancelled." )
+    c( "RollFor: Trading with Obszczymucha was canceled." )
   )
 end
 
@@ -46,7 +47,7 @@ function TradeTrackerIntegrationSpec:should_log_trading_process_when_trade_cance
   -- Then
   assert_messages(
     c( "RollFor: Started trading with Obszczymucha." ),
-    c( "RollFor: Trading with Obszczymucha was cancelled." )
+    c( "RollFor: Trading with Obszczymucha was canceled." )
   )
 end
 

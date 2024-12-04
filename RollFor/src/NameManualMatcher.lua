@@ -54,12 +54,12 @@ function M.new( db, api, absent_unfiltered_softres, name_matcher, softres_status
     return nil
   end
 
-  local function is_matched( player_name )
-    return manual_matches[ player_name ] or name_matcher.is_matched( player_name )
+  local function is_matched( player )
+    return manual_matches[ player.name ] or name_matcher.is_matched( player.name )
   end
 
   local function create_matches_and_show()
-    local absent_players = filter( absent_unfiltered_softres.get_all_softres_player_names(), negate( is_matched ) )
+    local absent_players = filter( absent_unfiltered_softres.get_all_players(), negate( is_matched ) )
     local manually_matched = keys( manual_matches )
     manual_match_options = merge( {}, manually_matched, absent_players )
     show_manual_matches( manually_matched, absent_players )

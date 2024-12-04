@@ -14,7 +14,9 @@ function M.new( master_loot_correlation_data, winner_tracker, loot_award_popup )
   -- player -> MasterLootCandidates
   local function show_popup( player, item_link )
     local slot = master_loot_correlation_data.get( item_link )
+    print("chuj1")
     if not slot then return end
+    print("chuj2")
 
     local colored_player_name = modules.colorize_player_by_class( player.name, player.class )
     local winners = winner_tracker.find_winners( item_link )

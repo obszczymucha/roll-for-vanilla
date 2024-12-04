@@ -9,7 +9,7 @@ function M.new( api )
     return api().UnitName( "player" )
   end
 
-  local function get_all_players_in_my_group()
+  local function get_all_players_in_my_group( f )
     local result = {}
 
     if not api().IsInGroup() then
@@ -21,15 +21,18 @@ function M.new( api )
 
     if api().IsInRaid() then
       for i = 1, 40 do
-        local name, _, _, _, class = api().GetRaidRosterInfo( i )
-        if name then table.insert( result, { name = name, class = class } ) end
+        local name, _, _, _, class, _, location = api().GetRaidRosterInfo( i )
+        local player = { name = name, class = class, online = location ~= "Offline" and true or false }
+        if name and (not f or f( player )) then table.insert( result, player ) end
       end
     else
       local party = { "player", "party1", "party2", "party3", "party4" }
       for _, v in ipairs( party ) do
         local name = api().UnitName( v )
         local class = api().UnitClass( v )
-        if name and class then table.insert( result, { name = name, class = class } ) end
+        local online = api().UnitIsConnected( v ) and true or false
+        local player = { name = name, class = class, online = online }
+        if name and (not f or f( player )) and class then table.insert( result, player ) end
       end
     end
 

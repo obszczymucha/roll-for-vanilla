@@ -43,6 +43,7 @@ local function process_dropped_item( slot )
   local item_id = item_utils.get_item_id( link )
   local item_name = item_utils.get_item_name( link )
 
+  -- ItemUtils.make_item
   return make_item( item_id, item_name, link, quality )
 end
 
@@ -183,7 +184,7 @@ function M.process_dropped_items( master_loot_tracker, softres )
   for slot = 1, item_count do
     local item = process_dropped_item( slot )
 
-    if item and item.id ~= 29434 then
+    if item and item.id ~= 29434 then -- Badge of Justice lol. I miss TBC :/
       table.insert( items, item )
       master_loot_tracker.add( slot, item )
     end
@@ -192,6 +193,28 @@ function M.process_dropped_items( master_loot_tracker, softres )
   local summary = M.create_item_summary( items, softres )
   return source_guid or "unknown", items, M.create_item_announcements( summary )
 end
+
+-- Ideally, I'd like a data structure like this:
+-- local items = {
+--   [item_id] = {
+--     count = 1, // How many dropped.
+--     hard_ressed = true,
+--   },
+--   [item_id2] = {
+--     count = 1,
+--     soft_ressed = true,
+--     soft_ressers = {
+--       { player_name = "Ohhaimark", rolls = 2 },
+--       { player_name = "Jogobobek", rolls = 1 }
+--     }
+--   }
+--   [item_id3] = {
+--     count = 1
+--   }
+-- }
+--
+-- I could then enrich soft_ressers with their class names using GroupRoster.
+-- I could then filter the data to get only soft-ressed items.
 
 -- The result is a list of unique items with the counts how many dropped and how many players reserve them.
 function M.create_item_summary( items, softres )

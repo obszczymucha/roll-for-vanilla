@@ -1,4 +1,4 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/Libs/?.lua;../RollFor/Libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
@@ -210,7 +210,8 @@ function GenericSpec:should_cancel_rolling()
   -- Then
   assert_messages(
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
-    c( "RollFor: Rolling for [Hearthstone] has been cancelled." )
+    c( "RollFor: Rolling for [Hearthstone] has been canceled." ),
+    r( "Rolling for [Hearthstone] has been canceled." )
   )
 end
 
@@ -237,7 +238,7 @@ function GenericSpec:should_finish_rolling()
   -- Then
   assert_messages(
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
-    cr( "Nobody rolled for [Hearthstone]." ),
+    cr( "No one rolled for [Hearthstone]." ),
     c( "RollFor: Rolling for [Hearthstone] has finished." )
   )
 end

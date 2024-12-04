@@ -6,11 +6,12 @@ if modules.RaidRollRollingLogic then return end
 local M = {}
 local pretty_print = modules.pretty_print
 local hl = modules.colors.hl
+local RollingStrategy = modules.Types.RollingStrategy
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
-function M.new( announce, ace_timer, group_roster, item, winner_tracker, master_loot_candidates, show_popup )
+function M.new( announce, ace_timer, group_roster, item, winner_tracker, roll_controller )
   local m_rolling = false
   local m_players
   local m_winner
@@ -44,9 +45,14 @@ function M.new( announce, ace_timer, group_roster, item, winner_tracker, master_
     m_rolling = true
     m_winner = nil
 
+    roll_controller.start( RollingStrategy.RaidRoll, item )
+    roll_controller.show()
     announce( string.format( "Raid rolling %s...", item.link ) )
 
-    m_players = group_roster.get_all_players_in_my_group()
+    m_players = group_roster.get_all_players_in_my_group( function( p )
+      return p.online == true
+    end )
+
     print_players( m_players )
     ace_timer.ScheduleTimer( M, raid_roll, 1 )
   end
@@ -56,10 +62,9 @@ function M.new( announce, ace_timer, group_roster, item, winner_tracker, master_
     if min ~= 1 or max ~= getn( m_players ) then return end
 
     m_winner = m_players[ roll ]
+    roll_controller.finish( { name = m_winner.name, class = m_winner.class } )
     announce( string.format( "%s wins %s.", m_winner.name, item.link ) )
     winner_tracker.track( m_winner.name, item.link, modules.Types.RollType.RaidRoll )
-    local winner = master_loot_candidates.find( m_winner.name )
-    show_popup( winner, item.link )
 
     m_rolling = false
   end
@@ -81,7 +86,8 @@ function M.new( announce, ace_timer, group_roster, item, winner_tracker, master_
     announce_rolling = announce_rolling, -- This probably doesn't belong here either.
     on_roll = on_roll,
     is_rolling = is_rolling,
-    show_sorted_rolls = show_sorted_rolls
+    show_sorted_rolls = show_sorted_rolls,
+    get_rolling_strategy = function() return modules.Types.RollingStrategy.RaidRoll end
   }
 end
 

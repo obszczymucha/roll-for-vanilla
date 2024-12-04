@@ -17,13 +17,13 @@ function M.new( group_roster, softres )
     return filter( softres.get( item_id ), f, "name" )
   end
 
-  local function get_all_softres_player_names()
-    return filter( softres.get_all_softres_player_names(), f )
+  local function get_all_players()
+    return filter( softres.get_all_players(), f, "name" )
   end
 
   local decorator = clone( softres )
   decorator.get = get
-  decorator.get_all_softres_player_names = get_all_softres_player_names
+  decorator.get_all_players = get_all_players
 
   return decorator
 end

@@ -1,4 +1,4 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/Libs/?.lua;../RollFor/Libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
@@ -9,7 +9,7 @@ local loot_threshold = utils.loot_threshold
 local modules = require( "src/modules" )
 local ItemUtils = require( "src/ItemUtils" )
 local make_item = ItemUtils.make_item
-require( "settings" )
+require( "src/SoftResDataTransformer" )
 require( "src/SoftRes" )
 require( "src/MasterLootTracker" )
 local mod = require( "src/DroppedLootAnnounce" )
@@ -314,8 +314,7 @@ local function make_quality( _item )
   return function() return _, _, _, _item.quality end
 end
 
-local function process_dropped_items( loot_quality_threshold )
-  utils.loot_quality_threshold( loot_quality_threshold or LootQuality.Epic )
+local function process_dropped_items()
   return mod.process_dropped_items( modules.MasterLootTracker.new(), modules.SoftRes.new() )
 end
 
@@ -405,7 +404,7 @@ function ProcessDroppedItemsIntegrationSpec:should_filter_items_below_rare_quali
   loot_threshold( LootQuality.Rare )
 
   -- When
-  local _, items_dropped, announcements = process_dropped_items( 3 )
+  local _, items_dropped, announcements = process_dropped_items()
   local result = map( get_text( announcements ), utils.parse_item_link )
 
   -- Then
@@ -439,7 +438,7 @@ function ProcessDroppedItemsIntegrationSpec:should_filter_items_below_uncommon_q
   loot_threshold( LootQuality.Uncommon )
 
   -- When
-  local _, items_dropped, announcements = process_dropped_items( 2 )
+  local _, items_dropped, announcements = process_dropped_items()
   local result = map( get_text( announcements ), utils.parse_item_link )
 
   -- Then
@@ -476,7 +475,7 @@ function ProcessDroppedItemsIntegrationSpec:should_filter_items_below_common_qua
   loot_threshold( LootQuality.Common )
 
   -- When
-  local _, items_dropped, announcements = process_dropped_items( 1 )
+  local _, items_dropped, announcements = process_dropped_items()
   local result = map( get_text( announcements ), utils.parse_item_link )
 
   -- Then
@@ -514,7 +513,7 @@ function ProcessDroppedItemsIntegrationSpec:should_not_filter_any_items_if_thres
   loot_threshold( LootQuality.Poor )
 
   -- When
-  local _, items_dropped, announcements = process_dropped_items( 0 )
+  local _, items_dropped, announcements = process_dropped_items()
   local result = map( get_text( announcements ), utils.parse_item_link )
 
   -- Then

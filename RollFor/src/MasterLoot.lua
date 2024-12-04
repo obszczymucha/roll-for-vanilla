@@ -5,8 +5,9 @@ if modules.MasterLoot then return end
 
 local M = {}
 local _G = getfenv()
-local pretty_print = modules.pretty_print
-local hl = modules.colors.hl
+local m = modules
+local pretty_print = m.pretty_print
+local hl = m.colors.hl
 local buttons_hooked = false
 local original_toggle_dropdown_menu
 local bypass_dropdown_menu = false
@@ -14,7 +15,7 @@ local bypass_dropdown_menu = false
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
-function M.new( master_loot_candidates, award_item, master_loot_frame, master_loot_tracker, config, loot_award_popup, master_loot_correlation_data )
+function M.new( master_loot_candidates, award_item, master_loot_frame, master_loot_tracker, config, master_loot_correlation_data, roll_controller )
   local m_confirmed = nil
 
   local function reset_confirmation()
@@ -22,7 +23,7 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, master_lo
   end
 
   local function hook_toggle_dropdown_menu()
-    original_toggle_dropdown_menu = modules.api.ToggleDropDownMenu
+    original_toggle_dropdown_menu = m.api.ToggleDropDownMenu
 
     _G[ "ToggleDropDownMenu" ] = function( level, value, dropDownFrame, anchorName, xOffset, yOffset, menuList )
       if config.pfui_integration_enabled() and bypass_dropdown_menu then return end
@@ -37,6 +38,7 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, master_lo
 
     if item then
       award_item( m_confirmed.player.name, item.id, item.link )
+      roll_controller.loot_awarded( item.link )
       master_loot_tracker.remove( slot )
     end
 
@@ -47,8 +49,14 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, master_lo
   local function on_confirm( player, item_link )
     local data = master_loot_correlation_data.get( item_link )
     if not data then return end
+
+    if not player.value then
+      pretty_print( "Player needs a value selected." )
+      return
+    end
+
     m_confirmed = { slot = data.slot, player = player }
-    modules.api.GiveMasterLoot( data.slot, player.value )
+    m.api.GiveMasterLoot( data.slot, player.value )
     master_loot_frame.hide()
   end
 
@@ -58,12 +66,12 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, master_lo
   end
 
   local function show_loot_candidates_frame( slot, item_link, button )
-    modules.api.LootFrame.selectedSlot = slot
-    modules.api.LootFrame.selectedItemLink = item_link
+    m.api.LootFrame.selectedSlot = slot
+    m.api.LootFrame.selectedItemLink = item_link
     master_loot_correlation_data.set( item_link, slot )
-    -- modules.api.LootFrame.selectedItemName = item_name
+    -- m.api.LootFrame.selectedItemName = item_name
 
-    modules.api.CloseDropDownMenus()
+    m.api.CloseDropDownMenus()
     master_loot_frame.create()
     master_loot_frame.hide()
 
@@ -71,7 +79,7 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, master_lo
 
     if getn( candidates ) == 0 then
       -- This happened before.
-      modules.pretty_print( "Game API didn't return any loot candidates. Restoring original button hook." )
+      m.pretty_print( "Game API didn't return any loot candidates. Restoring original button hook." )
       normal_loot( button )
       return
     end
@@ -82,7 +90,7 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, master_lo
   end
 
   local function on_loot_opened()
-    if not modules.is_player_master_looter() then
+    if not m.is_player_master_looter() then
       if buttons_hooked then
         master_loot_frame.restore_loot_buttons()
         buttons_hooked = false
@@ -96,7 +104,7 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, master_lo
     if not original_toggle_dropdown_menu then hook_toggle_dropdown_menu() end
     bypass_dropdown_menu = true
 
-    if modules.uses_pfui() and config.pfui_integration_enabled() then
+    if m.uses_pfui() and config.pfui_integration_enabled() then
       master_loot_frame.hook_pfui_loot_buttons( reset_confirmation, normal_loot, show_loot_candidates_frame, master_loot_frame.hide )
     else
       master_loot_frame.hook_loot_buttons( reset_confirmation, normal_loot, show_loot_candidates_frame, master_loot_frame.hide )
@@ -108,7 +116,7 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, master_lo
   local function on_loot_closed()
     bypass_dropdown_menu = false
     master_loot_frame.hide()
-    if not modules.is_player_master_looter() then return end
+    if not m.is_player_master_looter() then return end
 
     local items_left_count = master_loot_tracker.count()
 
@@ -140,7 +148,7 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, master_lo
 
   local function on_recipient_inventory_full()
     if m_confirmed then
-      pretty_print( string.format( "%s's inventory is full and cannot receive the item.", hl( m_confirmed.player.name ) ), "red" )
+      pretty_print( string.format( "%s%s bags are full.", hl( m_confirmed.player.name ), m.possesive_case( m_confirmed.player.name ) ), "red" )
       reset_confirmation()
     end
   end
@@ -162,17 +170,16 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, master_lo
     end
   end
 
-  loot_award_popup.register_confirm_callback( on_confirm )
-
   return {
     on_loot_slot_cleared = on_loot_slot_cleared,
     on_loot_opened = on_loot_opened,
     on_loot_closed = on_loot_closed,
     on_recipient_inventory_full = on_recipient_inventory_full,
     on_player_is_too_far = on_player_is_too_far,
-    on_unknown_error_message = on_unknown_error_message
+    on_unknown_error_message = on_unknown_error_message,
+    on_confirm = on_confirm
   }
 end
 
-modules.MasterLoot = M
+m.MasterLoot = M
 return M

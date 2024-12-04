@@ -40,6 +40,9 @@ you do it (trade or master loot).
  * Supports "**two top rolls win**" rolling.
  * Supports **raid rolls**.
  * Supports offspec rolls (`/roll 99`).
+ * Supports offspec rolls (`/roll 98`).
+ * Automatically resolves tied rolls.
+ * Highly customizable - see `/rf config` and `/rf config help`.
 
 <img src="docs/raid-roll.gif" alt="Raid roll" style="width:720px;height:350">
 
@@ -50,6 +53,20 @@ https://youtu.be/vZdafun0nYo
 
 
 ## Usage
+
+### Roll item
+```
+/rf <item link>
+```
+
+---
+
+### Raid-roll item from your bags
+```
+/rr <item link>
+```
+
+---
 
 ### In the loot window
 
@@ -68,23 +85,8 @@ or
 ```
 
 Press Enter to start rolling.  
-You can also type the above yourself if you want to roll an item from your bags.
-
-
-#### Normal roll
-```
-/rf <item link>
-```
 
 ---
-
-#### Raid roll
-```
-/rr <item link>
-```
-
----
-
 
 ### Roll for 2 items (two top rolls win)
 ```
@@ -168,7 +170,7 @@ player's name - you have to fix it manually.
 ---
 
 
-### Showing SRed items
+### Show soft-ressed items
 ```
 /srs
 ```
@@ -176,7 +178,7 @@ player's name - you have to fix it manually.
 ---
 
 
-### Checking SRed items
+### Check soft-res status (to see if everyone is soft-ressing)
 ```
 /src
 ```
@@ -184,7 +186,7 @@ player's name - you have to fix it manually.
 ---
 
 
-### Clearing SR data
+### Clear soft-res data
 Click on the minimap icon and click **Clear** or type:  
 ```
 /sr init
@@ -195,7 +197,7 @@ Click on the minimap icon and click **Clear** or type:
 
 ## Need more help?
 
-Feel free to hit me up in-game if you need more help.  
-Whisper **Jogobobek** on Nordaanar Turtle WoW or
+Feel free to contact me if you need more help.  
+Whisper **Jogobobek** in-game on Nordaanar Turtle WoW or
 **Obszczymucha** on Discord.
 
