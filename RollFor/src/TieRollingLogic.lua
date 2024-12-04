@@ -107,7 +107,8 @@ function M.new( announce, players, item, count, on_rolling_finished )
     show_sorted_rolls = show_sorted_rolls,
     stop_accepting_rolls = stop_accepting_rolls,
     cancel_rolling = cancel_rolling,
-    is_rolling = is_rolling
+    is_rolling = is_rolling,
+    get_rolling_strategy = function() return modules.Types.RollingStrategy.TieRoll end
   }
 end
 

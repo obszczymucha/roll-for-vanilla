@@ -91,6 +91,37 @@ local function trade_complete_callback( recipient, items_given, items_received )
   end
 end
 
+local function on_cancel_roll_command()
+  m_rolling_logic.cancel_rolling()
+  M.roll_tracker.cancel()
+end
+
+local function on_finish_roll_command()
+  m_rolling_logic.stop_accepting_rolls( true )
+end
+
+local function raid_roll_rolling_logic( item )
+  return m.RaidRollRollingLogic.new(
+    announce,
+    M.ace_timer,
+    M.group_roster,
+    item,
+    M.winner_tracker,
+    M.master_loot_candidates,
+    M.roll_finished_logic.show_popup,
+    M.roll_tracker
+  )
+end
+
+local function raid_roll_item( item_link )
+  local item_id = M.item_utils.get_item_id( item_link )
+  local item_name = M.item_utils.get_item_name( item_link )
+  local item = { id = item_id, link = item_link, name = item_name }
+  m_rolling_logic = raid_roll_rolling_logic( item )
+  M.winner_tracker.start_rolling( item.link )
+  m_rolling_logic.announce_rolling()
+end
+
 local function create_components()
   M.ace_timer = lib_stub( "AceTimer-3.0" )
 
@@ -149,6 +180,8 @@ local function create_components()
   M.auto_group_loot = m.AutoGroupLoot.new( M.config, m.BossList.zones )
   M.auto_master_loot = m.AutoMasterLoot.new( M.config, m.BossList.zones )
   M.rolling_tip_popup = m.RollingTipPopup.new( m.CustomPopup.builder, M.config )
+  M.roll_tracker = m.RollTracker.new()
+  M.rolling_popup = m.RollingPopup.new( m.CustomPopup.builder, M.roll_tracker, on_finish_roll_command, on_cancel_roll_command, raid_roll_item, M.config )
 
   M.config.subscribe( "toggle_ml_warning", function( disabled )
     if disabled then
@@ -176,12 +209,8 @@ local function on_softres_rolls_available( rollers )
   announce( string.format( "SR rolls remaining: %s", message ) )
 end
 
-local function raid_roll_rolling_logic( item )
-  return m.RaidRollRollingLogic.new( announce, M.ace_timer, M.group_roster, item, M.winner_tracker, M.master_loot_candidates, M.roll_finished_logic.show_popup )
-end
-
 local function non_softres_rolling_logic( item, count, message, seconds, on_rolling_finished )
-  return m.NonSoftResRollingLogic.new( announce, M.ace_timer, M.group_roster, item, count, message, seconds, on_rolling_finished, M.config )
+  return m.NonSoftResRollingLogic.new( announce, M.ace_timer, M.group_roster, item, count, message, seconds, on_rolling_finished, M.config, M.roll_tracker )
 end
 
 local function soft_res_rolling_logic( item, count, message, seconds, on_rolling_finished )
@@ -191,7 +220,19 @@ local function soft_res_rolling_logic( item, count, message, seconds, on_rolling
     return non_softres_rolling_logic( item, count, message, seconds, on_rolling_finished )
   end
 
-  return m.SoftResRollingLogic.new( announce, M.ace_timer, softressing_players, item, count, seconds, on_rolling_finished, on_softres_rolls_available )
+  return m.SoftResRollingLogic.new(
+    announce,
+    M.ace_timer,
+    M.group_roster,
+    softressing_players,
+    item,
+    count,
+    seconds,
+    on_rolling_finished,
+    on_softres_rolls_available,
+    M.roll_tracker,
+    M.config
+  )
 end
 
 function M.import_encoded_softres_data( data, data_loaded_callback )
@@ -269,6 +310,7 @@ function M.on_rolling_finished( item, count, winners, rerolling, there_was_no_ro
       m_rolling_logic.announce_rolling()
     elseif m_rolling_logic and not m_rolling_logic.is_rolling() then
       info( string.format( "Rolling for %s has finished.", item.link ) )
+      M.roll_tracker.stop( { rolling_strategy = m_rolling_logic.get_rolling_strategy() } )
     end
 
     return
@@ -278,23 +320,30 @@ function M.on_rolling_finished( item, count, winners, rerolling, there_was_no_ro
 
   for i = 1, getn( winners ) do
     if items_left == 0 then
-      -- This situatin here is weird as fuck
-
-      if i == 1 then
-        -- SR winner / no rolling.
-        M.winner_tracker.track( winners[ i ], item.link, RollType.SoftRes )
-        local player = M.master_loot_candidates.find( winners[ 1 ] )
-        M.roll_finished_logic.show_popup( player, item.link )
-      end
-
+      -- When the fuck does this happen?
       if m_rolling_logic.is_rolling() then return end
 
-      if there_was_no_rolling then
-        info( string.format( "Use %s %s to roll the item and ignore the softres.", hl( "/arf" ), item.link ), nil, "Tip" )
-      else
+      -- Or this?
+      if i > 1 or not there_was_no_rolling then
         info( string.format( "Rolling for %s has finished.", item.link ) )
+        return
       end
 
+      -- SR winner / no rolling.
+      local winner = winners[ 1 ]
+      local player = M.group_roster.find_player( winner )
+      M.winner_tracker.track( player, item.link, RollType.SoftRes )
+      M.roll_tracker.stop( {
+        rolling_strategy = m_rolling_logic.get_rolling_strategy(),
+        item_link = item.link,
+        player_name = player.name,
+        player_class = player.class
+      } )
+
+      local candidate = M.master_loot_candidates.find( player )
+      M.roll_finished_logic.show_popup( candidate, item.link )
+
+      info( string.format( "Use %s %s to roll the item and ignore the softres.", hl( "/arf" ), item.link ), nil, "Tip" )
       return
     end
 
@@ -312,6 +361,7 @@ function M.on_rolling_finished( item, count, winners, rerolling, there_was_no_ro
 
   if not m_rolling_logic.is_rolling() then
     info( string.format( "Rolling for %s has finished.", item.link ) )
+    M.roll_tracker.stop( { rolling_strategy = m_rolling_logic.get_rolling_strategy() } )
   end
 end
 
@@ -337,6 +387,11 @@ local function on_roll_command( roll_slash_command )
 
   return function( args )
     if m_rolling_logic and m_rolling_logic.is_rolling() then
+      if not args or args == "" then
+        M.rolling_popup.show()
+        return
+      end
+
       info( "Rolling already in progress." )
       return
     end
@@ -423,14 +478,6 @@ local function in_group_check( f )
 
     f( unpack( arg ) )
   end
-end
-
-local function on_cancel_roll_command()
-  m_rolling_logic.cancel_rolling()
-end
-
-local function on_finish_roll_command()
-  m_rolling_logic.stop_accepting_rolls( true )
 end
 
 local function setup_storage()
@@ -574,19 +621,13 @@ local function on_reset_dropped_loot_announce_command()
   M.dropped_loot_announce.reset()
 end
 
-local function test( args )
-  if not args or args == "" then
-    M.rolling_tip_popup.show()
-    return
-  end
-
-  local player = { name = "Psikutas", class = "Hunter", value = 1 }
-  local item_link = args and args ~= "" and args or "|cffff8000|Hitem:19019:0:0:0|h[Thunderfury, Blessed Blade of the Windseeker]|h|r"
-  M.master_loot_correlation_data.set( item_link, 1 )
-  -- M.winner_tracker.clear()
-  M.winner_tracker.track( player.name, item_link, RollType.MainSpec, 69 )
-
-  M.roll_finished_logic.show_popup( player, item_link )
+local function test()
+  -- local player = { name = "Psikutas", class = "Hunter", value = 1 }
+  -- M.master_loot_correlation_data.set( item_link, 1 )
+  -- -- M.winner_tracker.clear()
+  -- M.winner_tracker.track( player.name, item_link, RollType.MainSpec, 69 )
+  --
+  -- M.roll_finished_logic.show_popup( player, item_link )
 end
 
 local function setup_slash_commands()

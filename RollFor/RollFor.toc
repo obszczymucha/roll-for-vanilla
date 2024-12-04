@@ -58,4 +58,6 @@ src\AutoGroupLoot.lua
 src\BossList.lua
 src\AutoMasterLoot.lua
 src\RollingTipPopup.lua
+src\RollTracker.lua
+src\RollingPopup.lua
 main.lua

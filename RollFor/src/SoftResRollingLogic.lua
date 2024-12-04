@@ -8,6 +8,8 @@ local count_elements = modules.count_elements
 local pretty_print = modules.pretty_print
 local take = modules.take
 local rlu = modules.RollingLogicUtils
+local RollType = modules.Types.RollType
+local RollingStrategy = modules.Types.RollingStrategy
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
@@ -26,7 +28,7 @@ local function winner_found( rollers, rolls )
   return rlu.has_everyone_rolled( rollers, rolls ) and is_the_winner_the_only_player_with_extra_rolls( rollers, rolls )
 end
 
-function M.new( announce, ace_timer, rollers, item, count, seconds, on_rolling_finished, on_softres_rolls_available )
+function M.new( announce, ace_timer, group_roster, rollers, item, count, seconds, on_rolling_finished, on_softres_rolls_available, roll_tracker, config )
   local rolls = {}
   local rolling = false
   local seconds_left = seconds
@@ -81,26 +83,37 @@ function M.new( announce, ace_timer, rollers, item, count, seconds, on_rolling_f
   end
 
   local function on_roll( player_name, roll, min, max )
-    if not rolling or min ~= 1 or (max ~= 99 and max ~= 100) then return end
-    local offspec = max == 99
+    local ms_threshold = config.ms_roll_threshold()
+    local os_threshold = config.os_roll_threshold()
+    local tmog_threshold = config.tmog_roll_threshold()
+
+    if not rolling or min ~= 1 or (max ~= tmog_threshold and max ~= os_threshold and max ~= ms_threshold) then return end
+    local player = group_roster.find_player( player_name )
+    local ms_roll = max == ms_threshold
+    local os_roll = max == os_threshold
+    local roll_type = ms_roll and RollType.MainSpec or os_roll and RollType.OffSpec or RollType.Transmog
 
     if not rlu.can_roll( rollers, player_name ) then
       pretty_print( string.format( "|cffff9f69%s|r did not SR %s. This roll (|cffff9f69%s|r) is ignored.", player_name, item.link, roll ) )
+      roll_tracker.add_ignored( player_name, player and player.class, roll_type, roll, "Did not soft-res." )
       return
     end
 
-    if offspec then
-      pretty_print( string.format( "|cffff9f69%s|r did SR %s, but rolled OS. This roll (|cffff9f69%s|r) is ignored.", player_name, item.link, roll ) )
+    if not ms_roll then
+      pretty_print( string.format( "|cffff9f69%s|r did SR %s, but didn't roll MS. This roll (|cffff9f69%s|r) is ignored.", player_name, item.link, roll ) )
+      roll_tracker.add_ignored( player_name, player and player.class, roll_type, roll, "Didn't roll MS." )
       return
     end
 
     if not rlu.has_rolls_left( rollers, player_name ) then
       pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
+      roll_tracker.add_ignored( player_name, player and player.class, roll_type, roll, "Rolled too many times." )
       return
     end
 
     rlu.subtract_roll( rollers, player_name )
     rlu.record_roll( rolls, player_name, roll )
+    roll_tracker.add( player_name, player and player.class, RollType.SoftRes, roll )
 
     find_winner( State.AfterRoll )
   end
@@ -109,21 +122,26 @@ function M.new( announce, ace_timer, rollers, item, count, seconds, on_rolling_f
     find_winner( force and State.ManualStop or State.TimerStopped )
   end
 
+  -- TODO: Duplicated in NonSoftResRollingLogic (perhaps consolidate).
   local function on_timer()
     seconds_left = seconds_left - 1
 
     if seconds_left <= 0 then
       stop_accepting_rolls()
+      return
     elseif seconds_left == 3 then
       announce( "Stopping rolls in 3" )
     elseif seconds_left < 3 then
       announce( seconds_left )
     end
+
+    roll_tracker.tick( seconds_left )
   end
 
   local function accept_rolls()
     rolling = true
     timer = ace_timer.ScheduleRepeatingTimer( M, on_timer, 1.7 )
+    roll_tracker.start( RollingStrategy.NormalRoll, item, count, nil, seconds )
   end
 
   local function announce_rolling()
@@ -181,7 +199,8 @@ function M.new( announce, ace_timer, rollers, item, count, seconds, on_rolling_f
     show_sorted_rolls = show_sorted_rolls,
     stop_accepting_rolls = stop_accepting_rolls,
     cancel_rolling = cancel_rolling,
-    is_rolling = is_rolling
+    is_rolling = is_rolling,
+    get_rolling_strategy = function() return modules.Types.RollingStrategy.SoftResRoll end
   }
 end
 

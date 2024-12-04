@@ -101,7 +101,7 @@ function SoftResIntegrationSpec:should_ignore_offspec_rolls_by_players_who_soft_
   -- Then
   assert_messages(
     rw( "Roll for [Hearthstone]: (SR by Ponpon and Psikutas)" ),
-    c( "RollFor: Psikutas did SR [Hearthstone], but rolled OS. This roll (69) is ignored." ),
+    c( "RollFor: Psikutas did SR [Hearthstone], but didn't roll MS. This roll (69) is ignored." ),
     r( "Stopping rolls in 3", "2", "1" ),
     r( "SR rolls remaining: Psikutas (1 roll)" ),
     cr( "Psikutas rolled the highest (99) for [Hearthstone]." ),
@@ -125,7 +125,7 @@ function SoftResIntegrationSpec:should_announce_current_highest_roller_if_a_play
   -- Then
   assert_messages(
     rw( "Roll for [Hearthstone]: (SR by Ponpon and Psikutas)" ),
-    c( "RollFor: Psikutas did SR [Hearthstone], but rolled OS. This roll (69) is ignored." ),
+    c( "RollFor: Psikutas did SR [Hearthstone], but didn't roll MS. This roll (69) is ignored." ),
     r( "Stopping rolls in 3", "2", "1" ),
     r( "SR rolls remaining: Psikutas (1 roll)" ),
     cr( "Ponpon rolled the highest (42) for [Hearthstone]." ),

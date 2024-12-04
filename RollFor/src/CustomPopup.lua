@@ -4,18 +4,19 @@ local modules = libStub( "RollFor-Modules" )
 if modules.CustomPopup then return end
 
 local blue = modules.colors.blue
+---@diagnostic disable-next-line: deprecated
+local getn = table.getn
 
 local M = {}
 
 function M.builder()
   local options = {}
+  local frame_cache = {}
+  local lines = {}
 
   local function create_popup()
     local edge_size = 18
     local button_padding = 10
-    local default_button_width = 80
-    local default_button_height = 24
-    local default_button_scale = 0.76
 
     local function create_main_frame()
       local frame = modules.api.CreateFrame( "Frame", options.name, modules.api.UIParent )
@@ -49,18 +50,7 @@ function M.builder()
       return frame
     end
 
-    local function create_button( parent, label, width, height, scale )
-      local button = modules.api.CreateFrame( "Button", nil, parent, "StaticPopupButtonTemplate" )
-      button:SetWidth( width or default_button_width )
-      button:SetHeight( height or default_button_height )
-      button:SetText( label )
-      button:SetScale( scale or default_button_scale )
-      button:GetFontString():SetPoint( "CENTER", 0, -1 )
-
-      return button
-    end
-
-    local function create_buttons( parent )
+    local function align_buttons( parent )
       if not parent.buttons_frame then
         local frame = modules.api.CreateFrame( "Frame", nil, parent )
         frame:SetPoint( "BOTTOM", 0, 11 )
@@ -71,27 +61,23 @@ function M.builder()
       local max_height = 0
       local last_anchor = nil
 
-      for _, settings in ipairs( options.buttons or {} ) do
-        local width = settings.width or default_button_width
-        local height = settings.height or default_button_height
-        local scale = settings.scale or default_button_scale
+      local buttons = modules.filter( lines, function( line ) return line.line_type == "button" end )
+
+      for _, button in ipairs( buttons ) do
+        local frame = button.frame
+        local height = frame:GetHeight()
+        local width = frame:GetWidth()
+        local scale = frame:GetScale()
+
         if height > max_height then max_height = height end
 
-        local button = create_button( parent.buttons_frame, settings.name, width, height, scale )
-
         if not last_anchor then
-          button:SetPoint( "LEFT", parent.buttons_frame, "LEFT", 0, 0 )
-          last_anchor = button
+          frame:SetPoint( "LEFT", parent.buttons_frame, "LEFT", 0, 0 )
+          last_anchor = frame
           total_width = total_width + (width * scale)
         else
-          button:SetPoint( "LEFT", last_anchor, "RIGHT", button_padding, 0 )
+          frame:SetPoint( "LEFT", last_anchor, "RIGHT", button_padding, 0 )
           total_width = total_width + button_padding + (width * scale)
-        end
-
-        if settings.on_click then
-          local click = settings.on_click -- Fucking lua 5.0 closures
-          local frame = parent
-          button:SetScript( "OnClick", function() click( frame ) end )
         end
       end
 
@@ -115,6 +101,108 @@ function M.builder()
 
       if options.esc then
         modules.api.tinsert( modules.api.UISpecialFrames, frame:GetName() )
+      end
+    end
+
+    local function get_from_cache( line_type )
+      frame_cache[ line_type ] = frame_cache[ line_type ] or {}
+
+      for i = getn( frame_cache[ line_type ] ), 1, -1 do
+        if not frame_cache[ line_type ][ i ].is_used then
+          return frame_cache[ line_type ][ i ]
+        end
+      end
+    end
+
+    local function get_total_width( buttons )
+      local result = 0
+
+      for _, button in ipairs( buttons ) do
+        local frame = button.frame
+        result = result + frame:GetWidth() * frame:GetScale()
+      end
+
+      return result
+    end
+
+    local function resize( parent )
+      local max_width = 0
+      local height = 0
+
+      for _, line in ipairs( lines ) do
+        if line.line_type ~= "button" then
+          local frame = line.frame
+          local scale = frame.GetScale and frame:GetScale() or 1
+          local width = frame:GetWidth() * scale
+
+          height = height + frame:GetHeight() * scale
+          height = height + line.padding
+          if width > max_width then max_width = width end
+        end
+      end
+
+
+      local buttons = modules.filter( lines, function( line ) return line.line_type == "button" end )
+      local button_count = getn( buttons )
+      local button_width = get_total_width( buttons ) + (button_count - 1) * button_padding
+
+      if button_width > max_width then max_width = button_width end
+
+      if getn( buttons ) > 0 then
+        height = height + 23
+      end
+
+      parent:SetWidth( max_width + 50 )
+      parent:SetHeight( height + 38 )
+      align_buttons( parent )
+    end
+
+    local function add_api_to( popup )
+      popup.add_line = function( line_type, modify_fn, padding )
+        local frame = get_from_cache( line_type )
+
+        if not frame then
+          local creator_fn = options.creators[ line_type ]
+          if not creator_fn then return end
+
+          frame = creator_fn( popup )
+          frame.is_used = true
+          table.insert( frame_cache[ line_type ], frame )
+        else
+          frame.is_used = true
+          frame:Show()
+        end
+
+        local count = getn( lines )
+
+        if line_type ~= "button" then
+          if count == 0 then
+            local top_padding = -20 - (padding or 0)
+            frame:ClearAllPoints()
+            frame:SetPoint( "TOP", popup, "TOP", 0, top_padding )
+          else
+            local anchor = lines[ count ].frame
+            frame:ClearAllPoints()
+            frame:SetPoint( "TOP", anchor, "BOTTOM", 0, padding and -padding or 0 )
+          end
+        end
+
+        modify_fn( line_type, frame )
+        local line = { line_type = line_type, padding = padding or 0, frame = frame }
+        table.insert( lines, line )
+        resize( popup )
+
+        return line
+      end
+
+      popup.clear = function()
+        for _, line in ipairs( lines ) do
+          line.frame:Hide()
+          line.frame.is_used = false
+        end
+
+        modules.clear_table( lines )
+        lines.n = 0
       end
     end
 
@@ -153,9 +241,9 @@ function M.builder()
     end
 
     local frame = create_main_frame()
-    create_buttons( frame )
     create_title_frame( frame )
     configure_main_frame( frame )
+    add_api_to( frame )
 
     return frame
   end
@@ -185,12 +273,6 @@ function M.builder()
     return self
   end
 
-  local function with_button( self, name, on_click, width, height )
-    options.buttons = options.buttons or {}
-    table.insert( options.buttons, { name = name, on_click = on_click, width = width, height = height } )
-    return self
-  end
-
   local function with_esc( self )
     options.esc = true
     return self
@@ -210,16 +292,21 @@ function M.builder()
     return self
   end
 
+  local function with_creators( self, creators )
+    options.creators = creators
+    return self
+  end
+
   return {
     with_name = with_name,
     with_height = with_height,
     with_width = with_width,
-    with_button = with_button,
     with_sound = with_sound,
     with_frame_level = with_frame_level,
     with_backdrop_color = with_backdrop_color,
     with_bg_file = with_bg_file,
     with_esc = with_esc,
+    with_creators = with_creators,
     build = build
   }
 end

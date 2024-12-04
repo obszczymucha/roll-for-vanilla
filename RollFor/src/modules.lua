@@ -483,6 +483,22 @@ function M.roll_type_color( roll_type, text )
   end
 end
 
+function M.roll_type_abbrev( roll_type )
+  if roll_type == M.Types.RollType.MainSpec then
+    return "MS"
+  elseif roll_type == M.Types.RollType.OffSpec then
+    return "OS"
+  elseif roll_type == M.Types.RollType.Transmog then
+    return "TM"
+  elseif roll_type == M.Types.RollType.SoftRes then
+    return "SR"
+  elseif roll_type == M.Types.RollType.RaidRoll then
+    return "RR"
+  else
+    return M.colors.white( text or roll_type )
+  end
+end
+
 function M.count_items_to_master_loot()
   local item_count = M.api.GetNumLootItems()
   local threshold = M.api.GetLootThreshold()

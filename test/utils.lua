@@ -128,6 +128,7 @@ function M.mock_wow_api()
       end,
       Enable = function() end,
       Disable = function() end,
+      ClearAllPoints = function() end,
       SetBackdrop = function() end,
       SetBackdropColor = function() end,
       SetBackdropBorderColor = function() end,
@@ -149,8 +150,11 @@ function M.mock_wow_api()
         }
       end,
       SetWidth = function() end,
+      GetWidth = function() return 20 end,
       SetHeight = function() end,
+      GetHeight = function() return 100 end,
       SetScale = function() end,
+      GetScale = function() return 1 end,
       GetFontString = function()
         return {
           SetPoint = function() end,
@@ -180,11 +184,15 @@ function M.mock_wow_api()
       IsVisible = function() end,
       CreateFontString = function()
         return {
+          Hide = function() end,
+          Show = function() end,
+          ClearAllPoints = function() end,
           SetPoint = function() end,
           SetText = function() end,
           SetTextColor = function() end,
           GetStringWidth = function() return 0 end,
           GetWidth = function() return 100 end,
+          GetHeight = function() return 20 end,
           GetText = function() return "Font string text" end
         }
       end,
@@ -717,6 +725,8 @@ function M.load_real_stuff( req )
   r( "src/AutoMasterLoot" )
   r( "src/CustomPopup" )
   r( "src/RollingTipPopup" )
+  r( "src/RollTracker" )
+  r( "src/RollingPopup" )
   -- r( "Libs/LibDeflate/LibDeflate" )
   r( "src/Json" )
   r( "main" )

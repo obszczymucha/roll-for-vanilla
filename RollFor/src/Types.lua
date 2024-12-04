@@ -19,5 +19,12 @@ M.RollType = {
   RaidRoll = "raid-roll"
 }
 
+M.RollingStrategy = {
+  NormalRoll = "normal",
+  SoftResRoll = "soft-res",
+  TieRoll = "tie-roll",
+  RaidRoll = "raid-roll"
+}
+
 modules.Types = M
 return M
