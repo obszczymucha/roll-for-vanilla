@@ -6,12 +6,25 @@ local m = modules
 local info = m.pretty_print
 local print_header = m.print_header
 local hl = m.colors.hl
+local blue = m.colors.blue
 local grey = m.colors.grey
+local RollType = m.Types.RollType
 
 local M = {}
 
 function M.new( db )
   local callbacks = {}
+  local toggles = {
+    [ "auto_loot" ] = { cmd = "autoloot", display = "Auto-loot", help = "toggle auto-loot" },
+    [ "show_ml_warning" ] = { cmd = "ml", display = "Master loot warning", help = "toggle master loot warning" },
+    [ "auto_raid_roll" ] = { cmd = "auto-rr", display = "Auto raid-roll", help = "toggle auto raid-roll" },
+    [ "auto_group_loot" ] = { cmd = "auto-group-loot", display = "Auto group loot", help = "toggle auto group loot" },
+    [ "auto_master_loot" ] = { cmd = "auto-master-loot", display = "Auto master loot", help = "toggle auto master loot" },
+    [ "rolling_tip" ] = { cmd = "rolling-tip", display = "Rolling tip", help = "toggle rolling tip window" },
+    [ "rolling_popup_lock" ] = { cmd = "rolling-popup-lock", display = "Rolling popup lock", help = "toggle rolling popup lock" },
+    [ "raid_roll_again" ] = { cmd = "raid-roll-again", display = string.format( "%s button", hl( "Raid roll again" ) ), help = string.format( "toggle %s button", hl( "Raid roll again" ) ) },
+    [ "rolling_popup" ] = { cmd = "rolling-popup", display = "Rolling popup", help = "toggle rolling popup" },
+  }
 
   local function notify_subscribers( event, value )
     if not callbacks[ event ] then return end
@@ -27,91 +40,34 @@ function M.new( db )
     if not db.tmog_roll_threshold then db.tmog_roll_threshold = 98 end
     if db.tmog_rolling_enabled == nil then db.tmog_rolling_enabled = true end
     if db.rolling_tip == nil then db.rolling_tip = true end
+    if db.rolling_popup == nil then db.rolling_popup = true end
+    if db.show_ml_warning == nil then db.show_ml_warning = true end
   end
 
-  local function toggle_auto_loot()
-    if db.auto_loot then
-      db.auto_loot = false
-    else
-      db.auto_loot = true
+  local function print( toggle_key )
+    local toggle = toggles[ toggle_key ]
+    if not toggle then return end
+
+    local value = toggle.negate and not db[ toggle_key ] or db[ toggle_key ]
+    info( string.format( "%s is %s.", toggles[ toggle_key ].display, value and m.msg.enabled or m.msg.disabled ) )
+    notify_subscribers( toggle_key, value )
+  end
+
+  local function toggle( toggle_key )
+    return function()
+      if db[ toggle_key ] then
+        db[ toggle_key ] = false
+      else
+        db[ toggle_key ] = true
+      end
+
+      print( toggle_key )
     end
-
-    info( string.format( "Auto-loot is %s.", db.auto_loot and m.msg.enabled or m.msg.disabled ) )
   end
 
-  local function print_master_loot_warning_settings()
-    info( string.format( "Master Loot warning %s.", db.disable_ml_warning and m.msg.disabled or m.msg.enabled ) )
-  end
-
-  local function toggle_ml_warning()
-    if db.disable_ml_warning then
-      db.disable_ml_warning = nil
-    else
-      db.disable_ml_warning = 1
-    end
-
-    print_master_loot_warning_settings()
-    notify_subscribers( "toggle_ml_warning", db.disable_ml_warning )
-  end
-
-  local function print_raid_roll_settings()
-    local status = db.auto_raid_roll and m.msg.enabled or m.msg.disabled
-    info( string.format( "Auto raid-roll is %s.", status ) )
-  end
-
-  local function toggle_auto_raid_roll()
-    if db.auto_raid_roll then
-      db.auto_raid_roll = false
-    else
-      db.auto_raid_roll = true
-    end
-
-    print_raid_roll_settings()
-  end
-
-  local function print_auto_group_loot_settings()
-    local status = db.auto_group_loot and m.msg.enabled or m.msg.disabled
-    info( string.format( "Auto group loot is %s.", status ) )
-  end
-
-  local function toggle_auto_group_loot()
-    if db.auto_group_loot then
-      db.auto_group_loot = false
-    else
-      db.auto_group_loot = true
-    end
-
-    print_auto_group_loot_settings()
-  end
-
-  local function print_auto_master_loot_settings()
-    local status = db.auto_master_loot and m.msg.enabled or m.msg.disabled
-    info( string.format( "Auto master loot is %s.", status ) )
-  end
-
-  local function toggle_auto_master_loot()
-    if db.auto_master_loot then
-      db.auto_master_loot = false
-    else
-      db.auto_master_loot = true
-    end
-
-    print_auto_master_loot_settings()
-  end
-
-  local function print_rolling_tip_settings()
-    local status = db.rolling_tip and m.msg.enabled or m.msg.disabled
-    info( string.format( "Rolling tip is %s.", status ) )
-  end
-
-  local function toggle_rolling_tip()
-    if db.rolling_tip then
-      db.rolling_tip = false
-    else
-      db.rolling_tip = true
-    end
-
-    print_rolling_tip_settings()
+  local function reset_rolling_popup()
+    info( "Rolling popup position has been reset." )
+    notify_subscribers( "reset_rolling_popup" )
   end
 
   local function print_roll_thresholds()
@@ -134,16 +90,18 @@ function M.new( db )
     info( string.format( "%s integration is %s.", m.msg.pfui, db.pfui_integration_enabled and m.msg.enabled or m.msg.disabled ) )
   end
 
-  local function print()
+  local function print_settings()
     print_header( "RollFor Configuration" )
-    print_master_loot_warning_settings()
-    print_raid_roll_settings()
     print_roll_thresholds()
     print_transmog_rolling_setting()
     print_pfui_integration_setting()
-    print_auto_group_loot_settings()
-    print_auto_master_loot_settings()
-    print_rolling_tip_settings()
+
+    for toggle_key, _ in pairs( toggles ) do
+      if toggle_key ~= "auto_loot" then
+        print( toggle_key )
+      end
+    end
+
     m.print( string.format( "For more info, type: %s", hl( "/rf config help" ) ) )
   end
 
@@ -185,27 +143,28 @@ function M.new( db )
 
   local function print_help()
     local v = function( name ) return string.format( "%s%s%s", hl( "<" ), grey( name ), hl( ">" ) ) end
+    local function rfc( cmd ) return string.format( "%s%s", blue( "/rf config" ), cmd and string.format( " %s", hl( cmd ) ) or "" ) end
 
     print_header( "RollFor Configuration Help" )
-    m.print( string.format( "%s - show configuration", hl( "/rf config" ) ) )
-    m.print( string.format( "%s - toggle minimap icon", hl( "/rf config minimap" ) ) )
-    m.print( string.format( "%s - lock/unlock minimap icon", hl( "/rf config minimap lock" ) ) )
-    m.print( string.format( "%s - toggle master loot warning", hl( "/rf config ml" ) ) )
-    m.print( string.format( "%s - toggle auto raid-roll", hl( "/rf config auto-rr" ) ) )
-    m.print( string.format( "%s - show MS rolling threshold ", hl( "/rf config ms" ) ) )
-    m.print( string.format( "%s %s - set MS rolling threshold ", hl( "/rf config ms" ), v( "threshold" ) ) )
-    m.print( string.format( "%s - show OS rolling threshold ", hl( "/rf config os" ) ) )
-    m.print( string.format( "%s %s - set OS rolling threshold ", hl( "/rf config os" ), v( "threshold" ) ) )
-    m.print( string.format( "%s - toggle TMOG rolling", hl( "/rf config tmog" ) ) )
-    m.print( string.format( "%s %s - set TMOG rolling threshold", hl( "/rf config tmog" ), v( "threshold" ) ) )
+    m.print( string.format( "%s - show configuration", rfc() ) )
+    m.print( string.format( "%s - toggle minimap icon", rfc( "minimap" ) ) )
+    m.print( string.format( "%s - lock/unlock minimap icon", rfc( "minimap lock" ) ) )
+    m.print( string.format( "%s - show MS rolling threshold ", rfc( "ms" ) ) )
+    m.print( string.format( "%s %s - set MS rolling threshold ", rfc( "ms" ), v( "threshold" ) ) )
+    m.print( string.format( "%s - show OS rolling threshold ", rfc( "os" ) ) )
+    m.print( string.format( "%s %s - set OS rolling threshold ", rfc( "os" ), v( "threshold" ) ) )
+    m.print( string.format( "%s - toggle TMOG rolling", rfc( "tmog" ) ) )
+    m.print( string.format( "%s %s - set TMOG rolling threshold", rfc( "tmog" ), v( "threshold" ) ) )
 
     if m.uses_pfui() then
-      m.print( string.format( "%s - toggle %s integration", hl( "/rf config pfui" ), m.msg.pfui ) )
+      m.print( string.format( "%s - toggle %s integration", rfc( "pfui" ), m.msg.pfui ) )
     end
 
-    m.print( string.format( "%s - toggle auto group loot", hl( "/rf config auto-group-loot" ) ) )
-    m.print( string.format( "%s - toggle auto master loot", hl( "/rf config auto-master-loot" ) ) )
-    m.print( string.format( "%s - toggle rolling tip window", hl( "/rf config rolling-tip" ) ) )
+    for _, setting in pairs( toggles ) do
+      m.print( string.format( "%s - %s", rfc( setting.cmd ), setting.help ) )
+    end
+
+    m.print( string.format( "%s - reset rolling popup position", rfc( "reset-rolling-popup" ) ) )
   end
 
   local function toggle_pfui_integration()
@@ -220,12 +179,12 @@ function M.new( db )
 
   local function enable_pfui_integration()
     db.pfui_integration_enabled = true
-    db.pf_integration_info_showed = true
+    db.pfui_integration_info_showed = true
   end
 
   local function disable_pfui_integration()
     db.pfui_integration_enabled = false
-    db.pf_integration_info_showed = true
+    db.pfui_integration_info_showed = true
   end
 
   local function lock_minimap_button()
@@ -252,7 +211,7 @@ function M.new( db )
 
   local function on_command( args )
     if args == "config" then
-      print()
+      print_settings()
       return
     end
 
@@ -261,32 +220,15 @@ function M.new( db )
       return
     end
 
-    if args == "config ml" then
-      toggle_ml_warning()
+    for toggle_key, setting in pairs( toggles ) do
+      if args == string.format( "config %s", setting.cmd ) then
+        toggle( toggle_key )()
+        return
+      end
     end
 
-    if args == "config autoloot" then
-      toggle_auto_loot()
-      return
-    end
-
-    if args == "config auto-rr" then
-      toggle_auto_raid_roll()
-      return
-    end
-
-    if args == "config auto-group-loot" then
-      toggle_auto_group_loot()
-      return
-    end
-
-    if args == "config auto-master-loot" then
-      toggle_auto_master_loot()
-      return
-    end
-
-    if args == "config rolling-tip" then
-      toggle_rolling_tip()
+    if args == "config reset-rolling-popup" then
+      reset_rolling_popup()
       return
     end
 
@@ -338,45 +280,58 @@ function M.new( db )
     table.insert( callbacks[ event ], callback )
   end
 
+  local function roll_threshold( roll_type )
+    local threshold = (roll_type == RollType.MainSpec or roll_type == RollType.SoftRes) and db.ms_roll_threshold or
+        roll_type == RollType.OffSpec and db.os_roll_threshold or
+        db.tmog_roll_threshold
+    local threshold_str = string.format( "/roll%s", threshold == 100 and "" or string.format( " %s", threshold ) )
+
+    return {
+      value = threshold,
+      str = threshold_str
+    }
+  end
+
   init()
 
-  return {
-    toggle_auto_loot = toggle_auto_loot,
-    is_auto_loot = function() return db.auto_loot end,
-    toggle_ml_warning = toggle_ml_warning,
-    ml_warning_disabled = function() return db.disable_ml_warning end,
-    toggle_auto_raid_roll = toggle_auto_raid_roll,
-    auto_raid_roll = function() return db.auto_raid_roll end,
-    enable_pfui_integration = enable_pfui_integration,
-    disable_pfui_integration = disable_pfui_integration,
-    toggle_pfui_integration = toggle_pfui_integration,
-    pfui_integration_enabled = function() return db.pfui_integration_enabled end,
-    pf_integration_info_showed = function() return db.pf_integration_info_showed end,
-    ms_roll_threshold = function() return db.ms_roll_threshold end,
-    os_roll_threshold = function() return db.os_roll_threshold end,
-    tmog_roll_threshold = function() return db.tmog_roll_threshold end,
-    tmog_rolling_enabled = function() return db.tmog_rolling_enabled end,
+  local function get( setting_key ) return function() return db[ setting_key ] end end
+  local function printfn( setting_key ) return function() print( setting_key ) end end
+
+  local config = {
     configure_ms_threshold = configure_ms_threshold,
     configure_os_threshold = configure_os_threshold,
     configure_tmog_threshold = configure_tmog_threshold,
-    minimap_button_locked = function() return db.minimap_button_locked end,
-    minimap_button_hidden = function() return db.minimap_button_hidden end,
-    lock_minimap_button = lock_minimap_button,
-    unlock_minimap_button = unlock_minimap_button,
+    disable_pfui_integration = disable_pfui_integration,
+    enable_pfui_integration = enable_pfui_integration,
     hide_minimap_button = hide_minimap_button,
-    show_minimap_button = show_minimap_button,
-    toggle_auto_group_loot = toggle_auto_group_loot,
-    is_auto_group_loot = function() return db.auto_group_loot end,
-    toggle_auto_master_loot = toggle_auto_master_loot,
-    is_auto_master_loot = function() return db.auto_master_loot end,
-    toggle_rolling_tip = toggle_rolling_tip,
-    show_rolling_tip = function() return db.rolling_tip end,
+    lock_minimap_button = lock_minimap_button,
+    minimap_button_hidden = get( "minimap_button_hidden" ),
+    minimap_button_locked = get( "minimap_button_locked" ),
+    ms_roll_threshold = get( "ms_roll_threshold" ),
+    on_command = on_command,
+    os_roll_threshold = get( "os_roll_threshold" ),
+    pf_integration_info_showed = get( "pfui_integration_info_showed" ),
+    pfui_integration_enabled = get( "pfui_integration_enabled" ),
     print = print,
     print_help = print_help,
-    print_raid_roll_settings = print_raid_roll_settings,
+    print_raid_roll_settings = printfn( "auto_raid_roll" ),
+    reset_rolling_popup = reset_rolling_popup,
+    roll_threshold = roll_threshold,
+    show_minimap_button = show_minimap_button,
+    show_rolling_tip = get( "rolling_tip" ),
     subscribe = subscribe,
-    on_command = on_command
+    tmog_roll_threshold = get( "tmog_roll_threshold" ),
+    tmog_rolling_enabled = get( "tmog_rolling_enabled" ),
+    toggle_pfui_integration = toggle( "pfui_integration_enabled" ),
+    unlock_minimap_button = unlock_minimap_button,
   }
+
+  for toggle_key, _ in pairs( toggles ) do
+    config[ toggle_key ] = get( toggle_key )
+    config[ "toggle_" .. toggle_key ] = toggle( toggle_key )
+  end
+
+  return config
 end
 
 modules.Config = M

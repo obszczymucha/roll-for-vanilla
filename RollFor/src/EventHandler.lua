@@ -35,8 +35,8 @@ function M.handle_events( main )
       main.version_broadcast.on_group_changed()
       main.on_group_changed()
       main.new_group_event.on_group_changed()
-      --elseif event == "CHAT_MSG_PARTY" then
-      --main.on_chat_msg_system(arg1, arg2, arg3, arg4, arg5)
+      elseif event == "CHAT_MSG_PARTY" then
+      main.on_chat_msg_system(arg1, arg2, arg3, arg4, arg5)
     elseif event == "CHAT_MSG_SYSTEM" then
       main.on_chat_msg_system( arg1, arg2, arg3, arg4, arg5 )
     elseif event == "CHAT_MSG_ADDON" then
@@ -83,7 +83,7 @@ function M.handle_events( main )
   frame:RegisterEvent( "GROUP_LEFT" )
   frame:RegisterEvent( "GROUP_FORMED" )
   frame:RegisterEvent( "CHAT_MSG_SYSTEM" )
-  --frame:RegisterEvent( "CHAT_MSG_PARTY" )
+  frame:RegisterEvent( "CHAT_MSG_PARTY" )
   frame:RegisterEvent( "LOOT_OPENED" )
   frame:RegisterEvent( "LOOT_CLOSED" )
   frame:RegisterEvent( "OPEN_MASTER_LOOT_LIST" )

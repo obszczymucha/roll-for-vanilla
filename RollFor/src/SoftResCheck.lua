@@ -75,7 +75,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
       return ResultType.FoundOutdatedData
     end
 
-    local softres_players = softres.get_all_softres_player_names()
+    local softres_players = softres.get_all_players()
 
     if getn( softres_players ) == 0 then
       if silent ~= true then pretty_print( "No soft-res items found." ) end
@@ -172,7 +172,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
       return
     end
 
-    local absent_softres_players = absent_softres( softres ).get_all_softres_player_names()
+    local absent_softres_players_count = getn( absent_softres( softres ).get_all_players() )
 
     local item_count = modules.count_elements( items )
     local unavailable_item_count = modules.count_elements( unavailable_items )
@@ -191,7 +191,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
 
     if item_count > 0 then
       p( string.format( "Soft-ressed items%s:",
-        getn( absent_softres_players ) > 0 and string.format( " (players in %s are not in your group)", colors.red( "red" ) ) or "" ) )
+        absent_softres_players_count > 0 and string.format( " (players in %s are not in your group)", colors.red( "red" ) ) or "" ) )
 
       for item_link, players in pairs( items ) do
         if modules.count_elements( players ) > 0 then
@@ -202,7 +202,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
 
     if unavailable_item_count > 0 then
       p( string.format( "Unavailable soft-ressed items%s:",
-        getn( absent_softres_players ) > 0 and string.format( " (players in %s are not in your group)", colors.red( "red" ) ) or "" ) )
+        absent_softres_players_count > 0 and string.format( " (players in %s are not in your group)", colors.red( "red" ) ) or "" ) )
 
       for item_id, players in pairs( unavailable_items ) do
         if modules.count_elements( players ) > 0 then

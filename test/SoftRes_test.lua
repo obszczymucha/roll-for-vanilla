@@ -1,10 +1,11 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/Libs/?.lua;../RollFor/Libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
 
 local lu = require( "luaunit" )
 local test_utils = require( "test/utils" )
 test_utils.mock_wow_api()
 test_utils.load_libstub()
 require( "src/modules" )
+require( "src/SoftResDataTransformer" )
 local mod = require( "src/SoftRes" )
 
 local sr = test_utils.soft_res_item

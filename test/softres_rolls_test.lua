@@ -1,4 +1,4 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/Libs/?.lua;../RollFor/Libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
@@ -38,6 +38,37 @@ local mock_blizzard_loot_buttons = utils.mock_blizzard_loot_buttons
 local mock_shift_key_pressed = utils.mock_shift_key_pressed
 local mock_alt_key_pressed = utils.mock_alt_key_pressed
 local mock_control_key_pressed = utils.mock_control_key_pressed
+
+local mock_config = function( config )
+  local m = require( "src/modules" )
+
+  local defaults = {
+    auto_raid_roll = function() return config and config.auto_raid_roll end,
+    minimap_button_hidden = function() return false end,
+    minimap_button_locked = function() return false end,
+    subscribe = function() end,
+    rolling_popup_lock = function() return true end,
+    ms_roll_threshold = function() return 100 end,
+    os_roll_threshold = function() return 99 end,
+    tmog_roll_threshold = function() return 98 end,
+    roll_threshold = function()
+      return {
+        value = 100,
+        str = "/roll"
+      }
+    end,
+    auto_loot = function() return true end,
+    show_rolling_tip = function() return true end,
+    tmog_rolling_enabled = function() return true end,
+    rolling_popup = function() return true end
+  }
+
+  m.Config = {
+    new = function()
+      return defaults
+    end
+  }
+end
 
 SoftResIntegrationSpec = {}
 
@@ -80,7 +111,7 @@ function SoftResIntegrationSpec:should_only_process_rolls_from_players_who_soft_
     rw( "Roll for [Hearthstone]: (SR by Ponpon and Psikutas)" ),
     c( "RollFor: Rikus did not SR [Hearthstone]. This roll (100) is ignored." ),
     c( "RollFor: Obszczymucha did not SR [Hearthstone]. This roll (42) is ignored." ),
-    cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
+    cr( "Psikutas rolled the highest (69) for [Hearthstone] (SR)." ),
     rolling_finished()
   )
 end
@@ -101,10 +132,10 @@ function SoftResIntegrationSpec:should_ignore_offspec_rolls_by_players_who_soft_
   -- Then
   assert_messages(
     rw( "Roll for [Hearthstone]: (SR by Ponpon and Psikutas)" ),
-    c( "RollFor: Psikutas did SR [Hearthstone], but rolled OS. This roll (69) is ignored." ),
+    c( "RollFor: Psikutas did SR [Hearthstone], but didn't roll MS. This roll (69) is ignored." ),
     r( "Stopping rolls in 3", "2", "1" ),
     r( "SR rolls remaining: Psikutas (1 roll)" ),
-    cr( "Psikutas rolled the highest (99) for [Hearthstone]." ),
+    cr( "Psikutas rolled the highest (99) for [Hearthstone] (SR)." ),
     rolling_finished()
   )
 end
@@ -125,10 +156,10 @@ function SoftResIntegrationSpec:should_announce_current_highest_roller_if_a_play
   -- Then
   assert_messages(
     rw( "Roll for [Hearthstone]: (SR by Ponpon and Psikutas)" ),
-    c( "RollFor: Psikutas did SR [Hearthstone], but rolled OS. This roll (69) is ignored." ),
+    c( "RollFor: Psikutas did SR [Hearthstone], but didn't roll MS. This roll (69) is ignored." ),
     r( "Stopping rolls in 3", "2", "1" ),
     r( "SR rolls remaining: Psikutas (1 roll)" ),
-    cr( "Ponpon rolled the highest (42) for [Hearthstone]." ),
+    cr( "Ponpon rolled the highest (42) for [Hearthstone] (SR)." ),
     rolling_finished()
   )
 end
@@ -152,6 +183,42 @@ function SoftResIntegrationSpec:should_announce_all_missing_sr_rolls_if_players_
   )
 end
 
+function SoftResIntegrationSpec:should_announce_all_missing_sr_rolls_if_none_of_the_sr_players_rolled_and_auto_raid_roll_is_enabled()
+  -- Given
+  player( "Psikutas", mock_config( { auto_raid_roll = true } ) )
+  is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon", "Rikus" )
+  soft_res( sr( "Psikutas", 123 ), sr( "Ponpon", 123 ), sr( "Psikutas", 123 ), sr( "Ponpon", 123 ), sr( "Rikus", 123 ) )
+
+  -- When
+  roll_for( "Hearthstone", 1, 123 )
+  repeating_tick( 8 )
+
+  -- Then
+  assert_messages(
+    rw( "Roll for [Hearthstone]: (SR by Ponpon [2 rolls], Psikutas [2 rolls] and Rikus)" ),
+    r( "Stopping rolls in 3", "2", "1" ),
+    r( "SR rolls remaining: Ponpon (2 rolls), Psikutas (2 rolls) and Rikus (1 roll)" )
+  )
+end
+
+function SoftResIntegrationSpec:should_announce_all_missing_sr_rolls_if_none_of_the_sr_players_rolled_and_auto_raid_roll_is_disabled()
+  -- Given
+  player( "Psikutas", mock_config( { auto_raid_roll = false } ) )
+  is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon", "Rikus" )
+  soft_res( sr( "Psikutas", 123 ), sr( "Ponpon", 123 ), sr( "Psikutas", 123 ), sr( "Ponpon", 123 ), sr( "Rikus", 123 ) )
+
+  -- When
+  roll_for( "Hearthstone", 1, 123 )
+  repeating_tick( 8 )
+
+  -- Then
+  assert_messages(
+    rw( "Roll for [Hearthstone]: (SR by Ponpon [2 rolls], Psikutas [2 rolls] and Rikus)" ),
+    r( "Stopping rolls in 3", "2", "1" ),
+    r( "SR rolls remaining: Ponpon (2 rolls), Psikutas (2 rolls) and Rikus (1 roll)" )
+  )
+end
+
 function SoftResIntegrationSpec:should_allow_multiple_rolls_if_a_player_soft_ressed_multiple_times()
   -- Given
   player( "Psikutas" )
@@ -169,7 +236,7 @@ function SoftResIntegrationSpec:should_allow_multiple_rolls_if_a_player_soft_res
   assert_messages(
     rw( "Roll for [Hearthstone]: (SR by Ponpon and Psikutas [2 rolls])" ),
     c( "RollFor: Ponpon exhausted their rolls. This roll (100) is ignored." ),
-    cr( "Psikutas rolled the highest (99) for [Hearthstone]." ),
+    cr( "Psikutas rolled the highest (99) for [Hearthstone] (SR)." ),
     rolling_finished()
   )
 end
@@ -195,10 +262,10 @@ function SoftResIntegrationSpec:should_ask_for_a_reroll_if_there_is_a_tie_and_ig
   -- Then
   assert_messages(
     rw( "Roll for [Hearthstone]: (SR by Pimp, Ponpon, Psikutas and Rikus)" ),
-    cr( "The highest roll was 69 by Pimp, Ponpon and Psikutas." ),
+    cr( "The highest roll was 69 by Pimp, Ponpon and Psikutas (SR)." ),
     r( "Pimp, Ponpon and Psikutas /roll for [Hearthstone] now." ),
     c( "RollFor: Rikus exhausted their rolls. This roll (100) is ignored." ),
-    cr( "Psikutas re-rolled the highest (100) for [Hearthstone]." ),
+    cr( "Psikutas re-rolled the highest (100) for [Hearthstone] (SR)." ),
     rolling_finished()
   )
 end
@@ -226,7 +293,7 @@ function SoftResIntegrationSpec:should_not_ask_for_a_reroll_if_there_is_a_tie_an
     rw( "Roll for [Hearthstone]: (SR by Pimp, Ponpon, Psikutas [2 rolls] and Rikus)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     r( "SR rolls remaining: Psikutas (1 roll)" ),
-    cr( "Psikutas rolled the highest (70) for [Hearthstone]." ),
+    cr( "Psikutas rolled the highest (70) for [Hearthstone] (SR)." ),
     rolling_finished()
   )
 end
@@ -263,6 +330,8 @@ end
 --Disabling due to fucking 2.4.3 hack with delayed trade check.
 function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_ressed_already_received_the_item_via_trade()
   -- Given
+  local trade_mod = require( "src/TradeTracker" )
+  trade_mod.debug_enabled = true
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
   soft_res( sr( "Obszczymucha", 123 ) )
@@ -348,7 +417,7 @@ function SoftResIntegrationSpec:should_only_process_rolls_from_players_who_soft_
   assert_messages(
     rw( "Roll for [Hearthstone]: (SR by Ponpon, Psikutas and Sälvatrucha)" ),
     r( "Stopping rolls in 3", "2", "1" ),
-    cr( "Sälvatrucha rolled the highest (69) for [Hearthstone]." ),
+    cr( "Sälvatrucha rolled the highest (69) for [Hearthstone] (SR)." ),
     rolling_finished()
   )
 end
@@ -367,16 +436,17 @@ function SoftResIntegrationSpec:should_stop_rolling_if_player_who_won_still_has_
   -- Then
   assert_messages(
     rw( "Roll for [Hearthstone]: (SR by Ponpon and Psikutas [2 rolls])" ),
-    cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
+    cr( "Psikutas rolled the highest (69) for [Hearthstone] (SR)." ),
     rolling_finished()
   )
 end
 
 utils.mock_libraries()
 utils.load_real_stuff( function( module_name )
-  if module_name ~= "src/LootAwardPopup" then return require( module_name ) end
+  if module_name == "src/LootAwardPopup" then return require( "mocks/LootAwardPopupMock" ) end
+  if module_name == "src/Config" then return mock_config() end
 
-  return require( "mocks/LootAwardPopupMock" )
+  return require( module_name )
 end )
 
 os.exit( lu.LuaUnit.run() )

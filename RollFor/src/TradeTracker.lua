@@ -4,6 +4,8 @@ if modules.TradeTracker then return end
 
 M = {}
 
+M.debug_enabled = false
+
 -- So it seems that in 2.4.3 trading is a little fucked.
 -- A successful trade goes like this
 -- TRADE_SHOW
@@ -31,7 +33,7 @@ function M.new( ace_timer, trade_complete_callback )
   local m_items_receiving = {}
   local m_both_parties_accepted = false
   local m_recipient_name = nil
-  local m_trade_cancelled = false
+  local m_trade_canceled = false
   local m_received_trade_close = false -- Server sends multiple ones. Probably server bug.
 
   local pretty_print = modules.pretty_print
@@ -41,9 +43,9 @@ function M.new( ace_timer, trade_complete_callback )
   end
 
   local function finalize_trading()
-    if RollFor.settings.trade_tracker_debug then
-      if m_trade_cancelled then
-        pretty_print( string.format( "Trading with %s was cancelled.", highlight( m_recipient_name ) ) )
+    if M.debug_enabled then
+      if m_trade_canceled then
+        pretty_print( string.format( "Trading with %s was canceled.", highlight( m_recipient_name ) ) )
         return
       end
 
@@ -58,7 +60,7 @@ function M.new( ace_timer, trade_complete_callback )
       end
     end
 
-    if not m_trade_cancelled then
+    if not m_trade_canceled then
       trade_complete_callback( m_recipient_name, m_items_giving, m_items_receiving )
     end
   end
@@ -70,13 +72,13 @@ function M.new( ace_timer, trade_complete_callback )
     local item_link = modules.api.GetTradePlayerItemLink( slot )
 
     if quantity and item_link then
-      if RollFor.settings.trade_tracker_debug then
+      if M.debug_enabled then
         pretty_print( string.format( "Giving in slot %s: %sx%s", slot, quantity, item_link ) )
       end
 
       m_items_giving[ slot ] = { quantity = quantity, link = item_link }
     else
-      if RollFor.settings.trade_tracker_debug and m_items_giving[ slot ] then
+      if M.debug_enabled and m_items_giving[ slot ] then
         pretty_print( string.format( "Giving slot %s cleared.", slot ) )
       end
 
@@ -87,13 +89,13 @@ function M.new( ace_timer, trade_complete_callback )
   local function on_trade_show()
     m_recipient_name = modules.api.TradeFrameRecipientNameText:GetText() or "Unknown"
 
-    if RollFor.settings.trade_tracker_debug then
+    if M.debug_enabled then
       pretty_print( string.format( "Started trading with %s.", highlight( m_recipient_name ) ) )
     end
 
     m_trading = true
     m_both_parties_accepted = false
-    m_trade_cancelled = false
+    m_trade_canceled = false
     m_items_giving = {}
     m_items_receiving = {}
     m_received_trade_close = false
@@ -109,13 +111,13 @@ function M.new( ace_timer, trade_complete_callback )
     local item_link = modules.api.GetTradeTargetItemLink( slot )
 
     if quantity and item_link then
-      if RollFor.settings.trade_tracker_debug then
+      if M.debug_enabled then
         pretty_print( string.format( "Receiving in slot %s: %sx%s", slot, quantity, item_link ) )
       end
 
       m_items_receiving[ slot ] = { quantity = quantity, link = item_link }
     else
-      if RollFor.settings.trade_tracker_debug and m_items_receiving[ slot ] then
+      if M.debug_enabled and m_items_receiving[ slot ] then
         pretty_print( string.format( "Receiving slot %s cleared.", slot ) )
       end
 
@@ -132,7 +134,7 @@ function M.new( ace_timer, trade_complete_callback )
       return
     end
 
-    pretty_print( string.format( "Trading with %s was cancelled.", highlight( m_recipient_name ) ) )
+    pretty_print( string.format( "Trading with %s was canceled.", highlight( m_recipient_name ) ) )
     m_trading = false
   end
 
@@ -144,7 +146,7 @@ function M.new( ace_timer, trade_complete_callback )
 
   local function on_trade_request_cancel()
     if not m_trading then return end
-    m_trade_cancelled = true
+    m_trade_canceled = true
   end
 
   return {

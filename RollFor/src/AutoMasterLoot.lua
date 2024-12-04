@@ -7,7 +7,7 @@ local M = {}
 
 function M.new( config, boss_list )
   local function on_player_target_changed()
-    if not config.is_auto_master_loot() then return end
+    if not config.auto_master_loot() then return end
 
     local target_name = modules.target_name()
     if not target_name then return end

@@ -6,19 +6,21 @@
 ## SavedVariables: RollForDb
 ## SavedVariablesPerCharacter: RollForCharDb
 
-Libs\LibStub\LibStub.lua
-Libs\Libs.xml
+libs\LibStub\LibStub.lua
+libs\Libs.xml
+
 src\Backport.lua
 settings.lua
 src\modules.lua
 src\Db.lua
-src\Config.lua
 src\Types.lua
+src\Config.lua
 src\ItemUtils.lua
 src\RollingLogicUtils.lua
 src\DroppedLoot.lua
 src\DroppedLootAnnounce.lua
 src\TradeTracker.lua
+src\SoftResDataTransformer.lua
 src\SoftRes.lua
 src\SoftResAwardedLootDecorator.lua
 src\SoftResAbsentPlayersDecorator.lua
@@ -58,4 +60,10 @@ src\AutoGroupLoot.lua
 src\BossList.lua
 src\AutoMasterLoot.lua
 src\RollingTipPopup.lua
+src\RollTracker.lua
+src\RollController.lua
+src\RollingPopup.lua
+src\SoftResRollGuiData.lua
+src\TieRollGuiData.lua
+src\RollingPopupContent.lua
 main.lua

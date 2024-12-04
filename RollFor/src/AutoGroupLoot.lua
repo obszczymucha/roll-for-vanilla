@@ -28,7 +28,7 @@ function M.new( config, boss_list )
     local bosses = boss_list[ zone_name ] or {}
     local is_a_boss = modules.table_contains_value( bosses, m_target_name )
 
-    if is_a_boss and config.is_auto_group_loot() and modules.is_master_loot() and modules.is_player_a_leader() then
+    if is_a_boss and config.auto_group_loot() and modules.is_master_loot() and modules.is_player_a_leader() then
       modules.api.SetLootMethod( "group" )
     end
   end
