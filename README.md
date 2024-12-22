@@ -3,6 +3,11 @@ A World of Warcraft (1.12.1) addon that manages rolling for items.
 
 ## Demo
 
+<video controls width="1024">
+  <source src="https://www.twitch.tv/obszczymucha/clip/HonorablePolishedLapwingFeelsBadMan-ok8O2OAuDTIncys2" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
 In this example, the addon automatically detects that the item is soft-reserved by two players.  
 It restricts rolling for the item to these players only and resolves any tie automatically.  
 The Master Looter then assigns the item directly to the winner.
