@@ -1,10 +1,11 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.RollingLogicUtils then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.RollingLogicUtils then return end
 
 local M = {}
-local map = modules.map
-local filter = modules.filter
+local map = m.map
+local filter = m.filter
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
@@ -140,5 +141,5 @@ function M.has_everyone_rolled( rollers, rolls )
   return true
 end
 
-modules.RollingLogicUtils = M
+m.RollingLogicUtils = M
 return M

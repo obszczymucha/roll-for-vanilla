@@ -1,17 +1,15 @@
----@diagnostic disable-next-line: undefined-global
-local lib_stub = LibStub
-local modules = lib_stub( "RollFor-Modules" )
-if modules.VersionBroadcast then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.VersionBroadcast then return end
 
 local M = {}
-
-local m = modules
 
 function M.new( db, my_version )
   local function version_recently_reminded()
     if not db.last_new_version_reminder_timestamp then return false end
 
-    local time = modules.lua.time()
+    local time = m.lua.time()
 
     -- Only remind once a day
     if time - db.last_new_version_reminder_timestamp > 3600 * 24 then
@@ -22,17 +20,17 @@ function M.new( db, my_version )
   end
 
   local function broadcast_version( channel )
-    modules.api.SendAddonMessage( "RollFor", "VERSION::" .. my_version, channel )
+    m.api.SendAddonMessage( "RollFor", "VERSION::" .. my_version, channel )
   end
 
   local function broadcast_version_to_the_guild()
-    if not modules.api.IsInGuild() then return end
+    if not m.api.IsInGuild() then return end
     broadcast_version( "GUILD" )
   end
 
   local function broadcast_version_to_the_group()
-    if not modules.api.IsInGroup() and not modules.api.IsInRaid() then return end
-    broadcast_version( modules.api.IsInRaid() and "RAID" or "PARTY" )
+    if not m.api.IsInGroup() and not m.api.IsInRaid() then return end
+    broadcast_version( m.api.IsInRaid() and "RAID" or "PARTY" )
   end
 
   local function on_group_changed()
@@ -40,9 +38,9 @@ function M.new( db, my_version )
   end
 
   local function notify_about_new_version( ver )
-    db.last_new_version_reminder_timestamp = modules.lua.time()
-    modules.pretty_print( string.format( "New version (%s) is available!", modules.colors.highlight( string.format( "v%s", ver ) ) ) )
-    modules.pretty_print( "https://github.com/obszczymucha/roll-for-vanilla/releases/download/latest/RollFor.zip" )
+    db.last_new_version_reminder_timestamp = m.lua.time()
+    m.pretty_print( string.format( "New version (%s) is available!", m.colors.highlight( string.format( "v%s", ver ) ) ) )
+    m.pretty_print( "https://github.com/obszczymucha/roll-for-vanilla/releases/download/latest/RollFor.zip" )
   end
 
   local function on_version( their_version )
@@ -63,5 +61,5 @@ function M.new( db, my_version )
   }
 end
 
-modules.VersionBroadcast = M
+m.VersionBroadcast = M
 return M

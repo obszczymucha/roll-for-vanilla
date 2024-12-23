@@ -1,12 +1,13 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.MasterLootWarning then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.MasterLootWarning then return end
 
 local M                    = {}
-local red                  = modules.colors.red
-local blue                 = modules.colors.blue
-local grey                 = modules.colors.grey
-local table_contains_value = modules.table_contains_value
+local red                  = m.colors.red
+local blue                 = m.colors.blue
+local grey                 = m.colors.grey
+local table_contains_value = m.table_contains_value
 
 ---@diagnostic disable-next-line: undefined-global
 local UIParent             = UIParent
@@ -59,12 +60,12 @@ function M.new( api, config, boss_list )
   end
 
   local function toggle()
-    if not modules.is_player_master_looter() and not modules.is_player_a_leader() or config.auto_master_loot() then
+    if not m.is_player_master_looter() and not m.is_player_a_leader() or config.auto_master_loot() then
       if is_visible then hide() end
       return
     end
 
-    local master_loot = modules.is_master_loot()
+    local master_loot = m.is_master_loot()
     local zone_name = api().GetRealZoneText()
     local target_name = api().UnitName( "target" )
     local zone = boss_list[ zone_name ] or {}
@@ -86,5 +87,5 @@ function M.new( api, config, boss_list )
   }
 end
 
-modules.MasterLootWarning = M
+m.MasterLootWarning = M
 return M

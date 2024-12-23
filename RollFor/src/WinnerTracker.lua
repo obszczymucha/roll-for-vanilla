@@ -1,10 +1,10 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.WinnerTracker then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.WinnerTracker then return end
 
 local M = {}
 
-local m = modules
 local EventType = {
   RollingStarted = "RollingStarted",
   WinnerFound = "WinnerFound"
@@ -92,5 +92,5 @@ function M.new( db )
   }
 end
 
-modules.WinnerTracker = M
+m.WinnerTracker = M
 return M

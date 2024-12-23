@@ -1,6 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.Db then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.Db then return end
 
 local M = {}
 
@@ -23,5 +24,5 @@ function M.new( db )
   end
 end
 
-modules.Db = M
+m.Db = M
 return M

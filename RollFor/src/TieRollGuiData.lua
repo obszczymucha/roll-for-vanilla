@@ -1,9 +1,10 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.TieRollGuiData then return end
+RollFor = RollFor or {}
+local m = RollFor
 
-local clear_table = modules.clear_table
-local blue = modules.colors.blue
+if m.TieRollGuiData then return end
+
+local clear_table = m.clear_table
+local blue = m.colors.blue
 
 local M = {}
 
@@ -126,5 +127,5 @@ function M.new( group_roster )
   }
 end
 
-modules.TieRollGuiData = M
+m.TieRollGuiData = M
 return M

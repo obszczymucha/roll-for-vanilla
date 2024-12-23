@@ -1,7 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.MasterLootCandidates then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.MasterLootCandidates then return end
 
 local M = {}
 
@@ -45,7 +45,7 @@ function M.new( group_roster )
     local players = group_roster.get_all_players_in_my_group()
 
     for i = 1, 40 do
-      local name = modules.api.GetMasterLootCandidate( i )
+      local name = m.api.GetMasterLootCandidate( i )
 
       for _, p in ipairs( players ) do
         if name == p.name then
@@ -62,7 +62,7 @@ function M.new( group_roster )
   local function find( player_name )
     local candidates = get()
 
-    return modules.find_value_in_table( candidates, player_name, function( v ) return v.name end )
+    return m.find_value_in_table( candidates, player_name, function( v ) return v.name end )
   end
 
   return {
@@ -71,5 +71,5 @@ function M.new( group_roster )
   }
 end
 
-modules.MasterLootCandidates = M
+m.MasterLootCandidates = M
 return M

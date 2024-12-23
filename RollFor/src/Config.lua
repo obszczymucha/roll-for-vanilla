@@ -1,8 +1,8 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.Config then return end
+RollFor = RollFor or {}
+local m = RollFor
 
-local m = modules
+if m.Config then return end
+
 local info = m.pretty_print
 local print_header = m.print_header
 local hl = m.colors.hl
@@ -415,5 +415,5 @@ function M.new( db )
   return config
 end
 
-modules.Config = M
+m.Config = M
 return M

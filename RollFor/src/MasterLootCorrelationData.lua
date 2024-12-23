@@ -1,7 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.MasterLootCorrelationData then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.MasterLootCorrelationData then return end
 
 -- This module holds temporary data to correlate a shift/alt click on a loot frame button
 -- and the loot award popup. The reason for this correlation is, when we shift/alt click,
@@ -39,7 +39,7 @@ function M.new( item_utils )
   end
 
   local function reset()
-    modules.clear_table( cache )
+    m.clear_table( cache )
   end
 
   return {
@@ -50,5 +50,5 @@ function M.new( item_utils )
   }
 end
 
-modules.MasterLootCorrelationData = M
+m.MasterLootCorrelationData = M
 return M

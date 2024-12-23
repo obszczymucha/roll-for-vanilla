@@ -1,13 +1,13 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.SoftRes then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.SoftRes then return end
 
 local M = {}
 
 ---@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
+local lib_stub = LibStub
 
-local m = modules
 local filter = m.filter
 local keys = m.keys
 local transform = m.SoftResDataTransformer.transform
@@ -58,7 +58,7 @@ function M.new( db )
     --   return nil
     -- end
 
-    local json = libStub( "Json-0.1.2" )
+    local json = lib_stub( "Json-0.1.2" )
     local success, result = pcall( function() return json.decode( data ) end )
     return success and result
   end

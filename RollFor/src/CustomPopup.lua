@@ -1,9 +1,9 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.CustomPopup then return end
+RollFor = RollFor or {}
+local m = RollFor
 
-local blue = modules.colors.blue
+if m.CustomPopup then return end
+
+local blue = m.colors.blue
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
@@ -24,7 +24,7 @@ function M.builder()
     local title_visible = false
 
     local function create_anchor()
-      local anchor = modules.api.CreateFrame( "Frame", nil, modules.api.UIParent )
+      local anchor = m.api.CreateFrame( "Frame", nil, m.api.UIParent )
       anchor:SetWidth( 1 )
       anchor:SetHeight( 1 )
       anchor:SetPoint( "CENTER", 0, 0 )
@@ -35,7 +35,7 @@ function M.builder()
     end
 
     local function create_title_frame( parent )
-      local title_frame = modules.api.CreateFrame( "Frame", nil, parent )
+      local title_frame = m.api.CreateFrame( "Frame", nil, parent )
       title_frame:SetWidth( 1 )
       title_frame:SetHeight( 1 )
       title_frame:SetPoint( "TOP", parent, "TOP", 50, 4.5 )
@@ -44,7 +44,7 @@ function M.builder()
       title:SetPoint( "TOP", title_frame, "TOP", 0, -1.5 )
       title:SetText( blue( "RollFor" ) )
 
-      local title_bg = modules.api.CreateFrame( "Frame", nil, parent )
+      local title_bg = m.api.CreateFrame( "Frame", nil, parent )
       title_bg:SetBackdrop( {
         edgeFile = "Interface/DialogFrame/UI-DialogBox-Border",
         edgeSize = title_edge_size,
@@ -55,7 +55,7 @@ function M.builder()
       title_bg:SetHeight( 20 )
       title_bg:SetPoint( "CENTER", title, "CENTER" )
 
-      local title_bg_bg = modules.api.CreateFrame( "Frame", nil, title_bg )
+      local title_bg_bg = m.api.CreateFrame( "Frame", nil, title_bg )
       title_bg_bg:SetBackdrop( {
         bgFile = "Interface/Buttons/WHITE8x8",
         tile = true,
@@ -69,7 +69,7 @@ function M.builder()
     end
 
     local function create_main_frame( anchor )
-      local frame = modules.api.CreateFrame( "Frame", options.name, anchor )
+      local frame = m.api.CreateFrame( "Frame", options.name, anchor )
       frame:Hide()
       frame:SetWidth( options.width or 280 )
       frame:SetHeight( options.height or 100 )
@@ -77,7 +77,7 @@ function M.builder()
 
       if options.point then
         local p = options.point
-        anchor:SetPoint( p.point, modules.api.UIParent, p.relative_point, p.x, p.y )
+        anchor:SetPoint( p.point, m.api.UIParent, p.relative_point, p.x, p.y )
       else
         anchor:SetPoint( "CENTER", 0, 0 )
       end
@@ -125,7 +125,7 @@ function M.builder()
 
     local function align_buttons( parent )
       if not parent.buttons_frame then
-        local frame = modules.api.CreateFrame( "Frame", nil, parent )
+        local frame = m.api.CreateFrame( "Frame", nil, parent )
         frame:SetPoint( "BOTTOM", 0, 11 )
         parent.buttons_frame = frame
       end
@@ -134,7 +134,7 @@ function M.builder()
       local max_height = 0
       local last_anchor = nil
 
-      local buttons = modules.filter( lines, function( line ) return line.line_type == "button" end )
+      local buttons = m.filter( lines, function( line ) return line.line_type == "button" end )
 
       for _, button in ipairs( buttons ) do
         local frame = button.frame
@@ -162,7 +162,7 @@ function M.builder()
     local function configure_main_frame( frame, anchor )
       if options.with_sound then
         frame:SetScript( "OnShow", function()
-          modules.api.PlaySound( "igMainMenuOpen" )
+          m.api.PlaySound( "igMainMenuOpen" )
           if options.on_show then options.on_show() end
         end )
 
@@ -171,7 +171,7 @@ function M.builder()
             anchor:StopMovingOrSizing()
           end
 
-          modules.api.PlaySound( "igMainMenuClose" )
+          m.api.PlaySound( "igMainMenuClose" )
           if options.on_hide then options.on_hide() end
         end )
       end
@@ -200,7 +200,7 @@ function M.builder()
       end
 
       if options.esc then
-        modules.api.tinsert( modules.api.UISpecialFrames, frame:GetName() )
+        m.api.tinsert( m.api.UISpecialFrames, frame:GetName() )
       end
     end
 
@@ -242,7 +242,7 @@ function M.builder()
       end
 
 
-      local buttons = modules.filter( lines, function( line ) return line.line_type == "button" end )
+      local buttons = m.filter( lines, function( line ) return line.line_type == "button" end )
       local button_count = getn( buttons )
       local button_width = get_total_width( buttons ) + (button_count - 1) * button_padding
 
@@ -302,7 +302,7 @@ function M.builder()
           line.frame.is_used = false
         end
 
-        modules.clear_table( lines )
+        m.clear_table( lines )
         lines.n = 0
       end
 
@@ -320,7 +320,7 @@ function M.builder()
 
       popup.position = function( _, point )
         anchor:ClearAllPoints()
-        anchor:SetPoint( point.point, modules.api.UIParent, point.relative_point, point.x, point.y )
+        anchor:SetPoint( point.point, m.api.UIParent, point.relative_point, point.x, point.y )
       end
 
       popup.get_anchor_center = function()
@@ -457,5 +457,5 @@ function M.builder()
   }
 end
 
-modules.CustomPopup = M
+m.CustomPopup = M
 return M

@@ -1,8 +1,7 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
 local lu = require( "luaunit" )
-local utils = require( "test/utils" )
-utils.load_libstub()
+require( "test/utils" ) -- Need to load this before modules to load lua50 stuff.
 local mod = require( "src/modules" )
 local eq = lu.assertEquals
 

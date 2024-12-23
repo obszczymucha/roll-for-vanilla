@@ -1,9 +1,8 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
 local lu = require( "luaunit" )
 local test_utils = require( "test/utils" )
 test_utils.mock_wow_api()
-test_utils.load_libstub()
 require( "src/modules" )
 require( "src/SoftResDataTransformer" )
 local mod = require( "src/SoftRes" )
@@ -63,7 +62,7 @@ function SoftResIntegrationSpec:should_add_multiple_players()
   -- Then
   lu.assertEquals( result, {
     { name = "Obszczymucha", rolls = 1 },
-    { name = "Psikutas", rolls = 1 }
+    { name = "Psikutas",     rolls = 1 }
   } )
 end
 

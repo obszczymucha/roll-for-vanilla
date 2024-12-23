@@ -1,4 +1,4 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
@@ -104,7 +104,6 @@ function OffspecRollsSpec:should_detect_and_ignore_double_rolls()
   )
 end
 
-utils.load_libstub()
 utils.mock_libraries()
 utils.load_real_stuff()
 

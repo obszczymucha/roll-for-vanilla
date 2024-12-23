@@ -1,12 +1,13 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.SoftResAbsentPlayersDecorator then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.SoftResAbsentPlayersDecorator then return end
 
 local M = {}
 
-local filter = modules.filter
-local negate = modules.negate
-local clone = modules.clone
+local filter = m.filter
+local negate = m.negate
+local clone = m.clone
 
 -- I decorate given softres class with absent players logic.
 -- Example: "give me all players who soft-ressed but are not in the group".
@@ -28,5 +29,5 @@ function M.new( group_roster, softres )
   return decorator
 end
 
-modules.SoftResAbsentPlayersDecorator = M
+m.SoftResAbsentPlayersDecorator = M
 return M

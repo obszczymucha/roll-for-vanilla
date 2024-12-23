@@ -1,11 +1,12 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.NameAutoMatcher then return end
+RollFor = RollFor or {}
+local rf = RollFor
+
+if rf.NameAutoMatcher then return end
 
 local M = {}
 
-local count = modules.count_elements
-local map = modules.map
+local count = rf.count_elements
+local map = rf.map
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
@@ -258,5 +259,5 @@ function M.new( group_roster, softres, top_threshold, bottom_threshold )
   }
 end
 
-modules.NameAutoMatcher = M
+rf.NameAutoMatcher = M
 return M

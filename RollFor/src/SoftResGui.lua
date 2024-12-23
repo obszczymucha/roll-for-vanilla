@@ -1,9 +1,10 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.SoftResGui then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.SoftResGui then return end
 
 local M                = {}
-local hl               = modules.colors.hl
+local hl               = m.colors.hl
 
 --local softres_data     = "eNqllE1r4zAQhv/LnH1wXMuOfWt7WhaaQndPJYfBmsQishRG0i5syH9fmVBQoZVbfJwPzzyaeT0XmMijRI/QX0BJ6MGLcBA1FKCM82gGir4TMkbPqKQkA/0BtaMCBib0JO899Jumq6u6KzdVAeEs37lFVZdNAYxKvnhk7+aICVoXoO1wumXebKncYFn+Zh2bxobG+rk9XAtw9uCZHPEfctC/XoCt1g/WhGiVBZx1cDtDN8PgNH+2G0dUE/IpVho0uhiEv8isLCe140M9Tbea8wCqbVt3aTgCEce61+Itoak2HyRsrvs5ZZnrB1tzCJxQSQ6xcoapa8U2y9S1zSqmFzJuDAnSmRU5n52TKNv8nNq2XMP0k4NEfr+8WTFZqKa9y0N9TP1lqMdRHY8J0xiMpwU9iaU51at296zJn/E7cvpkMylS06yaEtt/qBOkCY+0IPBmQeCiW0P0K7h0RG7ECU1eSWX2DNyV9XaVvJ8GCj7941CjVHkmUW0XTlMrPmHax/uNLJMbur/+B/fD0T0="
 
@@ -181,7 +182,7 @@ local function create_frame( api, on_import, on_clear, on_cancel, on_dirty )
   local label = frame:CreateFontString( nil, "OVERLAY", "GameFontNormal" )
   label:SetPoint( "BOTTOMLEFT", frame, "BOTTOMLEFT", 20, 22 )
   label:SetTextColor( 1, 1, 1, 1 )
-  label:SetText( string.format( "%s      %s %s", modules.colors.blue( "RollFor" ), hl( "raidres.fly.dev" ), "data import" ) )
+  label:SetText( string.format( "%s      %s %s", m.colors.blue( "RollFor" ), hl( "raidres.fly.dev" ), "data import" ) )
 
   ---@diagnostic disable-next-line: undefined-global
   table.insert( UISpecialFrames, "RollForSoftResLootFrame" )
@@ -296,5 +297,5 @@ function M.new( api, import_encoded_softres_data, softres_check, softres, clear_
   }
 end
 
-modules.SoftResGui = M
+m.SoftResGui = M
 return M

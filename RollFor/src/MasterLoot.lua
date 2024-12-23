@@ -1,11 +1,10 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.MasterLoot then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.MasterLoot then return end
 
 local M = {}
 local _G = getfenv()
-local m = modules
 local pretty_print = m.pretty_print
 local hl = m.colors.hl
 local buttons_hooked = false

@@ -1,15 +1,17 @@
----@diagnostic disable: undefined-global, undefined-field
-local M = LibStub:NewLibrary( "RollFor-Modules", 1 )
-if not M then return end
+RollFor = RollFor or {}
+local M = RollFor
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
 M.api = getfenv()
 M.lua = {
+  ---@diagnostic disable-next-line: undefined-global
   format = format,
+  ---@diagnostic disable-next-line: undefined-global
   time = time,
   strmatch = strmatch,
+  ---@diagnostic disable-next-line: undefined-global
   random = random,
   math = math
 }
@@ -453,6 +455,7 @@ function M.get_addon_version()
 end
 
 function M.uses_pfui()
+  ---@diagnostic disable-next-line: undefined-global
   return pfUI and pfUI.version and true or false
 end
 
@@ -500,7 +503,7 @@ function M.roll_type_abbrev_chat( roll_type )
   elseif roll_type == M.Types.RollType.RaidRoll then
     return "RR"
   else
-    return M.colors.white( text or roll_type )
+    error( string.format( "RollType %s not handled.", roll_type ) )
   end
 end
 
@@ -516,7 +519,8 @@ function M.roll_type_abbrev( roll_type )
   elseif roll_type == M.Types.RollType.RaidRoll then
     return "RR"
   else
-    return M.colors.white( text or roll_type )
+    error( string.format( "RollType %s not handled.", roll_type ) )
+    return M.colors.white( roll_type )
   end
 end
 

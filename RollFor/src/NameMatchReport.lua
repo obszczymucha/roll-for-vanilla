@@ -1,13 +1,14 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.SoftResCheck then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.SoftResCheck then return end
 
 local M = {}
 
-local hl = modules.colors.hl
-local grey = modules.colors.grey
-local red = modules.colors.red
-local p = modules.pretty_print
+local hl = m.colors.hl
+local grey = m.colors.grey
+local red = m.colors.red
+local p = m.pretty_print
 
 function M.report( name_matcher )
   local auto_matched, auto_not_matched, manually_matched = name_matcher.get_matches()
@@ -27,5 +28,5 @@ function M.report( name_matcher )
   end
 end
 
-modules.NameMatchReport = M
+m.NameMatchReport = M
 return M

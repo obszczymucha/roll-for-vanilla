@@ -1,9 +1,10 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.SoftResRollGuiData then return end
+RollFor = RollFor or {}
+local m = RollFor
 
-local clear = modules.clear_table
-local RollType = modules.Types.RollType
+if m.SoftResRollGuiData then return end
+
+local clear = m.clear_table
+local RollType = m.Types.RollType
 
 -- I take the list of players who soft res an item
 -- and generate the data for RollingPopup to display.
@@ -95,5 +96,5 @@ function M.new( softres, group_roster )
   }
 end
 
-modules.SoftResRollGuiData = M
+m.SoftResRollGuiData = M
 return M

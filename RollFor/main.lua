@@ -1,7 +1,8 @@
+RollFor = RollFor or {}
+local m = RollFor
+
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
-local modules = lib_stub( "RollFor-Modules" )
-local m = modules
 local version = m.get_addon_version()
 
 local M = lib_stub:NewLibrary( string.format( "RollFor-%s", version.major ), version.minor )

@@ -1,8 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.GuiElements then return end
+RollFor = RollFor or {}
+local m = RollFor
 
-local m = modules
+if m.GuiElements then return end
 
 local M = {}
 
@@ -208,5 +207,5 @@ function M.info( parent )
   return frame
 end
 
-modules.GuiElements = M
+m.GuiElements = M
 return M

@@ -1,30 +1,30 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-local lu = require( "luaunit" )
-local utils = require( "test/utils" )
-
-local master_looter = utils.master_looter
-local leader = utils.raid_leader
-local is_in_raid = utils.is_in_raid
-local rw = utils.raid_warning
-local cr = utils.console_and_raid_message
-local c = utils.console_message
-local r = utils.raid_message
-local rolling_finished = utils.rolling_finished
-local roll_for = utils.roll_for
-local roll = utils.roll
-local assert_messages = utils.assert_messages
-local repeating_tick = utils.repeating_tick
-local loot = utils.loot
-local item = utils.item
-local award = utils.award
-local loot_threshold = utils.loot_threshold
-local LootQuality = utils.LootQuality
-local mock_blizzard_loot_buttons = utils.mock_blizzard_loot_buttons
-local run_command = utils.run_command
-local mock_softres_gui = utils.mock_softres_gui
-local import_softres_via_gui = utils.import_softres_via_gui
-local targetting_player = utils.targetting_player
+-- local lu = require( "luaunit" )
+-- local utils = require( "test/utils" )
+--
+-- local master_looter = utils.master_looter
+-- local leader = utils.raid_leader
+-- local is_in_raid = utils.is_in_raid
+-- local rw = utils.raid_warning
+-- local cr = utils.console_and_raid_message
+-- local c = utils.console_message
+-- local r = utils.raid_message
+-- local rolling_finished = utils.rolling_finished
+-- local roll_for = utils.roll_for
+-- local roll = utils.roll
+-- local assert_messages = utils.assert_messages
+-- local repeating_tick = utils.repeating_tick
+-- local loot = utils.loot
+-- local item = utils.item
+-- local award = utils.award
+-- local loot_threshold = utils.loot_threshold
+-- local LootQuality = utils.LootQuality
+-- local mock_blizzard_loot_buttons = utils.mock_blizzard_loot_buttons
+-- local run_command = utils.run_command
+-- local mock_softres_gui = utils.mock_softres_gui
+-- local import_softres_via_gui = utils.import_softres_via_gui
+-- local targetting_player = utils.targetting_player
 
 SoftResGuiSpec = {}
 
@@ -144,7 +144,7 @@ SoftResGuiSpec = {}
 --   )
 -- end
 
-utils.mock_libraries()
-utils.load_real_stuff()
-
-os.exit( lu.LuaUnit.run() )
+-- utils.mock_libraries()
+-- utils.load_real_stuff()
+--
+-- os.exit( lu.LuaUnit.run() )

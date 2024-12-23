@@ -1,8 +1,8 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.RollingPopup then return end
+RollFor = RollFor or {}
+local m = RollFor
 
-local m = modules
+if m.RollingPopup then return end
+
 local c = m.colorize_player_by_class
 local blue = m.colors.blue
 

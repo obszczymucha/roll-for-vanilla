@@ -1,9 +1,9 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.TieRollingLogic then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.TieRollingLogic then return end
 
 local M = {}
-local m = modules
 local map = m.map
 local count_elements = m.count_elements
 local pretty_print = m.pretty_print

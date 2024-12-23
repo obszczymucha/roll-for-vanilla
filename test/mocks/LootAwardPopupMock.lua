@@ -1,7 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.LootAwardPopup then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.LootAwardPopup then return end
 
 local utils = require( "test/utils" )
 
@@ -16,5 +16,5 @@ function M.new( _, _, callback )
   }
 end
 
-modules.LootAwardPopup = M
+m.LootAwardPopup = M
 return M

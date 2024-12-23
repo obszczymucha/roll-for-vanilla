@@ -1,12 +1,13 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.WinnerHistory then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.WinnerHistory then return end
 
 local M = {}
 
 function M.new( db )
   local function start_session()
-    db.current_session = modules.lua.time()
+    db.current_session = m.lua.time()
     db.winners = db.winners or {}
     db.sessions = db.sessions or {}
     db.sessions[ db.current_session ] = {}
@@ -29,7 +30,7 @@ function M.new( db )
       item_id = item_id,
       item_link = item_link,
       zone_name = zone_name,
-      timestamp = modules.lua.time(),
+      timestamp = m.lua.time(),
       roll_type = roll_type,
       winning_roll = winning_roll
     } )
@@ -45,14 +46,14 @@ function M.new( db )
       item_id = item_id,
       item_link = item_link,
       zone_name = zone_name,
-      timestamp = modules.lua.time(),
+      timestamp = m.lua.time(),
       roll_type = roll_type,
       winning_roll = winning_roll
     } )
   end
 
   local function add( player_name, item_id, item_link, roll_type, winning_roll )
-    local zone_name = modules.api.GetRealZoneText()
+    local zone_name = m.api.GetRealZoneText()
 
     store_zone_count( zone_name )
     store_session_winner( player_name, item_id, item_link, zone_name, roll_type, winning_roll )
@@ -71,5 +72,5 @@ function M.new( db )
   }
 end
 
-modules.WinnerHistory = M
+m.WinnerHistory = M
 return M

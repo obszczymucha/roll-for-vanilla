@@ -1,6 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.TradeTracker then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.TradeTracker then return end
 
 M = {}
 
@@ -36,7 +37,7 @@ function M.new( ace_timer, trade_complete_callback )
   local m_trade_canceled = false
   local m_received_trade_close = false -- Server sends multiple ones. Probably server bug.
 
-  local pretty_print = modules.pretty_print
+  local pretty_print = m.pretty_print
 
   local function highlight( text )
     return string.format( "|cffff9f69%s|r", text )
@@ -68,8 +69,8 @@ function M.new( ace_timer, trade_complete_callback )
   local function on_trade_player_item_changed( slot )
     if m_both_parties_accepted then return end
 
-    local _, _, quantity = modules.api.GetTradePlayerItemInfo( slot )
-    local item_link = modules.api.GetTradePlayerItemLink( slot )
+    local _, _, quantity = m.api.GetTradePlayerItemInfo( slot )
+    local item_link = m.api.GetTradePlayerItemLink( slot )
 
     if quantity and item_link then
       if M.debug_enabled then
@@ -87,7 +88,7 @@ function M.new( ace_timer, trade_complete_callback )
   end
 
   local function on_trade_show()
-    m_recipient_name = modules.api.TradeFrameRecipientNameText:GetText() or "Unknown"
+    m_recipient_name = m.api.TradeFrameRecipientNameText:GetText() or "Unknown"
 
     if M.debug_enabled then
       pretty_print( string.format( "Started trading with %s.", highlight( m_recipient_name ) ) )
@@ -107,8 +108,8 @@ function M.new( ace_timer, trade_complete_callback )
   local function on_trade_target_item_changed( slot )
     if m_both_parties_accepted then return end
 
-    local _, _, quantity = modules.api.GetTradeTargetItemInfo( slot )
-    local item_link = modules.api.GetTradeTargetItemLink( slot )
+    local _, _, quantity = m.api.GetTradeTargetItemInfo( slot )
+    local item_link = m.api.GetTradeTargetItemLink( slot )
 
     if quantity and item_link then
       if M.debug_enabled then
@@ -159,5 +160,5 @@ function M.new( ace_timer, trade_complete_callback )
   }
 end
 
-modules.TradeTracker = M
+m.TradeTracker = M
 return M

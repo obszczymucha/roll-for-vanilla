@@ -1,6 +1,6 @@
-local M = {}
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
 
-local lu = require( "luaunit" )
+local M = {}
 
 local m_slashcmdlist = {}
 local m_messages = {}
@@ -12,6 +12,8 @@ local m_is_master_looter = false
 local m_player_name = nil
 local m_target = nil
 local m_loot_confirm_callback = nil
+
+local eq = require( "luaunit" ).assertEquals
 
 ---@diagnostic disable-next-line: undefined-field
 local lua50 = table.setn and true or false
@@ -250,8 +252,18 @@ function M.parse_item_link( item_link )
   return string.gsub( item_link, "|c%x%x%x%x%x%x%x%x|Hitem:%d+.*|h(.*)|h|r", "%1" )
 end
 
+local function load_libstub()
+  ---@diagnostic disable-next-line: lowercase-global
+  strmatch = string.match
+  require( "LibStub" )
+
+  ---@diagnostic disable-next-line: undefined-global
+  return LibStub
+end
+
 function M.mock_library( name, object )
-  M.load_libstub()
+  -- error("mocking stuff", 2)
+  load_libstub()
   ---@diagnostic disable-next-line: undefined-global
   local result = LibStub:NewLibrary( name, 1 )
   if not result then return nil end
@@ -279,10 +291,9 @@ function M.mock_api()
 end
 
 function M.modules()
-  M.load_libstub()
   require( "src/modules" )
   ---@diagnostic disable-next-line: undefined-global
-  return LibStub( "RollFor-Modules" )
+  return RollFor
 end
 
 function M.mock_slashcmdlist()
@@ -590,7 +601,7 @@ function M.mock_control_key_pressed( value )
 end
 
 function M.load_roll_for()
-  local libStub = M.load_libstub()
+  local libStub = load_libstub()
   return libStub( "RollFor-2" )
 end
 
@@ -650,7 +661,7 @@ function M.assert_messages( ... )
   local args = { ... }
   local expected = {}
   M.flatten( expected, args )
-  lu.assertEquals( M.get_messages(), expected )
+  eq( M.get_messages(), expected )
 end
 
 function M.tick()
@@ -709,7 +720,7 @@ end
 function M.load_real_stuff( req )
   local r = req or require
 
-  M.load_libstub()
+  load_libstub()
   r( "src/modules" )
   M.mock_api()
   r( "src/Db" )
@@ -899,12 +910,8 @@ function M.award( player, item_name, item_id )
 end
 
 function M.load_libstub()
-  ---@diagnostic disable-next-line: lowercase-global
-  strmatch = string.match
-  require( "LibStub" )
-
-  ---@diagnostic disable-next-line: undefined-global
-  return LibStub
+  error( "fuck", 2 )
+  return load_libstub()
 end
 
 function M.trade_with( recipient, trade_tracker )
@@ -1096,6 +1103,17 @@ function M.mock_math_random( expected_min, expected_max, value )
 
     return value
   end
+end
+
+function M.luaunit( ... )
+  local result = {}
+  local lu = require( "luaunit" )
+
+  for _, name in ipairs( { ... } ) do
+    table.insert( result, lu[ name ] )
+  end
+
+  return lu, table.unpack( result )
 end
 
 return M

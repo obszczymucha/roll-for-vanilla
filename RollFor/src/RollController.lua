@@ -1,8 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
+RollFor = RollFor or {}
+local m = RollFor
 
-if modules.RollController then return end
+if m.RollController then return end
 
 local M = {}
 
@@ -17,8 +16,8 @@ function M.new( roll_tracker )
 
   local function start( rolling_strategy, item, count, info, seconds, required_rolling_players )
     roll_tracker.start( rolling_strategy, item, count, info, seconds, required_rolling_players )
-    local _, _, quality = modules.api.GetItemInfo( string.format( "item:%s:0:0:0", item.id ) )
-    local color = modules.api.ITEM_QUALITY_COLORS[ quality ] or { r = 0, g = 0, b = 0, a = 1 }
+    local _, _, quality = m.api.GetItemInfo( string.format( "item:%s:0:0:0", item.id ) )
+    local color = m.api.ITEM_QUALITY_COLORS[ quality ] or { r = 0, g = 0, b = 0, a = 1 }
 
     local multiplier = 0.5
     local alpha = 0.6
@@ -133,5 +132,5 @@ function M.new( roll_tracker )
   }
 end
 
-modules.RollController = M
+m.RollController = M
 return M

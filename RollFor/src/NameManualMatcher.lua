@@ -1,10 +1,10 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.NameManualMatcher then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.NameManualMatcher then return end
 
 local M = {}
 
-local m = modules
 local clone = m.clone
 local negate = m.negate
 local filter = m.filter

@@ -1,7 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.AutoGroupLoot then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.AutoGroupLoot then return end
 
 local M = {}
 
@@ -14,8 +14,8 @@ function M.new( config, boss_list )
   local m_item_count
 
   local function on_loot_opened()
-    m_target_name = modules.target_name()
-    m_item_count = modules.api.GetNumLootItems() or 0
+    m_target_name = m.target_name()
+    m_item_count = m.api.GetNumLootItems() or 0
   end
 
   local function on_loot_slot_cleared()
@@ -23,13 +23,13 @@ function M.new( config, boss_list )
     if m_item_count > 0 then return end
     if not m_item_count or m_item_count > 0 then return end
 
-    local zone_name = modules.api.GetRealZoneText()
-    if modules.table_contains_value( ignore_zones, zone_name ) then return end
+    local zone_name = m.api.GetRealZoneText()
+    if m.table_contains_value( ignore_zones, zone_name ) then return end
     local bosses = boss_list[ zone_name ] or {}
-    local is_a_boss = modules.table_contains_value( bosses, m_target_name )
+    local is_a_boss = m.table_contains_value( bosses, m_target_name )
 
-    if is_a_boss and config.auto_group_loot() and modules.is_master_loot() and modules.is_player_a_leader() then
-      modules.api.SetLootMethod( "group" )
+    if is_a_boss and config.auto_group_loot() and m.is_master_loot() and m.is_player_a_leader() then
+      m.api.SetLootMethod( "group" )
     end
   end
 
@@ -39,5 +39,5 @@ function M.new( config, boss_list )
   }
 end
 
-modules.AutoGroupLoot = M
+m.AutoGroupLoot = M
 return M

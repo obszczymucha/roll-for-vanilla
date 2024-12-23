@@ -1,10 +1,9 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.InstaRaidRollRollingLogic then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.InstaRaidRollRollingLogic then return end
 
 local M = {}
-local m = modules
 local pp = m.pretty_print
 local hl = m.colors.hl
 local RollingStrategy = m.Types.RollingStrategy

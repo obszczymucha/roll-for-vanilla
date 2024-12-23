@@ -1,12 +1,12 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.NewGroupEvent then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.NewGroupEvent then return end
 
 local M = {}
 
 local function in_group()
-  return modules.api.IsInParty() or modules.api.IsInRaid()
+  return m.api.IsInParty() or m.api.IsInRaid()
 end
 
 function M.new()
@@ -43,5 +43,5 @@ function M.new()
   }
 end
 
-modules.NewGroupEvent = M
+m.NewGroupEvent = M
 return M

@@ -1,6 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.EventHandler then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.EventHandler then return end
 
 local M = {}
 
@@ -82,7 +83,7 @@ function M.handle_events( main )
     end
   end
 
-  local frame = modules.api.CreateFrame( "FRAME", "RollForFrame" )
+  local frame = m.api.CreateFrame( "FRAME", "RollForFrame" )
 
   frame:RegisterEvent( "PLAYER_LOGIN" )
   frame:RegisterEvent( "PLAYER_ENTERING_WORLD" )
@@ -111,5 +112,5 @@ function M.handle_events( main )
   frame:SetScript( "OnEvent", eventHandler )
 end
 
-modules.EventHandler = M
+m.EventHandler = M
 return M

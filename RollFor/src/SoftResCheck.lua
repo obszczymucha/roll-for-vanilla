@@ -1,13 +1,14 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.SoftResCheck then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.SoftResCheck then return end
 
 local M = {}
 
-local filter = modules.filter
-local negate = modules.negate
-local colors = modules.colors
-local pretty_print = function( text ) modules.pretty_print( text, colors.softres ) end
+local filter = m.filter
+local negate = m.negate
+local colors = m.colors
+local pretty_print = function( text ) m.pretty_print( text, colors.softres ) end
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
@@ -20,7 +21,7 @@ local ResultType = {
 }
 
 local function show( players )
-  local p = function( text ) modules.pretty_print( text, colors.orange ) end
+  local p = function( text ) m.pretty_print( text, colors.orange ) end
   p( "Players who did not soft-res:" )
 
   local buffer = ""
@@ -60,7 +61,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
       ) )
 
     if getn( not_softressing ) == 0 then
-      if silent ~= true then modules.pretty_print( "All players in the group are soft-ressing.", colors.green ) end
+      if silent ~= true then m.pretty_print( "All players in the group are soft-ressing.", colors.green ) end
       return ResultType.Ok
     end
 
@@ -71,7 +72,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
   local function check_softres( silent )
     local timestamp = db.import_timestamp
 
-    if timestamp and modules.lua.time() - timestamp > 6 * 3600 then
+    if timestamp and m.lua.time() - timestamp > 6 * 3600 then
       return ResultType.FoundOutdatedData
     end
 
@@ -82,7 +83,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
       return ResultType.NoItemsFound
     end
 
-    if silent ~= true then modules.NameMatchReport.report( name_matcher ) end
+    if silent ~= true then m.NameMatchReport.report( name_matcher ) end
     return show_who_is_not_softressing( silent )
   end
 
@@ -99,10 +100,10 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
       local id = item_id and tonumber( item_id )
       if item_id and id and id > 0 then
         local quality = softres.get_item_quality( item_id )
-        local item_link = modules.fetch_item_link( item_id, quality )
+        local item_link = m.fetch_item_link( item_id, quality )
 
         if not item_link and hr_refetch_retries < 3 then
-          modules.set_game_tooltip_with_item_id( item_id )
+          m.set_game_tooltip_with_item_id( item_id )
           needs_refetch = true
         elseif not item_link then
           -- local players_str = modules.prettify_table( players, function( player ) return player.name end )
@@ -114,13 +115,13 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
     end
 
     if needs_refetch then
-      modules.pretty_print( "Fetching hard-ressed items details from the server...", colors.grey )
+      m.pretty_print( "Fetching hard-ressed items details from the server...", colors.grey )
       hr_refetch_retries = hr_refetch_retries + 1
       ace_timer.ScheduleTimer( M, function() show_hardres( true ) end, 1 )
       return
     end
 
-    local item_count = modules.count_elements( items )
+    local item_count = m.count_elements( items )
 
     if item_count == 0 then
       return
@@ -150,10 +151,10 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
       if item_id and id and id > 0 then
         local players = softres.get( item_id )
         local quality = softres.get_item_quality( item_id )
-        local item_link = modules.fetch_item_link( item_id, quality )
+        local item_link = m.fetch_item_link( item_id, quality )
 
         if not item_link and refetch_retries < 3 then
-          modules.set_game_tooltip_with_item_id( item_id )
+          m.set_game_tooltip_with_item_id( item_id )
           needs_refetch = true
         elseif not item_link then
           -- local players_str = modules.prettify_table( players, function( player ) return player.name end )
@@ -166,7 +167,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
     end
 
     if needs_refetch then
-      modules.pretty_print( "Fetching soft-ressed items details from the server...", colors.grey )
+      m.pretty_print( "Fetching soft-ressed items details from the server...", colors.grey )
       refetch_retries = refetch_retries + 1
       ace_timer.ScheduleTimer( M, function() show_softres( true ) end, 1 )
       return
@@ -174,15 +175,15 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
 
     local absent_softres_players_count = getn( absent_softres( softres ).get_all_players() )
 
-    local item_count = modules.count_elements( items )
-    local unavailable_item_count = modules.count_elements( unavailable_items )
+    local item_count = m.count_elements( items )
+    local unavailable_item_count = m.count_elements( unavailable_items )
 
     if item_count == 0 and unavailable_item_count == 0 then
       p( "No soft-res items found." )
       return
     end
 
-    modules.NameMatchReport.report( name_matcher )
+    m.NameMatchReport.report( name_matcher )
 
     local colorize = function( player )
       local c = group_roster.is_player_in_my_group( player.name ) and colors.white or colors.red
@@ -194,8 +195,8 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
         absent_softres_players_count > 0 and string.format( " (players in %s are not in your group)", colors.red( "red" ) ) or "" ) )
 
       for item_link, players in pairs( items ) do
-        if modules.count_elements( players ) > 0 then
-          p( string.format( "%s: %s", item_link, modules.prettify_table( players, colorize ) ) )
+        if m.count_elements( players ) > 0 then
+          p( string.format( "%s: %s", item_link, m.prettify_table( players, colorize ) ) )
         end
       end
     end
@@ -205,8 +206,8 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
         absent_softres_players_count > 0 and string.format( " (players in %s are not in your group)", colors.red( "red" ) ) or "" ) )
 
       for item_id, players in pairs( unavailable_items ) do
-        if modules.count_elements( players ) > 0 then
-          p( string.format( "%s: %s", item_id, modules.prettify_table( players, colorize ) ) )
+        if m.count_elements( players ) > 0 then
+          p( string.format( "%s: %s", item_id, m.prettify_table( players, colorize ) ) )
         end
       end
     end
@@ -221,9 +222,9 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
     if result == ResultType.SomeoneIsNotSoftRessing then
       check_softres()
     elseif result == ResultType.NoItemsFound then
-      modules.pretty_print( "No softres items found." )
+      m.pretty_print( "No softres items found." )
     elseif result == ResultType.FoundOutdatedData then
-      modules.pretty_print( "Found outdated softres data.", modules.colors.red )
+      m.pretty_print( "Found outdated softres data.", m.colors.red )
     end
   end
 
@@ -236,5 +237,5 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
   }
 end
 
-modules.SoftResCheck = M
+m.SoftResCheck = M
 return M

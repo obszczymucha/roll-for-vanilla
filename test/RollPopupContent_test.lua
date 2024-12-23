@@ -1,9 +1,8 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
 local lu = require( "luaunit" )
 local tu = require( "test/utils" )
 tu.mock_wow_api()
-tu.load_libstub()
 require( "src/modules" )
 local types = require( "src/Types" )
 local tracker_mod = require( "src/RollTracker" )

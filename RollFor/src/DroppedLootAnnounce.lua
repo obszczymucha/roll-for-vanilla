@@ -1,10 +1,9 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.DroppedLootAnnounce then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.DroppedLootAnnounce then return end
 
 local M = {}
-local m = modules
 local item_utils = m.ItemUtils
 local make_item = item_utils.make_item
 local announce_limit = 6

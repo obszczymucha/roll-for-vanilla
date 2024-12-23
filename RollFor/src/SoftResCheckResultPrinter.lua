@@ -1,6 +1,8 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.SoftResCheckResultPrinter then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+-- TODO: wtf is this?
+if m.SoftResCheckResultPrinter then return end
 
 local M = {}
 
@@ -10,6 +12,6 @@ function M.new()
   }
 end
 
-modules.SoftResCheckResultPrinter = M
+m.SoftResCheckResultPrinter = M
 return M
 

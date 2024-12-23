@@ -1,11 +1,10 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.UsagePrinter then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.UsagePrinter then return end
 
 local M = {}
 
-local m = modules
 local pretty_print = m.pretty_print
 local hl = m.colors.hl
 local RollSlashCommand = m.Types.RollSlashCommand

@@ -1,7 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.Types then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.Types then return end
 
 local M = {}
 
@@ -137,5 +137,5 @@ local LootAwardError = {
 
 M.LootAwardError = LootAwardError
 
-modules.Types = M
+m.Types = M
 return M

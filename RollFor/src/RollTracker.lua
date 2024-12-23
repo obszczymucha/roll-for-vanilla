@@ -1,7 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.RollTracker then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.RollTracker then return end
 
 -- I hold the entire journey of rolls.
 -- The first iteration starts with either a normal or soft-res rolling.
@@ -9,7 +9,6 @@ if modules.RollTracker then return end
 -- For each tie we have a new iteration, because a tie can result in another tie.
 local M = {}
 
-local m = modules
 local clear_table = m.clear_table
 local RS = m.Types.RollingStrategy
 local RT = m.Types.RollType

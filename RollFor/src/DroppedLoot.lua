@@ -1,10 +1,10 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.DroppedLoot then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.DroppedLoot then return end
 
 local M = {}
 
-local m = modules
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
@@ -44,5 +44,5 @@ function M.new( db )
   }
 end
 
-modules.DroppedLoot = M
+m.DroppedLoot = M
 return M

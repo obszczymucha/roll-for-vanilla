@@ -1,11 +1,11 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.SoftResAwardedLootDecorator then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.SoftResAwardedLootDecorator then return end
 
 local M = {}
 
-local m = modules
-local filter = modules.filter
+local filter = m.filter
 
 -- I decorate given softres class with awarded loot logic.
 -- Example: "give me players who soft-ressed, but didn't receive the loot yet".
@@ -22,5 +22,5 @@ function M.new( awarded_loot, softres )
   return decorator
 end
 
-modules.SoftResAwardedLootDecorator = M
+m.SoftResAwardedLootDecorator = M
 return M

@@ -1,16 +1,18 @@
 ---@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.MinimapButton then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.MinimapButton then return end
 
 local M = {}
-local hl = modules.colors.hl
-local blue = modules.colors.blue
-local grey = modules.colors.grey
-local white = modules.colors.white
-local green = modules.colors.green
-local red = modules.colors.red
-local pretty_print = modules.pretty_print
-local class_color = modules.colorize_player_by_class
+local hl = m.colors.hl
+local blue = m.colors.blue
+local grey = m.colors.grey
+local white = m.colors.white
+local green = m.colors.green
+local red = m.colors.red
+local pretty_print = m.pretty_print
+local class_color = m.colorize_player_by_class
 
 local ColorType = {
   White = "White",
@@ -165,7 +167,7 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
     --I suck at trig, so I"m not going to bother figuring it out
     ---@diagnostic disable-next-line: redefined-local
     function frame.UpdatePosition( self )
-      local angle = math.rad( get_angle() or modules.lua.random( 0, 360 ) )
+      local angle = math.rad( get_angle() or m.lua.random( 0, 360 ) )
       local cos = math.cos( angle )
       local sin = math.sin( angle )
       local minimapShape = api().GetMinimapShape and api().GetMinimapShape() or "ROUND"
@@ -306,5 +308,5 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
   }
 end
 
-modules.MinimapButton = M
+m.MinimapButton = M
 return M

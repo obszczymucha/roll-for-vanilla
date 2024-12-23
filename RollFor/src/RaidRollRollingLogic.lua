@@ -1,12 +1,12 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.RaidRollRollingLogic then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.RaidRollRollingLogic then return end
 
 local M = {}
-local pretty_print = modules.pretty_print
-local hl = modules.colors.hl
-local RollingStrategy = modules.Types.RollingStrategy
+local pretty_print = m.pretty_print
+local hl = m.colors.hl
+local RollingStrategy = m.Types.RollingStrategy
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
@@ -38,7 +38,7 @@ function M.new( announce, ace_timer, group_roster, item, winner_tracker, roll_co
   local function raid_roll()
     m_rolling = true
     m_winner = nil
-    modules.api.RandomRoll( 1, getn( m_players ) )
+    m.api.RandomRoll( 1, getn( m_players ) )
   end
 
   local function announce_rolling()
@@ -58,13 +58,13 @@ function M.new( announce, ace_timer, group_roster, item, winner_tracker, roll_co
   end
 
   local function on_roll( player, roll, min, max )
-    if player ~= modules.my_name() then return end
+    if player ~= m.my_name() then return end
     if min ~= 1 or max ~= getn( m_players ) then return end
 
     m_winner = m_players[ roll ]
     roll_controller.finish( { name = m_winner.name, class = m_winner.class } )
     announce( string.format( "%s wins %s.", m_winner.name, item.link ) )
-    winner_tracker.track( m_winner.name, item.link, nil, nil, modules.Types.RollingStrategy.RaidRoll )
+    winner_tracker.track( m_winner.name, item.link, nil, nil, m.Types.RollingStrategy.RaidRoll )
 
     m_rolling = false
   end
@@ -87,9 +87,9 @@ function M.new( announce, ace_timer, group_roster, item, winner_tracker, roll_co
     on_roll = on_roll,
     is_rolling = is_rolling,
     show_sorted_rolls = show_sorted_rolls,
-    get_rolling_strategy = function() return modules.Types.RollingStrategy.RaidRoll end
+    get_rolling_strategy = function() return m.Types.RollingStrategy.RaidRoll end
   }
 end
 
-modules.RaidRollRollingLogic = M
+m.RaidRollRollingLogic = M
 return M

@@ -1,10 +1,10 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.SoftResPresentPlayersDecorator then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.SoftResPresentPlayersDecorator then return end
 
 local M = {}
 
-local m = modules
 local filter = m.filter
 local map = m.map
 local clone = m.clone
@@ -35,5 +35,5 @@ function M.new( group_roster, softres )
   return decorator
 end
 
-modules.SoftResPresentPlayersDecorator = M
+m.SoftResPresentPlayersDecorator = M
 return M

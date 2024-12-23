@@ -1,11 +1,11 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.MasterLootTracker then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.MasterLootTracker then return end
 
 local M = {}
-local count_elements = modules.count_elements
-local clear_table = modules.clear_table
+local count_elements = m.count_elements
+local clear_table = m.clear_table
 
 function M.new()
   local m_items = {}
@@ -40,5 +40,5 @@ function M.new()
   }
 end
 
-modules.MasterLootTracker = M
+m.MasterLootTracker = M
 return M

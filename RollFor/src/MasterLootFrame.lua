@@ -1,7 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.MasterLootFrame then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.MasterLootFrame then return end
 
 local M = {}
 
@@ -38,7 +38,7 @@ local function press( frame )
 end
 
 local function restore_loot_buttons()
-  for i = 1, modules.api.LOOTFRAME_NUMBUTTONS do
+  for i = 1, m.api.LOOTFRAME_NUMBUTTONS do
     local name = "LootButton" .. i
     local button = _G[ name ]
 
@@ -47,7 +47,7 @@ local function restore_loot_buttons()
 end
 
 local function create_main_frame()
-  local frame = modules.api.CreateFrame( "Frame", "RollForLootFrame" )
+  local frame = m.api.CreateFrame( "Frame", "RollForLootFrame" )
   frame:Hide()
   frame:SetBackdrop( {
     bgFile = "Interface\\Tooltips\\UI-tooltip-Background",
@@ -60,7 +60,7 @@ local function create_main_frame()
   frame:SetBackdropColor( 0, 0, 0, 1 )
   frame:SetFrameStrata( "DIALOG" )
 
-  if modules.uses_pfui() then
+  if m.uses_pfui() then
     ---@diagnostic disable-next-line: undefined-global
     local button = pfLootButton1
     if button then
@@ -70,13 +70,13 @@ local function create_main_frame()
 
   frame:SetWidth( 100 )
   frame:SetHeight( 100 )
-  frame:SetPoint( "CENTER", modules.api.UIParent, "Center" )
+  frame:SetPoint( "CENTER", m.api.UIParent, "Center" )
   frame:EnableMouse( true )
   frame:SetScript( "OnLeave",
     function()
       ---@diagnostic disable-next-line: undefined-global
       local self = this
-      local mouse_x, mouse_y = modules.api.GetCursorPosition()
+      local mouse_x, mouse_y = m.api.GetCursorPosition()
       local x, y = self:GetCenter()
       local width = self:GetWidth()
       local height = self:GetHeight()
@@ -91,14 +91,14 @@ local function create_main_frame()
 end
 
 local function position_button( button, parent, index, rows )
-  local width = 5 + horizontal_padding + modules.api.math.floor( (index - 1) / rows ) * (button_width + horizontal_padding)
+  local width = 5 + horizontal_padding + m.api.math.floor( (index - 1) / rows ) * (button_width + horizontal_padding)
   local height = -5 - vertical_padding - (mod( index - 1, rows ) * (button_height + vertical_padding))
   button:ClearAllPoints()
   button:SetPoint( "TOPLEFT", parent, "TOPLEFT", width, height )
 end
 
 local function create_button( parent, index, rows )
-  local frame = modules.api.CreateFrame( "Button", "RollForLootFrameButton" .. index, parent )
+  local frame = m.api.CreateFrame( "Button", "RollForLootFrameButton" .. index, parent )
   frame:SetWidth( button_width )
   frame:SetHeight( button_height )
   position_button( frame, parent, index, rows )
@@ -145,7 +145,7 @@ local function create_button( parent, index, rows )
     ---@diagnostic disable-next-line: undefined-global
     local button = arg1
     if button == "LeftButton" then
-      if modules.api.MouseIsOver( self ) then
+      if m.api.MouseIsOver( self ) then
         highlight( self )
       else
         dim( self )
@@ -166,7 +166,7 @@ function M.new( winner_tracker, master_loot_correlation_data, roll_controller, c
   end
 
   local function resize_frame( total, rows )
-    local columns = modules.api.math.ceil( total / rows )
+    local columns = m.api.math.ceil( total / rows )
     local total_rows = total < 5 and total or rows
 
     m_frame:SetWidth( (button_width + horizontal_padding) * columns + horizontal_padding + 11 )
@@ -193,7 +193,7 @@ function M.new( winner_tracker, master_loot_correlation_data, roll_controller, c
 
       local button = m_buttons[ i ]
       button.text:SetText( candidate.name )
-      local color = modules.api.RAID_CLASS_COLORS[ string.upper( candidate.class ) ]
+      local color = m.api.RAID_CLASS_COLORS[ string.upper( candidate.class ) ]
       button.color = color
       button.player = candidate
 
@@ -231,7 +231,7 @@ function M.new( winner_tracker, master_loot_correlation_data, roll_controller, c
   end
 
   local function mark_winner( winner_name, item_link )
-    if item_link ~= modules.api.LootFrame.selectedItemLink then return end
+    if item_link ~= m.api.LootFrame.selectedItemLink then return end
 
     for i = 1, 40 do
       local button = m_buttons[ i ]
@@ -263,14 +263,14 @@ function M.new( winner_tracker, master_loot_correlation_data, roll_controller, c
   end
 
   local function prepare_rolling_slash_command( slot, slash_command )
-    local item_link = modules.api.GetLootSlotLink( slot )
+    local item_link = m.api.GetLootSlotLink( slot )
     master_loot_correlation_data.set( item_link, slot )
-    modules.api.ChatFrameEditBox:Show()
-    modules.api.ChatFrameEditBox:SetText( string.format( "%s %s", slash_command, item_link ) )
+    m.api.ChatFrameEditBox:Show()
+    m.api.ChatFrameEditBox:SetText( string.format( "%s %s", slash_command, item_link ) )
   end
 
   local function hook_loot_buttons( reset_confirmation, normal_loot, show_loot_candidates_frame, hide_fn )
-    for i = 1, modules.api.LOOTFRAME_NUMBUTTONS do
+    for i = 1, m.api.LOOTFRAME_NUMBUTTONS do
       local name = "LootButton" .. i
       local button = _G[ name ]
 
@@ -282,31 +282,31 @@ function M.new( winner_tracker, master_loot_correlation_data, roll_controller, c
         local slot = self.slot
         reset_confirmation()
 
-        local alt, ctrl, shift = modules.get_all_key_modifiers()
+        local alt, ctrl, shift = m.get_all_key_modifiers()
 
         if shift and not alt and not ctrl then
-          prepare_rolling_slash_command( slot, modules.Types.RollSlashCommand.NormalRoll )
+          prepare_rolling_slash_command( slot, m.Types.RollSlashCommand.NormalRoll )
           return
         end
 
         if alt and not ctrl and not shift then
-          prepare_rolling_slash_command( slot, modules.Types.RollSlashCommand.RaidRoll )
+          prepare_rolling_slash_command( slot, m.Types.RollSlashCommand.RaidRoll )
           return
         end
 
         if shift and alt and not ctrl and config.insta_raid_roll() then
-          prepare_rolling_slash_command( slot, modules.Types.RollSlashCommand.InstaRaidRoll )
+          prepare_rolling_slash_command( slot, m.Types.RollSlashCommand.InstaRaidRoll )
           return
         end
 
         if ctrl and not alt and not shift then
-          local item_link = modules.api.GetLootSlotLink( slot )
-          modules.api.DressUpItemLink( item_link )
+          local item_link = m.api.GetLootSlotLink( slot )
+          m.api.DressUpItemLink( item_link )
           return
         end
 
-        if modules.api.LootSlotIsItem( slot ) then
-          local item_link = modules.api.GetLootSlotLink( slot )
+        if m.api.LootSlotIsItem( slot ) then
+          local item_link = m.api.GetLootSlotLink( slot )
           show_loot_candidates_frame( slot, item_link, button )
           return
         end
@@ -318,7 +318,7 @@ function M.new( winner_tracker, master_loot_correlation_data, roll_controller, c
   end
 
   local function hook_pfui_loot_buttons( reset_confirmation, normal_loot, show_loot_candidates_frame, hide_fn )
-    for i = 1, modules.api.LOOTFRAME_NUMBUTTONS do
+    for i = 1, m.api.LOOTFRAME_NUMBUTTONS do
       local name = "pfLootButton" .. i
       local button = _G[ name ]
 
@@ -331,26 +331,26 @@ function M.new( winner_tracker, master_loot_correlation_data, roll_controller, c
           local slot = self:GetID()
           reset_confirmation()
 
-          local alt, ctrl, shift = modules.get_all_key_modifiers()
+          local alt, ctrl, shift = m.get_all_key_modifiers()
 
           if shift and not alt and not ctrl then
-            prepare_rolling_slash_command( slot, modules.Types.RollSlashCommand.NormalRoll )
+            prepare_rolling_slash_command( slot, m.Types.RollSlashCommand.NormalRoll )
             return
           end
 
           if alt and not ctrl and not shift then
-            prepare_rolling_slash_command( slot, modules.Types.RollSlashCommand.RaidRoll )
+            prepare_rolling_slash_command( slot, m.Types.RollSlashCommand.RaidRoll )
             return
           end
 
           if shift and alt and not ctrl and config.insta_raid_roll() then
-            prepare_rolling_slash_command( slot, modules.Types.RollSlashCommand.InstaRaidRoll )
+            prepare_rolling_slash_command( slot, m.Types.RollSlashCommand.InstaRaidRoll )
             return
           end
 
           if ctrl and not alt and not shift then
-            local item_link = modules.api.GetLootSlotLink( slot )
-            modules.api.DressUpItemLink( item_link )
+            local item_link = m.api.GetLootSlotLink( slot )
+            m.api.DressUpItemLink( item_link )
             return
           end
 
@@ -359,8 +359,8 @@ function M.new( winner_tracker, master_loot_correlation_data, roll_controller, c
             return
           end
 
-          if modules.api.LootSlotIsItem( slot ) then
-            local item_link = modules.api.GetLootSlotLink( slot )
+          if m.api.LootSlotIsItem( slot ) then
+            local item_link = m.api.GetLootSlotLink( slot )
             show_loot_candidates_frame( slot, item_link, button )
             return
           end
@@ -401,5 +401,5 @@ function M.new( winner_tracker, master_loot_correlation_data, roll_controller, c
   }
 end
 
-modules.MasterLootFrame = M
+m.MasterLootFrame = M
 return M

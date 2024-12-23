@@ -1,6 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.GroupRoster then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.GroupRoster then return end
 
 local M = {}
 
@@ -80,5 +81,5 @@ function M.new( api )
   }
 end
 
-modules.GroupRoster = M
+m.GroupRoster = M
 return M

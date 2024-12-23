@@ -1,9 +1,7 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-local lu = require( "luaunit" )
-local eq = lu.assertEquals
 local utils = require( "test/utils" )
-utils.load_libstub()
+local lu, eq = utils.luaunit( "assertEquals" )
 local m = require( "src/modules" )
 
 VersionBroadcastSpec = {}

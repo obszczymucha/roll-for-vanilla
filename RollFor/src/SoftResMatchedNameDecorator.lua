@@ -1,5 +1,6 @@
----@diagnostic disable-next-line: undefined-global
-local m = LibStub( "RollFor-Modules" )
+RollFor = RollFor or {}
+local m = RollFor
+
 if m.SoftResMatchedNameDecorator then return end
 
 local M = {}

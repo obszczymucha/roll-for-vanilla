@@ -1,4 +1,4 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
 local lu = require( "luaunit" )
 local mocking = require( "test/mocking" )
@@ -7,7 +7,7 @@ local mock = mocking.mock
 local smart_table = mocking.smart_table
 local packed_value = mocking.packed_value
 
-require( "test/utils" ).load_libstub()
+require( "test/utils" ) -- Need to load this before modules to load lua50 stuff.
 require( "src/modules" )
 local gr = require( "src/GroupRoster" )
 

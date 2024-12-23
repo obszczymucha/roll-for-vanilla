@@ -1,13 +1,12 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.WelcomePopup then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.WelcomePopup then return end
 
 local M = {}
 
-local m = modules
-local hl = modules.colors.hl
-local white = modules.colors.white
+local hl = m.colors.hl
+local white = m.colors.white
 local blue = m.colors.blue
 
 ---@diagnostic disable-next-line: deprecated
@@ -146,5 +145,5 @@ function M.new( popup_builder, ace_timer, db )
   }
 end
 
-modules.WelcomePopup = M
+m.WelcomePopup = M
 return M

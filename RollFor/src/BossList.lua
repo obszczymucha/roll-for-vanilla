@@ -1,11 +1,11 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.BossList then return end
+RollFor = RollFor or {}
+local m = RollFor
 
-local M          = {}
+if m.BossList then return end
 
-M.zones          = {
+local M    = {}
+
+M.zones    = {
   [ "Durotar" ] = {
     "Elder Mottled Boar"
   },
@@ -104,5 +104,5 @@ M.zones          = {
   }
 }
 
-modules.BossList = M
+m.BossList = M
 return M

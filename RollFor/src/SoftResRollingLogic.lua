@@ -1,15 +1,16 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.SoftResRollingLogic then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.SoftResRollingLogic then return end
 
 local M = {}
-local map = modules.map
-local count_elements = modules.count_elements
-local pretty_print = modules.pretty_print
-local take = modules.take
-local rlu = modules.RollingLogicUtils
-local RollType = modules.Types.RollType
-local RollingStrategy = modules.Types.RollingStrategy
+local map = m.map
+local count_elements = m.count_elements
+local pretty_print = m.pretty_print
+local take = m.take
+local rlu = m.RollingLogicUtils
+local RollType = m.Types.RollType
+local RollingStrategy = m.Types.RollingStrategy
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
@@ -153,7 +154,7 @@ function M.new( announce, ace_timer, group_roster, sr_players, item, count, seco
 
     local count_str = count > 1 and string.format( "%sx", count ) or ""
     local x_rolls_win = count > 1 and string.format( ". %d top rolls win.", count ) or ""
-    local ressed_by = modules.prettify_table( map( sr_players, name_with_rolls ) )
+    local ressed_by = m.prettify_table( map( sr_players, name_with_rolls ) )
 
     if count == getn( sr_players ) then
       announce( string.format( "%s soft-ressed %s.", ressed_by, item.link ), true )
@@ -174,7 +175,7 @@ function M.new( announce, ace_timer, group_roster, sr_players, item, count, seco
       for _, v in ipairs( sorted_rolls ) do
         if limit and limit > 0 and i > limit then return end
 
-        pretty_print( string.format( "[|cffff9f69%d|r]: %s", v[ "roll" ], modules.prettify_table( v[ "players" ] ) ) )
+        pretty_print( string.format( "[|cffff9f69%d|r]: %s", v[ "roll" ], m.prettify_table( v[ "players" ] ) ) )
         i = i + 1
       end
     end
@@ -203,9 +204,9 @@ function M.new( announce, ace_timer, group_roster, sr_players, item, count, seco
     stop_accepting_rolls = stop_accepting_rolls,
     cancel_rolling = cancel_rolling,
     is_rolling = is_rolling,
-    get_rolling_strategy = function() return modules.Types.RollingStrategy.SoftResRoll end
+    get_rolling_strategy = function() return m.Types.RollingStrategy.SoftResRoll end
   }
 end
 
-modules.SoftResRollingLogic = M
+m.SoftResRollingLogic = M
 return M

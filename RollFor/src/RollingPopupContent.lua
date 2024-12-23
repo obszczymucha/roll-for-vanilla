@@ -1,11 +1,10 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.RollingPopupContent then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.RollingPopupContent then return end
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
-local m = modules
 local RT = m.Types.RollType
 local RS = m.Types.RollingStrategy
 local S = m.Types.RollingStatus
@@ -296,5 +295,5 @@ function M.new( popup, roll_controller, roll_tracker, config, finish_early, canc
   roll_controller.subscribe( "loot_closed", loot_closed )
 end
 
-modules.RollingPopupContent = M
+m.RollingPopupContent = M
 return M

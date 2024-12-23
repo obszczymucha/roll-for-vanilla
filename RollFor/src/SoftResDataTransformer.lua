@@ -1,6 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.SoftResDataTransformer then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.SoftResDataTransformer then return end
 
 local M = {}
 
@@ -63,5 +64,5 @@ function M.transform( data )
   return result
 end
 
-modules.SoftResDataTransformer = M
+m.SoftResDataTransformer = M
 return M

@@ -1,11 +1,10 @@
----@diagnostic disable-next-line: undefined-global
-local libStub = LibStub
-local modules = libStub( "RollFor-Modules" )
-if modules.LootAwardPopup then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.LootAwardPopup then return end
 
 local M = {}
 
-local m = modules
 local RS = m.Types.RollingStrategy
 local LAE = m.Types.LootAwardError
 local red = m.colors.red
@@ -48,8 +47,8 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
 
   local function border_color( item_link )
     local item_id = m.ItemUtils.get_item_id( item_link )
-    local _, _, quality = modules.api.GetItemInfo( string.format( "item:%s:0:0:0", item_id ) )
-    local color = modules.api.ITEM_QUALITY_COLORS[ quality ] or { r = 0, g = 0, b = 0, a = 1 }
+    local _, _, quality = m.api.GetItemInfo( string.format( "item:%s:0:0:0", item_id ) )
+    local color = m.api.ITEM_QUALITY_COLORS[ quality ] or { r = 0, g = 0, b = 0, a = 1 }
 
     local multiplier = 0.5
     local alpha = 0.6
@@ -200,5 +199,5 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
   }
 end
 
-modules.LootAwardPopup = M
+m.LootAwardPopup = M
 return M

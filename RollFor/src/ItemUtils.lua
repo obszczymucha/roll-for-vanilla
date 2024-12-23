@@ -1,6 +1,7 @@
----@diagnostic disable-next-line: undefined-global
-local modules = LibStub( "RollFor-Modules" )
-if modules.ItemUtils then return end
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.ItemUtils then return end
 
 local M = {}
 
@@ -35,5 +36,5 @@ function M.make_item( id, name, link, quality )
   return { id = id, name = name, link = link, quality = quality }
 end
 
-modules.ItemUtils = M
+m.ItemUtils = M
 return M

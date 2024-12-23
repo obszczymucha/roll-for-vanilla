@@ -1,4 +1,4 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
@@ -14,7 +14,6 @@ local assert_messages = utils.assert_messages
 local c = utils.console_message
 local tick = utils.tick
 
-utils.load_libstub()
 require( "src/modules" )
 local mod = require( "src/TradeTracker" )
 mod.debug_enabled = true
