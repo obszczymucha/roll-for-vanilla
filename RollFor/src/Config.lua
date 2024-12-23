@@ -43,6 +43,7 @@ function M.new( db )
     if db.rolling_tip == nil then db.rolling_tip = true end
     if db.rolling_popup == nil then db.rolling_popup = true end
     if db.show_ml_warning == nil then db.show_ml_warning = true end
+    if db.default_rolling_time_seconds == nil then db.default_rolling_time_seconds = 8 end
   end
 
   local function print( toggle_key )
@@ -91,8 +92,13 @@ function M.new( db )
     info( string.format( "%s integration is %s.", m.msg.pfui, db.pfui_integration_enabled and m.msg.enabled or m.msg.disabled ) )
   end
 
+  local function print_default_rolling_time()
+    info( string.format( "Default rolling time: %s seconds", hl( db.default_rolling_time_seconds ) ) )
+  end
+
   local function print_settings()
     print_header( "RollFor Configuration" )
+    print_default_rolling_time()
     print_roll_thresholds()
     print_transmog_rolling_setting()
     print_pfui_integration_setting()
@@ -104,6 +110,33 @@ function M.new( db )
     end
 
     m.print( string.format( "For more info, type: %s", hl( "/rf config help" ) ) )
+  end
+
+  local function configure_default_rolling_time( args )
+    if args == "config default-rolling-time" then
+      print_default_rolling_time()
+      return
+    end
+
+    for value in string.gmatch( args, "config default%-rolling%-time (%d+)" ) do
+      local v = tonumber( value )
+
+      if v < 4 then
+        info( string.format( "Default rolling time must be at least %s seconds.", hl( "4" ) ) )
+        return
+      end
+
+      if v > 15 then
+        info( string.format( "Default rolling time must be at most %s seconds.", hl( "15" ) ) )
+        return
+      end
+
+      db.default_rolling_time_seconds = v
+      print_default_rolling_time()
+      return
+    end
+
+    info( string.format( "Usage: %s <threshold>", hl( "/rf config ms" ) ) )
   end
 
   local function configure_ms_threshold( args )
@@ -150,6 +183,8 @@ function M.new( db )
     m.print( string.format( "%s - show configuration", rfc() ) )
     m.print( string.format( "%s - toggle minimap icon", rfc( "minimap" ) ) )
     m.print( string.format( "%s - lock/unlock minimap icon", rfc( "minimap lock" ) ) )
+    m.print( string.format( "%s - show default rolling time", rfc( "default-rolling-time" ) ) )
+    m.print( string.format( "%s %s - set default rolling time", rfc( "default-rolling-time" ), v( "seconds" ) ) )
     m.print( string.format( "%s - show MS rolling threshold ", rfc( "ms" ) ) )
     m.print( string.format( "%s %s - set MS rolling threshold ", rfc( "ms" ), v( "threshold" ) ) )
     m.print( string.format( "%s - show OS rolling threshold ", rfc( "os" ) ) )
@@ -275,6 +310,11 @@ function M.new( db )
       return
     end
 
+    if string.find( args, "^config default%-rolling%-time" ) then
+      configure_default_rolling_time( args )
+      return
+    end
+
     print_help()
   end
 
@@ -327,6 +367,7 @@ function M.new( db )
     tmog_rolling_enabled = get( "tmog_rolling_enabled" ),
     toggle_pfui_integration = toggle( "pfui_integration_enabled" ),
     unlock_minimap_button = unlock_minimap_button,
+    default_rolling_time_seconds = get( "default_rolling_time_seconds" ),
   }
 
   for toggle_key, _ in pairs( toggles ) do

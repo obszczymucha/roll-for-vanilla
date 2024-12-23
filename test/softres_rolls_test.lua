@@ -65,7 +65,8 @@ local mock_config = function( config )
     show_rolling_tip = function() return true end,
     tmog_rolling_enabled = function() return true end,
     rolling_popup = function() return true end,
-    insta_raid_roll = function() return true end
+    insta_raid_roll = function() return true end,
+    default_rolling_time_seconds = function() return 8 end
   }
 
   m.Config = {

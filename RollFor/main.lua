@@ -455,9 +455,9 @@ local function parse_args( args )
     local item_id = M.item_utils.get_item_id( item_link )
     local item_name = M.item_utils.get_item_name( item_link )
     local item = { id = item_id, link = item_link, name = item_name }
-    local secs = seconds and seconds ~= "" and seconds ~= " " and tonumber( seconds ) or 8
+    local secs = seconds and seconds ~= "" and seconds ~= " " and tonumber( seconds ) or M.config.default_rolling_time_seconds()
 
-    return item, count, secs <= 3 and 4 or secs, message
+    return item, count, secs < 4 and 4 or secs > 15 and 15 or secs, message
   end
 end
 
