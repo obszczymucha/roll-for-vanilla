@@ -14,10 +14,10 @@ M.RollSlashCommand = {
 
 --- Roll type constants
 ---@alias RollType
----| '"MainSpec"'
----| '"OffSpec"'
----| '"Transmog"'
----| '"SoftRes"'
+---| "MainSpec"
+---| "OffSpec"
+---| "Transmog"
+---| "SoftRes"
 M.RollType = {
   MainSpec = "MainSpec",
   OffSpec = "OffSpec",
@@ -27,11 +27,11 @@ M.RollType = {
 
 --- Rolling strategy constants
 --- @alias RollingStrategy
----| '"NormalRoll"'
----| '"SoftResRoll"'
----| '"TieRoll"'
----| '"RaidRoll"'
----| '"InstaRaidRoll"'
+---| "NormalRoll"
+---| "SoftResRoll"
+---| "TieRoll"
+---| "RaidRoll"
+---| "InstaRaidRoll"
 local RollingStrategy = {
   NormalRoll = "NormalRoll",
   SoftResRoll = "SoftResRoll",
@@ -44,8 +44,8 @@ M.RollingStrategy = RollingStrategy
 
 --- Player type constants
 --- @alias PlayerType
---- | '"Player"'
---- | '"Winner"'
+--- | "Player"
+--- | "Winner"
 local PlayerType = {
   Player = "Player",
   Winner = "Winner",
@@ -55,15 +55,15 @@ M.PlayerType = PlayerType
 
 --- Player class constants
 ---@alias PlayerClass
----| '"Druid"'
----| '"Hunter"'
----| '"Mage"'
----| '"Paladin"'
----| '"Priest"'
----| '"Rogue"'
----| '"Shaman"'
----| '"Warlock"'
----| '"Warrior"'
+---| "Druid"
+---| "Hunter"
+---| "Mage"
+---| "Paladin"
+---| "Priest"
+---| "Rogue"
+---| "Shaman"
+---| "Warlock"
+---| "Warrior"
 local PlayerClass = {
   Druid = "Druid",
   Hunter = "Hunter",
@@ -108,11 +108,11 @@ M.winner = function( name, class, roll_type, roll )
 end
 
 ---@alias RollingStatus
----| '"InProgress"'
----| '"TieFound"'
----| '"Waiting"'
----| '"Finished"'
----| '"Canceled"'
+---| "InProgress"
+---| "TieFound"
+---| "Waiting"
+---| "Finished"
+---| "Canceled"
 local RollingStatus = {
   InProgress = "InProgress",
   TieFound = "TieFound",
@@ -124,10 +124,10 @@ local RollingStatus = {
 M.RollingStatus = RollingStatus
 
 ---@alias LootAwardError
----| '"FullBags"'
----| '"AlreadyOwnsUniqueItem"'
----| '"PlayerNotFound"'
----| '"CantAssignItemToThatPlayer"'
+---| "FullBags"
+---| "AlreadyOwnsUniqueItem"
+---| "PlayerNotFound"
+---| "CantAssignItemToThatPlayer"
 local LootAwardError = {
   FullBags = "FullBags",
   AlreadyOwnsUniqueItem = "AlreadyOwnsUniqueItem",

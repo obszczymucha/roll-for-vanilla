@@ -11,7 +11,6 @@ local is_in_raid = utils.is_in_raid
 local leader = utils.raid_leader
 
 SoftResAwardedLootDecoratorSpec = {}
-SoftResAwardedLootDecoratorSpec = {}
 
 function SoftResAwardedLootDecoratorSpec:should_return_all_softressing_players()
   -- Given

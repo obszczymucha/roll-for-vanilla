@@ -121,7 +121,6 @@ function M.new( db, api, absent_unfiltered_softres, name_matcher, softres_status
   local function clear( report )
     if not db.manual_matches or m.count_elements( db.manual_matches ) == 0 then return end
     m.clear_table( db.manual_matches )
-    db.manual_matches = {}
     if report then p( "Cleared manual matches." ) end
   end
 

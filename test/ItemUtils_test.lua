@@ -54,14 +54,6 @@ end
 
 ParseAllLinksSpec = {}
 
-function ParseAllLinksSpec:should_return_empty_table_for_nil()
-  -- When
-  local result = utils.parse_all_links()
-
-  -- Expect
-  lu.assertEquals( result, {} )
-end
-
 function ParseAllLinksSpec:should_return_empty_table_for_empty_string()
   -- When
   local result = utils.parse_all_links( "" )

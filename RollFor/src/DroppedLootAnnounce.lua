@@ -4,9 +4,8 @@ local m = RollFor
 if m.DroppedLootAnnounce then return end
 
 local M = {}
-local item_utils = m.ItemUtils
-local make_item = item_utils.make_item
 local announce_limit = 6
+local filter = m.filter
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
@@ -31,21 +30,6 @@ local function distinct( items )
   end
 
   return result
-end
-
-local function process_dropped_item( slot )
-  local link = m.api.GetLootSlotLink( slot )
-  if not link then return nil end
-
-  local _, _, _, quality = m.api.GetLootSlotInfo( slot )
-  if not quality then quality = 0 end
-  if quality < m.api.GetLootThreshold() then return nil end
-
-  local item_id = item_utils.get_item_id( link )
-  local item_name = item_utils.get_item_name( link )
-
-  -- ItemUtils.make_item
-  return make_item( item_id, item_name, link, quality )
 end
 
 local function commify( t, f )
@@ -203,18 +187,16 @@ function M.create_item_announcements( summary )
   return stringify( sort( result ) )
 end
 
-function M.process_dropped_items( master_loot_tracker, softres )
-  local source_guid = m.api.UnitName( "target" )
-  local items = {}
-  local item_count = m.api.GetNumLootItems()
+function M.process_dropped_items( loot_list, master_loot_tracker, softres )
+  local source_guid = loot_list.get_source_guid()
+  local threshold = m.api.GetLootThreshold()
+  local items = filter( loot_list.get_items(), function( item )
+    local quality = item.quality or 0
+    return quality >= threshold and item.id ~= 29434
+  end )
 
-  for slot = 1, item_count do
-    local item = process_dropped_item( slot )
-
-    if item and item.id ~= 29434 then -- Badge of Justice lol. I miss TBC :/
-      table.insert( items, item )
-      master_loot_tracker.add( slot, item )
-    end
+  for _, item in ipairs( items ) do
+    master_loot_tracker.add( item.slot, item ) -- TODO: Get rid of MasterLootTracker
   end
 
   local summary = M.create_item_summary( items, softres )
@@ -291,7 +273,7 @@ local function should_announce( i, item_count, announcement )
   return false
 end
 
-function M.new( announce, dropped_loot, master_loot_tracker, softres, winner_tracker )
+function M.new( loot_list, announce, dropped_loot, master_loot_tracker, softres, winner_tracker )
   local announcing = false
   local announced_source_ids = {}
 
@@ -306,7 +288,7 @@ function M.new( announce, dropped_loot, master_loot_tracker, softres, winner_tra
       return
     end
 
-    local source_guid, items, announcements = M.process_dropped_items( master_loot_tracker, softres )
+    local source_guid, items, announcements = M.process_dropped_items( loot_list, master_loot_tracker, softres )
     local was_announced = announced_source_ids[ source_guid ]
     if was_announced then return end
 

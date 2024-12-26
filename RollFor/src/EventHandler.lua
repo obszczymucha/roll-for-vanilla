@@ -42,13 +42,6 @@ function M.handle_events( main )
       main.on_chat_msg_system( arg1, arg2, arg3, arg4, arg5 )
     elseif event == "CHAT_MSG_ADDON" then
       main.on_chat_msg_addon( arg1, arg2 )
-    elseif event == "LOOT_OPENED" then
-      main.on_loot_opened()
-    elseif event == "LOOT_CLOSED" then
-      main.on_loot_closed()
-    elseif event == "LOOT_SLOT_CLEARED" then
-      main.master_loot.on_loot_slot_cleared( arg1, arg2, arg3, arg4, arg5 )
-      main.auto_group_loot.on_loot_slot_cleared()
     elseif event == "TRADE_SHOW" then
       main.trade_tracker.on_trade_show()
     elseif event == "TRADE_PLAYER_ITEM_CHANGED" then
@@ -93,10 +86,7 @@ function M.handle_events( main )
   frame:RegisterEvent( "CHAT_MSG_SYSTEM" )
   frame:RegisterEvent( "CHAT_MSG_ADDON" )
   -- frame:RegisterEvent( "CHAT_MSG_PARTY" )
-  frame:RegisterEvent( "LOOT_OPENED" )
-  frame:RegisterEvent( "LOOT_CLOSED" )
   frame:RegisterEvent( "OPEN_MASTER_LOOT_LIST" )
-  frame:RegisterEvent( "LOOT_SLOT_CLEARED" )
   frame:RegisterEvent( "TRADE_SHOW" )
   frame:RegisterEvent( "TRADE_PLAYER_ITEM_CHANGED" )
   frame:RegisterEvent( "TRADE_TARGET_ITEM_CHANGED" )

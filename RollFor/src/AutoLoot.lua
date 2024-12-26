@@ -14,7 +14,7 @@ local M = {}
 local button_visible = false
 local _G = getfenv( 0 )
 
-function M.new( api, db, config )
+function M.new( loot_list, api, db, config )
   db.items = db.items or {}
 
   local frame
@@ -30,24 +30,19 @@ function M.new( api, db, config )
   end
 
   local function on_auto_loot()
-    local item_count = api().GetNumLootItems()
     local zone_name = api().GetRealZoneText()
     local item_ids = items[ zone_name ] or {}
     local threshold = m.api.GetLootThreshold()
 
-    for slot = 1, item_count do
-      local link = m.api.GetLootSlotLink( slot )
-      local _, _, _, quality = m.api.GetLootSlotInfo( slot )
-      if not quality then quality = 0 end
+    for _, item in ipairs( loot_list.get_items() ) do
+      local quality = item.quality or 0
 
-      if link then
-        local item_id = item_utils.get_item_id( link )
-
-        if quality < threshold or config.auto_loot() and item_ids[ item_id ] then
+      if item.id and item.slot then
+        if quality < threshold or config.auto_loot() and item_ids[ item.id ] then
           local index = find_my_candidate_index()
 
           if index then
-            api().GiveMasterLoot( slot, index )
+            api().GiveMasterLoot( item.slot, index )
           end
         end
       end

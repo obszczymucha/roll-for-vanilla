@@ -40,6 +40,7 @@ function M.new( item_utils )
 
   local function reset()
     m.clear_table( cache )
+    cache.n = 0
   end
 
   return {

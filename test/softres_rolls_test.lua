@@ -3,6 +3,8 @@ package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../Roll
 local lu = require( "luaunit" )
 local eq = lu.assertEquals
 local utils = require( "test/utils" )
+local fr = utils.force_require
+local m = require( "src/modules" )
 
 local player = utils.player
 local master_looter = utils.master_looter
@@ -23,7 +25,6 @@ local soft_res = utils.soft_res
 local sr = utils.soft_res_item
 local repeating_tick = utils.repeating_tick
 local tick = utils.tick
-local loot = utils.loot
 local item = utils.item
 local item_link = utils.item_link
 local award = utils.award
@@ -43,9 +44,33 @@ local run_command = utils.run_command
 local modifier_keys_not_pressed = utils.modifier_keys_not_pressed
 local targetting_enemy = utils.targetting_enemy
 
-local mock_config = function( config )
-  local m = require( "src/modules" )
+local loot_event_facade
+local loot_list
 
+local function loot()
+  loot_event_facade.notify( "LootOpened" )
+end
+
+local function dropped( ... )
+  RollFor.LootList = nil
+  loot_list = fr( "mocks/LootList" )
+
+  local slot = 1
+  local items = m.map( { ... }, function( i )
+    if not i.slot then
+      i.slot = slot
+      slot = slot + 1
+    end
+
+    if not i.quality then i.quality = 4 end
+
+    return i
+  end )
+
+  loot_list.items = items
+end
+
+local mock_config = function( config )
   local defaults = {
     auto_raid_roll = function() return config and config.auto_raid_roll end,
     minimap_button_hidden = function() return false end,
@@ -307,6 +332,7 @@ end
 
 function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_ressed_already_received_the_item()
   -- Given
+  dropped( item( "Hearthstone", 123 ), item( "Hearthstone", 123 ) )
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Ponpon" )
   soft_res( sr( "Psikutas", 123 ) )
@@ -314,7 +340,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   mock_blizzard_loot_buttons()
 
   -- When
-  loot( item( "Hearthstone", 123 ), item( "Hearthstone", 123 ) )
+  loot()
   roll_for( "Hearthstone", 1, 123 )
   award( "Psikutas", "Hearthstone", 123 )
   roll_for( "Hearthstone", 1, 123 )
@@ -337,6 +363,7 @@ end
 --Disabling due to fucking 2.4.3 hack with delayed trade check.
 function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_ressed_already_received_the_item_via_trade()
   -- Given
+  dropped( item( "Hearthstone", 123 ), item( "Hearthstone", 123 ) )
   local trade_mod = require( "src/TradeTracker" )
   trade_mod.debug_enabled = true
   master_looter( "Psikutas" )
@@ -344,7 +371,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   soft_res( sr( "Obszczymucha", 123 ) )
 
   -- When
-  loot( item( "Hearthstone", 123 ), item( "Hearthstone", 123 ) )
+  loot()
   roll_for( "Hearthstone", 1, 123 )
   trade_with( "Obszczymucha" )
   trade_items( nil, { item_link = utils.item_link( "Hearthstone", 123 ), quantity = 1 } )
@@ -373,6 +400,7 @@ end
 
 function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_ressed_already_received_the_item_via_master_loot()
   -- Given
+  dropped( item( "Hearthstone", 123 ), item( "Hearthstone", 123 ) )
   clear_dropped_items_db()
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
@@ -384,10 +412,10 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   local link = item_link( "Heartstone", 123 )
 
   -- When
-  loot( item( "Hearthstone", 123 ), item( "Hearthstone", 123 ) )
+  loot()
   roll_for( "Hearthstone", 1, 123 )
   master_loot( link, "Obszczymucha" )
-  confirm_master_looting( { name = "Obszczymucha", value = 12 }, link )
+  confirm_master_looting( loot_event_facade, { name = "Obszczymucha", value = 12 }, link )
   roll_for( "Hearthstone", 1, 123 )
   roll( "Ponpon", 1 )
   repeating_tick( 8 )
@@ -407,6 +435,7 @@ end
 
 function SoftResIntegrationSpec:should_not_subtract_rolls_from_softres_data()
   -- Given
+  dropped( item( "Primal Hakkari Idol", 22637 ) )
   local rf = clear_dropped_items_db()
   rf.db.awarded_loot = {}
   master_looter( "Jogobobek" )
@@ -421,7 +450,7 @@ function SoftResIntegrationSpec:should_not_subtract_rolls_from_softres_data()
 
   -- And
   targetting_enemy( "Jin'do the Hexxer" )
-  loot( item( "Primal Hakkari Idol", 22637 ) )
+  loot()
   roll_for( "Primal Hakkari Idol", 1, 22637 )
   roll( "Elizalee", 96 )
   roll( "Bomanz", 100 )
@@ -433,6 +462,8 @@ end
 
 function SoftResIntegrationSpec:should_not_allow_a_sr_winner_to_roll_again_if_the_same_item_drops()
   -- Given
+  loot_list.source_guid = "Jin'do the Hexxer"
+  dropped( item( "Primal Hakkari Idol", 22637 ) )
   local rf = clear_dropped_items_db()
   rf.db.awarded_loot = {}
   master_looter( "Jogobobek" )
@@ -445,7 +476,7 @@ function SoftResIntegrationSpec:should_not_allow_a_sr_winner_to_roll_again_if_th
   -- When the first idol drops.
   -- Trololoo 100, Elizalee 35, Elizalee 27, Bomanz - passed
   targetting_enemy( "Jin'do the Hexxer" )
-  loot( item( "Primal Hakkari Idol", 22637 ) )
+  loot()
   roll_for( "Primal Hakkari Idol", 1, 22637 )
   repeating_tick( 1 )
   roll( "Elizalee", 35 )
@@ -457,12 +488,14 @@ function SoftResIntegrationSpec:should_not_allow_a_sr_winner_to_roll_again_if_th
   rf.master_loot_correlation_data.set( link, 1 )
   rf.master_loot.on_confirm( { name = "Trololoo", value = 12 }, link )
   utils.mock( "GiveMasterLoot", function() end )
-  utils.fire_event( "LOOT_SLOT_CLEARED", 1 )
+  loot_event_facade.notify( "LootSlotCleared", 1 )
+  loot_event_facade.notify( "LootClosed" )
 
   -- And then another idol drops.
   -- Bomanz 94, Eliza 81, Eliza 66, Trololoo - passed
+  loot_list.source_guid = "Bloodlord Mandokir"
   targetting_enemy( "Bloodlord Mandokir" )
-  loot( item( "Primal Hakkari Idol", 22637 ) )
+  loot()
   roll_for( "Primal Hakkari Idol", 1, 22637 )
   repeating_tick( 2 )
   roll( "Bomanz", 94 )
@@ -532,6 +565,11 @@ utils.mock_libraries()
 utils.load_real_stuff( function( module_name )
   if module_name == "src/LootAwardPopup" then return require( "mocks/LootAwardPopupMock" ) end
   if module_name == "src/Config" then return mock_config() end
+  if module_name == "src/LootList" then require( "mocks/LootList" ) end
+  if module_name == "src/api/LootEventFacade" then
+    loot_event_facade = require( "mocks/LootEventFacade" )
+    return loot_event_facade
+  end
 
   return require( module_name )
 end )

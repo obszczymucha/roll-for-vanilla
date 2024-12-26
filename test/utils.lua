@@ -287,6 +287,9 @@ function M.mock_api()
   M.mock( "UnitName", "Psikutas" )
   M.mock( "UnitClass", "Warrior" )
   M.mock( "GetRealZoneText", "Elwynn Forest" )
+  M.mock( "GetLootSlotLink" )
+  M.mock( "GetLootSlotInfo" )
+  M.loot_threshold( 2 )
   M.mock_messages()
 end
 
@@ -601,8 +604,7 @@ function M.mock_control_key_pressed( value )
 end
 
 function M.load_roll_for()
-  local libStub = load_libstub()
-  return libStub( "RollFor-2" )
+  return require( "main" )
 end
 
 function M.force_require( name )
@@ -622,7 +624,9 @@ function M.player( name, config )
   m_target = nil
   M.mock_unit_name()
   M.mock( "IsInGroup", false )
-  M.mock_object( "LootFrame", {} )
+  M.mock_object( "LootFrame", {
+    GetFrameLevel = function() return 10 end
+  } )
   local rf = M.load_roll_for()
   M.fire_event( "PLAYER_ENTERING_WORLD" )
 
@@ -725,6 +729,10 @@ function M.load_real_stuff( req )
   M.mock_api()
   r( "src/Db" )
   r( "src/Types" )
+  r( "src/Interface" )
+  r( "src/api/LootEventFacade" )
+  r( "src/api/EventFrame" )
+  r( "src/WowApi" )
   r( "src/Config" )
   r( "src/ItemUtils" )
   r( "src/RollingLogicUtils" )
@@ -777,6 +785,7 @@ function M.load_real_stuff( req )
   r( "src/RollingPopupContent" )
   r( "src/WelcomePopup" )
   r( "src/InstaRaidRollRollingLogic" )
+  r( "src/LootList" )
   -- r( "Libs/LibDeflate/LibDeflate" )
   r( "src/Json" )
   r( "main" )
@@ -786,47 +795,8 @@ function M.rolling_finished()
   return M.console_message( string.format( "RollFor: Rolling for [%s] has finished.", m_rolling_item_name ) )
 end
 
-local function make_loot_slot_links( items )
-  local result = {}
-
-  for i = 1, #items do
-    local item = items[ i ]
-    table.insert( result, M.item_link( item.name, item.id ) )
-  end
-
-  return result
-end
-
-local function make_loot_slot_info( items )
-  local result = {}
-
-  for i = 1, #items do
-    local item = items[ i ]
-    table.insert( result, function() return nil, nil, nil, item.quality or 4 end )
-  end
-
-  return result
-end
-
-function M.loot( ... )
-  local items = { ... }
-  local count = items and #items or 0
-  M.mock( "GetNumLootItems", count )
-  M.mock_object( "LootFrame", {
-    GetFrameLevel = function() return 10 end
-  } )
-
-  if count > 0 then
-    M.mock( "UnitGUID", items[ 1 ].source_id )
-    M.mock_table_function( "GetLootSlotLink", make_loot_slot_links( items ) )
-    M.mock_table_function( "GetLootSlotInfo", make_loot_slot_info( items ) )
-  end
-
-  M.fire_event( "LOOT_OPENED" )
-end
-
 function M.item( name, id, quality )
-  return { name = name, id = id, source_id = 123, quality = quality }
+  return { name = name, id = id, source_id = 123, quality = quality, link = M.item_link( name, id ) }
 end
 
 function M.targetting_enemy( name )
@@ -1022,10 +992,10 @@ end
 function M.mock_softres_gui()
 end
 
-function M.confirm_master_looting( player, item_link )
+function M.confirm_master_looting( loot_event_facade, player, item_link )
   M.mock( "GiveMasterLoot", function() end )
   if m_loot_confirm_callback then m_loot_confirm_callback( player, item_link ) end
-  M.fire_event( "LOOT_SLOT_CLEARED", 1 )
+  loot_event_facade.notify( "LootSlotCleared", 1 )
 end
 
 function M.cancel_master_looting()

@@ -5,8 +5,7 @@ local m = RollFor
 local lib_stub = LibStub
 local version = m.get_addon_version()
 
-local M = lib_stub:NewLibrary( string.format( "RollFor-%s", version.major ), version.minor )
-if not M then return end
+local M = {}
 
 local info = m.pretty_print
 local hl = m.colors.highlight
@@ -164,7 +163,11 @@ local function create_components()
   M.softres_check = m.SoftResCheck.new( M.matched_name_softres, M.group_roster, M.name_matcher, M.ace_timer,
     M.absent_softres, db( "softres_check" ) )
   M.winner_tracker = m.WinnerTracker.new( db( "winner_tracker" ) )
-  M.dropped_loot_announce = m.DroppedLootAnnounce.new( announce, M.dropped_loot, M.master_loot_tracker, M.softres, M.winner_tracker )
+
+  local loot_event_facade = m.LootEventFacade.new( m.EventFrame.new( m.api ), m.api )
+  M.loot_list = m.LootList.new( loot_event_facade, M.item_utils, m.api )
+
+  M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.loot_list, announce, M.dropped_loot, M.master_loot_tracker, M.softres, M.winner_tracker )
   M.roll_tracker = m.RollTracker.new()
   M.roll_controller = m.RollController.new( M.roll_tracker )
   M.master_loot_correlation_data = m.MasterLootCorrelationData.new( M.item_utils )
@@ -190,13 +193,13 @@ local function create_components()
   M.usage_printer = m.UsagePrinter.new( M.config )
   M.minimap_button = m.MinimapButton.new( M.api, db( "minimap_button" ), M.softres_gui.toggle, M.softres_check, M.config )
   M.master_loot_warning = m.MasterLootWarning.new( M.api, M.config, m.BossList.zones )
-  M.auto_loot = m.AutoLoot.new( M.api, db( "auto_loot" ), M.config )
+  M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, db( "auto_loot" ), M.config )
   M.pfui_integration_dialog = m.PfUiIntegrationDialog.new( M.config )
   M.new_group_event = m.NewGroupEvent.new()
   M.new_group_event.subscribe( M.winner_history.start_session )
-  M.auto_group_loot = m.AutoGroupLoot.new( M.config, m.BossList.zones )
+  M.auto_group_loot = m.AutoGroupLoot.new( M.loot_list, M.config, m.BossList.zones )
   M.auto_master_loot = m.AutoMasterLoot.new( M.config, m.BossList.zones )
-  M.rolling_tip_popup = m.RollingTipPopup.new( m.CustomPopup.builder, M.config )
+  M.rolling_tip_popup = m.RollingTipPopup.new( M.loot_list, m.CustomPopup.builder, M.config )
   M.softres_roll_gui_data = m.SoftResRollGuiData.new( M.softres, M.group_roster )
   M.tie_roll_gui_data = m.TieRollGuiData.new( M.group_roster )
 
@@ -233,6 +236,28 @@ local function create_components()
     else
       M.master_loot_warning.hide()
     end
+  end )
+
+  loot_event_facade.subscribe( "LootOpened", function()
+    M.master_loot_tracker.clear()
+    M.auto_loot.on_loot_opened()
+    M.dropped_loot_announce.on_loot_opened()
+    M.master_loot.on_loot_opened()
+    M.master_loot_correlation_data.reset()
+    M.auto_group_loot.on_loot_opened()
+    M.rolling_tip_popup.on_loot_opened()
+  end )
+
+  loot_event_facade.subscribe( "LootClosed", function()
+    M.master_loot.on_loot_closed()
+    M.master_loot_correlation_data.reset()
+    M.rolling_tip_popup.on_loot_closed()
+    M.roll_controller.loot_closed()
+  end )
+
+  loot_event_facade.subscribe( "LootSlotCleared", function( slot )
+    M.master_loot.on_loot_slot_cleared( slot )
+    M.auto_group_loot.on_loot_slot_cleared()
   end )
 end
 
@@ -627,6 +652,7 @@ function M.on_chat_msg_system( message )
   end
 end
 
+-- TODO: this can now be replaced by mocking LootList
 ---@diagnostic disable-next-line: unused-local, unused-function
 local function simulate_loot_dropped( args )
   ---@diagnostic disable-next-line: unused-function
@@ -676,23 +702,6 @@ local function simulate_loot_dropped( args )
   mock_table_function( "GetLootSlotInfo", make_loot_slot_info( getn( item_links ), 4 ) )
 
   M.dropped_loot_announce.on_loot_opened()
-end
-
-function M.on_loot_opened()
-  M.master_loot_tracker.clear()
-  M.auto_loot.on_loot_opened()
-  M.dropped_loot_announce.on_loot_opened()
-  M.master_loot.on_loot_opened()
-  M.master_loot_correlation_data.reset()
-  M.auto_group_loot.on_loot_opened()
-  M.rolling_tip_popup.on_loot_opened()
-end
-
-function M.on_loot_closed()
-  M.master_loot.on_loot_closed()
-  M.master_loot_correlation_data.reset()
-  M.rolling_tip_popup.on_loot_closed()
-  M.roll_controller.loot_closed()
 end
 
 local function show_how_to_roll()

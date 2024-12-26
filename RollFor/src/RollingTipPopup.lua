@@ -5,11 +5,12 @@ if m.RollingTipPopup then return end
 
 local M = {}
 
+local getn = table.getn
 local blue = m.colors.blue
 local green = m.colors.green
 local white = m.colors.white
 
-function M.new( popup_builder, config )
+function M.new( loot_list, popup_builder, config )
   local popup
 
   local function create_popup()
@@ -131,8 +132,8 @@ function M.new( popup_builder, config )
 
   local function on_loot_opened()
     if m.is_player_master_looter() then
-      local count_items_to_loot = m.count_items_to_master_loot()
-      if count_items_to_loot == 0 then return end
+      local items_to_loot = getn( loot_list.get_items() )
+      if items_to_loot == 0 then return end
 
       show()
     end

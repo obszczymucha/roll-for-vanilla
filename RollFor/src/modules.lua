@@ -4,6 +4,14 @@ local M = RollFor
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
+---@class WowApi
+---@field GetLootSlotLink fun( slot: number ): string
+---@field GetLootSlotInfo fun( slot: number ):
+---    string, -- texture
+---    number, -- item
+---    number, -- quantity
+---    number  -- quality
+
 M.api = getfenv()
 M.lua = {
   ---@diagnostic disable-next-line: undefined-global
@@ -522,23 +530,6 @@ function M.roll_type_abbrev( roll_type )
     error( string.format( "RollType %s not handled.", roll_type ) )
     return M.colors.white( roll_type )
   end
-end
-
-function M.count_items_to_master_loot()
-  local item_count = M.api.GetNumLootItems()
-  local threshold = M.api.GetLootThreshold()
-  local count = 0
-
-  for slot = 1, item_count do
-    local _, _, _, quality = M.api.GetLootSlotInfo( slot )
-    if not quality then quality = 0 end
-
-    if quality >= threshold then
-      count = count + 1
-    end
-  end
-
-  return count
 end
 
 function M.possesive_case( player_name )
