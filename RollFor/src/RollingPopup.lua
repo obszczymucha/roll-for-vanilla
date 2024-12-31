@@ -18,41 +18,20 @@ local M = {}
 
 M.center_point = { point = "CENTER", relative_point = "CENTER", x = 0, y = 150 }
 
-function M.new( popup_builder, db, config )
+function M.new( popup_builder, db, config, roll_controller )
   local popup
   db.point = db.point or M.center_point
 
   local top_padding = 14
 
   local function create_popup()
-    local function is_out_of_bounds( point, x, y, frame_width, frame_height, screen_width, screen_height )
-      local left, right, top, bottom
+    local function is_out_of_bounds( x, y, frame_width, frame_height, screen_width, screen_height )
       local width = frame_width / 2
       local height = frame_height / 2
-
-      if point == "TOPLEFT" then
-        left = x - width
-        right = x + width
-        top = y + height
-        bottom = y - height
-      elseif point == "TOPRIGHT" then
-        left = x - width
-        right = x + width
-        top = y + height
-        bottom = y - height
-      elseif point == "BOTTOMLEFT" then
-        left = x - width
-        right = x + width
-        top = y + height
-        bottom = y - height
-      elseif point == "BOTTOMRIGHT" then
-        left = x - width
-        right = x + width
-        top = y + height
-        bottom = y - height
-      else
-        return false
-      end
+      local left = x - width
+      local right = x + width
+      local top = y + height
+      local bottom = y - height
 
       return left < 0 or
           right > screen_width or
@@ -63,9 +42,9 @@ function M.new( popup_builder, db, config )
     local function on_drag_stop()
       local width, height = popup:GetWidth(), popup:GetHeight()
       local screen_width, screen_height = m.api.GetScreenWidth(), m.api.GetScreenHeight()
-      local point, _, _, x, y = popup:get_anchor_point()
+      local _, _, _, x, y = popup:get_anchor_point()
 
-      if is_out_of_bounds( point, x, y, width, height, screen_width, screen_height ) then
+      if is_out_of_bounds( x, y, width, height, screen_width, screen_height ) then
         db.point = M.center_point
         popup:position( M.center_point )
 
@@ -93,17 +72,22 @@ function M.new( popup_builder, db, config )
     end
 
     local builder = popup_builder
-        :with_name( "RollForRollingFrame" )
-        :with_width( 180 )
-        :with_height( 100 )
-        :with_point( get_point() )
-        :with_bg_file( "Interface/Buttons/WHITE8x8" )
-        :with_sound()
-        :with_esc()
-        :with_backdrop_color( 0, 0, 0, 0.6 )
-        :with_gui_elements( m.GuiElements )
-        :with_frame_style( "PrincessKenny" )
-        :with_on_drag_stop( on_drag_stop )
+        :name( "RollForRollingFrame" )
+        :width( 180 )
+        :height( 100 )
+        :point( get_point() )
+        :bg_file( "Interface/Buttons/WHITE8x8" )
+        :sound()
+        :esc()
+        :backdrop_color( 0, 0, 0, 0.6 )
+        :gui_elements( m.GuiElements )
+        :frame_style( "PrincessKenny" )
+        :movable()
+        :on_drag_stop( on_drag_stop )
+        :on_hide( function()
+          roll_controller.rolling_popup_closed()
+        end )
+    -- :self_centered_anchor()
 
     popup = builder:build()
 
@@ -167,6 +151,12 @@ function M.new( popup_builder, db, config )
           frame:SetText( v.label or "" )
           frame:SetScale( v.scale or button_defaults.scale )
           frame:SetScript( "OnClick", v.on_click or function() end )
+
+          if v.disabled then
+            frame:Disable()
+          else
+            frame:Enable()
+          end
         elseif type == "info" then
           frame.tooltip_info = v.value
           frame:ClearAllPoints()
@@ -214,11 +204,21 @@ function M.new( popup_builder, db, config )
     popup:border_color( r, g, b, a )
   end
 
+  local function backdrop_color( _, r, g, b, a )
+    if not popup then
+      create_popup()
+    end
+
+    popup:backdrop_color( r, g, b, a )
+  end
+
   return {
     show = show,
     refresh = refresh,
     hide = hide,
-    border_color = border_color
+    border_color = border_color,
+    backdrop_color = backdrop_color,
+    get_frame = function() return popup end
   }
 end
 

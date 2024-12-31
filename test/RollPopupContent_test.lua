@@ -8,9 +8,9 @@ local types = require( "src/Types" )
 local tracker_mod = require( "src/RollTracker" )
 local controller_mod = require( "src/RollController" )
 require( "src/SoftResDataTransformer" )
-local ml_correlation_data = require( "src/MasterLootCorrelationData" )
 local softres_decorator = require( "src/SoftResPresentPlayersDecorator" )
 local softres_mod = require( "src/SoftRes" )
+local loot_list_mod = require( "mocks/LootList" )
 local new = require( "src/RollingPopupContent" ).new
 local ItemUtils = require( "src/ItemUtils" )
 local make_item = ItemUtils.make_item
@@ -25,6 +25,7 @@ local RT = types.RollType
 local RS = types.RollingStrategy
 local tracker = tracker_mod.new()
 local controller = controller_mod.new( tracker )
+local loot_list = loot_list_mod.new()
 
 local function p( player_name, player_class )
   return {
@@ -82,18 +83,21 @@ local function new_softres( group_roster, data )
   return result
 end
 
-local function new_mod( config, finish_early, cancel_roll, raid_roll )
+local function new_mod( config, finish_early, cancel_roll, raid_roll, roll_item, insta_raid_roll, select_player )
   local popup = mock_popup()
   local noop = function() end
   local mod = new(
     popup,
     controller,
     tracker,
+    loot_list,
     config or mock_config(),
     finish_early or noop,
     cancel_roll or noop,
     raid_roll or noop,
-    ml_correlation_data.new( ItemUtils )
+    roll_item or noop,
+    insta_raid_roll or noop,
+    select_player or noop
   )
 
   return popup, mod

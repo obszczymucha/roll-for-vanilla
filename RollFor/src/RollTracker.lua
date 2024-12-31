@@ -13,6 +13,14 @@ local clear_table = m.clear_table
 local RS = m.Types.RollingStrategy
 local RT = m.Types.RollType
 local S = m.Types.RollingStatus
+---@diagnostic disable-next-line: deprecated
+local getn = table.getn
+local debug_enabled = false
+
+local function dbg( message )
+  if not debug_enabled then return end
+  print( string.format( "RollTracker: %s", message ) )
+end
 
 function M.new()
   local status
@@ -54,6 +62,8 @@ function M.new()
   end
 
   local function add( player_name, player_class, roll_type, roll )
+    dbg( "add" )
+
     if current_iteration == 0 then return end
 
     local data = { player_name = player_name, player_class = player_class, roll_type = roll_type, roll = roll }
@@ -68,12 +78,40 @@ function M.new()
     sort( iteration.rolls )
   end
 
+  local function preview( rolling_strategy, item, count, info, required_rolling_players )
+    dbg( "preview" )
+    clear_table( iterations )
+    iterations.n = 0
+    current_iteration = 1
+    status = { type = S.Preview }
+    item_on_roll = item
+
+    if rolling_strategy == RS.SoftResRoll and required_rolling_players and getn( required_rolling_players ) == 1 then
+      status.winner = required_rolling_players[ 1 ]
+    end
+
+    table.insert( iterations, {
+      rolling_strategy = rolling_strategy,
+      count = count,
+      info = info,
+      rolls = {}
+    } )
+
+    for _, player in ipairs( required_rolling_players or {} ) do
+      for _ = 1, player.rolls or 1 do
+        add( player.name, player.class, rolling_strategy == RS.SoftResRoll and RT.SoftRes or RS.TieRoll )
+      end
+    end
+  end
+
   -- required_rolling_players should have { name = "", class = "" } structure
   local function start( rolling_strategy, item, count, info, seconds, required_rolling_players )
+    dbg( "start" )
     clear_table( iterations )
     iterations.n = 0
     current_iteration = 1
     status = { type = S.InProgress, seconds_left = seconds }
+
     item_on_roll = item
 
     table.insert( iterations, {
@@ -91,6 +129,7 @@ function M.new()
   end
 
   local function finish( winner )
+    dbg( "finish" )
     status = { type = S.Finished, winner = winner }
   end
 
@@ -99,6 +138,7 @@ function M.new()
   --- @param roll_type RollType The type of the roll.
   --- @param roll number The roll value.
   local function tie( required_rolling_players, roll_type, roll )
+    dbg( "tie" )
     current_iteration = current_iteration + 1
     status = { type = S.TieFound }
 
@@ -114,10 +154,12 @@ function M.new()
   end
 
   local function tie_start()
+    dbg( "tie_start" )
     status = { type = S.Waiting }
   end
 
   local function add_ignored( player_name, player_class, roll_type, roll, reason )
+    dbg( "add_ignored" )
     if current_iteration == 0 then return end
     iterations[ current_iteration ].ignored_rolls = iterations[ current_iteration ].ignored_rolls or {}
     local rolls = iterations[ current_iteration ].ignored_rolls
@@ -126,6 +168,8 @@ function M.new()
   end
 
   local function get()
+    dbg( "get" )
+
     return {
       item = item_on_roll,
       status = status,
@@ -134,16 +178,20 @@ function M.new()
   end
 
   local function tick( seconds_left )
+    dbg( "tick" )
+
     if status.type == S.InProgress then
       status.seconds_left = seconds_left
     end
   end
 
   local function waiting_for_rolls()
+    dbg( "waiting_for_rolls" )
     status.type = S.Waiting
   end
 
   local function cancel()
+    dbg( "cancel" )
     status.type = S.Canceled
   end
 
@@ -152,9 +200,12 @@ function M.new()
     iterations.n = 0
     current_iteration = 0
     status = nil
+    item_on_roll = nil
+    dbg( "cleared" )
   end
 
   return {
+    preview = preview,
     start = start,
     waiting_for_rolls = waiting_for_rolls,
     finish = finish,

@@ -49,7 +49,6 @@ M.msg = {
   enabled = M.colors.green( "enabled" ),
   locked = M.colors.red( "locked" ),
   unlocked = M.colors.green( "unlocked" ),
-  pfui = "|cff33ffccpf|cffffffffUI"
 }
 
 if M.api.RAID_CLASS_COLORS then
@@ -456,11 +455,6 @@ function M.get_addon_version()
   return result
 end
 
-function M.uses_pfui()
-  ---@diagnostic disable-next-line: undefined-global
-  return pfUI and pfUI.version and true or false
-end
-
 function M.clear_table( t )
   for k in pairs( t ) do
     t[ k ] = nil
@@ -562,6 +556,10 @@ end
 function M.get_item_texture( item_id )
   local _, _, _, _, _, _, _, _, texture = M.api.GetItemInfo( item_id )
   return texture
+end
+
+function M.pdump( o )
+  print( M.dump( o ) )
 end
 
 return M

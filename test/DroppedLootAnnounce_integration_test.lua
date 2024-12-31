@@ -499,8 +499,8 @@ function DroppedLootAnnounceIntegrationSpec:should_announce_all_sr_items_even_if
     item( "Dick", 111 ),
     item( "Chuj", 333, 2 ),
     item( "Dupa", 444, 3 ),
-    item( "Princess", 444, 2 ),
-    item( "Kenny", 555, 2 )
+    item( "Princess", 555, 2 ),
+    item( "Kenny", 666, 2 )
   )
   master_looter( "Psikutas" )
   loot_threshold( LootQuality.Uncommon )

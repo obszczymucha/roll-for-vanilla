@@ -37,7 +37,7 @@ function M.new( frame_builder )
         frame:SetPoint( "LEFT", popup.buttons_frame, "LEFT", 0, 0 )
       else
         frame:SetPoint( "LEFT", last_anchor, "RIGHT", button_padding, 0 )
-        total_width = total_width + button_padding
+        total_width = total_width + (button_padding * scale)
       end
 
       total_width = total_width + (width * scale)

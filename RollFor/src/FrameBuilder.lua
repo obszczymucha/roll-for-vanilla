@@ -11,26 +11,48 @@ local M = {}
 M.interface = {
 
 }
----@alias Frame table
+---@class Frame
+---@field add_line fun( line_type: string, modify_fn: function, padding: number ): table
+---@field clear fun()
+---@field border_color fun( r: number, g: number, b: number, a: number )
+---@field backdrop_color fun( r: number, g: number, b: number, a: number )
+---@field lock fun()
+---@field unlock fun()
+---@field position fun( point: table )
+---@field get_anchor_center fun(): table
+---@field get_anchor_point fun(): table
+---@field anchor fun( frame: Frame, point: string, relative_point: string, x: number, y: number )
+---@field Show fun()
+---@field Hide fun()
+---@field SetWidth fun( frame: Frame, width: number )
+---@field SetHeight fun( frame: Frame, height: number )
+---@field SetPoint fun( frame: Frame, point: string, relative_frame: Frame, relative_point: string, x: number, y: number )
+---@field GetScale fun(): number
+---@field GetWidth fun(): number
+---@field ClearAllPoints fun()
+
+---@alias Anchor table
 
 ---@class FrameBuilder
----@field with_name fun( self: FrameBuilder, name: string ): FrameBuilder
----@field with_height fun( self: FrameBuilder, height: number ): FrameBuilder
----@field with_width fun( self: FrameBuilder, width: number ): FrameBuilder
----@field with_point fun( self: FrameBuilder, p: table ): FrameBuilder
----@field with_sound fun( self: FrameBuilder ): FrameBuilder
----@field with_frame_level fun( self: FrameBuilder, frame_level: number ): FrameBuilder
----@field with_backdrop_color fun( self: FrameBuilder, r: number, g: number, b: number, a: number ): FrameBuilder
----@field with_bg_file fun( self: FrameBuilder, bg_file: string ): FrameBuilder
----@field with_esc fun( self: FrameBuilder ): FrameBuilder
----@field with_gui_elements fun( self: FrameBuilder, gui_elements: table ): FrameBuilder
----@field with_frame_style fun( self: FrameBuilder, frame_style: string ): FrameBuilder
----@field with_on_drag_stop fun( self: FrameBuilder, callback: function ): FrameBuilder
----@field with_movable fun( self: FrameBuilder ): FrameBuilder
----@field with_border_size fun( self: FrameBuilder, border_size: number ): FrameBuilder
----@field with_on_show fun( self: FrameBuilder, on_show: function ): FrameBuilder
----@field with_on_hide fun( self: FrameBuilder, on_hide: function ): FrameBuilder
----@field with_border_color fun( self: FrameBuilder, r: number, g: number, b: number, a: number ): FrameBuilder
+---@field name fun( self: FrameBuilder, name: string ): FrameBuilder
+---@field height fun( self: FrameBuilder, height: number ): FrameBuilder
+---@field width fun( self: FrameBuilder, width: number ): FrameBuilder
+---@field point fun( self: FrameBuilder, p: table ): FrameBuilder
+---@field sound fun( self: FrameBuilder ): FrameBuilder
+---@field frame_level fun( self: FrameBuilder, frame_level: number ): FrameBuilder
+---@field backdrop_color fun( self: FrameBuilder, r: number, g: number, b: number, a: number ): FrameBuilder
+---@field bg_file fun( self: FrameBuilder, bg_file: string ): FrameBuilder
+---@field esc fun( self: FrameBuilder ): FrameBuilder
+---@field gui_elements fun( self: FrameBuilder, gui_elements: table ): FrameBuilder
+---@field frame_style fun( self: FrameBuilder, frame_style: string ): FrameBuilder
+---@field on_drag_stop fun( self: FrameBuilder, callback: function ): FrameBuilder
+---@field movable fun( self: FrameBuilder ): FrameBuilder
+---@field border_size fun( self: FrameBuilder, border_size: number ): FrameBuilder
+---@field on_show fun( self: FrameBuilder, on_show: function ): FrameBuilder
+---@field on_hide fun( self: FrameBuilder, on_hide: function ): FrameBuilder
+---@field border_color fun( self: FrameBuilder, r: number, g: number, b: number, a: number ): FrameBuilder
+---@field self_centered_anchor fun( self: FrameBuilder ): FrameBuilder
+---@field scale fun( self: FrameBuilder, scale: number ): FrameBuilder
 ---@field build fun( self: FrameBuilder ): Frame
 
 ---@return FrameBuilder
@@ -40,7 +62,7 @@ function M.new()
   local lines = {}
   local is_dragging
 
-  local function create_popup()
+  local function create_frame()
     local function create_anchor()
       local anchor = m.api.CreateFrame( "Frame", nil, m.api.UIParent )
       anchor:SetWidth( 1 )
@@ -53,17 +75,22 @@ function M.new()
     end
 
     local function create_main_frame( anchor )
-      local frame = m.api.CreateFrame( "Frame", options.name, anchor )
+      local frame = m.api.CreateFrame( "Frame", options.name, m.api.UIParent )
       frame:Hide()
       frame:SetWidth( options.width or 280 )
       frame:SetHeight( options.height or 100 )
-      frame:SetPoint( "CENTER", anchor, "CENTER", 0, 0 )
+
+      if anchor then
+        frame:SetPoint( "CENTER", anchor, "CENTER", 0, 0 )
+      end
 
       if options.point then
         local p = options.point
-        anchor:SetPoint( p.point, m.api.UIParent, p.relative_point, p.x, p.y )
+        local f = anchor or frame
+
+        f:SetPoint( p.point, m.api.UIParent, p.relative_point, p.x, p.y )
       else
-        anchor:SetPoint( "CENTER", 0, 0 )
+        frame:SetPoint( "CENTER", anchor or m.api.UIParent, "CENTER", 0, 0 )
       end
 
       if options.frame_level then
@@ -108,7 +135,7 @@ function M.new()
     end
 
     local function configure_main_frame( frame, anchor )
-      if options.with_sound then
+      if options.sound then
         frame:SetScript( "OnShow", function()
           m.api.PlaySound( "igMainMenuOpen" )
           if options.on_show then options.on_show() end
@@ -116,7 +143,8 @@ function M.new()
 
         frame:SetScript( "OnHide", function()
           if is_dragging then
-            anchor:StopMovingOrSizing()
+            local f = anchor or frame
+            f:StopMovingOrSizing()
           end
 
           m.api.PlaySound( "igMainMenuClose" )
@@ -126,29 +154,36 @@ function M.new()
 
       if options.movable then
         frame:SetMovable( true )
+        frame:RegisterForDrag( "LeftButton" )
+        frame:SetScript( "OnDragStart", function()
+          if not frame:IsMovable() then return end
+          is_dragging = true
+
+          local f = anchor or frame
+          f:StartMoving()
+        end )
+        frame:SetScript( "OnDragStop", function()
+          is_dragging = false
+
+          local f = anchor or frame
+          f:StopMovingOrSizing()
+
+          if options.on_drag_stop then
+            options.on_drag_stop( frame )
+          end
+        end )
       else
         frame:SetMovable( false )
       end
 
       frame:EnableMouse( true )
 
-      if options.on_drag_stop then
-        frame:RegisterForDrag( "LeftButton" )
-        frame:SetScript( "OnDragStart", function()
-          if not frame:IsMovable() then return end
-          is_dragging = true
-          ---@diagnostic disable-next-line: undefined-global
-          anchor:StartMoving()
-        end )
-        frame:SetScript( "OnDragStop", function()
-          is_dragging = false
-          ---@diagnostic disable-next-line: undefined-global
-          anchor:StopMovingOrSizing(); options.on_drag_stop()
-        end )
-      end
-
       if options.esc then
         m.api.tinsert( m.api.UISpecialFrames, frame:GetName() )
+      end
+
+      if options.scale then
+        frame:SetScale( options.scale )
       end
     end
 
@@ -162,32 +197,32 @@ function M.new()
       end
     end
 
-    local function add_api_to( popup, anchor )
-      popup.add_line = function( line_type, modify_fn, padding )
-        local frame = get_from_cache( line_type )
+    local function add_api_to( frame, anchor )
+      frame.add_line = function( line_type, modify_fn, padding )
+        local line_frame = get_from_cache( line_type )
 
-        if not frame then
+        if not line_frame then
           local creator_fn = options.gui_elements and options.gui_elements[ line_type ] or nil
           if not creator_fn then return end
 
-          frame = creator_fn( popup )
-          frame.is_used = true
-          table.insert( frame_cache[ line_type ], frame )
+          line_frame = creator_fn( frame )
+          line_frame.is_used = true
+          table.insert( frame_cache[ line_type ], line_frame )
         else
-          frame.is_used = true
-          frame:Show()
+          line_frame.is_used = true
+          line_frame:Show()
         end
 
-        modify_fn( line_type, frame, lines )
-        local line = { line_type = line_type, padding = padding or 0, frame = frame }
+        modify_fn( line_type, line_frame, lines )
+        local line = { line_type = line_type, padding = padding or 0, frame = line_frame }
         table.insert( lines, line )
 
-        if popup.resize then popup:resize( lines ) end
+        if frame.resize then frame:resize( lines ) end
 
         return line
       end
 
-      popup.clear = function()
+      frame.clear = function()
         for _, line in ipairs( lines ) do
           line.frame:Hide()
           line.frame.is_used = false
@@ -197,152 +232,181 @@ function M.new()
         lines.n = 0
       end
 
-      popup.border_color = function( _, r, g, b, a )
-        popup:SetBackdropBorderColor( r, g, b, a )
+      frame.backdrop_color = function( _, r, g, b, a )
+        frame:SetBackdropColor( r, g, b, a )
       end
 
-      popup.lock = function()
-        popup:SetMovable( false )
+      frame.border_color = function( _, r, g, b, a )
+        frame:SetBackdropBorderColor( r, g, b, a )
       end
 
-      popup.unlock = function()
-        popup:SetMovable( true )
+      frame.lock = function()
+        frame:SetMovable( false )
       end
 
-      popup.position = function( _, point )
-        anchor:ClearAllPoints()
-        anchor:SetPoint( point.point, m.api.UIParent, point.relative_point, point.x, point.y )
+      frame.unlock = function()
+        frame:SetMovable( true )
       end
 
-      popup.get_anchor_center = function()
-        return anchor:GetCenter()
+      frame.position = function( _, point )
+        local f = anchor or frame
+
+        f:ClearAllPoints()
+        f:SetPoint( point.point, m.api.UIParent, point.relative_point, point.x, point.y )
       end
 
-      popup.get_anchor_point = function()
-        return anchor:GetPoint()
+      frame.get_anchor_center = function()
+        local f = anchor or frame
+
+        return f:GetCenter()
       end
 
-      popup.anchor = function( _, frame, point, relative_point, x, y )
-        frame:ClearAllPoints()
-        frame:SetPoint( point, anchor, relative_point, x, y )
+      frame.get_anchor_point = function()
+        local f = anchor or frame
+
+        return f:GetPoint()
+      end
+
+      frame.anchor = function( _, source_frame, point, relative_point, x, y )
+        if anchor then
+          source_frame:ClearAllPoints()
+          source_frame:SetPoint( point, anchor, relative_point, x, y )
+        else
+          source_frame:ClearAllPoints()
+          source_frame:SetPoint( point, m.api.UIParent, relative_point, x, y )
+        end
       end
     end
 
-    local anchor = create_anchor()
-    local frame = create_main_frame( anchor )
-    configure_main_frame( frame, anchor )
-    add_api_to( frame, anchor )
+    local self_centered_anchor = options.self_centered_anchor and create_anchor()
+    local frame = create_main_frame( self_centered_anchor )
+    configure_main_frame( frame, self_centered_anchor )
+    add_api_to( frame, self_centered_anchor )
 
-    return frame, anchor
+    return frame, self_centered_anchor
   end
 
-  local function with_name( self, name )
-    options.name = name
+  local function name( self, v )
+    options.name = v
     return self
   end
 
-  local function with_height( self, height )
-    options.height = height
+  local function height( self, v )
+    options.height = v
     return self
   end
 
-  local function with_width( self, width )
-    options.width = width
+  local function width( self, v )
+    options.width = v
     return self
   end
 
-  local function with_point( self, p )
+  local function point( self, p )
     options.point = { point = p.point, relative_point = p.relative_point, x = p.x, y = p.y }
     return self
   end
 
-  local function with_sound( self )
-    options.with_sound = true
+  local function sound( self )
+    options.sound = true
     return self
   end
 
-  local function with_frame_level( self, frame_level )
-    options.frame_level = frame_level
+  local function frame_level( self, v )
+    options.frame_level = v
     return self
   end
 
-  local function with_esc( self )
+  local function esc( self )
     options.esc = true
     return self
   end
 
+  ---@return Frame
+  ---@return Anchor
   local function build()
-    return create_popup()
+    return create_frame()
   end
 
-  local function with_backdrop_color( self, r, g, b, a )
+  local function backdrop_color( self, r, g, b, a )
     options.backdrop_color = { r = r, g = g, b = b, a = a }
     return self
   end
 
-  local function with_bg_file( self, bg_file )
-    options.bg_file = bg_file
+  local function bg_file( self, v )
+    options.bg_file = v
     return self
   end
 
-  local function with_gui_elements( self, gui_elements )
-    options.gui_elements = gui_elements
+  local function gui_elements( self, t )
+    options.gui_elements = t
     return self
   end
 
-  local function with_frame_style( self, frame_style )
-    options.frame_style = frame_style
+  local function frame_style( self, v )
+    options.frame_style = v
     return self
   end
 
-  local function with_on_drag_stop( self, callback )
+  local function on_drag_stop( self, callback )
     options.on_drag_stop = callback
     return self
   end
 
-  local function with_movable( self )
+  local function movable( self )
     options.movable = true
     return self
   end
 
-  local function with_border_size( self, border_size )
-    options.border_size = border_size
+  local function border_size( self, v )
+    options.border_size = v
     return self
   end
 
-  local function with_on_show( self, on_show )
-    options.on_show = on_show
+  local function on_show( self, f )
+    options.on_show = f
     return self
   end
 
-  local function with_on_hide( self, on_hide )
-    options.on_hide = on_hide
+  local function on_hide( self, f )
+    options.on_hide = f
     return self
   end
 
-  local function with_border_color( self, r, g, b, a )
+  local function border_color( self, r, g, b, a )
     options.border_color = { r = r, g = g, b = b, a = a }
     return self
   end
 
+  local function self_centered_anchor( self )
+    options.self_centered_anchor = true
+    return self
+  end
+
+  local function scale( self, v )
+    options.scale = v
+    return self
+  end
+
   return {
-    with_name = with_name,
-    with_height = with_height,
-    with_width = with_width,
-    with_point = with_point,
-    with_sound = with_sound,
-    with_frame_level = with_frame_level,
-    with_backdrop_color = with_backdrop_color,
-    with_bg_file = with_bg_file,
-    with_esc = with_esc,
-    with_gui_elements = with_gui_elements,
-    with_frame_style = with_frame_style,
-    with_on_drag_stop = with_on_drag_stop,
-    with_movable = with_movable,
-    with_border_size = with_border_size,
-    with_on_show = with_on_show,
-    with_on_hide = with_on_hide,
-    with_border_color = with_border_color,
+    name = name,
+    height = height,
+    width = width,
+    point = point,
+    sound = sound,
+    frame_level = frame_level,
+    backdrop_color = backdrop_color,
+    bg_file = bg_file,
+    esc = esc,
+    gui_elements = gui_elements,
+    frame_style = frame_style,
+    on_drag_stop = on_drag_stop,
+    movable = movable,
+    border_size = border_size,
+    on_show = on_show,
+    on_hide = on_hide,
+    border_color = border_color,
+    self_centered_anchor = self_centered_anchor,
+    scale = scale,
     build = build
   }
 end

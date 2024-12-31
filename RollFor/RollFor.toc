@@ -1,7 +1,7 @@
 ## Interface: 11200
 ## Title: RollFor
 ## Author: Obszczymucha
-## Version: 3.17
+## Version: 3.16
 ## Notes: An automated item roller with soft ressing support via raidres.fly.dev.
 ## SavedVariables: RollForDb
 ## SavedVariablesPerCharacter: RollForCharDb
@@ -52,18 +52,15 @@ src\MinimapButton.lua
 src\MasterLootWarning.lua
 src\AutoLoot.lua
 src\WinnerTracker.lua
-src\PfUiIntegrationDialog.lua
 src\FrameBuilder.lua
 src\PopupBuilder.lua
 src\LootAwardPopup.lua
-src\MasterLootCorrelationData.lua
 src\MasterLootCandidates.lua
 src\WinnerHistory.lua
 src\NewGroupEvent.lua
 src\AutoGroupLoot.lua
 src\BossList.lua
 src\AutoMasterLoot.lua
-src\RollingTipPopup.lua
 src\RollTracker.lua
 src\RollController.lua
 src\RollingPopup.lua
@@ -75,5 +72,6 @@ src\WelcomePopup.lua
 src\InstaRaidRollRollingLogic.lua
 src\EventBus.lua
 src\LootList.lua
-src\LootListSoftresDecorator.lua
+src\SoftResLootListDecorator.lua
+src\LootFrame.lua
 main.lua

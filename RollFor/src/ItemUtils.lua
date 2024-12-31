@@ -39,6 +39,7 @@ M.interface = {
 ---@field coin boolean -- always true
 ---@field texture string
 ---@field amount_text string
+---@field slot number
 
 ---@class ItemUtils
 ---@field get_item_id fun( item_link: ItemLink ): number | nil
@@ -46,8 +47,8 @@ M.interface = {
 ---@field parse_all_links fun( item_links: string ): ItemLink[]
 ---@field get_tooltip_link fun( item_link: ItemLink ): TooltipItemLink
 ---@field make_item fun( id: number, name: string, link: ItemLink, quality: ItemQuality, texture: string ): Item
----@field make_distributable_item fun( id: number, name: string, link: ItemLink, quality: ItemQuality, texture: string, slot: number ): DistributableItem
----@field make_coin fun( texture: string, amount_text: string ): Coin
+---@field make_distributable_item fun( id: number, name: string, link: ItemLink, tooltip_link: TooltipItemLink, quality: ItemQuality, texture: string, slot: number ): DistributableItem
+---@field make_coin fun( texture: string, amount_text: string, slot: number ): Coin
 
 ---@param item_link ItemLink
 ---@return number | nil
@@ -98,16 +99,17 @@ end
 ---@param id number
 ---@param name string
 ---@param link ItemLink
+---@param tooltip_link TooltipItemLink
 ---@param quality ItemQuality | nil
 ---@param texture string | nil
 ---@param slot number | nil
 ---@return DistributableItem
-function M.make_distributable_item( id, name, link, quality, texture, slot )
-  return { id = id, name = name, link = link, quality = quality, texture = texture, slot = slot }
+function M.make_distributable_item( id, name, link, tooltip_link, quality, texture, slot )
+  return { id = id, name = name, link = link, tooltip_link = tooltip_link, quality = quality, texture = texture, slot = slot }
 end
 
-function M.make_coin( texture, amount_text )
-  return { coin = true, texture = texture, amount_text = amount_text }
+function M.make_coin( texture, amount_text, slot )
+  return { coin = true, texture = texture, amount_text = amount_text, slot = slot }
 end
 
 m.ItemUtils = M

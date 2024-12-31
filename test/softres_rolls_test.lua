@@ -31,7 +31,6 @@ local award = utils.award
 local trade_with = utils.trade_with
 local trade_items = utils.trade_items
 local trade_complete = utils.trade_complete
-local master_loot = utils.master_loot
 local confirm_master_looting = utils.confirm_master_looting
 local clear_dropped_items_db = utils.clear_dropped_items_db
 local loot_threshold = utils.loot_threshold
@@ -400,7 +399,8 @@ end
 
 function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_ressed_already_received_the_item_via_master_loot()
   -- Given
-  dropped( item( "Hearthstone", 123 ), item( "Hearthstone", 123 ) )
+  local dropped_item = item( "Hearthstone", 123 )
+  dropped( dropped_item, item( "Hearthstone", 123 ) )
   clear_dropped_items_db()
   master_looter( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha", "Ponpon" )
@@ -410,11 +410,15 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   mock_alt_key_pressed( false )
   mock_control_key_pressed( false )
   local link = item_link( "Heartstone", 123 )
+  local rf = clear_dropped_items_db()
+  rf.db.awarded_loot = {}
 
   -- When
   loot()
   roll_for( "Hearthstone", 1, 123 )
-  master_loot( link, "Obszczymucha" )
+  utils.mock( "GiveMasterLoot", function() end )
+  rf.master_loot.on_confirm( { name = "Obszczymucha", value = 12 }, dropped_item )
+  loot_event_facade.notify( "LootSlotCleared", 1 )
   confirm_master_looting( loot_event_facade, { name = "Obszczymucha", value = 12 }, link )
   roll_for( "Hearthstone", 1, 123 )
   roll( "Ponpon", 1 )
@@ -463,7 +467,8 @@ end
 function SoftResIntegrationSpec:should_not_allow_a_sr_winner_to_roll_again_if_the_same_item_drops()
   -- Given
   loot_list.source_guid = "Jin'do the Hexxer"
-  dropped( item( "Primal Hakkari Idol", 22637 ) )
+  local dropped_item = item( "Primal Hakkari Idol", 22637 )
+  dropped( dropped_item )
   local rf = clear_dropped_items_db()
   rf.db.awarded_loot = {}
   master_looter( "Jogobobek" )
@@ -471,7 +476,6 @@ function SoftResIntegrationSpec:should_not_allow_a_sr_winner_to_roll_again_if_th
   soft_res( sr( "Trololoo", 22637 ), sr( "Elizalee", 22637 ), sr( "Elizalee", 22637 ), sr( "Bomanz", 22637 ) )
   mock_blizzard_loot_buttons()
   modifier_keys_not_pressed()
-  local link = item_link( "Primal Hakkari Idol", 22637 )
 
   -- When the first idol drops.
   -- Trololoo 100, Elizalee 35, Elizalee 27, Bomanz - passed
@@ -485,9 +489,8 @@ function SoftResIntegrationSpec:should_not_allow_a_sr_winner_to_roll_again_if_th
   roll( "Elizalee", 27 )
   repeating_tick( 6 )
   run_command( "FR" )
-  rf.master_loot_correlation_data.set( link, 1 )
-  rf.master_loot.on_confirm( { name = "Trololoo", value = 12 }, link )
   utils.mock( "GiveMasterLoot", function() end )
+  rf.master_loot.on_confirm( { name = "Trololoo", value = 12 }, dropped_item )
   loot_event_facade.notify( "LootSlotCleared", 1 )
   loot_event_facade.notify( "LootClosed" )
 

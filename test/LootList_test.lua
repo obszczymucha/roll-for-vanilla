@@ -9,6 +9,7 @@ require( "src/WowApi" )
 local LootFacade = require( "test/mocks/LootFacade" )
 require( "src/ItemUtils" )
 require( "src/LootList" )
+require( "src/SoftResLootListDecorator" )
 
 local getn = table.getn
 local LootQuality = utils.LootQuality
@@ -17,13 +18,19 @@ local mock_value, mock_values = utils.mock_value, utils.mock_values
 
 LootListSpec = {}
 
+local softres = {
+  get = function() return {} end,
+  is_item_hardressed = function() return false end
+}
+
 function LootListSpec.should_return_a_coin_entry_if_its_the_only_one_that_dropped()
   -- Given
   local loot_facade = LootFacade.new()
   loot_facade.get_item_count = mock_value( 1 )
   loot_facade.is_coin = mock_value( true )
   loot_facade.get_info = mock_value( { texture = "Interface\\Icons\\INV_Misc_Coin_06", name = "64 Copper", quantity = 0, quality = 0 } )
-  local loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, softres )
 
   -- When
   LootFacade.notify( "LootOpened" )
@@ -44,7 +51,8 @@ function LootListSpec.should_return_an_item_entry_if_its_the_only_one_that_dropp
   local link = item_link( "Big item", 123 )
   loot_facade.get_link = mock_value( link )
   loot_facade.get_info = mock_value( { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Epic } )
-  local loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, softres )
 
   -- When
   LootFacade.notify( "LootOpened" )
@@ -61,7 +69,7 @@ function LootListSpec.should_return_an_item_entry_if_its_the_only_one_that_dropp
   eq( result[ 1 ].quality, LootQuality.Epic )
 end
 
-function LootListSpec.should_sort_the_coin_first_and_then_the_item()
+function LootListSpec.should_sort_the_coin_last()
   -- Given
   local loot_facade = LootFacade.new()
   loot_facade.get_item_count = mock_value( 2 )
@@ -72,7 +80,8 @@ function LootListSpec.should_sort_the_coin_first_and_then_the_item()
     { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Epic },
     { texture = "coin texture", name = "1337 Copper", quantity = 0, quality = 0 }
   )
-  local loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, softres )
 
   -- When
   LootFacade.notify( "LootOpened" )
@@ -80,16 +89,16 @@ function LootListSpec.should_sort_the_coin_first_and_then_the_item()
 
   -- Then
   eq( getn( result ), 2 )
-  eq( result[ 1 ].coin, true )
-  eq( result[ 1 ].texture, "coin texture" )
-  eq( result[ 1 ].amount_text, "1337 Copper" )
-  eq( result[ 2 ].coin, nil )
-  eq( result[ 2 ].id, 123 )
-  eq( result[ 2 ].name, "Big item" )
-  eq( result[ 2 ].texture, "tex" )
-  eq( result[ 2 ].slot, 1 )
-  eq( result[ 2 ].link, link )
-  eq( result[ 2 ].quality, LootQuality.Epic )
+  eq( result[ 1 ].coin, nil )
+  eq( result[ 1 ].id, 123 )
+  eq( result[ 1 ].name, "Big item" )
+  eq( result[ 1 ].texture, "tex" )
+  eq( result[ 1 ].slot, 1 )
+  eq( result[ 1 ].link, link )
+  eq( result[ 1 ].quality, LootQuality.Epic )
+  eq( result[ 2 ].coin, true )
+  eq( result[ 2 ].texture, "coin texture" )
+  eq( result[ 2 ].amount_text, "1337 Copper" )
 end
 
 function LootListSpec.should_sort_the_items_by_quality_and_then_name()
@@ -104,7 +113,8 @@ function LootListSpec.should_sort_the_items_by_quality_and_then_name()
     { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Epic },
     { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Rare }
   )
-  local loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, softres )
 
   -- When
   LootFacade.notify( "LootOpened" )

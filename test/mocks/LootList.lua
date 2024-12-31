@@ -14,9 +14,18 @@ function M.new()
     return M.source_guid or "PrincessKenny"
   end
 
+  local function find_item( item_id )
+    for _, item in ipairs( M.items or {} ) do
+      if item.id == item_id then
+        return item
+      end
+    end
+  end
+
   return {
     get_items = get_items,
     get_source_guid = get_source_guid,
+    find_item = find_item
   }
 end
 

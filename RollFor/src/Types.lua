@@ -114,6 +114,7 @@ end
 ---| "Finished"
 ---| "Canceled"
 local RollingStatus = {
+  Preview = "Preview",
   InProgress = "InProgress",
   TieFound = "TieFound",
   Waiting = "Waiting",
@@ -136,6 +137,26 @@ local LootAwardError = {
 }
 
 M.LootAwardError = LootAwardError
+
+---@class ItemQualityStr
+---@field Poor number
+---@field Common number
+---@field Uncommon number
+---@field Rare number
+---@field Epic number
+---@field Legendary number
+
+---@type ItemQualityStr
+local ItemQuality = {
+  Poor = 0,
+  Common = 1,
+  Uncommon = 2,
+  Rare = 3,
+  Epic = 4,
+  Legendary = 5
+}
+
+M.ItemQuality = ItemQuality
 
 m.Types = M
 return M

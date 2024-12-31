@@ -51,22 +51,16 @@ local function create_main_frame()
   frame:Hide()
   frame:SetBackdrop( {
     bgFile = "Interface\\Tooltips\\UI-tooltip-Background",
-    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-    tile = true,
-    tileSize = 16,
-    edgeSize = 16,
-    insets = { left = 4, right = 4, top = 4, bottom = 4 }
+    edgeFile = "Interface\\Buttons\\WHITE8X8",
+    tile = false,
+    tileSize = 0,
+    edgeSize = 1,
+    insets = { left = 0, right = 0, top = 0, bottom = 0 }
   } )
-  frame:SetBackdropColor( 0, 0, 0, 1 )
-  frame:SetFrameStrata( "DIALOG" )
 
-  if m.uses_pfui() then
-    ---@diagnostic disable-next-line: undefined-global
-    local button = pfLootButton1
-    if button then
-      frame:SetFrameLevel( button:GetFrameLevel() + 1 )
-    end
-  end
+  frame:SetBackdropColor( 0, 0, 0, 0.3 )
+  frame:SetFrameStrata( "DIALOG" )
+  frame:SetBackdropBorderColor( 0.851, 0.553, 0.341, 0.3 )
 
   frame:SetWidth( 100 )
   frame:SetHeight( 100 )
@@ -156,7 +150,7 @@ local function create_button( parent, index, rows )
   return frame
 end
 
-function M.new( winner_tracker, master_loot_correlation_data, roll_controller, config )
+function M.new( winner_tracker, roll_controller, config )
   local m_frame
   local m_buttons = {}
 
@@ -258,130 +252,6 @@ function M.new( winner_tracker, master_loot_correlation_data, roll_controller, c
     if m_frame then m_frame:Hide() end
   end
 
-  local function anchor( frame )
-    m_frame:SetPoint( "TOPLEFT", frame, "BOTTOMLEFT", 0, 0 )
-  end
-
-  local function prepare_rolling_slash_command( slot, slash_command )
-    local item_link = m.api.GetLootSlotLink( slot )
-    master_loot_correlation_data.set( item_link, slot )
-    m.api.ChatFrameEditBox:Show()
-    m.api.ChatFrameEditBox:SetText( string.format( "%s %s", slash_command, item_link ) )
-  end
-
-  local function hook_loot_buttons( reset_confirmation, normal_loot, show_loot_candidates_frame, hide_fn )
-    for i = 1, m.api.LOOTFRAME_NUMBUTTONS do
-      local name = "LootButton" .. i
-      local button = _G[ name ]
-
-      if not button.OriginalOnClick then button.OriginalOnClick = button:GetScript( "OnClick" ) end
-
-      button:SetScript( "OnClick", function()
-        ---@diagnostic disable-next-line: undefined-global
-        local self = button
-        local slot = self.slot
-        reset_confirmation()
-
-        local alt, ctrl, shift = m.get_all_key_modifiers()
-
-        if shift and not alt and not ctrl then
-          prepare_rolling_slash_command( slot, m.Types.RollSlashCommand.NormalRoll )
-          return
-        end
-
-        if alt and not ctrl and not shift then
-          prepare_rolling_slash_command( slot, m.Types.RollSlashCommand.RaidRoll )
-          return
-        end
-
-        if shift and alt and not ctrl and config.insta_raid_roll() then
-          prepare_rolling_slash_command( slot, m.Types.RollSlashCommand.InstaRaidRoll )
-          return
-        end
-
-        if ctrl and not alt and not shift then
-          local item_link = m.api.GetLootSlotLink( slot )
-          m.api.DressUpItemLink( item_link )
-          return
-        end
-
-        if m.api.LootSlotIsItem( slot ) then
-          local item_link = m.api.GetLootSlotLink( slot )
-          local texture = m.api.GetLootSlotInfo( slot )
-          local item_id = m.ItemUtils.get_item_id( item_link )
-          local item_name = m.ItemUtils.get_item_name( item_link )
-          local item = { id = item_id, link = item_link, name = item_name, texture = texture }
-
-          show_loot_candidates_frame( slot, item, button )
-          return
-        end
-
-        hide_fn()
-        normal_loot( self )
-      end )
-    end
-  end
-
-  local function hook_pfui_loot_buttons( reset_confirmation, normal_loot, show_loot_candidates_frame, hide_fn )
-    for i = 1, m.api.LOOTFRAME_NUMBUTTONS do
-      local name = "pfLootButton" .. i
-      local button = _G[ name ]
-
-      if button then
-        if not button.OriginalOnClick then button.OriginalOnClick = button:GetScript( "OnClick" ) end
-
-        button:SetScript( "OnClick", function()
-          ---@diagnostic disable-next-line: undefined-global
-          local self = button
-          local slot = self:GetID()
-          reset_confirmation()
-
-          local alt, ctrl, shift = m.get_all_key_modifiers()
-
-          if shift and not alt and not ctrl then
-            prepare_rolling_slash_command( slot, m.Types.RollSlashCommand.NormalRoll )
-            return
-          end
-
-          if alt and not ctrl and not shift then
-            prepare_rolling_slash_command( slot, m.Types.RollSlashCommand.RaidRoll )
-            return
-          end
-
-          if shift and alt and not ctrl and config.insta_raid_roll() then
-            prepare_rolling_slash_command( slot, m.Types.RollSlashCommand.InstaRaidRoll )
-            return
-          end
-
-          if ctrl and not alt and not shift then
-            local item_link = m.api.GetLootSlotLink( slot )
-            m.api.DressUpItemLink( item_link )
-            return
-          end
-
-          if alt or ctrl or shift then
-            button.OriginalOnClick()
-            return
-          end
-
-          if m.api.LootSlotIsItem( slot ) then
-            local item_link = m.api.GetLootSlotLink( slot )
-            local texture = m.api.GetLootSlotInfo( slot )
-            local item_id = m.ItemUtils.get_item_id( item_link )
-            local item_name = m.ItemUtils.get_item_name( item_link )
-            local item = { id = item_id, link = item_link, name = item_name, texture = texture }
-
-            show_loot_candidates_frame( slot, item, button )
-            return
-          end
-
-          hide_fn()
-          normal_loot( self )
-        end )
-      end
-    end
-  end
-
   winner_tracker.subscribe_for_rolling_started( clear_winners )
   winner_tracker.subscribe_for_winner_found( mark_winner )
 
@@ -401,15 +271,16 @@ function M.new( winner_tracker, master_loot_correlation_data, roll_controller, c
     resize_frame( total, rows )
   end )
 
+  roll_controller.subscribe( "award_loot", hide )
+  roll_controller.subscribe( "start", hide )
+
   return {
-    hook_loot_buttons = hook_loot_buttons,
-    hook_pfui_loot_buttons = hook_pfui_loot_buttons,
     restore_loot_buttons = restore_loot_buttons,
     create = create,
     create_candidate_frames = create_candidate_frames,
     show = show,
     hide = hide,
-    anchor = anchor,
+    get_frame = function() return m_frame end
   }
 end
 

@@ -299,6 +299,7 @@ function M.mock_api()
 
   M.loot_threshold( 2 )
   M.mock_messages()
+  M.mock_loot_frame()
 end
 
 function M.modules()
@@ -493,6 +494,10 @@ function M.dump( o )
   return s .. "}"
 end
 
+function M.pdump( o )
+  print( M.dump( o ) )
+end
+
 function M.flatten( target, source )
   if type( target ) ~= "table" then return end
 
@@ -620,6 +625,13 @@ function M.force_require( name )
   return require( name )
 end
 
+function M.mock_loot_frame()
+  M.mock_object( "LootFrame", {
+    GetFrameLevel = function() return 10 end,
+    UnregisterAllEvents = function() end,
+  } )
+end
+
 function M.player( name, config )
   if config then
     config()
@@ -632,9 +644,7 @@ function M.player( name, config )
   m_target = nil
   M.mock_unit_name()
   M.mock( "IsInGroup", false )
-  M.mock_object( "LootFrame", {
-    GetFrameLevel = function() return 10 end
-  } )
+  M.mock_loot_frame()
   local rf = M.load_roll_for()
   M.fire_event( "PLAYER_ENTERING_WORLD" )
 
@@ -774,9 +784,7 @@ function M.load_real_stuff( req )
   r( "src/MasterLootWarning" )
   r( "src/AutoLoot" )
   r( "src/WinnerTracker" )
-  r( "src/PfUiIntegrationDialog" )
   r( "src/LootAwardPopup" )
-  r( "src/MasterLootCorrelationData" )
   r( "src/MasterLootCandidates" )
   r( "src/WinnerHistory" )
   r( "src/NewGroupEvent" )
@@ -785,7 +793,6 @@ function M.load_real_stuff( req )
   r( "src/AutoMasterLoot" )
   r( "src/FrameBuilder" )
   r( "src/PopupBuilder" )
-  r( "src/RollingTipPopup" )
   r( "src/RollTracker" )
   r( "src/RollController" )
   r( "src/RollingPopup" )
@@ -795,6 +802,8 @@ function M.load_real_stuff( req )
   r( "src/WelcomePopup" )
   r( "src/InstaRaidRollRollingLogic" )
   r( "src/LootList" )
+  r( "src/SoftResLootListDecorator" )
+  r( "src/LootFrame" )
   -- r( "Libs/LibDeflate/LibDeflate" )
   r( "src/Json" )
   r( "main" )
@@ -974,17 +983,17 @@ function M.recipient_trades_items( trade_tracker, ... )
   end
 end
 
-local function get_player_frame_from_master_looter_frame( player_name )
-  for i = 1, 40 do
-    local button = _G[ "RollForLootFrameButton" .. i ]
-
-    if button and button.player and button.player.name == player_name then
-      return button
-    end
-  end
-end
-
-function M.master_loot( item_link, player_name )
+-- local function get_player_frame_from_master_looter_frame( player_name )
+--   for i = 1, 40 do
+--     local button = _G[ "RollForLootFrameButton" .. i ]
+--
+--     if button and button.player and button.player.name == player_name then
+--       return button
+--     end
+--   end
+-- end
+--
+function M.master_loot( item_link )
   M.mock( "IsModifiedClick", false )
   M.mock( "CloseDropDownMenus", function() end )
   M.mock( "GetLootSlotLink", function() return item_link end )
@@ -994,8 +1003,8 @@ function M.master_loot( item_link, player_name )
   button.slot = 1
   M.mock_object( "LootFrame", {} )
   button:Click()
-  local player_frame = get_player_frame_from_master_looter_frame( player_name )
-  player_frame:Click()
+  -- local player_frame = get_player_frame_from_master_looter_frame( player_name )
+  -- player_frame:Click()
 end
 
 function M.mock_softres_gui()

@@ -26,21 +26,22 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
 
   local function create_popup()
     local frame = popup_builder
-        :with_name( "RollForLootAssignmentFrame" )
-        :with_width( 280 )
-        :with_height( 100 )
-        :with_sound()
-        :with_border_size( 16 )
-        :with_esc()
-        :with_gui_elements( m.GuiElements )
-        :with_frame_style( "PrincessKenny" )
-        :with_on_show( function()
+        :name( "RollForLootAssignmentFrame" )
+        :width( 280 )
+        :height( 100 )
+        :sound()
+        :border_size( 16 )
+        :esc()
+        :gui_elements( m.GuiElements )
+        :frame_style( "PrincessKenny" )
+        :on_show( function()
           ---@diagnostic disable-next-line: undefined-global
           local rolling_frame = RollForRollingFrame
           if rolling_frame then
             rolling_frame:Hide()
           end
         end )
+        :self_centered_anchor()
         :build()
 
     frame:SetFrameStrata( "DIALOG" )
@@ -56,6 +57,17 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
     local alpha = 0.6
 
     popup:border_color( color.r * multiplier, color.g * multiplier, color.b * multiplier, alpha )
+  end
+
+  local function abort()
+    if not popup then return end
+    if popup then popup:Hide() end
+
+    if data_for_error then
+      roll_controller.award_aborted( data_for_error.item )
+    end
+
+    data_for_error = nil
   end
 
   local function make_content( item, player, rolling_strategy, error )
@@ -101,7 +113,7 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
           winning_player.value = p and p.value
         end
 
-        if confirm_award then confirm_award( winning_player, item.link ) end
+        if confirm_award then confirm_award( winning_player, item ) end
       end
     } )
 
@@ -109,10 +121,7 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
       type = "button",
       label = "No",
       width = 90,
-      on_click = function()
-        popup:Hide()
-        roll_controller.award_aborted()
-      end
+      on_click = abort
     } )
 
     return content
@@ -201,9 +210,9 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
   end
 
   roll_controller.subscribe( "start", hide )
-  roll_controller.subscribe( "loot_closed", hide )
   roll_controller.subscribe( "loot_awarded", hide )
   roll_controller.subscribe( "award_loot", show )
+  roll_controller.subscribe( "loot_closed", abort )
   roll_controller.subscribe( "player_already_has_unique_item", player_already_has_unique_item )
   roll_controller.subscribe( "player_has_full_bags", player_has_full_bags )
   roll_controller.subscribe( "player_not_found", player_not_found )

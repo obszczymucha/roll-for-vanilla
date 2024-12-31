@@ -137,6 +137,14 @@ function M.new( loot_list, api, db, config )
     show_usage()
   end
 
+  local function loot_item( slot )
+    local index = find_my_candidate_index()
+
+    if index then
+      api().GiveMasterLoot( slot, index )
+    end
+  end
+
   _G[ "SLASH_RFAL1" ] = "/rfal"
   _G[ "SlashCmdList" ][ "RFAL" ] = on_command
 
@@ -144,7 +152,8 @@ function M.new( loot_list, api, db, config )
     on_loot_opened = on_loot_opened,
     add = add,
     remove = remove,
-    clear = clear
+    clear = clear,
+    loot_item = loot_item
   }
 end
 

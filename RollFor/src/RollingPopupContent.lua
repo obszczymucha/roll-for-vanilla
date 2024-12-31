@@ -61,7 +61,19 @@ function M.the_only_sr_content( winner )
   return { type = "text", value = string.format( "%s is the only one %s.", player, soft_ressing ), padding = top_padding }
 end
 
-function M.new( popup, roll_controller, roll_tracker, config, finish_early, cancel_roll, raid_roll, master_loot_correlation_data )
+function M.new(
+    popup,
+    roll_controller,
+    roll_tracker,
+    loot_list,
+    config,
+    finish_early,
+    cancel_roll,
+    raid_roll,
+    roll_item,
+    insta_raid_roll,
+    select_player
+)
   local function rolls_content( result, rolls )
     for i = 1, getn( rolls ) do
       local roll = rolls[ i ]
@@ -109,10 +121,31 @@ function M.new( popup, roll_controller, roll_tracker, config, finish_early, canc
   end
 
   local function the_only_softres_winner( data, current_iteration )
-    return data.status.type == S.Finished and data.status.winner and not data.status.winner.roll and softres_roll( current_iteration )
+    return data.status.type == S.Finished and data.status.winner and not data.status.winner.roll and softres_roll( current_iteration ) or
+        data.status.type == S.Preview and data.item.sr_players and getn( data.item.sr_players ) == 1
   end
 
-  local function generate_content( data, current_iteration, award_button )
+  local function award_button( data )
+    return { type = "button", label = "Award", width = 80, on_click = function() roll_controller.award_loot( data.status.winner, data.item ) end }
+  end
+
+  local function select_player_button( data )
+    return { type = "button", label = "Award...", width = 90, on_click = function() select_player( data.item ) end }
+  end
+
+  -- local function free_roll_button( data )
+  --   return { type = "button", label = "Free roll", width = 90, on_click = function() free_roll_item( data.item.link ) end }
+  -- end
+  --
+  -- local function loot_yourself( data )
+  --   return { type = "button", label = "Loot", width = 55, on_click = function() loot_to_yourself( data.item.slot ) end }
+  -- end
+
+  local function roll_button( data )
+    return { type = "button", label = "Roll", width = 70, on_click = function() roll_item( data.item.link ) end }
+  end
+
+  local function generate_content( data, current_iteration, show_award_button )
     local result = {}
     local roll_count = current_iteration and current_iteration.rolls and getn( current_iteration.rolls ) or 0
 
@@ -121,12 +154,14 @@ function M.new( popup, roll_controller, roll_tracker, config, finish_early, canc
     if the_only_softres_winner( data, current_iteration ) then
       table.insert( result, M.the_only_sr_content( data.status.winner ) )
 
-      if award_button then
-        table.insert( result,
-          { type = "button", label = "Award", width = 90, on_click = function() roll_controller.award_loot( data.status.winner, data.item ) end } )
+      if show_award_button then
+        table.insert( result, award_button( data ) )
+        -- table.insert( result, free_roll_button( data ) )
+        -- table.insert( result, select_player_button( data ) )
+      else
+        table.insert( result, { type = "button", label = "Close", width = 90, on_click = function() popup:hide() end } )
       end
 
-      table.insert( result, { type = "button", label = "Close", width = 90, on_click = function() popup:hide() end } )
       return result
     end
 
@@ -147,10 +182,7 @@ function M.new( popup, roll_controller, roll_tracker, config, finish_early, canc
           { type = "info", value = string.format( "Use %s to enable auto raid-roll.", blue( "/rf config auto-rr" ) ), anchor = "RollForRollingFrame" } )
       end
 
-      if award_button then
-        table.insert( result,
-          { type = "button", label = "Award", width = 90, on_click = function() roll_controller.award_loot( data.status.winner, data.item ) end } )
-      end
+      if show_award_button then table.insert( result, award_button( data ) ) end
 
       if config.raid_roll_again() then
         table.insert( result, { type = "button", label = "Raid roll again", width = 130, on_click = function() raid_roll( data.item.link ) end } )
@@ -164,10 +196,7 @@ function M.new( popup, roll_controller, roll_tracker, config, finish_early, canc
     if insta_raid_roll_winner( data, current_iteration ) then
       table.insert( result, M.insta_raid_roll_winner_content( data.status.winner ) )
 
-      if award_button then
-        table.insert( result,
-          { type = "button", label = "Award", width = 90, on_click = function() roll_controller.award_loot( data.status.winner, data.item ) end } )
-      end
+      if show_award_button then table.insert( result, award_button( data ) ) end
 
       table.insert( result, { type = "button", label = "Close", width = 90, on_click = function() popup:hide() end } )
 
@@ -200,10 +229,7 @@ function M.new( popup, roll_controller, roll_tracker, config, finish_early, canc
     if roll_winner( data ) then
       table.insert( result, M.roll_winner_content( data.status.winner, current_iteration and current_iteration.rolling_strategy ) )
 
-      if award_button then
-        table.insert( result,
-          { type = "button", label = "Award", width = 90, on_click = function() roll_controller.award_loot( data.status.winner, data.item ) end } )
-      end
+      if show_award_button then table.insert( result, award_button( data ) ) end
 
       if not softres_roll( current_iteration ) then
         table.insert( result, { type = "button", label = "Raid roll", width = 90, on_click = function() raid_roll( data.item.link ) end } )
@@ -230,6 +256,26 @@ function M.new( popup, roll_controller, roll_tracker, config, finish_early, canc
       return result
     end
 
+    if data.item.hr then
+      table.insert( result, { type = "text", value = string.format( "This item is %s.", red( "hard-ressed" ) ), padding = top_padding } )
+      table.insert( result, select_player_button( data ) )
+      -- table.insert( result, free_roll_button( data ) )
+      return result
+    end
+
+    if data.status.type == S.Preview and roll_count == 0 then
+      table.insert( result, roll_button( data ) )
+      table.insert( result, { type = "button", label = "Insta RR", width = 80, on_click = function() insta_raid_roll( data.item.link ) end } )
+      table.insert( result, select_player_button( data ) )
+
+      return result
+    end
+
+    if data.status.type == S.Preview then
+      table.insert( result, roll_button( data ) )
+      return result
+    end
+
     return result
   end
 
@@ -243,21 +289,16 @@ function M.new( popup, roll_controller, roll_tracker, config, finish_early, canc
 
     if not data or not data.status or not data.item then return end
 
-    if data.status.type == S.Finished and current_iteration and (current_iteration.rolling_strategy == RS.RaidRoll or current_iteration.rolling_strategy == RS.InstaRaidRoll) then
-      local slot = master_loot_correlation_data.get( data.item.link )
+    local loot_item = loot_list.find_item( data.item.id )
 
-      -- This confirms that we can safely distribute the item.
-      if slot then
-        popup:hide()
-        roll_controller.award_loot( data.status.winner, data.item, current_iteration.rolling_strategy )
-        return
-      end
+    if loot_item and data.status.type == S.Finished and current_iteration and (current_iteration.rolling_strategy == RS.RaidRoll or current_iteration.rolling_strategy == RS.InstaRaidRoll) then
+      popup:hide()
+      roll_controller.award_loot( data.status.winner, data.item, current_iteration.rolling_strategy )
+      return
     end
 
-    local slot = master_loot_correlation_data.get( data.item.link )
-
     popup:show()
-    popup:refresh( generate_content( data, current_iteration, slot ) )
+    popup:refresh( generate_content( data, current_iteration, loot_item ) )
   end
 
   local function border_color( data )
@@ -265,16 +306,24 @@ function M.new( popup, roll_controller, roll_tracker, config, finish_early, canc
 
     local color = data.color
     popup:border_color( color.r, color.g, color.b, color.a )
+    -- popup:border_color( 0, 0, 0, 1 )
   end
 
   local function award_aborted()
     local data, current_iteration = roll_tracker.get()
     if not data or not data.status or not data.item or not current_iteration then return end
 
-    local slot = master_loot_correlation_data.get( data.item.link )
+    local loot_item = loot_list.find_item( data.item.id )
 
     popup:show()
-    popup:refresh( generate_content( data, current_iteration, slot ) )
+    popup:refresh( generate_content( data, current_iteration, loot_item ) )
+  end
+
+  local function loot_opened()
+    local data = roll_tracker.get()
+    if not data or not data.status then return end
+
+    show_and_refresh()
   end
 
   local function loot_closed()
@@ -284,6 +333,7 @@ function M.new( popup, roll_controller, roll_tracker, config, finish_early, canc
     refresh()
   end
 
+  roll_controller.subscribe( "preview", show_and_refresh )
   roll_controller.subscribe( "start", refresh )
   roll_controller.subscribe( "tick", refresh )
   roll_controller.subscribe( "finish", show_and_refresh )
@@ -295,6 +345,7 @@ function M.new( popup, roll_controller, roll_tracker, config, finish_early, canc
   roll_controller.subscribe( "show", show_and_refresh )
   roll_controller.subscribe( "border_color", border_color )
   roll_controller.subscribe( "award_aborted", award_aborted )
+  roll_controller.subscribe( "loot_opened", loot_opened )
   roll_controller.subscribe( "loot_closed", loot_closed )
 end
 
