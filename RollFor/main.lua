@@ -355,6 +355,7 @@ local function create_components()
   end )
 
   M.loot_frame = m.LootFrame.new( m.FrameBuilder, M.loot_list, db( "loot_frame" ), M.roll_controller, M.roll_tracker )
+  M.roll_for_ad = m.RollForAd.new()
 end
 
 function M.import_softres_data( softres_data )
