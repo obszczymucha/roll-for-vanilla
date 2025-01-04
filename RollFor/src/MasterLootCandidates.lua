@@ -49,7 +49,7 @@ function M.new( group_roster )
 
       for _, p in ipairs( players ) do
         if name == p.name then
-          table.insert( result, { name = name, class = p.class, value = i } )
+          table.insert( result, { name = name, class = p.class, value = i, online = p.online } )
         end
       end
     end

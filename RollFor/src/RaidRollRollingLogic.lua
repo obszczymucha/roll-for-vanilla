@@ -11,9 +11,8 @@ local RollingStrategy = m.Types.RollingStrategy
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
-function M.new( announce, ace_timer, group_roster, item, winner_tracker, roll_controller )
+function M.new( announce, ace_timer, item, winner_tracker, roll_controller, candidates )
   local m_rolling = false
-  local m_players
   local m_winner
 
   local function print_players( players )
@@ -38,7 +37,7 @@ function M.new( announce, ace_timer, group_roster, item, winner_tracker, roll_co
   local function raid_roll()
     m_rolling = true
     m_winner = nil
-    m.api.RandomRoll( 1, getn( m_players ) )
+    m.api.RandomRoll( 1, getn( candidates ) )
   end
 
   local function announce_rolling()
@@ -49,19 +48,15 @@ function M.new( announce, ace_timer, group_roster, item, winner_tracker, roll_co
     roll_controller.show()
     announce( string.format( "Raid rolling %s...", item.link ) )
 
-    m_players = group_roster.get_all_players_in_my_group( function( p )
-      return p.online == true
-    end )
-
-    print_players( m_players )
+    print_players( candidates )
     ace_timer.ScheduleTimer( M, raid_roll, 1 )
   end
 
   local function on_roll( player, roll, min, max )
     if player ~= m.my_name() then return end
-    if min ~= 1 or max ~= getn( m_players ) then return end
+    if min ~= 1 or max ~= getn( candidates ) then return end
 
-    m_winner = m_players[ roll ]
+    m_winner = candidates[ roll ]
     roll_controller.finish( { name = m_winner.name, class = m_winner.class } )
     announce( string.format( "%s wins %s.", m_winner.name, item.link ) )
     winner_tracker.track( m_winner.name, item.link, nil, nil, m.Types.RollingStrategy.RaidRoll )

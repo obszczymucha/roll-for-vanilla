@@ -6,7 +6,7 @@ if m.RollController then return end
 local M = {}
 local RS = m.Types.RollingStrategy
 local S = m.Types.RollingStatus
-local debug_enabled = false
+local debug_enabled = true
 
 function M.new( roll_tracker )
   local callbacks = {}

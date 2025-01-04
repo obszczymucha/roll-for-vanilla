@@ -112,23 +112,31 @@ local function select_player( item )
 end
 
 local function raid_roll_rolling_logic( item )
+  local dropped_item = M.loot_list.find_item( item.id )
+  local candidates = dropped_item and M.master_loot_candidates.get() or M.group_roster.get_all_players_in_my_group()
+  local online_candidates = m.filter( candidates, function( c ) return c.online == true end )
+
   return m.RaidRollRollingLogic.new(
     announce,
     M.ace_timer,
-    M.group_roster,
     item,
     M.winner_tracker,
-    M.roll_controller
+    M.roll_controller,
+    online_candidates
   )
 end
 
 local function insta_raid_roll_rolling_logic( item )
+  local dropped_item = M.loot_list.find_item( item.id )
+  local candidates = dropped_item and M.master_loot_candidates.get() or M.group_roster.get_all_players_in_my_group()
+  local online_candidates = m.filter( candidates, function( c ) return c.online == true end )
+
   return m.InstaRaidRollRollingLogic.new(
     announce,
-    M.group_roster,
     item,
     M.winner_tracker,
-    M.roll_controller
+    M.roll_controller,
+    online_candidates
   )
 end
 
@@ -138,7 +146,7 @@ local function raid_roll_item( item_link )
   local texture = m.get_item_texture( item_id )
 
   local item = { id = item_id, link = item_link, name = item_name, texture = texture }
-  m_rolling_logic = raid_roll_rolling_logic( item )
+  m_rolling_logic = raid_roll_rolling_logic( item, M.master_loot_candidates.get() )
   M.winner_tracker.start_rolling( item.link )
   m_rolling_logic.announce_rolling()
 end
@@ -149,7 +157,7 @@ local function insta_raid_roll_item( item_link )
   local texture = m.get_item_texture( item_id )
 
   local item = { id = item_id, link = item_link, name = item_name, texture = texture }
-  m_rolling_logic = insta_raid_roll_rolling_logic( item )
+  m_rolling_logic = insta_raid_roll_rolling_logic( item, M.master_loot_candidates.get() )
   M.winner_tracker.start_rolling( item.link )
   m_rolling_logic.announce_rolling()
 end

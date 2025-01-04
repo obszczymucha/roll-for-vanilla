@@ -23,13 +23,18 @@ function M.new( config, roll_tracker, loot_list, roll_controller )
   end
 
   local function on_loot_slot_cleared( slot )
-    if not config.auto_process_loot() or not m.is_player_master_looter() then return end
-
     local looted_item = loot_cache[ slot ]
     local threshold = m.api.GetLootThreshold()
     loot_cache[ slot ] = nil
 
-    if not looted_item or not looted_item.quality or looted_item.quality < threshold then return end
+    if not config.auto_process_loot() or
+        not m.is_player_master_looter() or
+        not looted_item or
+        not looted_item.quality or
+        looted_item.quality < threshold
+    then
+      return
+    end
 
     process_next_item()
   end
@@ -38,6 +43,8 @@ function M.new( config, roll_tracker, loot_list, roll_controller )
     for _, item in ipairs( loot_list.get_items() ) do
       loot_cache[ item.slot ] = item
     end
+
+    if not config.auto_process_loot() or not m.is_player_master_looter() then return end
 
     if config.autostart_loot_process() then
       process_next_item()
