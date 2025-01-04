@@ -5,9 +5,12 @@ if m.RollController then return end
 
 local M = {}
 local RS = m.Types.RollingStrategy
+---@diagnostic disable-next-line: deprecated
+local getn = table.getn
+local S = m.Types.RollingStatus
 local debug_enabled = false
 
-function M.new( roll_tracker )
+function M.new( roll_tracker, loot_list, config )
   local callbacks = {}
 
   local function dbg( message )
@@ -115,6 +118,23 @@ function M.new( roll_tracker )
     dbg( "award_aborted" )
   end
 
+  local function process_next_item()
+    if not config.auto_process_loot() then return end
+
+    dbg( "process_next_item" )
+
+    local data = roll_tracker.get()
+    if data.status then return end
+
+    local items = loot_list.get_items()
+    local first_item = items and getn( items ) > 0 and not items[ 1 ].coin and items[ 1 ]
+    local threshold = m.api.GetLootThreshold()
+
+    if first_item and first_item.quality >= threshold then
+      preview( first_item )
+    end
+  end
+
   local function loot_awarded( item_link )
     roll_tracker.clear()
     notify_subscribers( "loot_awarded", item_link )
@@ -159,6 +179,12 @@ function M.new( roll_tracker )
   local function rolling_popup_closed()
     notify_subscribers( "rolling_popup_closed" )
     dbg( "rolling_popup_closed" )
+
+    local data = roll_tracker.get()
+
+    if data and data.status and data.status.type == S.Preview then
+      roll_tracker.clear()
+    end
   end
 
   local function loot_award_popup_closed()
@@ -189,7 +215,8 @@ function M.new( roll_tracker )
     player_not_found = player_not_found,
     cant_assign_item_to_that_player = cant_assign_item_to_that_player,
     rolling_popup_closed = rolling_popup_closed,
-    loot_award_popup_closed = loot_award_popup_closed
+    loot_award_popup_closed = loot_award_popup_closed,
+    process_next_item = process_next_item
   }
 end
 

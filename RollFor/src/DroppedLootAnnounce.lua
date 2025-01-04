@@ -187,17 +187,13 @@ function M.create_item_announcements( summary )
   return stringify( sort( result ) )
 end
 
-function M.process_dropped_items( loot_list, master_loot_tracker, softres )
+function M.process_dropped_items( loot_list, softres )
   local source_guid = loot_list.get_source_guid()
   local threshold = m.api.GetLootThreshold()
   local items = filter( loot_list.get_items(), function( item )
     local quality = item.quality or 0
     return quality >= threshold and item.id ~= 29434
   end )
-
-  for _, item in ipairs( items ) do
-    master_loot_tracker.add( item.slot, item ) -- TODO: Get rid of MasterLootTracker
-  end
 
   local summary = M.create_item_summary( items, softres )
   return source_guid or "unknown", items, M.create_item_announcements( summary )
@@ -273,7 +269,7 @@ local function should_announce( i, item_count, announcement )
   return false
 end
 
-function M.new( loot_list, announce, dropped_loot, master_loot_tracker, softres, winner_tracker )
+function M.new( loot_list, announce, dropped_loot, softres, winner_tracker )
   local announcing = false
   local announced_source_ids = {}
 
@@ -288,7 +284,7 @@ function M.new( loot_list, announce, dropped_loot, master_loot_tracker, softres,
       return
     end
 
-    local source_guid, items, announcements = M.process_dropped_items( loot_list, master_loot_tracker, softres )
+    local source_guid, items, announcements = M.process_dropped_items( loot_list, softres )
     local was_announced = announced_source_ids[ source_guid ]
     if was_announced then return end
 

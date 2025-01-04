@@ -311,8 +311,13 @@ function M.new(
 
   local function award_aborted()
     local data, current_iteration = roll_tracker.get()
-    if not data or not data.status or not data.item or not current_iteration then return end
 
+    if not data or not data.status or not data.item or not current_iteration then
+      roll_controller.process_next_item()
+      return
+    end
+
+    print( "Chuj2" )
     local loot_item = loot_list.find_item( data.item.id )
 
     popup:show()

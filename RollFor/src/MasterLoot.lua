@@ -6,32 +6,37 @@ if m.MasterLoot then return end
 local M = {}
 local pretty_print = m.pretty_print
 local hl = m.colors.hl
+local clear_table = m.clear_table
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
-function M.new( master_loot_candidates, award_item, master_loot_frame, master_loot_tracker, loot_list )
+function M.new( master_loot_candidates, award_item, master_loot_frame, loot_list )
   local m_confirmed = nil
+  local m_slot_cache = {}
 
   local function reset_confirmation()
     m_confirmed = nil
   end
 
+  -- We are storing the item in the slot cache (m_slot_cache) and ML confirmation (m_confirmed).
+  -- This is to correlate the loot award event which we have to do using LOOT_SLOT_CLEARED,
+  -- because CHAT_MSG_LOOT doesn't seem to be synced with LOOT_ events.
+  -- Normally one would expect CHAT_MSG_LOOT to happen before LOOT_SLOT_CLEARED, or at least
+  -- before LOOT_CLOSED, but this is what happened once:
+  -- LOOT_OPENED -> LOOT_SLOT_CLEARED -> LOOT_CLOSED -> CHAT_MSG_LOOT.
+  -- It's safer and simpler to just rely on LOOT_ events.
   local function on_loot_slot_cleared( slot )
-    if not m_confirmed then
-      master_loot_tracker.remove( slot )
-      return
+    if not m_slot_cache[ slot ] or not m_confirmed then return end
+
+    local cached_item = m_slot_cache[ slot ]
+
+    if cached_item.id == m_confirmed.item.id then
+      award_item( m_confirmed.player.name, m_confirmed.item.id, m_confirmed.item.link )
+      reset_confirmation()
     end
 
-    local item = master_loot_tracker.get( slot )
-
-    if item then
-      award_item( m_confirmed.player.name, item.id, item.link )
-      master_loot_tracker.remove( slot )
-    end
-
-    reset_confirmation()
-    master_loot_frame.hide()
+    m_slot_cache[ slot ] = nil
   end
 
   local function on_confirm( player, item )
@@ -44,6 +49,7 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, master_lo
     end
 
     m_confirmed = { item = item, slot = loot_item.slot, player = player }
+    m_slot_cache[ loot_item.slot ] = item
     m.api.GiveMasterLoot( loot_item.slot, player.value )
     master_loot_frame.hide()
   end
@@ -72,28 +78,9 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, master_lo
     reset_confirmation()
   end
 
-  local function on_loot_received( player_name, item_link )
-    if not m_confirmed then return end
-
-    if m_confirmed.player.name == player_name and m_confirmed.item.link == item_link then
-      reset_confirmation()
-    end
-
-    award_item( m_confirmed.player.name, m_confirmed.item.id, m_confirmed.item.link )
-    master_loot_tracker.remove( m_confirmed.slot )
-    reset_confirmation()
-  end
-
   local function on_loot_closed()
+    clear_table( m_slot_cache )
     master_loot_frame.hide()
-    if not m.is_player_master_looter() then return end
-
-    local items_left_count = master_loot_tracker.count()
-
-    if not m_confirmed then
-      if items_left_count > 0 then pretty_print( "Not all items were distributed." ) end
-      return
-    end
   end
 
   local function on_recipient_inventory_full()
@@ -121,7 +108,6 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, master_lo
   end
 
   return {
-    on_loot_slot_cleared = on_loot_slot_cleared,
     on_loot_opened = on_loot_opened,
     on_loot_closed = on_loot_closed,
     on_recipient_inventory_full = on_recipient_inventory_full,
@@ -129,7 +115,7 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, master_lo
     on_unknown_error_message = on_unknown_error_message,
     on_confirm = on_confirm,
     show_loot_candidates_frame = show_loot_candidates_frame,
-    on_loot_received = on_loot_received
+    on_loot_slot_cleared = on_loot_slot_cleared
   }
 end
 
