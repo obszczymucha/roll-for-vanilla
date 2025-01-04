@@ -106,7 +106,7 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
     table.insert( content, {
       type = "button",
       label = "Yes",
-      width = 90,
+      width = 80,
       on_click = function()
         if not winning_player.value then
           local p = master_loot_candidates.find( winning_player.name )
@@ -120,7 +120,7 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
     table.insert( content, {
       type = "button",
       label = "No",
-      width = 90,
+      width = 80,
       on_click = abort
     } )
 

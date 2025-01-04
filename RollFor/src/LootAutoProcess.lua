@@ -1,0 +1,51 @@
+RollFor = RollFor or {}
+local m = RollFor
+
+if m.LootAutoProcess then return end
+
+local M = {}
+---@diagnostic disable-next-line: deprecated
+local getn = table.getn
+local clear_table = m.clear_table
+
+function M.new( config, roll_tracker, loot_list, roll_controller )
+  local loot_cache = {}
+
+  local function on_loot_opened()
+    for _, item in ipairs( loot_list.get_items() ) do
+      loot_cache[ item.slot ] = item
+    end
+  end
+
+  local function on_loot_slot_cleared( slot )
+    if not config.auto_process_loot() or not m.is_player_master_looter() then return end
+
+    local looted_item = loot_cache[ slot ]
+    local threshold = m.api.GetLootThreshold()
+    loot_cache[ slot ] = nil
+
+    if not looted_item or not looted_item.quality or looted_item.quality < threshold then return end
+
+    local data = roll_tracker.get()
+    local items = loot_list.get_items()
+    local first_item = items and getn( items ) > 0 and not items[ 1 ].coin and items[ 1 ]
+
+    if first_item and first_item.quality >= threshold and not data.status then
+      roll_controller.preview( first_item )
+    end
+  end
+
+  local function on_loot_closed()
+    clear_table( loot_cache )
+    loot_cache.n = 0
+  end
+
+  return {
+    on_loot_opened = on_loot_opened,
+    on_loot_slot_cleared = on_loot_slot_cleared,
+    on_loot_closed = on_loot_closed
+  }
+end
+
+m.LootAutoProcess = M
+return M

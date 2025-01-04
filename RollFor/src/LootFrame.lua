@@ -201,7 +201,12 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker )
         frame:SetTextColor( 0.125, 0.624, 0.976 )
 
         local name = m.api.UnitName( "target" )
-        frame:SetText( string.format( "%s%s Loot", name, m.possesive_case( name ) ) )
+
+        if not name then
+          frame:SetText( "Loot" )
+        else
+          frame:SetText( string.format( "%s%s Loot", name, m.possesive_case( name ) ) )
+        end
 
         boss_name_width = frame:GetStringWidth() + 30
       end

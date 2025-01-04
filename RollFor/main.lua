@@ -243,7 +243,6 @@ local function create_components()
   M.awarded_loot_softres = m.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
   M.softres = M.present_softres( M.awarded_loot_softres )
   M.dropped_loot = m.DroppedLoot.new( db( "dropped_loot" ) )
-  M.master_loot_tracker = m.MasterLootTracker.new()
   M.softres_check = m.SoftResCheck.new( M.matched_name_softres, M.group_roster, M.name_matcher, M.ace_timer,
     M.absent_softres, db( "softres_check" ) )
   M.winner_tracker = m.WinnerTracker.new( db( "winner_tracker" ) )
@@ -251,16 +250,15 @@ local function create_components()
   M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils, m.api )
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
 
-  M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.loot_list, announce, M.dropped_loot, M.master_loot_tracker, M.softres, M.winner_tracker )
+  M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.loot_list, announce, M.dropped_loot, M.softres, M.winner_tracker )
   M.roll_tracker = m.RollTracker.new()
-  M.roll_controller = m.RollController.new( M.roll_tracker )
+  M.roll_controller = m.RollController.new( M.roll_tracker, M.loot_list, M.config )
   M.master_loot_frame = m.MasterLootFrame.new( M.winner_tracker, M.roll_controller, M.config )
   M.master_loot_candidates = m.MasterLootCandidates.new( M.group_roster ) -- remove group_roster for testing (dummy candidates)
   M.master_loot = m.MasterLoot.new(
     M.master_loot_candidates,
     M.award_item,
     M.master_loot_frame,
-    M.master_loot_tracker,
     M.loot_list
   )
 
@@ -321,13 +319,13 @@ local function create_components()
   end )
 
   M.loot_facade.subscribe( "LootOpened", function()
-    M.master_loot_tracker.clear()
     M.auto_loot.on_loot_opened()
     M.dropped_loot_announce.on_loot_opened()
     M.master_loot.on_loot_opened()
     M.auto_group_loot.on_loot_opened()
     M.loot_frame.show()
     M.roll_controller.loot_opened()
+    M.loot_auto_process.on_loot_opened()
   end )
 
   M.loot_facade.subscribe( "LootClosed", function()
@@ -340,22 +338,20 @@ local function create_components()
     if status and status.type == S.Preview then
       M.rolling_popup.hide()
     end
+
+    M.loot_auto_process.on_loot_closed()
   end )
 
   M.loot_facade.subscribe( "LootSlotCleared", function( slot )
     M.master_loot.on_loot_slot_cleared( slot )
     M.auto_group_loot.on_loot_slot_cleared()
     M.loot_frame.update()
-
-    local item_on_roll = M.roll_tracker.get().item
-
-    if item_on_roll and item_on_roll.slot == slot then
-      M.rolling_popup.hide()
-    end
+    M.loot_auto_process.on_loot_slot_cleared( slot )
   end )
 
   M.loot_frame = m.LootFrame.new( m.FrameBuilder, M.loot_list, db( "loot_frame" ), M.roll_controller, M.roll_tracker )
   M.roll_for_ad = m.RollForAd.new()
+  M.loot_auto_process = m.LootAutoProcess.new( M.config, M.roll_tracker, M.loot_list, M.roll_controller )
 end
 
 function M.import_softres_data( softres_data )
@@ -693,18 +689,6 @@ local function on_master_looter_changed( player_name )
   end
 end
 
-function M.on_chat_msg_loot( message )
-  for player_name, item_link in string.gmatch( message, "(.-) receives loot: (.*)" ) do
-    M.master_loot.on_loot_received( player_name, item_link )
-    return
-  end
-
-  for item_link in string.gmatch( message, "You receive loot: (.*)" ) do
-    M.master_loot.on_loot_received( m.my_name(), item_link )
-    return
-  end
-end
-
 function M.on_chat_msg_system( message )
   for player, roll, min, max in string.gmatch( message, "([^%s]+) rolls (%d+) %((%d+)%-(%d+)%)" ) do
     on_roll( player, tonumber( roll ), tonumber( min ), tonumber( max ) )
@@ -876,6 +860,8 @@ function M.on_first_enter_world()
 
   ---@diagnostic disable-next-line: undefined-global
   LootFrame:UnregisterAllEvents()
+  ---@diagnostic disable-next-line: undefined-global
+  if pfLootFrame then pfLootFrame:UnregisterAllEvents() end
 end
 
 ---@diagnostic disable-next-line: unused-local, unused-function
@@ -889,7 +875,6 @@ local function on_party_message( message, player )
 end
 
 function M.award_item( player_name, item_id, item_link )
-  M.roll_tracker.clear()
   M.awarded_loot.award( player_name, item_id )
   M.roll_controller.loot_awarded( item_link )
   local winners = M.winner_tracker.find_winners( item_link )

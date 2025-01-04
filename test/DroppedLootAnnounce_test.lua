@@ -9,7 +9,6 @@ local ItemUtils = require( "src/ItemUtils" )
 local make_item = ItemUtils.make_item
 require( "src/SoftResDataTransformer" )
 require( "src/SoftRes" )
-require( "src/MasterLootTracker" )
 local mod = require( "src/DroppedLootAnnounce" )
 local map = utils.map
 

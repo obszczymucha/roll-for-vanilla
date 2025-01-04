@@ -452,7 +452,7 @@ function M.dropped_item( parent, text )
 
   local function update()
     if selected_item and not is_selected() then
-      container:SetAlpha( 0.3 )
+      container:SetAlpha( 0.5 )
       return
     end
 

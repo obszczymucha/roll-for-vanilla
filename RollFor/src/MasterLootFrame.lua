@@ -164,7 +164,7 @@ function M.new( winner_tracker, roll_controller, config )
     local total_rows = total < 5 and total or rows
 
     m_frame:SetWidth( (button_width + horizontal_padding) * columns + horizontal_padding + 11 )
-    m_frame:SetHeight( (button_height + vertical_padding) * total_rows + vertical_padding + 11 )
+    m_frame:SetHeight( (button_height + vertical_padding) * total_rows + vertical_padding + 9 )
   end
 
   local function create_candidate_frames( candidates, item )

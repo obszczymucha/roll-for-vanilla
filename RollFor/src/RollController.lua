@@ -5,6 +5,7 @@ if m.RollController then return end
 
 local M = {}
 local RS = m.Types.RollingStrategy
+local S = m.Types.RollingStatus
 local debug_enabled = false
 
 function M.new( roll_tracker )
@@ -159,6 +160,12 @@ function M.new( roll_tracker )
   local function rolling_popup_closed()
     notify_subscribers( "rolling_popup_closed" )
     dbg( "rolling_popup_closed" )
+
+    local data = roll_tracker.get()
+
+    if data and data.status and data.status.type == S.Preview then
+      roll_tracker.clear()
+    end
   end
 
   local function loot_award_popup_closed()
