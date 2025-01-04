@@ -107,7 +107,7 @@ function M.new( popup_builder, db, config, roll_controller )
 
     config.subscribe( "reset_rolling_popup", function()
       db.point = nil
-      popup:position( M.center_point )
+      if popup then popup:position( M.center_point ) end
     end )
   end
 

@@ -349,7 +349,7 @@ local function create_components()
     M.loot_auto_process.on_loot_slot_cleared( slot )
   end )
 
-  M.loot_frame = m.LootFrame.new( m.FrameBuilder, M.loot_list, db( "loot_frame" ), M.roll_controller, M.roll_tracker )
+  M.loot_frame = m.LootFrame.new( m.FrameBuilder, M.loot_list, db( "loot_frame" ), M.roll_controller, M.roll_tracker, M.config )
   M.roll_for_ad = m.RollForAd.new()
   M.loot_auto_process = m.LootAutoProcess.new( M.config, M.roll_tracker, M.loot_list, M.roll_controller )
 end

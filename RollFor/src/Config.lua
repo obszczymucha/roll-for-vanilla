@@ -73,6 +73,11 @@ function M.new( db )
     notify_subscribers( "reset_rolling_popup" )
   end
 
+  local function reset_loot_frame()
+    info( "Loot frame position has been reset." )
+    notify_subscribers( "reset_loot_frame" )
+  end
+
   local function print_roll_thresholds()
     local ms_threshold = db.ms_roll_threshold
     local os_threshold = db.os_roll_threshold
@@ -223,6 +228,7 @@ function M.new( db )
     end
 
     m.print( string.format( "%s - reset rolling popup position", rfc( "reset-rolling-popup" ) ) )
+    m.print( string.format( "%s - reset loot frame position", rfc( "reset-loot-frame" ) ) )
   end
 
   local function lock_minimap_button()
@@ -267,6 +273,11 @@ function M.new( db )
 
     if args == "config reset-rolling-popup" then
       reset_rolling_popup()
+      return
+    end
+
+    if args == "config reset-loot-frame" then
+      reset_loot_frame()
       return
     end
 
@@ -355,6 +366,7 @@ function M.new( db )
     print_help = print_help,
     print_raid_roll_settings = printfn( "auto_raid_roll" ),
     reset_rolling_popup = reset_rolling_popup,
+    reset_loot_frame = reset_loot_frame,
     roll_threshold = roll_threshold,
     show_minimap_button = show_minimap_button,
     subscribe = subscribe,

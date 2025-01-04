@@ -4,9 +4,10 @@ if m.LootFrame then return end
 
 local M = {}
 
+M.center_point = { point = "CENTER", relative_point = "CENTER", x = -260, y = 220 }
 local S = m.Types.RollingStatus
 
-function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker )
+function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, config )
   local scale = 1.0
   ---@class Frame
   local boss_name_frame
@@ -34,9 +35,8 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker )
     local point, _, relative_point, x, y = frame:GetPoint()
 
     if is_out_of_bounds( x, y, width, height, screen_width, screen_height ) then
-      local center_point = { point = "CENTER", relative_point = "CENTER", x = -260, y = 220 }
-      db.point = center_point
-      frame:position( center_point )
+      db.point = M.center_point
+      frame:position( M.center_point )
 
       return
     end
@@ -241,6 +241,11 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker )
   roll_controller.subscribe( "award_aborted", select )
   roll_controller.subscribe( "rolling_popup_closed", deselect )
   roll_controller.subscribe( "loot_awarded", deselect )
+
+  config.subscribe( "reset_loot_frame", function()
+    db.point = nil
+    if boss_name_frame then boss_name_frame:position( M.center_point ) end
+  end )
 
   return {
     show = show,

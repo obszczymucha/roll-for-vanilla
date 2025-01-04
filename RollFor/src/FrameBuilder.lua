@@ -18,7 +18,7 @@ M.interface = {
 ---@field backdrop_color fun( r: number, g: number, b: number, a: number )
 ---@field lock fun()
 ---@field unlock fun()
----@field position fun( point: table )
+---@field position fun( self: Frame, point: table )
 ---@field get_anchor_center fun(): table
 ---@field get_anchor_point fun(): table
 ---@field anchor fun( frame: Frame, point: string, relative_point: string, x: number, y: number )
