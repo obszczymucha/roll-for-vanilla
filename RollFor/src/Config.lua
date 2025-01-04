@@ -25,6 +25,7 @@ function M.new( db )
     [ "rolling_popup" ] = { cmd = "rolling-popup", display = "Rolling popup", help = "toggle rolling popup" },
     [ "insta_raid_roll" ] = { cmd = "insta-rr", display = "Insta raid-roll", help = "toggle insta raid-roll" },
     [ "auto_process_loot" ] = { cmd = "auto-process-loot", display = "Auto process loot", help = "toggle auto loot processing" },
+    [ "autostart_loot_process" ] = { cmd = "autostart-loot-process", display = "Autostart loot process on loot open", help = "toggle autostart loot processing" },
   }
 
   local function notify_subscribers( event, value )

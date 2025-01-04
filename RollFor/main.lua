@@ -282,6 +282,7 @@ local function create_components()
 
   local rolling_popup_db = db( "rolling_popup" )
 
+  M.loot_auto_process = m.LootAutoProcess.new( M.config, M.roll_tracker, M.loot_list, M.roll_controller )
   M.rolling_popup = m.RollingPopup.new( m.PopupBuilder.new( m.FrameBuilder ), rolling_popup_db, M.config, M.roll_controller )
   M.rolling_popup_content = m.RollingPopupContent.new(
     M.rolling_popup,
@@ -294,7 +295,8 @@ local function create_components()
     raid_roll_item,
     roll_item,
     insta_raid_roll_item,
-    select_player
+    select_player,
+    M.loot_auto_process.process_next_item
   )
 
   M.loot_award_popup = m.LootAwardPopup.new(
@@ -351,7 +353,6 @@ local function create_components()
 
   M.loot_frame = m.LootFrame.new( m.FrameBuilder, M.loot_list, db( "loot_frame" ), M.roll_controller, M.roll_tracker, M.config )
   M.roll_for_ad = m.RollForAd.new()
-  M.loot_auto_process = m.LootAutoProcess.new( M.config, M.roll_tracker, M.loot_list, M.roll_controller )
 end
 
 function M.import_softres_data( softres_data )
