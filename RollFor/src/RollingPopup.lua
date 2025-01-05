@@ -87,7 +87,7 @@ function M.new( popup_builder, db, config, roll_controller )
         :on_hide( function()
           roll_controller.rolling_popup_closed()
         end )
-    -- :self_centered_anchor()
+        :self_centered_anchor()
 
     popup = builder:build()
 
@@ -212,13 +212,23 @@ function M.new( popup_builder, db, config, roll_controller )
     popup:backdrop_color( r, g, b, a )
   end
 
+  roll_controller.subscribe( "loot_awarded", hide )
+
+  local function get_frame()
+    if not popup then
+      create_popup()
+    end
+
+    return popup
+  end
+
   return {
     show = show,
     refresh = refresh,
     hide = hide,
     border_color = border_color,
     backdrop_color = backdrop_color,
-    get_frame = function() return popup end
+    get_frame = get_frame
   }
 end
 

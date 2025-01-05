@@ -72,8 +72,7 @@ function M.new(
     raid_roll,
     roll_item,
     insta_raid_roll,
-    select_player,
-    process_next_item
+    select_player
 )
   local function rolls_content( result, rolls )
     for i = 1, getn( rolls ) do
@@ -314,11 +313,9 @@ function M.new(
     local data, current_iteration = roll_tracker.get()
 
     if not data or not data.status or not data.item or not current_iteration then
-      process_next_item()
       return
     end
 
-    print( "Chuj2" )
     local loot_item = loot_list.find_item( data.item.id )
 
     popup:show()

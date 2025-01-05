@@ -20,6 +20,7 @@ function M.new( loot_facade, item_utils )
 
   local lf = loot_facade
   local items = {}
+  local looting = false
   local source_guid
 
   local function clear_items()
@@ -30,6 +31,7 @@ function M.new( loot_facade, item_utils )
 
   local function on_loot_opened()
     clear_items()
+    looting = true
     source_guid = lf.get_source_guid()
 
     for slot = 1, lf.get_item_count() do
@@ -59,6 +61,7 @@ function M.new( loot_facade, item_utils )
 
   local function on_loot_closed()
     clear_items()
+    looting = false
   end
 
   local function on_loot_slot_cleared( slot )
@@ -93,10 +96,15 @@ function M.new( loot_facade, item_utils )
     end
   end
 
+  local function is_looting()
+    return looting
+  end
+
   return {
     get_items = get_items,
     get_source_guid = function() return source_guid end,
-    find_item = find_item
+    find_item = find_item,
+    is_looting = is_looting
   }
 end
 

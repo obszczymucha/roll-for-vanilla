@@ -3,18 +3,12 @@ local m = RollFor
 
 if m.RollController then return end
 
-local M = {}
+local M = m.Module.new( "RollController" )
 local RS = m.Types.RollingStrategy
 local S = m.Types.RollingStatus
-local debug_enabled = true
 
 function M.new( roll_tracker )
   local callbacks = {}
-
-  local function dbg( message )
-    if not debug_enabled then return end
-    print( message )
-  end
 
   local function notify_subscribers( event_type, data )
     for _, callback in ipairs( callbacks[ event_type ] or {} ) do
@@ -36,10 +30,10 @@ function M.new( roll_tracker )
     roll_tracker.preview( RS.SoftResRoll, item, 1, nil, item.sr_players )
     local color = get_color( item.quality )
 
+    M.debug.add( "border_color" )
     notify_subscribers( "border_color", { color = color } )
-    dbg( "border_color" )
+    M.debug.add( "preview" )
     notify_subscribers( "preview", { item = item } )
-    dbg( "preview" )
   end
 
   local function start( rolling_strategy, item, count, info, seconds, required_rolling_players )
@@ -47,52 +41,52 @@ function M.new( roll_tracker )
     local _, _, quality = m.api.GetItemInfo( string.format( "item:%s:0:0:0", item.id ) )
     local color = get_color( quality )
 
+    M.debug.add( "border_color" )
     notify_subscribers( "border_color", { color = color } )
-    dbg( "border_color" )
+    M.debug.add( "start" )
     notify_subscribers( "start" )
-    dbg( "start" )
   end
 
   local function add( player_name, player_class, roll_type, roll )
+    M.debug.add( "roll" )
     roll_tracker.add( player_name, player_class, roll_type, roll )
     notify_subscribers( "roll" )
-    dbg( "roll" )
   end
 
   local function add_ignored( player_name, player_class, roll_type, roll, reason )
+    M.debug.add( "ignored_roll" )
     roll_tracker.add_ignored( player_name, player_class, roll_type, roll, reason )
     notify_subscribers( "ignored_roll" )
-    dbg( "ignored_roll" )
   end
 
   local function tie( tied_players, roll_type, roll )
+    M.debug.add( "tie" )
     roll_tracker.tie( tied_players, roll_type, roll )
     notify_subscribers( "tie" )
-    dbg( "tie" )
   end
 
   local function tie_start()
+    M.debug.add( "tie_start" )
     roll_tracker.tie_start()
     notify_subscribers( "tie_start" )
-    dbg( "tie_start" )
   end
 
   local function tick( seconds_left )
+    M.debug.add( "tick" )
     roll_tracker.tick( seconds_left )
     notify_subscribers( "tick" )
-    dbg( "tick" )
   end
 
   local function finish( winner )
+    M.debug.add( "finish" )
     roll_tracker.finish( winner )
     notify_subscribers( "finish" )
-    dbg( "finish" )
   end
 
   local function cancel()
+    M.debug.add( "cancel" )
     roll_tracker.cancel()
     notify_subscribers( "cancel" )
-    dbg( "cancel" )
   end
 
   local function subscribe( event_type, callback )
@@ -101,65 +95,78 @@ function M.new( roll_tracker )
   end
 
   local function waiting_for_rolls()
+    M.debug.add( "waiting_for_rolls" )
     roll_tracker.waiting_for_rolls()
     notify_subscribers( "waiting_for_rolls" )
-    dbg( "waiting_for_rolls" )
   end
 
   local function show()
+    M.debug.add( "show" )
     notify_subscribers( "show" )
-    dbg( "show" )
+  end
+
+  local function process_next_item()
+    M.debug.add( "process_next_item" )
+    notify_subscribers( "process_next_item" )
   end
 
   local function award_aborted( item )
+    M.debug.add( "award_aborted" )
     notify_subscribers( "award_aborted", { item = item } )
-    dbg( "award_aborted" )
+
+    local data, current_iteration = roll_tracker.get()
+
+    if not data or not data.status or not data.item or not current_iteration then
+      process_next_item()
+      return
+    end
   end
 
   local function loot_awarded( item_link )
     roll_tracker.clear()
+    M.debug.add( "loot_awarded" )
     notify_subscribers( "loot_awarded", item_link )
-    dbg( "loot_awarded" )
+    process_next_item()
   end
 
   local function award_loot( player, item, rolling_strategy, origin )
+    M.debug.add( "award_loot" )
     notify_subscribers( "award_loot", { player = player, item = item, rolling_strategy = rolling_strategy, origin = origin } )
-    dbg( "award_loot" )
   end
 
   local function loot_opened()
+    M.debug.add( "loot_opened" )
     notify_subscribers( "loot_opened" )
-    dbg( "loot_opened" )
   end
 
   local function loot_closed()
+    M.debug.add( "loot_closed" )
     notify_subscribers( "loot_closed" )
-    dbg( "loot_closed" )
   end
 
   local function player_already_has_unique_item()
+    M.debug.add( "player_already_has_unique_item" )
     notify_subscribers( "player_already_has_unique_item" )
-    dbg( "player_already_has_unique_item" )
   end
 
   local function player_has_full_bags()
+    M.debug.add( "player_has_full_bags" )
     notify_subscribers( "player_has_full_bags" )
-    dbg( "player_has_full_bags" )
   end
 
   local function player_not_found()
+    M.debug.add( "player_not_found" )
     notify_subscribers( "player_not_found" )
-    dbg( "player_not_found" )
   end
 
   local function cant_assign_item_to_that_player()
+    M.debug.add( "cant_assign_item_to_that_player" )
     notify_subscribers( "cant_assign_item_to_that_player" )
-    dbg( "cant_assign_item_to_that_player" )
   end
 
   local function rolling_popup_closed()
+    M.debug.add( "rolling_popup_closed" )
     notify_subscribers( "rolling_popup_closed" )
-    dbg( "rolling_popup_closed" )
 
     local data = roll_tracker.get()
 
@@ -169,8 +176,8 @@ function M.new( roll_tracker )
   end
 
   local function loot_award_popup_closed()
+    M.debug.add( "loot_award_popup_closed" )
     notify_subscribers( "loot_award_popup_closed" )
-    dbg( "loot_award_popup_closed" )
   end
 
   return {

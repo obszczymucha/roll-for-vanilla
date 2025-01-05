@@ -121,7 +121,7 @@ function SoftResIntegrationSpec:should_announce_sr_and_ignore_all_rolls_if_item_
   -- Then
   assert_messages(
     rw( "Psikutas soft-ressed [Hearthstone]." ),
-    c( "RollFor[ Tip ]: Use /arf [Hearthstone] to roll the item and ignore the softres." ),
+    c( "RollFor [Tip]: Use /arf [Hearthstone] to roll the item and ignore the softres." ),
     rolling_not_in_progress()
   )
 end
@@ -352,7 +352,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   assert_messages(
     r( "2 items dropped:", "1. [Hearthstone] (SR by Psikutas)", "2. [Hearthstone]" ),
     rw( "Psikutas soft-ressed [Hearthstone]." ),
-    c( "RollFor[ Tip ]: Use /arf [Hearthstone] to roll the item and ignore the softres." ),
+    c( "RollFor [Tip]: Use /arf [Hearthstone] to roll the item and ignore the softres." ),
     c( "RollFor: Psikutas received [Hearthstone]." ),
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     r( "Stopping rolls in 3", "2", "1" ),
@@ -386,7 +386,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   assert_messages(
     r( "2 items dropped:", "1. [Hearthstone] (SR by Obszczymucha)", "2. [Hearthstone]" ),
     rw( "Obszczymucha soft-ressed [Hearthstone]." ),
-    c( "RollFor[ Tip ]: Use /arf [Hearthstone] to roll the item and ignore the softres." ),
+    c( "RollFor [Tip]: Use /arf [Hearthstone] to roll the item and ignore the softres." ),
     c( "RollFor: Started trading with Obszczymucha." ),
     c( "RollFor: Giving in slot 1: 1x[Hearthstone]" ),
     c( "RollFor: Trading with Obszczymucha complete." ),
@@ -430,7 +430,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   assert_messages(
     r( "2 items dropped:", "1. [Hearthstone] (SR by Obszczymucha)", "2. [Hearthstone]" ),
     rw( "Obszczymucha soft-ressed [Hearthstone]." ),
-    c( "RollFor[ Tip ]: Use /arf [Hearthstone] to roll the item and ignore the softres." ),
+    c( "RollFor [Tip]: Use /arf [Hearthstone] to roll the item and ignore the softres." ),
     c( "RollFor: Obszczymucha received [Hearthstone]." ),
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     r( "Stopping rolls in 3", "2", "1" ),

@@ -75,8 +75,7 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
       ---@diagnostic disable-next-line: undefined-global
       boss_name_frame:SetPoint( p.point, UIParent, p.relative_point, p.x, p.y )
     else
-      ---@diagnostic disable-next-line: undefined-global
-      boss_name_frame:SetPoint( "TOPLEFT", LootFrame, "TOPLEFT", 22, -54 )
+      boss_name_frame:position( M.center_point )
     end
   end
 

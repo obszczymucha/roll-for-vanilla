@@ -76,7 +76,7 @@ function M.pretty_print( message, color_fn, module_name )
   if not message then return end
 
   local c = color_fn and type( color_fn ) == "function" and color_fn or color_fn and type( color_fn ) == "string" and M.colors[ color_fn ] or M.colors.blue
-  local module_str = module_name and string.format( "%s%s%s", c( "[ " ), M.colors.white( module_name ), c( " ]" ) ) or ""
+  local module_str = module_name and string.format( "%s%s%s", c( " [" ), M.colors.white( module_name ), c( "]" ) ) or ""
   M.api.DEFAULT_CHAT_FRAME:AddMessage( string.format( "%s%s: %s", c( "RollFor" ), module_str, message ) )
 end
 

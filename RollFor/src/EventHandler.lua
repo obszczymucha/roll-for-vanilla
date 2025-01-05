@@ -47,6 +47,8 @@ function M.handle_events( main )
       main.roll_for_ad.on_chat_msg_whisper_inform( arg1, arg2 )
     elseif event == "CHAT_MSG_SYSTEM" then
       main.on_chat_msg_system( arg1, arg2, arg3, arg4, arg5 )
+    elseif event == "CHAT_MSG_LOOT" then
+      main.on_chat_msg_loot( arg1, arg2 )
     elseif event == "CHAT_MSG_ADDON" then
       main.on_chat_msg_addon( arg1, arg2 )
     elseif event == "TRADE_SHOW" then
@@ -92,6 +94,7 @@ function M.handle_events( main )
   frame:RegisterEvent( "GROUP_FORMED" )
   frame:RegisterEvent( "CHAT_MSG_SYSTEM" )
   frame:RegisterEvent( "CHAT_MSG_ADDON" )
+  frame:RegisterEvent( "CHAT_MSG_LOOT" )
   frame:RegisterEvent( "CHAT_MSG_PARTY" )
   frame:RegisterEvent( "CHAT_MSG_RAID" )
   frame:RegisterEvent( "CHAT_MSG_RAID_LEADER" )

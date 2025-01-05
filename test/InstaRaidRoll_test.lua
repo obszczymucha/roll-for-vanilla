@@ -78,7 +78,7 @@ function InstaRaidRollSpec:should_print_usage_if_in_party_and_no_item_is_provide
 
   -- Then
   assert_messages(
-    c( "RollFor[ InstaRaidRoll ]: Usage: /irr <item>" )
+    c( "RollFor [InstaRaidRoll]: Usage: /irr <item>" )
   )
 end
 
@@ -93,7 +93,7 @@ function InstaRaidRollSpec:should_print_usage_if_in_raid_and_no_item_is_provided
 
   -- Then
   assert_messages(
-    c( "RollFor[ InstaRaidRoll ]: Usage: /irr <item>" )
+    c( "RollFor [InstaRaidRoll]: Usage: /irr <item>" )
   )
 end
 
@@ -108,7 +108,7 @@ function InstaRaidRollSpec:should_print_usage_if_in_party_and_invalid_item_is_pr
 
   -- Then
   assert_messages(
-    c( "RollFor[ InstaRaidRoll ]: Usage: /irr <item>" )
+    c( "RollFor [InstaRaidRoll]: Usage: /irr <item>" )
   )
 end
 
@@ -123,7 +123,7 @@ function InstaRaidRollSpec:should_print_usage_if_in_raid_and_invalid_item_is_pro
 
   -- Then
   assert_messages(
-    c( "RollFor[ InstaRaidRoll ]: Usage: /irr <item>" )
+    c( "RollFor [InstaRaidRoll]: Usage: /irr <item>" )
   )
 end
 
@@ -257,7 +257,7 @@ function InstaRaidRollSpec:should_show_the_winner_with_ssr_command()
   -- Then
   assert_messages(
     p( "Psikutas wins [Hearthstone] via insta raid-roll." ),
-    c( "RollFor[ InstaRaidRoll ]: Psikutas won [Hearthstone]." )
+    c( "RollFor [InstaRaidRoll]: Psikutas won [Hearthstone]." )
   )
 end
 

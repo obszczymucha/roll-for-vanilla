@@ -3,7 +3,7 @@ local m = RollFor
 
 if m.MasterLoot then return end
 
-local M = {}
+local M = m.Module.new( "MasterLoot" )
 local pretty_print = m.pretty_print
 local hl = m.colors.hl
 local clear_table = m.clear_table
@@ -71,6 +71,8 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, loot_list
   end
 
   local function on_loot_opened()
+    clear_table( m_slot_cache )
+
     if not m.is_player_master_looter() then
       return
     end
@@ -79,8 +81,22 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, loot_list
   end
 
   local function on_loot_closed()
-    clear_table( m_slot_cache )
+    -- Do not clear items when the loot window is closed.
+    -- It's possible that the item was master looted and the master looter moved the character quickly,
+    -- which in turn closed the loot window. This can trigger LOOT_CLOSED and we don't want to clear
+    -- the items in that case. When the loot is closed the LOOT_SLOT_CLEARED doesn't fire for us, so
+    -- we need to additionally check the CHAT_MSG_LOOT below.
+    -- clear_table( m_slot_cache )
     master_loot_frame.hide()
+  end
+
+  local function on_loot_received( player_name, item_id )
+    if not m_confirmed or loot_list.is_looting() then return end
+
+    if m_confirmed.player.name == player_name and m_confirmed.item.id == item_id then
+      award_item( m_confirmed.player.name, m_confirmed.item.id, m_confirmed.item.link )
+      reset_confirmation()
+    end
   end
 
   local function on_recipient_inventory_full()
@@ -115,7 +131,8 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, loot_list
     on_unknown_error_message = on_unknown_error_message,
     on_confirm = on_confirm,
     show_loot_candidates_frame = show_loot_candidates_frame,
-    on_loot_slot_cleared = on_loot_slot_cleared
+    on_loot_slot_cleared = on_loot_slot_cleared,
+    on_loot_received = on_loot_received
   }
 end
 

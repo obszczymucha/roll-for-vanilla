@@ -5,6 +5,8 @@ local lu, eq = utils.luaunit( "assertEquals" )
 local m = require( "src/modules" )
 local interface = require( "src/Interface" )
 local mock = interface.mock
+require( "src/DebugBuffer" )
+require( "src/Module" )
 require( "src/api/EventFrame" )
 require( "src/api/LootFacade" )
 local WowApi = require( "src/WowApi" )

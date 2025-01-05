@@ -82,7 +82,7 @@ function M.new()
     dbg( "preview" )
     clear_table( iterations )
     iterations.n = 0
-    current_iteration = 0
+    current_iteration = 1
     status = { type = S.Preview }
     item_on_roll = item
 

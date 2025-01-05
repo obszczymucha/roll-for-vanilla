@@ -3,7 +3,7 @@ local m = RollFor
 
 if m.EventFrame then return end
 
-local M = {}
+local M = m.Module.new( "EventFrame" )
 
 function M.new( api )
   local frame = api.CreateFrame( "Frame" )
@@ -22,6 +22,8 @@ function M.new( api )
   local function event_handler( event, arg1, arg2, arg3, arg4, arg5 )
     for event_name, handlers in pairs( event_handlers ) do
       if event_name == event then
+        M.debug.add( event_name )
+
         for _, handle_event in ipairs( handlers ) do
           handle_event( arg1, arg2, arg3, arg4, arg5 )
         end

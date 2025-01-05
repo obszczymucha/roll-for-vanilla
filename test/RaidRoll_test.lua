@@ -43,7 +43,7 @@ function RaidRollSpec:should_print_usage_if_in_party_and_no_item_is_provided()
 
   -- Then
   assert_messages(
-    c( "RollFor[ RaidRoll ]: Usage: /rr <item>" )
+    c( "RollFor [RaidRoll]: Usage: /rr <item>" )
   )
 end
 
@@ -57,7 +57,7 @@ function RaidRollSpec:should_print_usage_if_in_raid_and_no_item_is_provided()
 
   -- Then
   assert_messages(
-    c( "RollFor[ RaidRoll ]: Usage: /rr <item>" )
+    c( "RollFor [RaidRoll]: Usage: /rr <item>" )
   )
 end
 
@@ -71,7 +71,7 @@ function RaidRollSpec:should_print_usage_if_in_party_and_invalid_item_is_provide
 
   -- Then
   assert_messages(
-    c( "RollFor[ RaidRoll ]: Usage: /rr <item>" )
+    c( "RollFor [RaidRoll]: Usage: /rr <item>" )
   )
 end
 
@@ -85,7 +85,7 @@ function RaidRollSpec:should_print_usage_if_in_raid_and_invalid_item_is_provided
 
   -- Then
   assert_messages(
-    c( "RollFor[ RaidRoll ]: Usage: /rr <item>" )
+    c( "RollFor [RaidRoll]: Usage: /rr <item>" )
   )
 end
 
@@ -234,7 +234,7 @@ function RaidRollSpec:should_show_the_winner_with_ssr_command()
     p( "Raid rolling [Hearthstone]..." ),
     p( "[1]:Psikutas, [2]:Obszczymucha" ),
     p( "Obszczymucha wins [Hearthstone]." ),
-    c( "RollFor[ RaidRoll ]: Obszczymucha won [Hearthstone]." )
+    c( "RollFor [RaidRoll]: Obszczymucha won [Hearthstone]." )
   )
 end
 

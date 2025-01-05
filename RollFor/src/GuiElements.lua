@@ -9,7 +9,7 @@ local getn = table.getn
 ---@class GuiElements
 ---@field item_link fun( parent: Frame ): Frame
 ---@field item_link_with_icon fun( parent: Frame, text: string ): Frame
----@field text fun( parent: Frame, text:string ): Frame
+---@field text fun( parent: Frame, text: string ): Frame
 ---@field icon fun( parent: Frame, show: boolean, width: number, height: number ): Frame
 ---@field icon_text fun( parent: Frame, text: string ): Frame
 ---@field roll fun( parent: Frame ): Frame

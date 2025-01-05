@@ -303,8 +303,7 @@ local function create_components()
     raid_roll_item,
     roll_item,
     insta_raid_roll_item,
-    select_player,
-    M.loot_auto_process.process_next_item
+    select_player
   )
 
   M.loot_award_popup = m.LootAwardPopup.new(
@@ -356,10 +355,9 @@ local function create_components()
     M.master_loot.on_loot_slot_cleared( slot )
     M.auto_group_loot.on_loot_slot_cleared()
     M.loot_frame.update()
-    M.loot_auto_process.on_loot_slot_cleared( slot )
   end )
 
-  M.loot_frame = m.LootFrame.new( m.FrameBuilder, M.loot_list, db( "loot_frame" ), M.roll_controller, M.roll_tracker, M.config )
+  M.loot_frame = m.LootFrame.new( m.FrameBuilder, M.loot_list, db( "loot_frame" ), M.roll_controller, M.roll_tracker, M.config, M.rolling_popup )
   M.roll_for_ad = m.RollForAd.new()
 end
 
@@ -568,6 +566,20 @@ local function on_roll_command( roll_slash_command )
       return
     end
 
+    for command, modules in string.gmatch( args, "debug (.-) (.*)" ) do
+      for module_name in string.gmatch( modules, "%S+" ) do
+        local mod = m[ module_name ]
+        if mod and mod.debug then
+          local dbg = mod.debug
+          local f = dbg[ command ]
+
+          if f then f() end
+        end
+      end
+
+      return
+    end
+
     if string.find( args, "^config" ) then
       M.config.on_command( args )
       return
@@ -698,6 +710,22 @@ local function on_master_looter_changed( player_name )
   end
 end
 
+-- This is a precaution thing. It is possible to assign the loot and then immediately move.
+-- This will trigger the LOOT_CLOSE first and then
+function M.on_chat_msg_loot( message )
+  for player_name, item_link in string.gmatch( message, "(.-) receives loot: (.*)" ) do
+    local item_id = M.item_utils.get_item_id( item_link )
+    M.master_loot.on_loot_received( player_name, item_id )
+    return
+  end
+
+  for item_link in string.gmatch( message, "You receive loot: (.*)" ) do
+    local item_id = M.item_utils.get_item_id( item_link )
+    M.master_loot.on_loot_received( m.my_name(), item_id )
+    return
+  end
+end
+
 function M.on_chat_msg_system( message )
   for player, roll, min, max in string.gmatch( message, "([^%s]+) rolls (%d+) %((%d+)%-(%d+)%)" ) do
     on_roll( player, tonumber( roll ), tonumber( min ), tonumber( max ) )
@@ -783,8 +811,9 @@ local function on_reset_dropped_loot_announce_command()
 end
 
 local function test()
-  local function item_link( name, id )
-    return string.format( "|cff9d9d9d|Hitem:%s::::::::20:257::::::|h[%s]|h|r", id or "3299", name )
+  local function item_link( name, id, quality )
+    local color = m.api.ITEM_QUALITY_COLORS[ quality ].hex or "|cffffffff"
+    return string.format( "%s|Hitem:%s::::::::20:257::::::|h[%s]|h|r", color, id or "3299", name )
   end
 
   -- local f = M.raw_loot_list.get_items
@@ -801,7 +830,7 @@ local function test()
       item.id = item_id
       item.slot = i
       item.name, item.tooltip_link, item.quality, _, _, _, _, _, item.texture = m.api.GetItemInfo( item.id )
-      item.link = item_link( item.name, item.id )
+      item.link = item_link( item.name, item.id, item.quality )
       table.insert( result, item )
     end
 

@@ -162,6 +162,7 @@ function M.new()
           local f = anchor or frame
           f:StartMoving()
         end )
+
         frame:SetScript( "OnDragStop", function()
           is_dragging = false
 
@@ -170,6 +171,12 @@ function M.new()
 
           if options.on_drag_stop then
             options.on_drag_stop( frame )
+          end
+
+          if anchor then
+            print("sss")
+            frame:ClearAllPoints()
+            frame:SetPoint( "CENTER", anchor, "CENTER", 0, 0 )
           end
         end )
       else
