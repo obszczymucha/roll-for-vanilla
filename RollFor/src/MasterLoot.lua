@@ -90,13 +90,12 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, loot_list
     master_loot_frame.hide()
   end
 
-  local function on_loot_received( player_name, item_id )
-    if not m_confirmed or loot_list.is_looting() then return end
+  local function on_loot_received( player_name, item_id, item_link )
+    local is_looting = loot_list.is_looting()
+    if m_confirmed and is_looting then return end
 
-    if m_confirmed.player.name == player_name and m_confirmed.item.id == item_id then
-      award_item( m_confirmed.player.name, m_confirmed.item.id, m_confirmed.item.link )
-      reset_confirmation()
-    end
+    award_item( player_name, item_id, item_link )
+    reset_confirmation()
   end
 
   local function on_recipient_inventory_full()

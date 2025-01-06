@@ -44,6 +44,7 @@ M.interface = {
 ---@class ItemUtils
 ---@field get_item_id fun( item_link: ItemLink ): number | nil
 ---@field get_item_name fun( item_link: ItemLink ): string
+---@field parse_link fun( item_link: string ): ItemLink | nil -- Sometimes we need to parse the link from the "[Item Name]x4." string.
 ---@field parse_all_links fun( item_links: string ): ItemLink[]
 ---@field get_tooltip_link fun( item_link: ItemLink ): TooltipItemLink
 ---@field make_item fun( id: number, name: string, link: ItemLink, quality: ItemQuality, texture: string ): Item
@@ -65,6 +66,16 @@ end
 function M.get_item_name( item_link )
   local result = string.gsub( item_link, "|c%x%x%x%x%x%x%x%x|Hitem:%d+.*|h%[(.*)%]|h|r", "%1" )
   return result
+end
+
+---@param item_link string
+---@return string | nil
+function M.parse_link( item_link )
+  if not item_link then return end
+
+  for link in string.gmatch( item_link, "|c%x%x%x%x%x%x%x%x|Hitem:%d+.-|h%[.-%]|h|r" ) do
+    return link
+  end
 end
 
 ---@param item_links string

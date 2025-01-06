@@ -180,6 +180,16 @@ function M.new( roll_tracker )
     notify_subscribers( "loot_award_popup_closed" )
   end
 
+  local function loot_list_item_selected()
+    M.debug.add( "loot_list_item_selected" )
+    notify_subscribers( "loot_list_item_selected" )
+  end
+
+  local function loot_list_item_deselected()
+    M.debug.add( "loot_list_item_deselected" )
+    notify_subscribers( "loot_list_item_deselected" )
+  end
+
   return {
     preview = preview,
     start = start,
@@ -203,7 +213,9 @@ function M.new( roll_tracker )
     player_not_found = player_not_found,
     cant_assign_item_to_that_player = cant_assign_item_to_that_player,
     rolling_popup_closed = rolling_popup_closed,
-    loot_award_popup_closed = loot_award_popup_closed
+    loot_award_popup_closed = loot_award_popup_closed,
+    loot_list_item_selected = loot_list_item_selected,
+    loot_list_item_deselected = loot_list_item_deselected,
   }
 end
 

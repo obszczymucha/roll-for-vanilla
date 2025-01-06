@@ -10,12 +10,18 @@ local clear_table = m.clear_table
 
 function M.new( config, roll_tracker, loot_list, roll_controller )
   local loot_cache = {}
+  local selected_loot_list_item
 
   local function process_next_item()
     local threshold = m.api.GetLootThreshold()
     local data = roll_tracker.get()
     local items = loot_list.get_items()
     local first_item = items and getn( items ) > 0 and not items[ 1 ].coin and items[ 1 ]
+
+    if selected_loot_list_item then
+      roll_controller.process_next_item( selected_loot_list_item )
+      return
+    end
 
     if first_item and first_item.quality >= threshold and not data.status then
       roll_controller.preview( first_item )
@@ -43,7 +49,17 @@ function M.new( config, roll_tracker, loot_list, roll_controller )
     loot_cache.n = 0
   end
 
+  local function on_loot_list_item_selected( selected_item )
+    selected_loot_list_item = selected_item
+  end
+
+  local function on_loot_list_item_deselected()
+    selected_loot_list_item = nil
+  end
+
   roll_controller.subscribe( "process_next_item", process_next_item )
+  roll_controller.subscribe( "loot_list_item_selected", on_loot_list_item_selected )
+  roll_controller.subscribe( "loot_list_item_deselected", on_loot_list_item_deselected )
 
   return {
     on_loot_opened = on_loot_opened,

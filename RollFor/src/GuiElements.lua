@@ -430,7 +430,7 @@ function M.dropped_item( parent, text )
   end
 
   local function hovered_color()
-    if selected_item  then return end
+    if selected_item then return end
     local r, g, b = get_color()
     container:SetBackdropColor( r, g, b, 0.3 )
   end
@@ -446,11 +446,12 @@ function M.dropped_item( parent, text )
   end
 
   local function not_hovered_color()
-    if selected_item  then return end
+    if selected_item then return end
     container:SetBackdropColor( 0, 0, 0, 0.1 )
   end
 
   local function update()
+    m.pdump( selected_item )
     if selected_item and not is_selected() then
       container:SetAlpha( 0.6 )
       return

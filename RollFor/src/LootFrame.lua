@@ -2,7 +2,7 @@ RollFor = RollFor or {}
 local m = RollFor
 if m.LootFrame then return end
 
-local M = {}
+local M = m.Module.new( "LootFrame" )
 
 M.center_point = { point = "CENTER", relative_point = "CENTER", x = -260, y = 220 }
 local S = m.Types.RollingStatus
@@ -16,6 +16,10 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
   local boss_name_width = 0
   local max_frame_width
   local selected_item
+
+  local function get_selected_item()
+    return selected_item
+  end
 
   local function is_out_of_bounds( x, y, frame_width, frame_height, screen_width, screen_height )
     local left = x
@@ -42,62 +46,6 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
     end
 
     db.point = { point = point, relative_point = relative_point, x = x, y = y }
-  end
-
-  local function create_boss_name_frame()
-    boss_name_frame = frame_builder.new()
-        :name( "RollForBossNameFrame" )
-        :width( 380 )
-        :height( 22 )
-        :border_size( 16 )
-        :sound()
-        :gui_elements( m.GuiElements )
-        :frame_style( "PrincessKenny" )
-        :backdrop_color( 0, 0.501, 1, 0.3 )
-        :border_color( 0, 0, 0, 0.9 )
-        :movable()
-        :gui_elements( m.GuiElements )
-        :bg_file( "Interface/Buttons/WHITE8x8" )
-        :on_show( function()
-          loot_frame:Show()
-        end )
-        :on_hide( function()
-          loot_frame:Hide()
-        end )
-        :on_drag_stop( on_drag_stop )
-        :scale( scale )
-        :build()
-
-    boss_name_frame:ClearAllPoints()
-
-    if db.point then
-      local p = db.point
-      ---@diagnostic disable-next-line: undefined-global
-      boss_name_frame:SetPoint( p.point, UIParent, p.relative_point, p.x, p.y )
-    else
-      boss_name_frame:position( M.center_point )
-    end
-  end
-
-  local function create_frame()
-    loot_frame = frame_builder.new()
-        :name( "RollForLootFrame" )
-        :width( 280 )
-        :height( 100 )
-        :border_size( 16 )
-        :gui_elements( m.GuiElements )
-        :frame_style( "PrincessKenny" )
-        :backdrop_color( 0, 0, 0, 0.5 )
-        :border_color( 0, 0, 0, 0.9 )
-        :movable()
-        :gui_elements( m.GuiElements )
-        :bg_file( "Interface/Buttons/WHITE8x8" )
-        :scale( scale )
-        :build()
-  end
-
-  local function hide()
-    if boss_name_frame then boss_name_frame:Hide() end
   end
 
   local function on_click( button, item )
@@ -153,7 +101,7 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
           frame:SetHeight( height )
           frame:SetOnClick( on_click )
           frame:ClearAllPoints()
-          frame:SetSelectedItem( selected_item )
+          frame:SetSelectedItem( get_selected_item() )
 
           if max_frame_width then
             frame:SetWidth( max_frame_width - 2 )
@@ -181,12 +129,97 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
     return max_width, frames
   end
 
+  local function select( data )
+    if not boss_name_frame then return end
+    if data and data.item and selected_item and data.item.id == selected_item.id then return end
+    if not boss_name_frame:IsVisible() then return end
+
+    M.debug.add( "select" )
+    selected_item = data and data.item or nil
+    update()
+    roll_controller.loot_list_item_selected( selected_item )
+  end
+
+  local function deselect()
+    if not selected_item then return end
+
+    M.debug.add( "deselect" )
+    m.pdump( selected_item )
+    selected_item = nil
+    m.pdump( selected_item )
+    update()
+    roll_controller.loot_list_item_deselected()
+  end
+
+  local function create_boss_name_frame()
+    boss_name_frame = frame_builder.new()
+        :name( "RollForBossNameFrame" )
+        :width( 380 )
+        :height( 22 )
+        :border_size( 16 )
+        :sound()
+        :gui_elements( m.GuiElements )
+        :frame_style( "PrincessKenny" )
+        :backdrop_color( 0, 0.501, 1, 0.3 )
+        :border_color( 0, 0, 0, 0.9 )
+        :movable()
+        :gui_elements( m.GuiElements )
+        :bg_file( "Interface/Buttons/WHITE8x8" )
+        :on_show( function()
+          loot_frame:Show()
+        end )
+        :on_hide( function()
+          M.debug.add( "on_hide" )
+          deselect()
+          loot_frame:Hide()
+        end )
+        :on_drag_stop( on_drag_stop )
+        :scale( scale )
+        :build()
+
+    boss_name_frame:ClearAllPoints()
+
+    if db.point then
+      local p = db.point
+      ---@diagnostic disable-next-line: undefined-global
+      boss_name_frame:SetPoint( p.point, UIParent, p.relative_point, p.x, p.y )
+    else
+      boss_name_frame:position( M.center_point )
+    end
+  end
+
+  local function create_frame()
+    loot_frame = frame_builder.new()
+        :name( "RollForLootFrame" )
+        :width( 280 )
+        :height( 100 )
+        :border_size( 16 )
+        :gui_elements( m.GuiElements )
+        :frame_style( "PrincessKenny" )
+        :backdrop_color( 0, 0, 0, 0.5 )
+        :border_color( 0, 0, 0, 0.9 )
+        :movable()
+        :gui_elements( m.GuiElements )
+        :bg_file( "Interface/Buttons/WHITE8x8" )
+        :scale( scale )
+        :build()
+  end
+
+  local function hide()
+    if boss_name_frame then boss_name_frame:Hide() end
+  end
+
   local function show()
+    M.debug.add( "show" )
     if not boss_name_frame then create_boss_name_frame() end
     if not loot_frame then create_frame() end
 
     local roll_data = roll_tracker.get()
-    selected_item = roll_data and roll_data.status and roll_data.status ~= S.Preview and roll_data.item
+    local item = roll_data and roll_data.status and roll_data.status ~= S.Preview and roll_data.item
+
+    if item and loot_list.find_item( item.id ) then
+      selected_item = item
+    end
 
     max_frame_width = nil
 
@@ -223,16 +256,6 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
     for _, frame in ipairs( frames ) do
       frame:SetWidth( max_frame_width - 2 )
     end
-  end
-
-  local function select( data )
-    selected_item = data and data.item or nil
-    update()
-  end
-
-  local function deselect()
-    selected_item = nil
-    update()
   end
 
   roll_controller.subscribe( "preview", select )

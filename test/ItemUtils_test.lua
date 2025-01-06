@@ -52,6 +52,39 @@ function ItemUtilsSpec:should_return_given_string_if_not_an_item_link()
   lu.assertEquals( result, "Princess Kenny" )
 end
 
+function ItemUtilsSpec:should_parse_a_link_with_quantity_and_a_dot_at_the_end()
+  -- Given
+  local link = "|cffa335ee|Hitem:40400::::::::80:::::|h[Wall of Terror]|h|rx4."
+
+  -- When
+  local result = utils.parse_link( link )
+
+  -- Then
+  lu.assertEquals( result, "|cffa335ee|Hitem:40400::::::::80:::::|h[Wall of Terror]|h|r" )
+end
+
+function ItemUtilsSpec:should_parse_a_link_with_a_dot_at_the_end()
+  -- Given
+  local link = "|cffa335ee|Hitem:40400::::::::80:::::|h[Wall of Terror]|h|r."
+
+  -- When
+  local result = utils.parse_link( link )
+
+  -- Then
+  lu.assertEquals( result, "|cffa335ee|Hitem:40400::::::::80:::::|h[Wall of Terror]|h|r" )
+end
+
+function ItemUtilsSpec:should_parse_a_link_without_a_dot_at_the_end()
+  -- Given
+  local link = "|cffa335ee|Hitem:40400::::::::80:::::|h[Wall of Terror]|h|r"
+
+  -- When
+  local result = utils.parse_link( link )
+
+  -- Then
+  lu.assertEquals( result, "|cffa335ee|Hitem:40400::::::::80:::::|h[Wall of Terror]|h|r" )
+end
+
 ParseAllLinksSpec = {}
 
 function ParseAllLinksSpec:should_return_empty_table_for_empty_string()

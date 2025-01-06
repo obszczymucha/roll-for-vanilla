@@ -30,6 +30,7 @@ M.interface = {
 ---@field GetScale fun(): number
 ---@field GetWidth fun(): number
 ---@field ClearAllPoints fun()
+---@field IsVisible fun(): boolean
 
 ---@alias Anchor table
 

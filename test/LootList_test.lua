@@ -7,6 +7,8 @@ require( "src/Interface" )
 require( "src/WowApi" )
 ---@diagnostic disable-next-line: different-requires
 local LootFacade = require( "test/mocks/LootFacade" )
+require("src/DebugBuffer")
+require("src/Module")
 require( "src/ItemUtils" )
 require( "src/LootList" )
 require( "src/SoftResLootListDecorator" )

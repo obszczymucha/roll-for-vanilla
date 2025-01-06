@@ -193,7 +193,7 @@ function M.new( popup_builder, db, config, roll_controller )
   end
 
   local function hide()
-    popup:Hide()
+    if popup then popup:Hide() end
   end
 
   local function border_color( _, r, g, b, a )

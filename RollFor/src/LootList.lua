@@ -2,7 +2,7 @@ RollFor = RollFor or {}
 local m = RollFor
 if m.LootList then return end
 
-local M = {}
+local M = m.Module.new( "LootList" )
 local interface = m.Interface
 local clear = m.clear_table
 
@@ -30,6 +30,7 @@ function M.new( loot_facade, item_utils )
   end
 
   local function on_loot_opened()
+    M.debug.add("loot_opened")
     clear_items()
     looting = true
     source_guid = lf.get_source_guid()
@@ -60,11 +61,13 @@ function M.new( loot_facade, item_utils )
   end
 
   local function on_loot_closed()
+    M.debug.add("loot_closed")
     clear_items()
     looting = false
   end
 
   local function on_loot_slot_cleared( slot )
+    M.debug.add("loot_slot_cleared")
     local index
 
     for i, item in ipairs( items ) do

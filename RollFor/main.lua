@@ -723,15 +723,19 @@ end
 -- This is a precaution thing. It is possible to assign the loot and then immediately move.
 -- This will trigger the LOOT_CLOSE first and then
 function M.on_chat_msg_loot( message )
-  for player_name, item_link in string.gmatch( message, "(.-) receives loot: (.*)" ) do
-    local item_id = M.item_utils.get_item_id( item_link )
-    M.master_loot.on_loot_received( player_name, item_id )
+  for player_name, link_with_optional_quantity in string.gmatch( message, "(.-) receives loot: (.*)" ) do
+    local item_link = M.item_utils.parse_link( link_with_optional_quantity )
+    local item_id = item_link and M.item_utils.get_item_id( item_link )
+
+    M.master_loot.on_loot_received( player_name, item_id, item_link )
     return
   end
 
-  for item_link in string.gmatch( message, "You receive loot: (.*)" ) do
-    local item_id = M.item_utils.get_item_id( item_link )
-    M.master_loot.on_loot_received( m.my_name(), item_id )
+  for link_with_optional_quantity in string.gmatch( message, "You receive loot: (.*)" ) do
+    local item_link = M.item_utils.parse_link( link_with_optional_quantity )
+    local item_id = item_link and M.item_utils.get_item_id( item_link )
+
+    M.master_loot.on_loot_received( m.my_name(), item_id, item_link )
     return
   end
 end
