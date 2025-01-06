@@ -324,7 +324,11 @@ function M.new(
 
   local function loot_opened()
     local data = roll_tracker.get()
-    if not data or not data.status then return end
+    if not data or not data.status or not data.item then return end
+
+    local loot_item = loot_list.find_item( data.item.id )
+
+    if not loot_item then return end
 
     show_and_refresh()
   end
