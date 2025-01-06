@@ -721,7 +721,7 @@ local function on_master_looter_changed( player_name )
 end
 
 -- This is a precaution thing. It is possible to assign the loot and then immediately move.
--- This will trigger the LOOT_CLOSE first and then
+-- This fires LOOT_CLOSED first and we never get LOOT_SLOT_CLEARED. We have to handle that.
 function M.on_chat_msg_loot( message )
   for player_name, link_with_optional_quantity in string.gmatch( message, "(.-) receives loot: (.*)" ) do
     local item_link = M.item_utils.parse_link( link_with_optional_quantity )

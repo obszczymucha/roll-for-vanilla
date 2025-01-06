@@ -48,7 +48,7 @@ M.interface = {
 ---@field parse_all_links fun( item_links: string ): ItemLink[]
 ---@field get_tooltip_link fun( item_link: ItemLink ): TooltipItemLink
 ---@field make_item fun( id: number, name: string, link: ItemLink, quality: ItemQuality, texture: string ): Item
----@field make_distributable_item fun( id: number, name: string, link: ItemLink, tooltip_link: TooltipItemLink, quality: ItemQuality, texture: string, slot: number ): DistributableItem
+---@field make_distributable_item fun( id: number, name: string, link: ItemLink, tooltip_link: TooltipItemLink, quality: ItemQuality, quantity: number, texture: string, slot: number ): DistributableItem
 ---@field make_coin fun( texture: string, amount_text: string, slot: number ): Coin
 
 ---@param item_link ItemLink
@@ -112,11 +112,12 @@ end
 ---@param link ItemLink
 ---@param tooltip_link TooltipItemLink
 ---@param quality ItemQuality | nil
+---@param quantity number | nil
 ---@param texture string | nil
 ---@param slot number | nil
 ---@return DistributableItem
-function M.make_distributable_item( id, name, link, tooltip_link, quality, texture, slot )
-  return { id = id, name = name, link = link, tooltip_link = tooltip_link, quality = quality, texture = texture, slot = slot }
+function M.make_distributable_item( id, name, link, tooltip_link, quality, quantity, texture, slot )
+  return { id = id, name = name, link = link, tooltip_link = tooltip_link, quality = quality, quantity = quantity, texture = texture, slot = slot }
 end
 
 function M.make_coin( texture, amount_text, slot )

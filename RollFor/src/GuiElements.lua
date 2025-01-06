@@ -340,6 +340,9 @@ function M.dropped_item( parent, text )
   container.index:SetHeight( h )
   container.icon = create_icon_in_container( "Button", container, w, h, icon_zoom )
   container.icon:SetPoint( "LEFT", container.index, "RIGHT", 2, 0 )
+  container.quantity = create_text_in_container( "Frame", container.icon, 20, "CENTER", nil, "text" )
+  container.quantity:SetPoint( "BOTTOMRIGHT", -2, -1 )
+  container.quantity:SetHeight( 16 )
   container.comment = create_text_in_container( "Button", container, 20, "CENTER", nil, "text" )
   container.comment:SetPoint( "RIGHT", -4, 0 )
   container.comment:SetHeight( 16 )
@@ -370,7 +373,6 @@ function M.dropped_item( parent, text )
     m.api.GameTooltip:Hide()
     m.api.GameTooltip:SetScale( self.tooltip_scale or 1 )
   end )
-
   if text then
     container.text:SetText( text )
   else
@@ -416,6 +418,14 @@ function M.dropped_item( parent, text )
       container.text:SetPoint( "RIGHT", container, "RIGHT", 0, 0 )
     end
 
+    if v.quantity and v.quantity > 1 then
+      container.quantity:Show()
+      container.quantity.text:SetText( v.quantity )
+      container.quantity:SetWidth( container.quantity.text:GetStringWidth() )
+    else
+      container.quantity:Hide()
+    end
+
     resize()
   end
 
@@ -451,7 +461,6 @@ function M.dropped_item( parent, text )
   end
 
   local function update()
-    m.pdump( selected_item )
     if selected_item and not is_selected() then
       container:SetAlpha( 0.6 )
       return

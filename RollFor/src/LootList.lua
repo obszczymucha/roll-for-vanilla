@@ -30,7 +30,7 @@ function M.new( loot_facade, item_utils )
   end
 
   local function on_loot_opened()
-    M.debug.add("loot_opened")
+    M.debug.add( "loot_opened" )
     clear_items()
     looting = true
     source_guid = lf.get_source_guid()
@@ -50,7 +50,16 @@ function M.new( loot_facade, item_utils )
         local tooltip_link = link and item_utils.get_tooltip_link( link )
 
         if item_id and item_name then
-          table.insert( items, item_utils.make_distributable_item( item_id, item_name, link, tooltip_link, info and info.quality, info and info.texture, slot ) )
+          table.insert( items, item_utils.make_distributable_item(
+            item_id,
+            item_name,
+            link,
+            tooltip_link,
+            info and info.quality,
+            info and info.quantity,
+            info and info.texture,
+            slot
+          ) )
         end
       end
     end
@@ -61,13 +70,13 @@ function M.new( loot_facade, item_utils )
   end
 
   local function on_loot_closed()
-    M.debug.add("loot_closed")
+    M.debug.add( "loot_closed" )
     clear_items()
     looting = false
   end
 
   local function on_loot_slot_cleared( slot )
-    M.debug.add("loot_slot_cleared")
+    M.debug.add( "loot_slot_cleared" )
     local index
 
     for i, item in ipairs( items ) do

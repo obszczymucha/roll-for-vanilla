@@ -144,9 +144,7 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
     if not selected_item then return end
 
     M.debug.add( "deselect" )
-    m.pdump( selected_item )
     selected_item = nil
-    m.pdump( selected_item )
     update()
     roll_controller.loot_list_item_deselected()
   end
