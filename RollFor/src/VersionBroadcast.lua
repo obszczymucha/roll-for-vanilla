@@ -5,6 +5,11 @@ if m.VersionBroadcast then return end
 
 local M = {}
 
+local pp = m.pretty_print
+local ADDON_NAME = "RollFor"
+local orange = m.colors.orange
+local c = m.colorize_player_by_class
+
 function M.new( db, my_version )
   local function version_recently_reminded()
     if not db.last_new_version_reminder_timestamp then return false end
@@ -20,7 +25,7 @@ function M.new( db, my_version )
   end
 
   local function broadcast_version( channel )
-    m.api.SendAddonMessage( "RollFor", "VERSION::" .. my_version, channel )
+    m.api.SendAddonMessage( ADDON_NAME, "VERSION::" .. my_version, channel )
   end
 
   local function broadcast_version_to_the_guild()
@@ -28,9 +33,13 @@ function M.new( db, my_version )
     broadcast_version( "GUILD" )
   end
 
+  local function group_channel()
+    return m.api.IsInRaid() and "RAID" or "PARTY"
+  end
+
   local function broadcast_version_to_the_group()
     if not m.api.IsInGroup() and not m.api.IsInRaid() then return end
-    broadcast_version( m.api.IsInRaid() and "RAID" or "PARTY" )
+    broadcast_version( group_channel() )
   end
 
   local function on_group_changed()
@@ -39,8 +48,8 @@ function M.new( db, my_version )
 
   local function notify_about_new_version( ver )
     db.last_new_version_reminder_timestamp = m.lua.time()
-    m.pretty_print( string.format( "New version (%s) is available!", m.colors.highlight( string.format( "v%s", ver ) ) ) )
-    m.pretty_print( "https://github.com/obszczymucha/roll-for-vanilla/releases/download/latest/RollFor.zip" )
+    pp( string.format( "New version (%s) is available!", m.colors.highlight( string.format( "v%s", ver ) ) ) )
+    pp( "https://github.com/obszczymucha/roll-for-vanilla/releases/download/latest/RollFor.zip" )
   end
 
   local function on_version( their_version )
@@ -54,10 +63,47 @@ function M.new( db, my_version )
     broadcast_version_to_the_group()
   end
 
+  local function on_version_request( channel, requesting_player_name )
+    if not channel or not requesting_player_name then return end
+    m.api.SendAddonMessage( ADDON_NAME,
+      string.format( "VERSION_RESPONSE::%s::%s::%s::%s::%s", requesting_player_name, channel, m.my_name(), m.my_class(), my_version ), channel )
+  end
+
+  local function on_version_response( requesting_player_name, channel, their_name, their_class, their_version )
+    if requesting_player_name ~= m.my_name() then return end
+    pp( string.format( "%s %s", c( their_name, their_class ), "v" .. (their_version or "unknown") ), orange, string.lower( channel ) )
+  end
+
+  local function version_request( channel )
+    m.api.SendAddonMessage( ADDON_NAME, string.format( "VERSION_REQUEST::%s::%s", channel, m.my_name() ), channel )
+  end
+
+  local function group_version_request()
+    if not m.api.IsInGroup() and not m.api.IsInRaid() then
+      pp( "Not in a group.", m.colors.red )
+      return
+    end
+
+    version_request( group_channel() )
+  end
+
+  local function guild_version_request()
+    if not m.api.IsInGuild() then
+      pp( "Not in a guild.", m.colors.red )
+      return
+    end
+
+    version_request( "GUILD" )
+  end
+
   return {
     on_group_changed = on_group_changed,
     broadcast = broadcast,
-    on_version = on_version
+    on_version = on_version,
+    on_version_request = on_version_request,
+    on_version_response = on_version_response,
+    group_version_request = group_version_request,
+    guild_version_request = guild_version_request,
   }
 end
 

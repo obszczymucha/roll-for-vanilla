@@ -144,6 +144,10 @@ function M.my_name()
   return M.api.UnitName( "player" )
 end
 
+function M.my_class()
+  return M.api.UnitClass( "player" )
+end
+
 function M.target_name()
   return M.api.UnitName( "target" )
 end

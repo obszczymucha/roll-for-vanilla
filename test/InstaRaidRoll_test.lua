@@ -188,7 +188,7 @@ function InstaRaidRollSpec:should_not_raid_roll_if_rolling_is_in_progress()
   -- Then
   assert_messages(
     p( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
-    c( "RollFor: Rolling already in progress." )
+    c( "RollFor: Rolling is in progress." )
   )
 end
 

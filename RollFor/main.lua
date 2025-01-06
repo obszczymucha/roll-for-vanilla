@@ -562,7 +562,7 @@ local function on_roll_command( roll_slash_command )
         return
       end
 
-      info( "Rolling already in progress." )
+      info( "Rolling is in progress." )
       return
     end
 
@@ -585,8 +585,18 @@ local function on_roll_command( roll_slash_command )
       return
     end
 
+    if args == "versioncheck guild" then
+      M.version_broadcast.guild_version_request()
+      return
+    end
+
     if not M.api().IsInGroup() then
       info( "Not in a group." )
+      return
+    end
+
+    if args == "versioncheck" then
+      M.version_broadcast.group_version_request()
       return
     end
 
@@ -946,6 +956,17 @@ function M.on_chat_msg_addon( name, message )
 
   for ver in string.gmatch( message, "VERSION::(.*)" ) do
     M.version_broadcast.on_version( ver )
+    return
+  end
+
+  for channel, requesting_player_name in string.gmatch( message, "VERSION_REQUEST::(.-)::(.*)" ) do
+    M.version_broadcast.on_version_request( channel, requesting_player_name )
+    return
+  end
+
+  for requesting_player_name, channel, their_name, their_class, their_version in string.gmatch( message, "VERSION_RESPONSE::(.-)::(.-)::(.-)::(.-)::(.*)" ) do
+    M.version_broadcast.on_version_response( requesting_player_name, channel, their_name, their_class, their_version )
+    return
   end
 end
 
