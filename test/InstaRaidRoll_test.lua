@@ -17,6 +17,7 @@ local assert_messages = utils.assert_messages
 local tick = utils.tick
 local roll = utils.roll
 local mock_math_random = utils.mock_math_random
+local mock_multiple_math_random = utils.mock_multiple_math_random
 
 InstaRaidRollSpec = {}
 
@@ -156,6 +157,23 @@ function InstaRaidRollSpec:should_raid_roll_the_item_in_party_chat()
   -- Then
   assert_messages(
     p( "Obszczymucha wins [Hearthstone] via insta raid-roll." )
+  )
+end
+
+function InstaRaidRollSpec:should_raid_roll_two_items_in_party_chat()
+  -- Given
+  mock_config( { insta_raid_roll = true } )
+  player( "Psikutas" )
+  is_in_party( "Psikutas", "Obszczymucha" )
+  mock_multiple_math_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
+
+  -- When
+  insta_raid_roll( "Hearthstone", 123, 2 )
+
+  -- Then
+  assert_messages(
+    p( "Obszczymucha wins [Hearthstone] via insta raid-roll." ),
+    p( "Psikutas wins [Hearthstone] via insta raid-roll." )
   )
 end
 

@@ -15,6 +15,7 @@ local run_command = utils.run_command
 local raid_roll_raw = utils.raid_roll_raw
 local assert_messages = utils.assert_messages
 local mock_random_roll = utils.mock_random_roll
+local mock_multiple_random_roll = utils.mock_multiple_random_roll
 local tick = utils.tick
 local roll = utils.roll
 
@@ -104,6 +105,25 @@ function RaidRollSpec:should_raid_roll_the_item_in_party_chat()
     p( "Raid rolling [Hearthstone]..." ),
     p( "[1]:Psikutas, [2]:Obszczymucha" ),
     p( "Obszczymucha wins [Hearthstone]." )
+  )
+end
+
+function RaidRollSpec:should_raid_roll_two_items_in_party_chat()
+  -- Given
+  player( "Psikutas" )
+  is_in_party( "Psikutas", "Obszczymucha" )
+  mock_multiple_random_roll( { { "Psikutas", 2, 2 }, { "Psikutas", 1, 2 } } )
+
+  -- When
+  raid_roll( "Hearthstone", 123, 2 )
+  tick()
+
+  -- Then
+  assert_messages(
+    p( "Raid rolling [Hearthstone]..." ),
+    p( "[1]:Psikutas, [2]:Obszczymucha" ),
+    p( "Obszczymucha wins [Hearthstone]." ),
+    p( "Psikutas wins [Hearthstone]." )
   )
 end
 

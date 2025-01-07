@@ -4,4 +4,4 @@
 2. Disable the loot frame when rolling.
 3. Add support for n-top rolling.
 4. Add support for multiple winners.
-5. Add support for nx raid-roll.
+5. Make loot messages less verbose - if below threshold, then don't display.

@@ -375,16 +375,18 @@ function M.roll_for_raw( raw_text )
   M.run_command( "RF", raw_text )
 end
 
-function M.raid_roll( item_name, item_id )
-  M.run_command( "RR", M.item_link( item_name, item_id ) )
+function M.raid_roll( item_name, item_id, count )
+  local link = M.item_link( item_name, item_id )
+  M.run_command( "RR", count and count > 1 and string.format( "%sx%s", count, link ) or link )
 end
 
 function M.raid_roll_raw( raw_text )
   M.run_command( "RR", raw_text )
 end
 
-function M.insta_raid_roll( item_name, item_id )
-  M.run_command( "IRR", M.item_link( item_name, item_id ) )
+function M.insta_raid_roll( item_name, item_id, count )
+  local link = M.item_link( item_name, item_id )
+  M.run_command( "IRR", count and count > 1 and string.format( "%sx%s", count, link ) or link )
 end
 
 function M.insta_raid_roll_raw( raw_text )
@@ -432,6 +434,19 @@ end
 
 function M.mock_random_roll( player_name, roll, upper_bound )
   M.mock( "RandomRoll", function() M.roll( player_name, roll, upper_bound ) end )
+  M.mock( "GetMasterLootCandidate", function() return {} end )
+end
+
+function M.mock_multiple_random_roll( values )
+  local invocation_count = 0
+
+  M.mock( "RandomRoll", function()
+    print("Rolling chuj")
+    invocation_count = invocation_count + 1
+    local value = values[ invocation_count ]
+    M.roll( value[ 1 ], value[ 2 ], value[ 3 ] )
+  end )
+
   M.mock( "GetMasterLootCandidate", function() return {} end )
 end
 
@@ -1078,6 +1093,33 @@ end
 
 function M.mock_math_random( expected_min, expected_max, value )
   M.modules().lua.math.random = function( given_min, given_max )
+    if given_min ~= expected_min or given_max ~= expected_max then
+      print(
+        string.format(
+          "Invalid math.random invocation. Expected: random(%s, %s)  Was: random(%s, %s)",
+          expected_min,
+          expected_max,
+          given_min,
+          given_max
+        )
+      )
+
+      return 1337
+    end
+
+    return value
+  end
+end
+
+function M.mock_multiple_math_random( values )
+  local invocation_count = 0
+
+  M.modules().lua.math.random = function( given_min, given_max )
+    invocation_count = invocation_count + 1
+    local expected_min = values[ invocation_count ][ 1 ]
+    local expected_max = values[ invocation_count ][ 2 ]
+    local value = values[ invocation_count ][ 3 ]
+
     if given_min ~= expected_min or given_max ~= expected_max then
       print(
         string.format(

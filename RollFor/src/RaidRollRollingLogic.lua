@@ -7,13 +7,19 @@ local M = {}
 local pretty_print = m.pretty_print
 local hl = m.colors.hl
 local RollingStrategy = m.Types.RollingStrategy
+local clear_table = m.clear_table
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
-function M.new( announce, ace_timer, item, winner_tracker, roll_controller, candidates )
+function M.new( announce, ace_timer, item, count, winner_tracker, roll_controller, candidates )
   local m_rolling = false
-  local m_winner
+  local m_winners = {}
+
+  local function clear_winners()
+    clear_table( m_winners )
+    m_winners.n = 0
+  end
 
   local function print_players( players )
     local buffer = ""
@@ -36,30 +42,39 @@ function M.new( announce, ace_timer, item, winner_tracker, roll_controller, cand
 
   local function raid_roll()
     m_rolling = true
-    m_winner = nil
     m.api.RandomRoll( 1, getn( candidates ) )
   end
 
   local function announce_rolling()
     m_rolling = true
-    m_winner = nil
+    clear_winners()
 
-    roll_controller.start( RollingStrategy.RaidRoll, item )
+    roll_controller.start( RollingStrategy.RaidRoll, item, count )
     roll_controller.show()
     announce( string.format( "Raid rolling %s...", item.link ) )
 
     print_players( candidates )
-    ace_timer.ScheduleTimer( M, raid_roll, 1 )
+    ace_timer.ScheduleTimer( M, function()
+      for _ = 1, count do
+        raid_roll()
+      end
+    end, 1 )
   end
 
   local function on_roll( player, roll, min, max )
     if player ~= m.my_name() then return end
     if min ~= 1 or max ~= getn( candidates ) then return end
 
-    m_winner = candidates[ roll ]
-    roll_controller.finish( { name = m_winner.name, class = m_winner.class } )
-    announce( string.format( "%s wins %s.", m_winner.name, item.link ) )
-    winner_tracker.track( m_winner.name, item.link, nil, nil, m.Types.RollingStrategy.RaidRoll )
+    table.insert( m_winners, candidates[ roll ] )
+
+    if getn( m_winners ) < count then return end
+
+    roll_controller.finish( m_winners )
+
+    for _, winner in ipairs( m_winners ) do
+      announce( string.format( "%s wins %s.", winner.name, item.link ) )
+      winner_tracker.track( winner.name, item.link, nil, nil, RollingStrategy.RaidRoll )
+    end
 
     m_rolling = false
   end
@@ -69,12 +84,14 @@ function M.new( announce, ace_timer, item, winner_tracker, roll_controller, cand
   end
 
   local function show_sorted_rolls()
-    if not m_winner then
+    if getn( m_winners ) == 0 then
       pretty_print( "There is no winner yet.", nil, "RaidRoll" )
       return
     end
 
-    pretty_print( string.format( "%s won %s.", hl( m_winner.name ), item.link ), nil, "RaidRoll" )
+    for _, winner in ipairs( m_winners ) do
+      pretty_print( string.format( "%s won %s.", hl( winner.name ), item.link ), nil, "RaidRoll" )
+    end
   end
 
   return {

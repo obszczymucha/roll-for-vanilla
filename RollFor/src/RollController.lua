@@ -77,9 +77,10 @@ function M.new( roll_tracker )
     notify_subscribers( "tick" )
   end
 
-  local function finish( winner )
+  ---@class winners table
+  local function finish( winners )
     M.debug.add( "finish" )
-    roll_tracker.finish( winner )
+    roll_tracker.finish( winners )
     notify_subscribers( "finish" )
   end
 

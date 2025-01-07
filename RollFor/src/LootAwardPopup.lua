@@ -74,19 +74,22 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
     local content                 = { { type = "item_link_with_icon", link = item.link, texture = item.texture } }
     local data, current_iteration = roll_tracker.get()
 
-    local winner                  = data and data.status and data.status.winner and
-        data.item and data.status.winner.name == player.name and
-        data.item.link == item.link and data.status.winner
+    local winner                  = data and data.status and data.status.winners and getn( data.status.winners ) > 0 and
+        data.item and data.status.winners[ 1 ].name == player.name and
+        data.item.link == item.link and data.status.winners[ 1 ]
 
     local winning_player          = winner or player
 
     if rolling_strategy == RS.RaidRoll or not rolling_strategy and current_iteration and current_iteration.rolling_strategy == RS.RaidRoll and winner then
-      table.insert( content, RollingPopupContent.raid_roll_winner_content( winning_player ) )
+      m.map( RollingPopupContent.raid_roll_winners_content( { winning_player } ), function( w ) table.insert( content, w ) end )
     elseif rolling_strategy == RS.InstaRaidRoll or not rolling_strategy and current_iteration and current_iteration.rolling_strategy == RS.InstaRaidRoll and winner then
-      table.insert( content, RollingPopupContent.insta_raid_roll_winner_content( winning_player ) )
+      for _, w in ipairs( RollingPopupContent.insta_raid_roll_winners_content( { winning_player } ) ) do
+        table.insert( content, w )
+      end
     else
-      table.insert( content,
-        RollingPopupContent.roll_winner_content( winning_player, winner and (rolling_strategy or current_iteration and current_iteration.rolling_strategy) ) )
+      m.map(
+        RollingPopupContent.roll_winner_content( { winning_player }, winner and (rolling_strategy or current_iteration and current_iteration.rolling_strategy) ),
+        function( w ) table.insert( content, w ) end )
     end
 
     table.insert( content, { type = "text", value = "Would you like to award this item?" } )
@@ -136,9 +139,7 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
     for _, v in ipairs( make_content( data.item, data.player, data.rolling_strategy, error ) ) do
       popup.add_line( v.type, function( type, frame, lines )
         if type == "item_link_with_icon" then
-          frame:SetText( v.link )
-          frame:SetTexture( v.texture )
-          frame.tooltip_link = v.link and m.ItemUtils.get_tooltip_link( v.link )
+          frame:SetItem( v, v.link and m.ItemUtils.get_tooltip_link( v.link ) )
         elseif type == "text" then
           frame:SetText( v.value )
         elseif type == "button" then

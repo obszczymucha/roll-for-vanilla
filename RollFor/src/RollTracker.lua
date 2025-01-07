@@ -89,7 +89,7 @@ function M.new()
     item_on_roll_count = count
 
     if rolling_strategy == RS.SoftResRoll and required_rolling_players and getn( required_rolling_players ) == 1 then
-      status.winner = required_rolling_players[ 1 ]
+      status.winners = { required_rolling_players[ 1 ] }
     end
 
     table.insert( iterations, {
@@ -129,9 +129,10 @@ function M.new()
     end
   end
 
-  local function finish( winner )
+  ---@class winners table
+  local function finish( winners )
     dbg( "finish" )
-    status = { type = S.Finished, winner = winner }
+    status = { type = S.Finished, winners = winners or {} }
   end
 
   --- Indicates that the there was a tie.

@@ -30,29 +30,51 @@ local function article( number )
   return "a"
 end
 
-function M.raid_roll_winner_content( winner )
-  local player = c( winner.name, winner.class )
-  return { type = "text", value = string.format( "%s wins the %s.", player, blue( "raid-roll" ) ), padding = 8 }
-end
+function M.raid_roll_winners_content( winners )
+  local result = {}
 
-function M.insta_raid_roll_winner_content( winner )
-  local player = c( winner.name, winner.class )
-  return { type = "text", value = string.format( "%s wins the %s.", player, blue( "insta raid-roll" ) ), padding = 8 }
-end
-
-function M.roll_winner_content( winner, rolling_strategy )
-  local player = c( winner.name, winner.class )
-  local roll_type = winner.roll_type and r( winner.roll_type )
-  local roll = winner.roll and blue( winner.roll )
-
-  if roll then
-    return { type = "text", value = string.format( "%s wins the %s roll with %s %s.", player, roll_type, article( winner.roll ), roll ), padding = top_padding }
-  elseif rolling_strategy == RS.SoftResRoll then
-    local soft_ressing = r( RT.SoftRes, "soft-ressing" )
-    return { type = "text", value = string.format( "%s is the only one %s.", player, soft_ressing ), padding = top_padding }
-  else
-    return { type = "text", value = string.format( "%s %s win the roll.", player, red( "did not" ) ), padding = top_padding }
+  for i, winner in ipairs( winners ) do
+    local padding = i == 1 and 8 or 2
+    local player = c( winner.name, winner.class )
+    table.insert( result, { type = "text", value = string.format( "%s wins the %s.", player, blue( "raid-roll" ) ), padding = padding } )
   end
+
+  return result
+end
+
+function M.insta_raid_roll_winners_content( winners )
+  local result = {}
+
+  for i, winner in ipairs( winners ) do
+    local padding = i == 1 and 8 or 2
+    local player = c( winner.name, winner.class )
+    table.insert( result, { type = "text", value = string.format( "%s wins the %s.", player, blue( "insta raid-roll" ) ), padding = padding } )
+  end
+
+  return result
+end
+
+function M.roll_winner_content( winners, rolling_strategy )
+  local result = {}
+
+  for i, winner in ipairs( winners ) do
+    local player = c( winner.name, winner.class )
+    local roll_type = winner.roll_type and r( winner.roll_type )
+    local roll = winner.roll and blue( winner.roll )
+
+    local padding = i == 1 and top_padding or (top_padding - 6)
+    if roll then
+      table.insert( result,
+        { type = "text", value = string.format( "%s wins the %s roll with %s %s.", player, roll_type, article( winner.roll ), roll ), padding = padding } )
+    elseif rolling_strategy == RS.SoftResRoll then
+      local soft_ressing = r( RT.SoftRes, "soft-ressing" )
+      table.insert( result, { type = "text", value = string.format( "%s is the only one %s.", player, soft_ressing ), padding = padding } )
+    else
+      table.insert( result, { type = "text", value = string.format( "%s %s win the roll.", player, red( "did not" ) ), padding = padding } )
+    end
+  end
+
+  return result
 end
 
 function M.the_only_sr_content( winner )
@@ -104,16 +126,22 @@ function M.new(
     return { type = "item_link_with_icon", link = item and item.link, texture = item and item.texture, count = count }
   end
 
-  local function raid_roll_winner( data, current_iteration )
+  local function raid_roll_winners( data, current_iteration )
     return data.status.type == S.Finished and current_iteration and current_iteration.rolling_strategy == RS.RaidRoll
   end
 
-  local function insta_raid_roll_winner( data, current_iteration )
+  local function insta_raid_roll_winners( data, current_iteration )
     return data.status.type == S.Finished and current_iteration and current_iteration.rolling_strategy == RS.InstaRaidRoll
   end
 
-  local function roll_winner( data )
-    return data.status.type == S.Finished and data.status.winner and data.status.winner.roll
+  local function roll_winners( data )
+    if data.status.type ~= S.Finished or not data.status.winners then return false end
+
+    for _, winner in ipairs( data.status.winners ) do
+      if winner.roll then return true end
+    end
+
+    return false
   end
 
   local function softres_roll( current_iteration )
@@ -121,12 +149,14 @@ function M.new(
   end
 
   local function the_only_softres_winner( data, current_iteration )
-    return data.status.type == S.Finished and data.status.winner and not data.status.winner.roll and softres_roll( current_iteration ) or
+    return data.status.type == S.Finished and data.status.winners and getn( data.status.winners ) == 1 and not data.status.winners[ 1 ].roll and
+        softres_roll( current_iteration ) or
         data.status.type == S.Preview and data.item.sr_players and getn( data.item.sr_players ) == 1
   end
 
   local function award_winner_button( data )
-    return { type = "button", label = "Award winner", width = 120, on_click = function() roll_controller.award_loot( data.status.winner, data.item ) end }
+    -- TODO: Think how to deal with multiple winners in terms of awarding.
+    return { type = "button", label = "Award winner", width = 120, on_click = function() roll_controller.award_loot( data.status.winners[ 1 ], data.item ) end }
   end
 
   local function select_player_button( data )
@@ -152,7 +182,7 @@ function M.new(
     table.insert( result, make_item( data.item, data.count ) )
 
     if the_only_softres_winner( data, current_iteration ) then
-      table.insert( result, M.the_only_sr_content( data.status.winner ) )
+      table.insert( result, M.the_only_sr_content( data.status.winners[ 1 ] ) )
 
       if show_award_button then
         table.insert( result, award_winner_button( data ) )
@@ -174,8 +204,8 @@ function M.new(
       return result
     end
 
-    if raid_roll_winner( data, current_iteration ) then
-      table.insert( result, M.raid_roll_winner_content( data.status.winner ) )
+    if raid_roll_winners( data, current_iteration ) then
+      m.map( M.raid_roll_winners_content( data.status.winners ), function( winner ) table.insert( result, winner ) end )
 
       if not config.auto_raid_roll() then
         table.insert( result,
@@ -185,7 +215,7 @@ function M.new(
       if show_award_button then table.insert( result, award_winner_button( data ) ) end
 
       if config.raid_roll_again() then
-        table.insert( result, { type = "button", label = "Raid roll again", width = 130, on_click = function() raid_roll( data.item ) end } )
+        table.insert( result, { type = "button", label = "Raid roll again", width = 130, on_click = function() raid_roll( data.item, data.count ) end } )
       end
 
       table.insert( result, { type = "button", label = "Close", width = 90, on_click = function() popup:hide() end } )
@@ -193,8 +223,8 @@ function M.new(
       return result
     end
 
-    if insta_raid_roll_winner( data, current_iteration ) then
-      table.insert( result, M.insta_raid_roll_winner_content( data.status.winner ) )
+    if insta_raid_roll_winners( data, current_iteration ) then
+      m.map( M.insta_raid_roll_winners_content( data.status.winners ), function( winner ) table.insert( result, winner ) end )
 
       if show_award_button then table.insert( result, award_winner_button( data ) ) end
 
@@ -226,8 +256,9 @@ function M.new(
       return result
     end
 
-    if roll_winner( data ) then
-      table.insert( result, M.roll_winner_content( data.status.winner, current_iteration and current_iteration.rolling_strategy ) )
+    if roll_winners( data ) then
+      m.map( M.roll_winner_content( data.status.winners, current_iteration and current_iteration.rolling_strategy ),
+        function( winner ) table.insert( result, winner ) end )
 
       if show_award_button then table.insert( result, award_winner_button( data ) ) end
 
@@ -240,7 +271,7 @@ function M.new(
       return result
     end
 
-    if data.status.type == S.Finished and not data.status.winner then
+    if data.status.type == S.Finished and (not data.status.winners or getn( data.status.winners ) == 0) then
       table.insert( result, { type = "text", value = "Rolling has finished. No one rolled.", padding = top_padding } )
       table.insert( result, { type = "button", label = "Raid roll", width = 90, on_click = function() raid_roll( data.item ) end } )
       table.insert( result, { type = "button", label = "Close", width = 90, on_click = function() popup:hide() end } )
@@ -293,7 +324,8 @@ function M.new(
 
     if loot_item and data.status.type == S.Finished and current_iteration and (current_iteration.rolling_strategy == RS.RaidRoll or current_iteration.rolling_strategy == RS.InstaRaidRoll) then
       popup:hide()
-      roll_controller.award_loot( data.status.winner, data.item, current_iteration.rolling_strategy )
+      -- TODO: Think how to award multiple players.
+      roll_controller.award_loot( data.status.winners[ 1 ], data.item, current_iteration.rolling_strategy )
       return
     end
 
