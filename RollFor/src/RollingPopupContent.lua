@@ -142,7 +142,7 @@ function M.new(
   -- end
 
   local function roll_button( data )
-    return { type = "button", label = "Roll", width = 70, on_click = function() roll_item( data.item.link ) end }
+    return { type = "button", label = "Roll", width = 70, on_click = function() roll_item( data.item ) end }
   end
 
   local function generate_content( data, current_iteration, show_award_button )
@@ -185,7 +185,7 @@ function M.new(
       if show_award_button then table.insert( result, award_button( data ) ) end
 
       if config.raid_roll_again() then
-        table.insert( result, { type = "button", label = "Raid roll again", width = 130, on_click = function() raid_roll( data.item.link ) end } )
+        table.insert( result, { type = "button", label = "Raid roll again", width = 130, on_click = function() raid_roll( data.item ) end } )
       end
 
       table.insert( result, { type = "button", label = "Close", width = 90, on_click = function() popup:hide() end } )
@@ -232,7 +232,7 @@ function M.new(
       if show_award_button then table.insert( result, award_button( data ) ) end
 
       if not softres_roll( current_iteration ) then
-        table.insert( result, { type = "button", label = "Raid roll", width = 90, on_click = function() raid_roll( data.item.link ) end } )
+        table.insert( result, { type = "button", label = "Raid roll", width = 90, on_click = function() raid_roll( data.item ) end } )
       end
 
       table.insert( result, { type = "button", label = "Close", width = 90, on_click = function() popup:hide() end } )
@@ -242,7 +242,7 @@ function M.new(
 
     if data.status.type == S.Finished and not data.status.winner then
       table.insert( result, { type = "text", value = "Rolling has finished. No one rolled.", padding = top_padding } )
-      table.insert( result, { type = "button", label = "Raid roll", width = 90, on_click = function() raid_roll( data.item.link ) end } )
+      table.insert( result, { type = "button", label = "Raid roll", width = 90, on_click = function() raid_roll( data.item ) end } )
       table.insert( result, { type = "button", label = "Close", width = 90, on_click = function() popup:hide() end } )
       return result
     end
@@ -265,7 +265,7 @@ function M.new(
 
     if data.status.type == S.Preview and roll_count == 0 then
       table.insert( result, roll_button( data ) )
-      table.insert( result, { type = "button", label = "Insta RR", width = 80, on_click = function() insta_raid_roll( data.item.link ) end } )
+      table.insert( result, { type = "button", label = "Insta RR", width = 80, on_click = function() insta_raid_roll( data.item ) end } )
       table.insert( result, select_player_button( data ) )
 
       return result

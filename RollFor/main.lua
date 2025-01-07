@@ -111,6 +111,7 @@ local function select_player( item )
   player_list:SetPoint( "TOP", anchor, "BOTTOM", 0, -5 )
 end
 
+---@param item Item
 local function raid_roll_rolling_logic( item )
   local dropped_item = M.loot_list.find_item( item.id )
   local candidates = dropped_item and M.master_loot_candidates.get() or M.group_roster.get_all_players_in_my_group()
@@ -126,6 +127,7 @@ local function raid_roll_rolling_logic( item )
   )
 end
 
+---@param item Item
 local function insta_raid_roll_rolling_logic( item )
   local dropped_item = M.loot_list.find_item( item.id )
   local candidates = dropped_item and M.master_loot_candidates.get() or M.group_roster.get_all_players_in_my_group()
@@ -140,28 +142,21 @@ local function insta_raid_roll_rolling_logic( item )
   )
 end
 
-local function raid_roll_item( item_link )
-  local item_id = M.item_utils.get_item_id( item_link )
-  local item_name = M.item_utils.get_item_name( item_link )
-  local texture = m.get_item_texture( item_id )
-
-  local item = { id = item_id, link = item_link, name = item_name, texture = texture }
+---@param item Item
+local function raid_roll_item( item )
   m_rolling_logic = raid_roll_rolling_logic( item, M.master_loot_candidates.get() )
   M.winner_tracker.start_rolling( item.link )
   m_rolling_logic.announce_rolling()
 end
 
-local function insta_raid_roll_item( item_link )
-  local item_id = M.item_utils.get_item_id( item_link )
-  local item_name = M.item_utils.get_item_name( item_link )
-  local texture = m.get_item_texture( item_id )
-
-  local item = { id = item_id, link = item_link, name = item_name, texture = texture }
+---@param item Item
+local function insta_raid_roll_item( item )
   m_rolling_logic = insta_raid_roll_rolling_logic( item, M.master_loot_candidates.get() )
   M.winner_tracker.start_rolling( item.link )
   m_rolling_logic.announce_rolling()
 end
 
+---@param item Item
 local function non_softres_rolling_logic( item, count, message, seconds, on_rolling_finished )
   return m.NonSoftResRollingLogic.new( announce, M.ace_timer, M.group_roster, item, count, message, seconds, on_rolling_finished, M.config, M.roll_controller )
 end
@@ -212,12 +207,7 @@ local function soft_res_rolling_logic( item, count, message, seconds, on_rolling
   )
 end
 
-local function roll_item( item_link )
-  local item_id = M.item_utils.get_item_id( item_link )
-  local item_name = M.item_utils.get_item_name( item_link )
-  local texture = m.get_item_texture( item_id )
-
-  local item = { id = item_id, link = item_link, name = item_name, texture = texture }
+local function roll_item( item )
   m_rolling_logic = soft_res_rolling_logic( item, 1, nil, M.config.default_rolling_time_seconds(), M.on_rolling_finished )
   M.winner_tracker.start_rolling( item.link )
   m_rolling_logic.announce_rolling()
@@ -432,6 +422,7 @@ function M.there_was_a_tie( item, count, winners, top_roll, rerolling )
 end
 
 -- This should probably not be here.
+---@param item Item
 function M.on_rolling_finished( item, count, winners, rerolling, there_was_no_rolling )
   local announce_winners = function( v, top_roll )
     local roll = v.roll

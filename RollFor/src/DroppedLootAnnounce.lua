@@ -199,29 +199,7 @@ function M.process_dropped_items( loot_list, softres )
   return source_guid or "unknown", items, M.create_item_announcements( summary )
 end
 
--- Ideally, I'd like a data structure like this:
--- local items = {
---   [item_id] = {
---     count = 1, // How many dropped.
---     hard_ressed = true,
---   },
---   [item_id2] = {
---     count = 1,
---     soft_ressed = true,
---     soft_ressers = {
---       { player_name = "Ohhaimark", rolls = 2 },
---       { player_name = "Jogobobek", rolls = 1 }
---     }
---   }
---   [item_id3] = {
---     count = 1
---   }
--- }
---
--- I could then enrich soft_ressers with their class names using GroupRoster.
--- I could then filter the data to get only soft-ressed items.
-
--- The result is a list of unique items with the counts how many dropped and how many players reserve them.
+-- SoftResLootListDecorator?
 function M.create_item_summary( items, softres )
   local result = {}
   local distinct_items = distinct( items )
