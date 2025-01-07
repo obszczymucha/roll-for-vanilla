@@ -148,7 +148,26 @@ function RaidRollPopupContentSpec:should_return_initial_content()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,          count = 1 },
+      { type = "text",                value = "Raid rolling...", padding = 8 },
+    } )
+end
+
+function RaidRollPopupContentSpec:should_return_initial_content_with_multiple_items_to_roll()
+  -- Given
+  local popup = new_mod()
+  local item_id = 123
+  local seconds_left = 7
+  local item = i( "Hearthstone", item_id )
+  controller.start( RS.RaidRoll, item, 2, nil, seconds_left )
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,          count = 2 },
       { type = "text",                value = "Raid rolling...", padding = 8 },
     } )
 end
@@ -169,7 +188,7 @@ function RaidRollPopupContentSpec:should_display_the_winner()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                       count = 1 },
       { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
       { type = "button",              label = "Close",                        width = 90 }
     } )
@@ -191,7 +210,7 @@ function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                       count = 1 },
       { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
       { type = "button",              label = "Raid roll again",              width = 130 },
       { type = "button",              label = "Close",                        width = 90 }
@@ -214,7 +233,7 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_i
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                                           count = 1 },
       { type = "text",                value = "Psikutas wins the raid-roll.",                     padding = 8 },
       { type = "info",                value = "Use /rf config auto-rr to enable auto raid-roll.", anchor = "RollForRollingFrame" },
       { type = "button",              label = "Close",                                            width = 90 }
@@ -237,7 +256,7 @@ function NormalRollPopupContentSpec:should_return_initial_content()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "text",                value = "Rolling ends in 7 seconds.", padding = 11 },
       { type = "button",              label = "Finish early",               width = 100 },
       { type = "button",              label = "Cancel",                     width = 100 }
@@ -258,7 +277,7 @@ function NormalRollPopupContentSpec:should_return_initial_content_and_auto_raid_
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "text",                value = "Rolling ends in 7 seconds.", padding = 11 },
       { type = "text",                value = "Auto raid-roll is enabled." },
       { type = "button",              label = "Finish early",               width = 100 },
@@ -281,7 +300,7 @@ function NormalRollPopupContentSpec:should_update_rolling_ends_message()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "text",                value = "Rolling ends in 5 seconds.", padding = 11 },
       { type = "button",              label = "Finish early",               width = 100 },
       { type = "button",              label = "Cancel",                     width = 100 }
@@ -304,7 +323,7 @@ function NormalRollPopupContentSpec:should_display_cancel_message()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "text",                value = "Rolling has been canceled.", padding = 11 },
       { type = "button",              label = "Close",                      width = 90 }
     } )
@@ -325,7 +344,7 @@ function NormalRollPopupContentSpec:should_update_rolling_ends_message_for_one_s
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                    count = 1 },
       { type = "text",                value = "Rolling ends in 1 second.", padding = 11 },
       { type = "button",              label = "Finish early",              width = 100 },
       { type = "button",              label = "Cancel",                    width = 100 }
@@ -350,7 +369,7 @@ function NormalRollPopupContentSpec:should_display_the_winner()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                                      count = 1 },
       { type = "roll",                roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
       { type = "text",                value = "Psikutas wins the main-spec roll with a 69.", padding = 11 },
       { type = "button",              label = "Raid roll",                                   width = 90 },
@@ -376,7 +395,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                                      count = 1 },
       { type = "roll",                roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 8, padding = 11 },
       { type = "text",                value = "Psikutas wins the main-spec roll with an 8.", padding = 11 },
       { type = "button",              label = "Raid roll",                                   width = 90 },
@@ -402,7 +421,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                                       count = 1 },
       { type = "roll",                roll_type = RT.MainSpec,                                player_name = p1.name, player_class = p1.class, roll = 11, padding = 11 },
       { type = "text",                value = "Psikutas wins the main-spec roll with an 11.", padding = 11 },
       { type = "button",              label = "Raid roll",                                    width = 90 },
@@ -428,7 +447,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                                       count = 1 },
       { type = "roll",                roll_type = RT.MainSpec,                                player_name = p1.name, player_class = p1.class, roll = 18, padding = 11 },
       { type = "text",                value = "Psikutas wins the main-spec roll with an 18.", padding = 11 },
       { type = "button",              label = "Raid roll",                                    width = 90 },
@@ -458,7 +477,7 @@ function NormalRollPopupContentSpec:should_sort_the_rolls()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                                          count = 1 },
       { type = "roll",                roll_type = RT.MainSpec,                                   player_name = p2.name, player_class = p2.class, roll = 45, padding = 11 },
       { type = "roll",                roll_type = RT.MainSpec,                                   player_name = p1.name, player_class = p1.class, roll = 42 },
       { type = "roll",                roll_type = RT.OffSpec,                                    player_name = p1.name, player_class = p1.class, roll = 68 },
@@ -488,7 +507,7 @@ function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                                     count = 1 },
       { type = "roll",                roll_type = RT.OffSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
       { type = "text",                value = "Psikutas wins the off-spec roll with a 69.", padding = 11 },
       { type = "button",              label = "Raid roll",                                  width = 90 },
@@ -514,7 +533,7 @@ function NormalRollPopupContentSpec:should_display_the_transmog_winner()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                                     count = 1 },
       { type = "roll",                roll_type = RT.Transmog,                              player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
       { type = "text",                value = "Psikutas wins the transmog roll with a 69.", padding = 11 },
       { type = "button",              label = "Raid roll",                                  width = 90 },
@@ -542,7 +561,7 @@ function SoftResrollPopupContentSpec:should_return_initial_softres_content()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "roll",                player_name = "Obszczymucha",         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
       { type = "roll",                player_name = "Psikutas",             player_class = C.Warrior, roll_type = RT.SoftRes },
       { type = "roll",                player_name = "Psikutas",             player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -571,7 +590,7 @@ function SoftResrollPopupContentSpec:should_update_rolling_ends_message()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "roll",                player_name = "Obszczymucha",         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
       { type = "roll",                player_name = "Psikutas",             player_class = C.Warrior, roll_type = RT.SoftRes },
       { type = "roll",                player_name = "Psikutas",             player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -600,7 +619,7 @@ function SoftResrollPopupContentSpec:should_update_rolling_ends_message_for_one_
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                    count = 1 },
       { type = "roll",                player_name = "Obszczymucha",        player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
       { type = "roll",                player_name = "Psikutas",            player_class = C.Warrior, roll_type = RT.SoftRes },
       { type = "roll",                player_name = "Psikutas",            player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -630,7 +649,7 @@ function SoftResrollPopupContentSpec:should_display_the_winner()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                                     count = 1 },
       { type = "roll",                player_name = "Obszczymucha",                         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
       { type = "roll",                player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes },
       { type = "roll",                player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -659,7 +678,7 @@ function SoftResrollPopupContentSpec:should_say_nobody_rolled()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                               count = 1 },
       { type = "roll",                player_name = "Obszczymucha",                   player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
       { type = "roll",                player_name = "Psikutas",                       player_class = C.Warrior, roll_type = RT.SoftRes },
       { type = "roll",                player_name = "Psikutas",                       player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -689,7 +708,7 @@ function SoftResrollPopupContentSpec:should_display_the_only_soft_resser()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                                 count = 1 },
       { type = "text",                value = "Psikutas is the only one soft-ressing.", padding = 11 },
       { type = "button",              label = "Close",                                  width = 90 }
     } )
@@ -720,7 +739,7 @@ function SoftResrollPopupContentSpec:should_display_the_rolls()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                               count = 1 },
       { type = "roll",                player_name = "Psikutas",                       player_class = C.Warrior, roll_type = RT.SoftRes, roll = 69, padding = 11 },
       { type = "roll",                player_name = "Obszczymucha",                   player_class = C.Druid,   roll_type = RT.SoftRes, roll = 42 },
       { type = "roll",                player_name = "Psikutas",                       player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -750,7 +769,7 @@ function SoftResrollPopupContentSpec:should_say_waiting_for_remaining_rolls()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                         count = 1 },
       { type = "roll",                player_name = "Obszczymucha",             player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
       { type = "roll",                player_name = "Psikutas",                 player_class = C.Warrior, roll_type = RT.SoftRes },
       { type = "roll",                player_name = "Psikutas",                 player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -781,7 +800,7 @@ function TieRollPopupContentSpec:should_display_tied_rolls()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                count = 1 },
       { type = "roll",                player_name = "Obszczymucha",    player_class = C.Druid,   roll_type = RT.MainSpec, roll = 69,   padding = 11 },
       { type = "roll",                player_name = "Psikutas",        player_class = C.Warrior, roll_type = RT.MainSpec, roll = 69 },
       { type = "text",                value = "There was a tie (69):", padding = 11 },
@@ -810,7 +829,7 @@ function TieRollPopupContentSpec:should_display_tied_rolls_with_waiting_message(
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link },
+      { type = "item_link_with_icon", link = item.link,                         count = 1 },
       { type = "roll",                player_name = "Obszczymucha",             player_class = C.Druid,   roll_type = RT.MainSpec, roll = 69,   padding = 11 },
       { type = "roll",                player_name = "Psikutas",                 player_class = C.Warrior, roll_type = RT.MainSpec, roll = 69 },
       { type = "text",                value = "There was a tie (69):",          padding = 11 },

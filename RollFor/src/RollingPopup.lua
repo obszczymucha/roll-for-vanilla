@@ -118,9 +118,7 @@ function M.new( popup_builder, db, config, roll_controller )
     for _, v in ipairs( content ) do
       popup.add_line( v.type, function( type, frame, lines )
         if type == "item_link_with_icon" then
-          frame:SetText( v.link )
-          frame:SetTexture( v.texture )
-          frame.tooltip_link = v.link and m.ItemUtils.get_tooltip_link( v.link )
+          frame:SetItem( v, v.link and m.ItemUtils.get_tooltip_link( v.link ) )
         elseif type == "text" then
           frame:SetText( v.value )
         elseif type == "icon_text" then

@@ -100,8 +100,8 @@ function M.new(
     end
   end
 
-  local function make_item( item )
-    return { type = "item_link_with_icon", link = item and item.link, texture = item and item.texture }
+  local function make_item( item, count )
+    return { type = "item_link_with_icon", link = item and item.link, texture = item and item.texture, count = count }
   end
 
   local function raid_roll_winner( data, current_iteration )
@@ -149,7 +149,7 @@ function M.new(
     local result = {}
     local roll_count = current_iteration and current_iteration.rolls and getn( current_iteration.rolls ) or 0
 
-    table.insert( result, make_item( data.item ) )
+    table.insert( result, make_item( data.item, data.count ) )
 
     if the_only_softres_winner( data, current_iteration ) then
       table.insert( result, M.the_only_sr_content( data.status.winner ) )

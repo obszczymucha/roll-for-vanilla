@@ -207,9 +207,10 @@ local function soft_res_rolling_logic( item, count, message, seconds, on_rolling
   )
 end
 
-local function roll_item( item )
-  m_rolling_logic = soft_res_rolling_logic( item, 1, nil, M.config.default_rolling_time_seconds(), M.on_rolling_finished )
-  M.winner_tracker.start_rolling( item.link )
+local function roll_item( item, item_to_roll_count )
+  local count = item_to_roll_count or M.loot_list.count( item.id )
+  m_rolling_logic = soft_res_rolling_logic( item, count, nil, M.config.default_rolling_time_seconds(), M.on_rolling_finished )
+  M.winner_tracker.start_rolling( item.link, count )
   m_rolling_logic.announce_rolling()
 end
 

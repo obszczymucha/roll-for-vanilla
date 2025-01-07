@@ -25,6 +25,7 @@ end
 function M.new()
   local status
   local item_on_roll
+  local item_on_roll_count = 0
   local iterations = {}
   local current_iteration = 0
 
@@ -85,6 +86,7 @@ function M.new()
     current_iteration = 1
     status = { type = S.Preview }
     item_on_roll = item
+    item_on_roll_count = count
 
     if rolling_strategy == RS.SoftResRoll and required_rolling_players and getn( required_rolling_players ) == 1 then
       status.winner = required_rolling_players[ 1 ]
@@ -92,7 +94,6 @@ function M.new()
 
     table.insert( iterations, {
       rolling_strategy = rolling_strategy,
-      count = count,
       info = info,
       rolls = {}
     } )
@@ -113,10 +114,10 @@ function M.new()
     status = { type = S.InProgress, seconds_left = seconds }
 
     item_on_roll = item
+    item_on_roll_count = count
 
     table.insert( iterations, {
       rolling_strategy = rolling_strategy,
-      count = count,
       info = info,
       rolls = {}
     } )
@@ -172,6 +173,7 @@ function M.new()
 
     return {
       item = item_on_roll,
+      count = item_on_roll_count,
       status = status,
       iterations = iterations,
     }, current_iteration > 0 and iterations[ current_iteration ] or nil
@@ -201,6 +203,7 @@ function M.new()
     current_iteration = 0
     status = nil
     item_on_roll = nil
+    item_on_roll_count = 0
     dbg( "cleared" )
   end
 

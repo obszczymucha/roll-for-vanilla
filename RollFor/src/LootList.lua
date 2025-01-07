@@ -112,11 +112,22 @@ function M.new( loot_facade, item_utils )
     return looting
   end
 
+  local function count( item_id )
+    local result = 0
+
+    for _, item in ipairs( items ) do
+      if item.id == item_id then
+        result = result + 1
+      end
+    end
+  end
+
   return {
     get_items = get_items,
     get_source_guid = function() return source_guid end,
     find_item = find_item,
-    is_looting = is_looting
+    is_looting = is_looting,
+    count = count
   }
 end
 

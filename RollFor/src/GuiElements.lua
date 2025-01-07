@@ -5,6 +5,7 @@ if m.GuiElements then return end
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
+local hl = m.colors.hl
 
 ---@class GuiElements
 ---@field item_link fun( parent: Frame ): Frame
@@ -73,12 +74,15 @@ function M.item_link_with_icon( parent, text )
   local w = 14
   local h = 14
   local spacing = 10
+  local count = 0
   local texture
+  local tooltip_link
 
   container:SetPoint( "TOP", 0, 0 )
   container.icon = M.icon( container, true, w, h )
   container.icon:SetPoint( "LEFT", 0, 0 )
   container.icon:SetTexCoord( 1 / w, (w - 1) / w, 1 / h, (h - 1) / h )
+  container.count = M.text( container )
   container.text:SetTextColor( 1, 1, 1 )
 
   if text then
@@ -92,38 +96,60 @@ function M.item_link_with_icon( parent, text )
   local function resize()
     if texture then
       container.icon:Show()
+
+      local anchor = container.icon
+      local padding = spacing
+      local count_width = 0
+
+      if count > 1 then
+        container.count:Show()
+        container.count:ClearAllPoints()
+        container.count:SetPoint( "LEFT", container.icon, "RIGHT", spacing, 0 )
+        anchor = container.count
+        padding = 0
+        count_width = container.count:GetWidth()
+      end
+
       container.text:ClearAllPoints()
-      container.text:SetPoint( "LEFT", container.icon, "RIGHT", spacing, 0 )
-      container:SetWidth( container.text:GetWidth() + w + spacing )
+      container.text:SetPoint( "LEFT", anchor, "RIGHT", padding, 0 )
+      container:SetWidth( container.text:GetWidth() + w + count_width + spacing )
     else
+      local anchor = container
+      local count_width = 0
+
+      if count > 1 then
+        container.count:Show()
+        container.count:ClearAllPoints()
+        container.count:SetPoint( "LEFT", container.icon, "RIGHT", spacing, 0 )
+        anchor = container.count
+        count_width = container.count:GetWidth()
+      end
+
       container.icon:Hide()
       container.text:ClearAllPoints()
-      container.text:SetPoint( "LEFT", container, 0, 0 )
-      container:SetWidth( container.text:GetWidth() )
+      container.text:SetPoint( "LEFT", anchor, 0, 0 )
+      container:SetWidth( count_width + container.text:GetWidth() )
     end
   end
 
-  container.SetText = function( _, v )
-    container.text:SetText( v )
-    resize()
-  end
+  container.SetItem = function( _, i, tt_link )
+    texture = i.texture
+    count = i.count or 0
+    tooltip_link = tt_link
 
-  container.SetTexture = function( _, v )
-    texture = v
-
-    if v then
-      container.icon:SetTexture( v )
-    end
+    container.text:SetText( i.link )
+    container.icon:SetTexture( texture )
+    container.count:SetText( count > 1 and hl( string.format( "%sx", count ) ) or nil )
 
     resize()
   end
 
   local function on_enter()
-    if not container.tooltip_link then return end
+    if not tooltip_link then return end
     ---@diagnostic disable-next-line: undefined-global
     local self = this
     m.api.GameTooltip:SetOwner( self, "ANCHOR_CURSOR" )
-    m.api.GameTooltip:SetHyperlink( container.tooltip_link )
+    m.api.GameTooltip:SetHyperlink( tooltip_link )
     m.api.GameTooltip:Show()
   end
 
@@ -145,7 +171,6 @@ function M.text( parent, text )
 
   if text then label:SetText( text ) end
 
-  parent.text = label
   return label
 end
 
