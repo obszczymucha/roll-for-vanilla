@@ -125,8 +125,8 @@ function M.new(
         data.status.type == S.Preview and data.item.sr_players and getn( data.item.sr_players ) == 1
   end
 
-  local function award_button( data )
-    return { type = "button", label = "Award", width = 80, on_click = function() roll_controller.award_loot( data.status.winner, data.item ) end }
+  local function award_winner_button( data )
+    return { type = "button", label = "Award winner", width = 120, on_click = function() roll_controller.award_loot( data.status.winner, data.item ) end }
   end
 
   local function select_player_button( data )
@@ -155,7 +155,7 @@ function M.new(
       table.insert( result, M.the_only_sr_content( data.status.winner ) )
 
       if show_award_button then
-        table.insert( result, award_button( data ) )
+        table.insert( result, award_winner_button( data ) )
         -- table.insert( result, free_roll_button( data ) )
         -- table.insert( result, select_player_button( data ) )
       else
@@ -182,7 +182,7 @@ function M.new(
           { type = "info", value = string.format( "Use %s to enable auto raid-roll.", blue( "/rf config auto-rr" ) ), anchor = "RollForRollingFrame" } )
       end
 
-      if show_award_button then table.insert( result, award_button( data ) ) end
+      if show_award_button then table.insert( result, award_winner_button( data ) ) end
 
       if config.raid_roll_again() then
         table.insert( result, { type = "button", label = "Raid roll again", width = 130, on_click = function() raid_roll( data.item ) end } )
@@ -196,7 +196,7 @@ function M.new(
     if insta_raid_roll_winner( data, current_iteration ) then
       table.insert( result, M.insta_raid_roll_winner_content( data.status.winner ) )
 
-      if show_award_button then table.insert( result, award_button( data ) ) end
+      if show_award_button then table.insert( result, award_winner_button( data ) ) end
 
       table.insert( result, { type = "button", label = "Close", width = 90, on_click = function() popup:hide() end } )
 
@@ -229,7 +229,7 @@ function M.new(
     if roll_winner( data ) then
       table.insert( result, M.roll_winner_content( data.status.winner, current_iteration and current_iteration.rolling_strategy ) )
 
-      if show_award_button then table.insert( result, award_button( data ) ) end
+      if show_award_button then table.insert( result, award_winner_button( data ) ) end
 
       if not softres_roll( current_iteration ) then
         table.insert( result, { type = "button", label = "Raid roll", width = 90, on_click = function() raid_roll( data.item ) end } )
