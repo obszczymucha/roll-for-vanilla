@@ -249,7 +249,30 @@ local function create_components()
     M.absent_softres, db( "softres_check" ) )
   M.winner_tracker = m.WinnerTracker.new( db( "winner_tracker" ) )
   M.loot_facade = m.LootFacade.new( m.EventFrame.new( m.api ), m.api )
-  M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils, m.api )
+
+  local function get_dummy_items()
+    local function item_link( name, id, quality )
+      local color = m.api.ITEM_QUALITY_COLORS[ quality ].hex or "|cffffffff"
+      return string.format( "%s|Hitem:%s::::::::20:257::::::|h[%s]|h|r", color, id or "3299", name )
+    end
+
+    local ids = { 17204, 16961, 18842, 16961, 16961, 18842, 16865, 16961, 17109, 16961, 18466, 11980, 12820, 3676 }
+    table.sort( ids )
+    local result = {}
+
+    for i, item_id in ipairs( ids ) do
+      local item = {}
+      item.id = item_id
+      item.slot = i
+      item.name, item.tooltip_link, item.quality, _, _, _, _, _, item.texture = m.api.GetItemInfo( item.id )
+      item.link = item_link( item.name, item.id, item.quality )
+      table.insert( result, item )
+    end
+
+    return result
+  end
+
+  M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils, get_dummy_items() )
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
 
   M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.loot_list, announce, M.dropped_loot, M.softres, M.winner_tracker )
@@ -428,7 +451,7 @@ end
 -- This should probably not be here.
 ---@param item Item
 function M.on_rolling_finished( item, count, winners, rerolling, there_was_no_rolling )
-  local announce_winners = function( v, top_roll )
+  local announce_winner = function( v, top_roll )
     local roll = v.roll
     local players = v.players
     table.sort( players )
@@ -439,27 +462,6 @@ function M.on_rolling_finished( item, count, winners, rerolling, there_was_no_ro
     announce(
       string.format( "%s %srolled the %shighest (%d) for %s%s.", m.prettify_table( players ),
         rerolling and "re-" or "", top_roll and "" or "next ", roll, item.link, roll_type_str ) )
-
-    -- TODO: Add support for multiple winners.
-    local roll_winners = {}
-
-    for _, player_name in ipairs( players ) do
-      local player = M.group_roster.find_player( player_name )
-      local candidate = M.master_loot_candidates.find( players[ 1 ] )
-
-      table.insert( roll_winners, {
-        name = player_name,
-        class = player.class,
-        roll_type = v.roll_type,
-        roll = v.roll,
-        value = candidate and candidate.value or nil
-      } )
-
-      local rolling_strategy = m_rolling_logic and m_rolling_logic.get_rolling_strategy()
-      M.winner_tracker.track( player_name, item.link, v.roll_type, roll, rolling_strategy )
-    end
-
-    M.roll_controller.finish( roll_winners )
   end
 
   if getn( winners ) == 0 then
@@ -517,8 +519,33 @@ function M.on_rolling_finished( item, count, winners, rerolling, there_was_no_ro
     end
 
     items_left = items_left - player_count
-    announce_winners( winners[ i ], i == 1 )
+    announce_winner( winners[ i ], i == 1 )
   end
+
+  local function handle_winners()
+    local roll_winners = {}
+
+    for _, winner in ipairs( winners ) do
+      local winner_name = winner.players[ 1 ]
+      local player = M.group_roster.find_player( winner_name )
+      local candidate = M.master_loot_candidates.find( winner_name )
+
+      table.insert( roll_winners, {
+        name = winner_name,
+        class = player.class,
+        roll_type = winner.roll_type,
+        roll = winner.roll,
+        value = candidate and candidate.value or nil
+      } )
+
+      local rolling_strategy = m_rolling_logic and m_rolling_logic.get_rolling_strategy()
+      M.winner_tracker.track( winner, item.link, winner.roll_type, winner.roll, rolling_strategy )
+    end
+
+    M.roll_controller.finish( roll_winners )
+  end
+
+  handle_winners()
 
   if not m_rolling_logic.is_rolling() then
     info( string.format( "Rolling for %s has finished.", item.link ) )
@@ -818,31 +845,9 @@ local function on_reset_dropped_loot_announce_command()
 end
 
 local function test()
-  local function item_link( name, id, quality )
-    local color = m.api.ITEM_QUALITY_COLORS[ quality ].hex or "|cffffffff"
-    return string.format( "%s|Hitem:%s::::::::20:257::::::|h[%s]|h|r", color, id or "3299", name )
-  end
-
   -- local f = M.raw_loot_list.get_items
   local g = m.api.UnitName
   m.api.UnitName = function( t ) return t == "target" and "Princess Kenny" or g( t ) end
-
-  M.raw_loot_list.get_items = function()
-    local ids = { 17204, 16961, 18842, 16961, 16961, 18842, 16865, 16961, 17109, 16961, 18466, 11980, 12820, 3676 }
-    table.sort( ids )
-    local result = {}
-
-    for i, item_id in ipairs( ids ) do
-      local item = {}
-      item.id = item_id
-      item.slot = i
-      item.name, item.tooltip_link, item.quality, _, _, _, _, _, item.texture = m.api.GetItemInfo( item.id )
-      item.link = item_link( item.name, item.id, item.quality )
-      table.insert( result, item )
-    end
-
-    return result
-  end
 
   M.loot_frame.show()
   -- M.raw_loot_list.get_items = f

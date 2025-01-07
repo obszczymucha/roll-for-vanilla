@@ -7,7 +7,7 @@ if m.RollTracker then return end
 -- The first iteration starts with either a normal or soft-res rolling.
 -- Then there's either a winner or a tie.
 -- For each tie we have a new iteration, because a tie can result in another tie.
-local M = {}
+local M = m.Module.new( "RollTracker" )
 
 local clear_table = m.clear_table
 local RS = m.Types.RollingStrategy
@@ -15,12 +15,6 @@ local RT = m.Types.RollType
 local S = m.Types.RollingStatus
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
-local debug_enabled = false
-
-local function dbg( message )
-  if not debug_enabled then return end
-  print( string.format( "RollTracker: %s", message ) )
-end
 
 function M.new()
   local status
@@ -63,7 +57,7 @@ function M.new()
   end
 
   local function add( player_name, player_class, roll_type, roll )
-    dbg( "add" )
+    M.debug.add( "add" )
 
     if current_iteration == 0 then return end
 
@@ -80,7 +74,7 @@ function M.new()
   end
 
   local function preview( rolling_strategy, item, count, info, required_rolling_players )
-    dbg( "preview" )
+    M.debug.add( "preview" )
     clear_table( iterations )
     iterations.n = 0
     current_iteration = 1
@@ -107,7 +101,7 @@ function M.new()
 
   -- required_rolling_players should have { name = "", class = "" } structure
   local function start( rolling_strategy, item, count, info, seconds, required_rolling_players )
-    dbg( "start" )
+    M.debug.add( "start" )
     clear_table( iterations )
     iterations.n = 0
     current_iteration = 1
@@ -129,9 +123,9 @@ function M.new()
     end
   end
 
-  ---@class winners table
+  ---@param winners table | nil
   local function finish( winners )
-    dbg( "finish" )
+    M.debug.add( "finish" )
     status = { type = S.Finished, winners = winners or {} }
   end
 
@@ -140,7 +134,7 @@ function M.new()
   --- @param roll_type RollType The type of the roll.
   --- @param roll number The roll value.
   local function tie( required_rolling_players, roll_type, roll )
-    dbg( "tie" )
+    M.debug.add( "tie" )
     current_iteration = current_iteration + 1
     status = { type = S.TieFound }
 
@@ -156,12 +150,12 @@ function M.new()
   end
 
   local function tie_start()
-    dbg( "tie_start" )
+    M.debug.add( "tie_start" )
     status = { type = S.Waiting }
   end
 
   local function add_ignored( player_name, player_class, roll_type, roll, reason )
-    dbg( "add_ignored" )
+    M.debug.add( "add_ignored" )
     if current_iteration == 0 then return end
     iterations[ current_iteration ].ignored_rolls = iterations[ current_iteration ].ignored_rolls or {}
     local rolls = iterations[ current_iteration ].ignored_rolls
@@ -170,7 +164,7 @@ function M.new()
   end
 
   local function get()
-    dbg( "get" )
+    M.debug.add( "get" )
 
     return {
       item = item_on_roll,
@@ -181,7 +175,7 @@ function M.new()
   end
 
   local function tick( seconds_left )
-    dbg( "tick" )
+    M.debug.add( "tick" )
 
     if status.type == S.InProgress then
       status.seconds_left = seconds_left
@@ -189,12 +183,12 @@ function M.new()
   end
 
   local function waiting_for_rolls()
-    dbg( "waiting_for_rolls" )
+    M.debug.add( "waiting_for_rolls" )
     status.type = S.Waiting
   end
 
   local function cancel()
-    dbg( "cancel" )
+    M.debug.add( "cancel" )
     status.type = S.Canceled
   end
 
@@ -205,7 +199,7 @@ function M.new()
     status = nil
     item_on_roll = nil
     item_on_roll_count = 0
-    dbg( "cleared" )
+    M.debug.add( "cleared" )
   end
 
   return {

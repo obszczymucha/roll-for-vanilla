@@ -14,12 +14,12 @@ local clear = m.clear_table
 ---@param loot_facade LootFacade
 ---@param item_utils ItemUtils
 ---@return LootList
-function M.new( loot_facade, item_utils )
+function M.new( loot_facade, item_utils, dummy_items )
   interface.validate( loot_facade, m.LootFacade.interface )
   interface.validate( item_utils, m.ItemUtils.interface )
 
   local lf = loot_facade
-  local items = {}
+  local items = dummy_items or {}
   local looting = false
   local source_guid
 
@@ -120,6 +120,8 @@ function M.new( loot_facade, item_utils )
         result = result + 1
       end
     end
+
+    return result
   end
 
   return {

@@ -5,9 +5,9 @@ local tu = require( "test/utils" )
 tu.mock_wow_api()
 require( "src/modules" )
 local types = require( "src/Types" )
-local tracker_mod = require( "src/RollTracker" )
 require( "src/DebugBuffer" )
 require( "src/Module" )
+local tracker_mod = require( "src/RollTracker" )
 local controller_mod = require( "src/RollController" )
 require( "src/SoftResDataTransformer" )
 local softres_decorator = require( "src/SoftResPresentPlayersDecorator" )
@@ -190,7 +190,7 @@ function RaidRollPopupContentSpec:should_display_the_winner()
     {
       { type = "item_link_with_icon", link = item.link,                       count = 1 },
       { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
-      { type = "button",              label = "Close",                        width = 90 }
+      { type = "button",              label = "Close",                        width = 70 }
     } )
 end
 
@@ -213,7 +213,7 @@ function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again
       { type = "item_link_with_icon", link = item.link,                       count = 1 },
       { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
       { type = "button",              label = "Raid roll again",              width = 130 },
-      { type = "button",              label = "Close",                        width = 90 }
+      { type = "button",              label = "Close",                        width = 70 }
     } )
 end
 
@@ -236,7 +236,7 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_i
       { type = "item_link_with_icon", link = item.link,                                           count = 1 },
       { type = "text",                value = "Psikutas wins the raid-roll.",                     padding = 8 },
       { type = "info",                value = "Use /rf config auto-rr to enable auto raid-roll.", anchor = "RollForRollingFrame" },
-      { type = "button",              label = "Close",                                            width = 90 }
+      { type = "button",              label = "Close",                                            width = 70 }
     } )
 end
 
@@ -325,7 +325,7 @@ function NormalRollPopupContentSpec:should_display_cancel_message()
     {
       { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "text",                value = "Rolling has been canceled.", padding = 11 },
-      { type = "button",              label = "Close",                      width = 90 }
+      { type = "button",              label = "Close",                      width = 70 }
     } )
 end
 
@@ -373,7 +373,7 @@ function NormalRollPopupContentSpec:should_display_the_winner()
       { type = "roll",                roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
       { type = "text",                value = "Psikutas wins the main-spec roll with a 69.", padding = 11 },
       { type = "button",              label = "Raid roll",                                   width = 90 },
-      { type = "button",              label = "Close",                                       width = 90 }
+      { type = "button",              label = "Close",                                       width = 70 }
     } )
 end
 
@@ -399,7 +399,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
       { type = "roll",                roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 8, padding = 11 },
       { type = "text",                value = "Psikutas wins the main-spec roll with an 8.", padding = 11 },
       { type = "button",              label = "Raid roll",                                   width = 90 },
-      { type = "button",              label = "Close",                                       width = 90 }
+      { type = "button",              label = "Close",                                       width = 70 }
     } )
 end
 
@@ -425,7 +425,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
       { type = "roll",                roll_type = RT.MainSpec,                                player_name = p1.name, player_class = p1.class, roll = 11, padding = 11 },
       { type = "text",                value = "Psikutas wins the main-spec roll with an 11.", padding = 11 },
       { type = "button",              label = "Raid roll",                                    width = 90 },
-      { type = "button",              label = "Close",                                        width = 90 }
+      { type = "button",              label = "Close",                                        width = 70 }
     } )
 end
 
@@ -451,7 +451,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
       { type = "roll",                roll_type = RT.MainSpec,                                player_name = p1.name, player_class = p1.class, roll = 18, padding = 11 },
       { type = "text",                value = "Psikutas wins the main-spec roll with an 18.", padding = 11 },
       { type = "button",              label = "Raid roll",                                    width = 90 },
-      { type = "button",              label = "Close",                                        width = 90 }
+      { type = "button",              label = "Close",                                        width = 70 }
     } )
 end
 
@@ -485,7 +485,7 @@ function NormalRollPopupContentSpec:should_sort_the_rolls()
       { type = "roll",                roll_type = RT.Transmog,                                   player_name = p1.name, player_class = p1.class, roll = 69 },
       { type = "text",                value = "Obszczymucha wins the main-spec roll with a 45.", padding = 11 },
       { type = "button",              label = "Raid roll",                                       width = 90 },
-      { type = "button",              label = "Close",                                           width = 90 }
+      { type = "button",              label = "Close",                                           width = 70 }
     } )
 end
 
@@ -511,7 +511,7 @@ function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
       { type = "roll",                roll_type = RT.OffSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
       { type = "text",                value = "Psikutas wins the off-spec roll with a 69.", padding = 11 },
       { type = "button",              label = "Raid roll",                                  width = 90 },
-      { type = "button",              label = "Close",                                      width = 90 }
+      { type = "button",              label = "Close",                                      width = 70 }
     } )
 end
 
@@ -537,7 +537,7 @@ function NormalRollPopupContentSpec:should_display_the_transmog_winner()
       { type = "roll",                roll_type = RT.Transmog,                              player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
       { type = "text",                value = "Psikutas wins the transmog roll with a 69.", padding = 11 },
       { type = "button",              label = "Raid roll",                                  width = 90 },
-      { type = "button",              label = "Close",                                      width = 90 }
+      { type = "button",              label = "Close",                                      width = 70 }
     } )
 end
 
@@ -654,7 +654,7 @@ function SoftResrollPopupContentSpec:should_display_the_winner()
       { type = "roll",                player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes },
       { type = "roll",                player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes },
       { type = "text",                value = "Psikutas wins the soft-res roll with a 69.", padding = 11 },
-      { type = "button",              label = "Close",                                      width = 90 }
+      { type = "button",              label = "Close",                                      width = 70 }
     } )
 end
 
@@ -684,7 +684,7 @@ function SoftResrollPopupContentSpec:should_say_nobody_rolled()
       { type = "roll",                player_name = "Psikutas",                       player_class = C.Warrior, roll_type = RT.SoftRes },
       { type = "text",                value = "Rolling has finished. No one rolled.", padding = 11 },
       { type = "button",              label = "Raid roll",                            width = 90 },
-      { type = "button",              label = "Close",                                width = 90 }
+      { type = "button",              label = "Close",                                width = 70 }
     } )
 end
 
@@ -710,7 +710,7 @@ function SoftResrollPopupContentSpec:should_display_the_only_soft_resser()
     {
       { type = "item_link_with_icon", link = item.link,                                 count = 1 },
       { type = "text",                value = "Psikutas is the only one soft-ressing.", padding = 11 },
-      { type = "button",              label = "Close",                                  width = 90 }
+      { type = "button",              label = "Close",                                  width = 70 }
     } )
 end
 
@@ -745,7 +745,7 @@ function SoftResrollPopupContentSpec:should_display_the_rolls()
       { type = "roll",                player_name = "Psikutas",                       player_class = C.Warrior, roll_type = RT.SoftRes },
       { type = "text",                value = "Rolling has finished. No one rolled.", padding = 11 },
       { type = "button",              label = "Raid roll",                            width = 90 },
-      { type = "button",              label = "Close",                                width = 90 }
+      { type = "button",              label = "Close",                                width = 70 }
     } )
 end
 

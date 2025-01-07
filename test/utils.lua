@@ -441,7 +441,6 @@ function M.mock_multiple_random_roll( values )
   local invocation_count = 0
 
   M.mock( "RandomRoll", function()
-    print("Rolling chuj")
     invocation_count = invocation_count + 1
     local value = values[ invocation_count ]
     M.roll( value[ 1 ], value[ 2 ], value[ 3 ] )

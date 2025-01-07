@@ -26,8 +26,8 @@ function M.new( roll_tracker )
     return c
   end
 
-  local function preview( item )
-    roll_tracker.preview( RS.SoftResRoll, item, 1, nil, item.sr_players )
+  local function preview( item, count )
+    roll_tracker.preview( RS.SoftResRoll, item, count or 1, nil, item.sr_players )
     local color = get_color( item.quality )
 
     M.debug.add( "border_color" )
@@ -77,7 +77,7 @@ function M.new( roll_tracker )
     notify_subscribers( "tick" )
   end
 
-  ---@class winners table
+  ---@param winners table | nil
   local function finish( winners )
     M.debug.add( "finish" )
     roll_tracker.finish( winners )

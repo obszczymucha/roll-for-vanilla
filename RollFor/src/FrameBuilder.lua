@@ -175,7 +175,6 @@ function M.new()
           end
 
           if anchor then
-            print("sss")
             frame:ClearAllPoints()
             frame:SetPoint( "CENTER", anchor, "CENTER", 0, 0 )
           end

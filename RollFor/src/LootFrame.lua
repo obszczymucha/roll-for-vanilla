@@ -60,7 +60,8 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
     local loot_method = m.api.GetLootMethod()
 
     if m.is_player_master_looter() and not item.coin then
-      roll_controller.preview( item )
+      local count = loot_list.count( item.id )
+      roll_controller.preview( item, count )
       return
     end
 
