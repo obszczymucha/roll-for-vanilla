@@ -180,6 +180,65 @@ function M.new(
     return { type = "button", label = "Close", width = 70, on_click = function() popup:hide() end }
   end
 
+  local function the_only_softres_content( result, data, show_award_button )
+    table.insert( result, M.the_only_sr_content( data.status.winners[ 1 ] ) )
+
+    if show_award_button then
+      table.insert( result, award_winner_button( data ) )
+      -- table.insert( result, free_roll_button( data ) )
+      -- table.insert( result, select_player_button( data ) )
+    else
+      table.insert( result, close_button() )
+    end
+
+    return result
+  end
+
+  local function raid_roll_content( result, data, show_award_button )
+    m.map( M.raid_roll_winners_content( data.status.winners ), function( winner ) table.insert( result, winner ) end )
+
+    if not config.auto_raid_roll() then
+      table.insert( result,
+        { type = "info", value = string.format( "Use %s to enable auto raid-roll.", blue( "/rf config auto-rr" ) ), anchor = "RollForRollingFrame" } )
+    end
+
+    if show_award_button then table.insert( result, award_winner_button( data ) ) end
+
+    if config.raid_roll_again() then
+      table.insert( result, { type = "button", label = "Raid roll again", width = 130, on_click = function() raid_roll( data.item, data.count ) end } )
+    end
+
+    table.insert( result, close_button() )
+
+    return result
+  end
+
+  local function insta_raid_roll_content( result, data, show_award_button )
+    m.map( M.insta_raid_roll_winners_content( data.status.winners ), function( winner ) table.insert( result, winner ) end )
+
+    if show_award_button then table.insert( result, award_winner_button( data ) ) end
+
+    table.insert( result, close_button() )
+
+    return result
+  end
+
+  local function seconds_left_content( result, data, roll_count )
+    local seconds = data.status.seconds_left
+    table.insert( result,
+      { type = "text", value = string.format( "Rolling ends in %s second%s.", seconds, seconds == 1 and "" or "s" ), padding = top_padding } )
+
+    if roll_count == 0 and config.auto_raid_roll() then
+      table.insert( result, { type = "text", value = string.format( "Auto %s is %s.", blue( "raid-roll" ), m.msg.enabled ) } )
+    end
+
+    table.insert( result,
+      { type = "button", label = "Finish early", width = 100, on_click = finish_early } )
+    table.insert( result,
+      { type = "button", label = "Cancel", width = 100, on_click = cancel_roll } )
+    return result
+  end
+
   local function generate_content( data, current_iteration, show_award_button )
     local result = {}
     local roll_count = current_iteration and current_iteration.rolls and getn( current_iteration.rolls ) or 0
@@ -187,17 +246,7 @@ function M.new(
     table.insert( result, make_item( data.item, data.count ) )
 
     if the_only_softres_winner( data, current_iteration ) then
-      table.insert( result, M.the_only_sr_content( data.status.winners[ 1 ] ) )
-
-      if show_award_button then
-        table.insert( result, award_winner_button( data ) )
-        -- table.insert( result, free_roll_button( data ) )
-        -- table.insert( result, select_player_button( data ) )
-      else
-        table.insert( result, close_button() )
-      end
-
-      return result
+      return the_only_softres_content( result, data, show_award_button )
     end
 
     make_roll_content( result, data.iterations )
@@ -210,32 +259,11 @@ function M.new(
     end
 
     if raid_roll_winners( data, current_iteration ) then
-      m.map( M.raid_roll_winners_content( data.status.winners ), function( winner ) table.insert( result, winner ) end )
-
-      if not config.auto_raid_roll() then
-        table.insert( result,
-          { type = "info", value = string.format( "Use %s to enable auto raid-roll.", blue( "/rf config auto-rr" ) ), anchor = "RollForRollingFrame" } )
-      end
-
-      if show_award_button then table.insert( result, award_winner_button( data ) ) end
-
-      if config.raid_roll_again() then
-        table.insert( result, { type = "button", label = "Raid roll again", width = 130, on_click = function() raid_roll( data.item, data.count ) end } )
-      end
-
-      table.insert( result, close_button() )
-
-      return result
+      return raid_roll_content( result, data, show_award_button )
     end
 
     if insta_raid_roll_winners( data, current_iteration ) then
-      m.map( M.insta_raid_roll_winners_content( data.status.winners ), function( winner ) table.insert( result, winner ) end )
-
-      if show_award_button then table.insert( result, award_winner_button( data ) ) end
-
-      table.insert( result, close_button() )
-
-      return result
+      insta_raid_roll_content( result, data, show_award_button )
     end
 
     if data.status.type == S.Canceled then
@@ -246,19 +274,7 @@ function M.new(
     end
 
     if data.status.type == S.InProgress and data.status.seconds_left then
-      local seconds = data.status.seconds_left
-      table.insert( result,
-        { type = "text", value = string.format( "Rolling ends in %s second%s.", seconds, seconds == 1 and "" or "s" ), padding = top_padding } )
-
-      if roll_count == 0 and config.auto_raid_roll() then
-        table.insert( result, { type = "text", value = string.format( "Auto %s is %s.", blue( "raid-roll" ), m.msg.enabled ) } )
-      end
-
-      table.insert( result,
-        { type = "button", label = "Finish early", width = 100, on_click = finish_early } )
-      table.insert( result,
-        { type = "button", label = "Cancel", width = 100, on_click = cancel_roll } )
-      return result
+      return seconds_left_content( result, data, roll_count )
     end
 
     if roll_winners( data ) then
@@ -313,6 +329,7 @@ function M.new(
 
     if data.status.type == S.Preview then
       table.insert( result, roll_button( data ) )
+      table.insert( result, select_player_button( data ) )
       return result
     end
 

@@ -4,3 +4,4 @@
 2. Disable the loot frame when rolling.
 3. Add awarding support for multiple winners.
 4. Make loot messages less verbose - if below threshold, then don't display.
+5. Fix RollingPopupContent to display multiple winners if multiple items dropped and they're equal to the number of winners.

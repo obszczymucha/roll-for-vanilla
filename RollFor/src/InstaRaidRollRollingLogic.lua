@@ -13,6 +13,7 @@ local clear_table = m.clear_table
 local getn = table.getn
 
 function M.new( announce, item, count, winner_tracker, roll_controller, candidates )
+  m.pdump(candidates)
   local m_winners = {}
 
   local function clear_winners()

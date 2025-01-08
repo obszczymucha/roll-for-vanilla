@@ -117,6 +117,11 @@ local function raid_roll_rolling_logic( item, count )
   local candidates = dropped_item and M.master_loot_candidates.get() or M.group_roster.get_all_players_in_my_group()
   local online_candidates = m.filter( candidates, function( c ) return c.online == true end )
 
+  if dropped_item and getn( online_candidates ) == 0 then
+    m.pretty_print( "Game API didn't return any loot candidates.", m.colors.red )
+    return
+  end
+
   return m.RaidRollRollingLogic.new(
     announce,
     M.ace_timer,
@@ -134,6 +139,11 @@ local function insta_raid_roll_rolling_logic( item, count )
   local candidates = dropped_item and M.master_loot_candidates.get() or M.group_roster.get_all_players_in_my_group()
   local online_candidates = m.filter( candidates, function( c ) return c.online == true end )
 
+  if dropped_item and getn( online_candidates ) == 0 then
+    m.pretty_print( "Game API didn't return any loot candidates.", m.colors.red )
+    return
+  end
+
   return m.InstaRaidRollRollingLogic.new(
     announce,
     item,
@@ -147,6 +157,8 @@ end
 ---@param item Item
 local function raid_roll_item( item, count )
   m_rolling_logic = raid_roll_rolling_logic( item, count )
+  if not m_rolling_logic then return end
+
   M.winner_tracker.start_rolling( item.link )
   m_rolling_logic.announce_rolling()
 end
@@ -154,6 +166,8 @@ end
 ---@param item Item
 local function insta_raid_roll_item( item, count )
   m_rolling_logic = insta_raid_roll_rolling_logic( item, count )
+  if not m_rolling_logic then return end
+
   M.winner_tracker.start_rolling( item.link )
   m_rolling_logic.announce_rolling()
 end
@@ -256,7 +270,8 @@ local function create_components()
       return string.format( "%s|Hitem:%s::::::::20:257::::::|h[%s]|h|r", color, id or "3299", name )
     end
 
-    local ids = { 17204, 16961, 18842, 16961, 16961, 18842, 16865, 16961, 17109, 16961, 18466, 11980, 12820, 3676 }
+    -- local ids = { 17204, 16961, 18842, 16961, 16961, 18842, 16865, 16961, 17109, 16961, 18466, 11980, 12820, 3676 }
+    local ids = { 18842, 18842, 3676 }
     table.sort( ids )
     local result = {}
 
