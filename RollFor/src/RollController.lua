@@ -7,6 +7,35 @@ local M = m.Module.new( "RollController" )
 local RS = m.Types.RollingStrategy
 local S = m.Types.RollingStatus
 
+---@class RollController
+---@field preview fun( item: Item, count: number )
+---@field start fun( rolling_strategy: RollingStrategy, item: Item, count: number, info: string?, seconds: number?, required_rolling_players: Player[]?)
+---@field finish fun( winners: Player[] )
+---@field tick fun( seconds_left: number )
+---@field add fun( player_name: string, player_class: string, roll_type: RollType, roll: number )
+---@field add_ignored fun( player_name: string, player_class: string?, roll_type: RollType, roll: number, reason: string )
+---@field cancel fun()
+---@field subscribe fun( event_type: string, callback: fun( data: any ) )
+---@field tie fun( tied_players: Player[], roll_type: RollType, roll: number )
+---@field tie_start fun()
+---@field waiting_for_rolls fun()
+---@field show fun()
+---@field award_aborted fun( item: Item )
+---@field loot_awarded fun( item_link: string )
+---@field award_loot fun( player: Player, item: Item, rolling_strategy: RollingStrategy, origin: string )
+---@field loot_opened fun()
+---@field loot_closed fun()
+---@field player_already_has_unique_item fun()
+---@field player_has_full_bags fun()
+---@field player_not_found fun()
+---@field cant_assign_item_to_that_player fun()
+---@field rolling_popup_closed fun()
+---@field loot_award_popup_closed fun()
+---@field loot_list_item_selected fun()
+---@field loot_list_item_deselected fun()
+
+---@param roll_tracker RollTracker
+---@return RollController
 function M.new( roll_tracker )
   local callbacks = {}
 
@@ -36,6 +65,12 @@ function M.new( roll_tracker )
     notify_subscribers( "preview", { item = item } )
   end
 
+  ---@param rolling_strategy RollingStrategy
+  ---@param item Item
+  ---@param count number
+  ---@param info string?
+  ---@param seconds number?
+  ---@param required_rolling_players Player[]?
   local function start( rolling_strategy, item, count, info, seconds, required_rolling_players )
     roll_tracker.start( rolling_strategy, item, count, info, seconds, required_rolling_players )
     local _, _, quality = m.api.GetItemInfo( string.format( "item:%s:0:0:0", item.id ) )
@@ -55,8 +90,14 @@ function M.new( roll_tracker )
 
   local function add_ignored( player_name, player_class, roll_type, roll, reason )
     M.debug.add( "ignored_roll" )
-    roll_tracker.add_ignored( player_name, player_class, roll_type, roll, reason )
-    notify_subscribers( "ignored_roll" )
+    roll_tracker.add_ignored( player_name, roll_type, roll, reason )
+    notify_subscribers( "ignored_roll", {
+      player_name = player_name,
+      player_class = player_class,
+      roll_type = roll_type,
+      roll = roll,
+      reason = reason
+    } )
   end
 
   local function tie( tied_players, roll_type, roll )
@@ -77,7 +118,7 @@ function M.new( roll_tracker )
     notify_subscribers( "tick" )
   end
 
-  ---@param winners table | nil
+  ---@param winners Player[]
   local function finish( winners )
     M.debug.add( "finish" )
     roll_tracker.finish( winners )

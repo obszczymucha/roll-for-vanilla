@@ -12,6 +12,8 @@ local RollType = m.Types.RollType
 
 local M = {}
 
+---@alias Config table
+
 function M.new( db )
   local callbacks = {}
   local toggles = {

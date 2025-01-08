@@ -15,8 +15,17 @@ local hl = m.colors.hl
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
-function M.new( announce, players, item, count, on_rolling_finished, roll_type, config, group_roster, roll_controller )
-  local rollers, rolls = map( players, rlu.one_roll ), {}
+---@param announce AnnounceFn
+---@param player_names string[]
+---@param item Item
+---@param item_count number
+---@param on_rolling_finished RollingFinishedCallback
+---@param roll_type RollType
+---@param config Config
+---@param group_roster GroupRoster
+---@param roll_controller RollController
+function M.new( announce, player_names, item, item_count, on_rolling_finished, roll_type, config, group_roster, roll_controller )
+  local rollers, rolls = map( player_names, rlu.one_roll ), {}
   local rolling = false
 
   local function stop_listening()
@@ -26,7 +35,7 @@ function M.new( announce, players, item, count, on_rolling_finished, roll_type, 
   local function have_all_rolls_been_exhausted()
     local roll_count = count_elements( rolls )
 
-    if getn( rollers ) == count and roll_count == getn( rollers ) then
+    if getn( rollers ) == item_count and roll_count == getn( rollers ) then
       return true
     end
 
@@ -42,7 +51,7 @@ function M.new( announce, players, item, count, on_rolling_finished, roll_type, 
     local roll_count = count_elements( rolls )
 
     if roll_count == 0 then
-      on_rolling_finished( item, count, {}, true )
+      on_rolling_finished( item, item_count, {}, true )
       return
     end
 
@@ -50,9 +59,10 @@ function M.new( announce, players, item, count, on_rolling_finished, roll_type, 
       v.roll_type = roll_type
       return v
     end )
-    local winners = take( sorted_rolls, count )
+    -- local winners = take( sorted_rolls, item_count )
+    local winners = { "abc" }
 
-    on_rolling_finished( item, count, winners, true )
+    on_rolling_finished( item, item_count, winners, true ) -- Why the fuck doesn't it tell me it's a wrong type?
   end
 
   local function on_roll( player_name, roll, min, max )
@@ -81,6 +91,13 @@ function M.new( announce, players, item, count, on_rolling_finished, roll_type, 
     rlu.record_roll( rolls, player_name, roll )
 
     local player = group_roster.find_player( player_name )
+
+    if not player then
+      pretty_print( string.format( "|cffff9f69%s|r cannot be found. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
+      roll_controller.add_ignored( player_name, nil, roll_type, roll, "Not in GroupRoster." )
+      return
+    end
+
     roll_controller.add( player_name, player and player.class, roll_type, roll )
 
     if have_all_rolls_been_exhausted() then find_winner() end

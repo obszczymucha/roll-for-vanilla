@@ -5,6 +5,17 @@ if m.GroupRoster then return end
 
 local M = {}
 
+---@class GroupRoster
+---@field my_name fun(): string
+---@field get_all_players_in_my_group fun( f: (fun( player: Player ): boolean)? ): Player[]
+---@field is_player_in_my_group fun( player_name: string ): boolean
+---@field am_i_in_group fun(): boolean
+---@field am_i_in_party fun(): boolean
+---@field am_i_in_raid fun(): boolean
+---@field find_player fun( player_name: string ): Player?
+
+---@param api fun():any
+---@return GroupRoster
 function M.new( api )
   local function my_name()
     return api().UnitName( "player" )

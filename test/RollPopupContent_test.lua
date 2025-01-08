@@ -670,7 +670,7 @@ function SoftResrollPopupContentSpec:should_say_nobody_rolled()
   local item = i( "Hearthstone", item_id )
   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
   controller.tick( 1 )
-  controller.finish()
+  controller.finish( {} )
 
   -- When
   local result = popup.get()
@@ -731,7 +731,7 @@ function SoftResrollPopupContentSpec:should_display_the_rolls()
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.SoftRes, 69 )
   controller.add( p2.name, p2.class, RT.SoftRes, 42 )
-  controller.finish()
+  controller.finish( {} )
 
   -- When
   local result = popup.get()

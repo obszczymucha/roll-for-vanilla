@@ -58,19 +58,19 @@ function M.new( event_frame, api )
     return api.GetNumLootItems()
   end
 
-  ---@return string | nil
+  ---@return string?
   local function get_source_guid()
     return api.UnitName( "target" )
   end
 
   ---@param slot number
-  ---@return ItemLink | nil
+  ---@return ItemLink?
   local function get_link( slot )
     return api.GetLootSlotLink( slot )
   end
 
   ---@param slot number
-  ---@return LootSlotInfo | nil
+  ---@return LootSlotInfo?
   local function get_info( slot )
     local texture, name, quantity, quality = api.GetLootSlotInfo( slot )
 

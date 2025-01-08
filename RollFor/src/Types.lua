@@ -158,5 +158,13 @@ local ItemQuality = {
 
 M.ItemQuality = ItemQuality
 
+---@alias NotAceTimer any
+---@alias TimerId number
+
+---@class AceTimer
+---@field ScheduleTimer fun( self: AceTimer, callback: function, delay: number, arg: any ): TimerId
+---@field ScheduleRepeatingTimer fun( self: NotAceTimer, callback: function, delay: number, arg: any ): TimerId
+---@field CancelTimer fun( self: AceTimer, timer_id: number )
+
 m.Types = M
 return M

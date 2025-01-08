@@ -5,6 +5,21 @@ if m.SoftResDataTransformer then return end
 
 local M = {}
 
+---@alias RaidResData table -- TODO: document this
+
+---@class Roller
+---@field name string
+---@field rolls number
+
+---@class SoftRessedItem
+---@field players Roller[]
+---@field quality number
+---@field soft_ressed boolean
+---@field hard_ressed boolean
+
+---@alias ItemId number
+---@alias SoftResData table<ItemId, SoftRessedItem>
+
 -- The input is a data from softres.it/raidres.fly.dev format.
 -- The output is a map of item_ids.
 -- If the item is soft ressed the map contains a list of players
@@ -12,6 +27,8 @@ local M = {}
 -- The item data can be enriched with item link and name.
 -- The player data can then be enriched with player_class or
 -- any additional information needed to process rolls.
+---@param data RaidResData
+---@return SoftResData
 function M.transform( data )
   local result = {}
   local hard_reserves = data.hardreserves or {}

@@ -9,7 +9,7 @@ local clear = m.clear_table
 ---@class LootList
 ---@field get_items fun(): DistributableItem[]
 ---@field get_source_guid fun(): string
----@field find_item fun( item_id: number ): DistributableItem | nil
+---@field find_item fun( item_id: number ): DistributableItem?
 
 ---@param loot_facade LootFacade
 ---@param item_utils ItemUtils
@@ -99,7 +99,7 @@ function M.new( loot_facade, item_utils, dummy_items )
   loot_facade.subscribe( "LootClosed", on_loot_closed )
   loot_facade.subscribe( "LootSlotCleared", on_loot_slot_cleared )
 
-  ---@return DistributableItem | nil
+  ---@return DistributableItem?
   local function find_item( item_id )
     for _, item in ipairs( items ) do
       if item.id == item_id then

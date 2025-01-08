@@ -16,6 +16,39 @@ local S = m.Types.RollingStatus
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
+---@class RollData
+---@field player_name string
+---@field player_class string
+---@field roll_type RollType
+---@field roll number?
+
+---@class RollIteration
+---@field rolling_strategy RollingStrategy
+---@field info string
+---@field rolls RollData[]
+---@field ignored_rolls RollData[]?
+---@field tied_roll number?
+
+---@class RollStatus
+---@field type RollingStatus
+---@field seconds_left number?
+---@field winners Player[]?
+
+---@class RollTracker
+---@field preview fun( rolling_strategy: RollingStrategy, item: Item, count: number, info: string?, required_rolling_players: Player[] )
+---@field start fun( rolling_strategy: RollingStrategy, item: Item, count: number, info: string?, seconds: number?, required_rolling_players: Player[]? )
+---@field waiting_for_rolls fun()
+---@field finish fun( winners: Player[] )
+---@field cancel fun()
+---@field tie fun( required_rolling_players: Player[], roll_type: RollType, roll: number )
+---@field tie_start fun()
+---@field add fun( player_name: string, player_class: string, roll_type: RollType, roll: number )
+---@field add_ignored fun( player_name: string, roll_type: RollType, roll: number, reason: string )
+---@field get fun(): { item: Item, count: number, status: RollStatus, iterations: RollIteration[] }, RollIteration
+---@field tick fun( seconds_left: number )
+---@field clear fun()
+
+---@return RollTracker
 function M.new()
   local status
   local item_on_roll
@@ -94,7 +127,7 @@ function M.new()
 
     for _, player in ipairs( required_rolling_players or {} ) do
       for _ = 1, player.rolls or 1 do
-        add( player.name, player.class, rolling_strategy == RS.SoftResRoll and RT.SoftRes or RS.TieRoll )
+        add( player.name, player.class, rolling_strategy == RS.SoftResRoll and RT.SoftRes )
       end
     end
   end
@@ -123,10 +156,10 @@ function M.new()
     end
   end
 
-  ---@param winners table | nil
+  ---@param winners Player[]
   local function finish( winners )
     M.debug.add( "finish" )
-    status = { type = S.Finished, winners = winners or {} }
+    status = { type = S.Finished, winners = winners }
   end
 
   --- Indicates that the there was a tie.
@@ -154,12 +187,12 @@ function M.new()
     status = { type = S.Waiting }
   end
 
-  local function add_ignored( player_name, player_class, roll_type, roll, reason )
+  local function add_ignored( player_name, roll_type, roll, reason )
     M.debug.add( "add_ignored" )
     if current_iteration == 0 then return end
     iterations[ current_iteration ].ignored_rolls = iterations[ current_iteration ].ignored_rolls or {}
     local rolls = iterations[ current_iteration ].ignored_rolls
-    local data = { player_name = player_name, player_class = player_class, roll_type = roll_type, roll = roll, reason = reason }
+    local data = { player_name = player_name, roll_type = roll_type, roll = roll, reason = reason }
     table.insert( rolls, data )
   end
 

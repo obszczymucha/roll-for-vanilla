@@ -29,8 +29,8 @@ M.interface = {
 ---@field id number
 ---@field name string
 ---@field link ItemLink
----@field quality ItemQuality | nil
----@field texture string | nil
+---@field quality ItemQuality?
+---@field texture string?
 
 ---@class DistributableItem : Item
 ---@field slot number
@@ -42,9 +42,9 @@ M.interface = {
 ---@field slot number
 
 ---@class ItemUtils
----@field get_item_id fun( item_link: ItemLink ): number | nil
+---@field get_item_id fun( item_link: ItemLink ): number?
 ---@field get_item_name fun( item_link: ItemLink ): string
----@field parse_link fun( item_link: string ): ItemLink | nil -- Sometimes we need to parse the link from the "[Item Name]x4." string.
+---@field parse_link fun( item_link: string ): ItemLink? -- Sometimes we need to parse the link from the "[Item Name]x4." string.
 ---@field parse_all_links fun( item_links: string ): ItemLink[]
 ---@field get_tooltip_link fun( item_link: ItemLink ): TooltipItemLink
 ---@field make_item fun( id: number, name: string, link: ItemLink, quality: ItemQuality, texture: string ): Item
@@ -52,7 +52,7 @@ M.interface = {
 ---@field make_coin fun( texture: string, amount_text: string, slot: number ): Coin
 
 ---@param item_link ItemLink
----@return number | nil
+---@return number?
 function M.get_item_id( item_link )
   for item_id in string.gmatch( item_link, "|c%x%x%x%x%x%x%x%x|Hitem:(%d+):.+|r" ) do
     return tonumber( item_id )
@@ -69,7 +69,7 @@ function M.get_item_name( item_link )
 end
 
 ---@param item_link string
----@return string | nil
+---@return string?
 function M.parse_link( item_link )
   if not item_link then return end
 
@@ -100,8 +100,8 @@ end
 ---@param id number
 ---@param name string
 ---@param link ItemLink
----@param quality ItemQuality | nil
----@param texture string | nil
+---@param quality ItemQuality?
+---@param texture string?
 ---@return Item
 function M.make_item( id, name, link, quality, texture )
   return { id = id, name = name, link = link, quality = quality, texture = texture }
@@ -111,10 +111,10 @@ end
 ---@param name string
 ---@param link ItemLink
 ---@param tooltip_link TooltipItemLink
----@param quality ItemQuality | nil
----@param quantity number | nil
----@param texture string | nil
----@param slot number | nil
+---@param quality ItemQuality?
+---@param quantity number?
+---@param texture string?
+---@param slot number?
 ---@return DistributableItem
 function M.make_distributable_item( id, name, link, tooltip_link, quality, quantity, texture, slot )
   return { id = id, name = name, link = link, tooltip_link = tooltip_link, quality = quality, quantity = quantity, texture = texture, slot = slot }

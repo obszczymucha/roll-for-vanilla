@@ -9,10 +9,10 @@ local debugstack = debugstack
 
 ---@param implementation table
 ---@param i1 table
----@param i2 table | nil
----@param i3 table | nil
----@param i4 table | nil
----@param i5 table | nil
+---@param i2 table?
+---@param i3 table?
+---@param i4 table?
+---@param i5 table?
 function M.validate( implementation, i1, i2, i3, i4, i5, i6, i7, i8, i9 )
   assert( type( implementation ) == "table", "'implementation' must be a table." )
 
@@ -33,14 +33,14 @@ end
 
 ---@param implementation table
 ---@param n1 string
----@param n2 string | nil
----@param n3 string | nil
----@param n4 string | nil
----@param n5 string | nil
----@param n6 string | nil
----@param n7 string | nil
----@param n8 string | nil
----@param n9 string | nil
+---@param n2 string?
+---@param n3 string?
+---@param n4 string?
+---@param n5 string?
+---@param n6 string?
+---@param n7 string?
+---@param n8 string?
+---@param n9 string?
 function M.assert_members( implementation, n1, n2, n3, n4, n5, n6, n7, n8, n9 )
   assert( type( implementation ) == "table", "'implementation' must be a table." )
 

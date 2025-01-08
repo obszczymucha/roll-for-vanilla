@@ -16,7 +16,17 @@ local RollingStrategy = m.Types.RollingStrategy
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
-function M.new( announce, ace_timer, group_roster, item, count, info, seconds, on_rolling_finished, config, roll_controller )
+---@param announce AnnounceFn
+---@param ace_timer AceTimer
+---@param group_roster GroupRoster
+---@param item Item
+---@param item_count number
+---@param info string?
+---@param seconds number
+---@param on_rolling_finished RollingFinishedCallback
+---@param config Config
+---@param roll_controller RollController
+function M.new( announce, ace_timer, group_roster, item, item_count, info, seconds, on_rolling_finished, config, roll_controller )
   local mainspec_rollers, mainspec_rolls = rlu.all_present_players( group_roster ), {}
   local offspec_rollers, offspec_rolls = rlu.copy_rollers( mainspec_rollers ), {}
   local tmog_rollers, tmog_rolls = rlu.copy_rollers( mainspec_rollers ), {}
@@ -35,9 +45,9 @@ function M.new( announce, ace_timer, group_roster, item, count, info, seconds, o
     local tmog_roll_count = count_elements( tmog_rolls )
     local total_roll_count = mainspec_roll_count + offspec_roll_count + tmog_roll_count
 
-    if count == getn( tmog_rollers ) and rlu.have_all_players_rolled( tmog_rollers ) or
-        count == getn( offspec_rollers ) and rlu.have_all_players_rolled( offspec_rollers ) or
-        count == getn( mainspec_rollers ) and total_roll_count == getn( mainspec_rollers ) then
+    if item_count == getn( tmog_rollers ) and rlu.have_all_players_rolled( tmog_rollers ) or
+        item_count == getn( offspec_rollers ) and rlu.have_all_players_rolled( offspec_rollers ) or
+        item_count == getn( mainspec_rollers ) and total_roll_count == getn( mainspec_rollers ) then
       return true
     end
 
@@ -61,7 +71,7 @@ function M.new( announce, ace_timer, group_roster, item, count, info, seconds, o
     local tmog_roll_count = count_elements( tmog_rolls )
 
     if mainspec_roll_count == 0 and offspec_roll_count == 0 and tmog_roll_count == 0 then
-      on_rolling_finished( item, count, {} )
+      on_rolling_finished( item, item_count, {} )
       return
     end
 
@@ -80,9 +90,9 @@ function M.new( announce, ace_timer, group_roster, item, count, info, seconds, o
       return v
     end )
 
-    local winners = take( merge( {}, sorted_mainspec_rolls, sorted_offspec_rolls, sorted_tmog_rolls ), count )
+    local winners = take( merge( {}, sorted_mainspec_rolls, sorted_offspec_rolls, sorted_tmog_rolls ), item_count )
 
-    on_rolling_finished( item, count, winners )
+    on_rolling_finished( item, item_count, winners )
   end
 
   local function on_roll( player_name, roll, min, max )
@@ -93,16 +103,23 @@ function M.new( announce, ace_timer, group_roster, item, count, info, seconds, o
     local os_roll = max == os_threshold
     local roll_type = ms_roll and RollType.MainSpec or os_roll and RollType.OffSpec or RollType.Transmog
     local player = group_roster.find_player( player_name )
+    local player_class = player and player.class
 
     if not rlu.has_rolls_left( ms_roll and mainspec_rollers or os_roll and offspec_rollers or tmog_rollers, player_name ) then
       pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
-      roll_controller.add_ignored( player_name, player and player.class, roll_type, roll, "Rolled too many times." )
+      roll_controller.add_ignored( player_name, player_class, roll_type, roll, "Rolled too many times." )
+      return
+    end
+
+    if not player then
+      pretty_print( string.format( "|cffff9f69%s|r cannot be found. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
+      roll_controller.add_ignored( player_name, player_class, roll_type, roll, "Not in GroupRoster." )
       return
     end
 
     rlu.subtract_roll( ms_roll and mainspec_rollers or os_roll and offspec_rollers or tmog_rollers, player_name )
     rlu.record_roll( ms_roll and mainspec_rolls or os_roll and offspec_rolls or tmog_rolls, player_name, roll )
-    roll_controller.add( player_name, player and player.class, roll_type, roll )
+    roll_controller.add( player.name, player.class, roll_type, roll )
 
     if have_all_rolls_been_exhausted() then find_winner() end
   end
@@ -120,7 +137,7 @@ function M.new( announce, ace_timer, group_roster, item, count, info, seconds, o
     elseif seconds_left == 3 then
       announce( "Stopping rolls in 3" )
     elseif seconds_left < 3 then
-      announce( seconds_left )
+      announce( tostring( seconds_left ) )
     end
 
     roll_controller.tick( seconds_left )
@@ -129,17 +146,17 @@ function M.new( announce, ace_timer, group_roster, item, count, info, seconds, o
   local function accept_rolls()
     rolling = true
     timer = ace_timer.ScheduleRepeatingTimer( M, on_timer, 1.7 )
-    roll_controller.start( RollingStrategy.NormalRoll, item, count, info, seconds )
+    roll_controller.start( RollingStrategy.NormalRoll, item, item_count, info, seconds )
     roll_controller.show()
   end
 
   local function announce_rolling()
-    local count_str = count > 1 and string.format( "%sx", count ) or ""
+    local count_str = item_count > 1 and string.format( "%sx", item_count ) or ""
     local tmog_info = config.tmog_rolling_enabled() and string.format( " or /roll %s (TMOG)", config.tmog_roll_threshold() ) or ""
     local default_ms = config.ms_roll_threshold() ~= 100 and string.format( "%s ", config.ms_roll_threshold() ) or ""
     local roll_info = string.format( " /roll %s(MS) or /roll %s (OS)%s", default_ms, config.os_roll_threshold(), tmog_info )
     local info_str = info and info ~= "" and string.format( " %s", info ) or roll_info
-    local x_rolls_win = count > 1 and string.format( ". %d top rolls win.", count ) or ""
+    local x_rolls_win = item_count > 1 and string.format( ". %d top rolls win.", item_count ) or ""
 
     announce( string.format( "Roll for %s%s:%s%s", count_str, item.link, info_str, x_rolls_win ), true )
     accept_rolls()
