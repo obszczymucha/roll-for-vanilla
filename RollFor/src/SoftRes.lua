@@ -26,9 +26,10 @@ local transform = m.SoftResDataTransformer.transform
 -- Taragaman the Hungerer mix SR by Jogobobek and Guildhamster:
 -- eyJtZXRhZGF0YSI6eyJpZCI6IlhTRUE5USIsImluc3RhbmNlIjo5NiwiaW5zdGFuY2VzIjpbIk5heHhyYW1hcyJdLCJvcmlnaW4iOiJyYWlkcmVzIn0sInNvZnRyZXNlcnZlcyI6W3sibmFtZSI6IkpvZ29ib2JlayIsIml0ZW1zIjpbeyJpZCI6MTQxNDUsInF1YWxpdHkiOjJ9LHsiaWQiOjE0MTQ1LCJxdWFsaXR5IjoyfSx7ImlkIjoxNDE0OCwicXVhbGl0eSI6Mn1dfSx7Im5hbWUiOiJPYnN6Y3p5bXVjaGEiLCJpdGVtcyI6W3siaWQiOjE0MTQ1LCJxdWFsaXR5IjoyfSx7ImlkIjoxNDE0OCwicXVhbGl0eSI6Mn0seyJpZCI6MTQxNDksInF1YWxpdHkiOjJ9XX1dLCJoYXJkcmVzZXJ2ZXMiOltdfQ==
 
--- Taragaman the Hungerere all SR by Jogobobek and Guildhamster:
+-- Taragaman the Hungerer all SR by Jogobobek and Guildhamster:
 -- eyJtZXRhZGF0YSI6eyJpZCI6IlNDRDNQMyIsImluc3RhbmNlIjo5NiwiaW5zdGFuY2VzIjpbIk5heHhyYW1hcyJdLCJvcmlnaW4iOiJyYWlkcmVzIn0sInNvZnRyZXNlcnZlcyI6W3sibmFtZSI6IkpvZ29ib2JlayIsIml0ZW1zIjpbeyJpZCI6MTQxNDUsInF1YWxpdHkiOjJ9LHsiaWQiOjE0MTQ4LCJxdWFsaXR5IjoyfSx7ImlkIjoxNDE0OSwicXVhbGl0eSI6Mn1dfSx7Im5hbWUiOiJPYnN6Y3p5bXVjaGEiLCJpdGVtcyI6W3siaWQiOjE0MTQ1LCJxdWFsaXR5IjoyfSx7ImlkIjoxNDE0OCwicXVhbGl0eSI6Mn0seyJpZCI6MTQxNDksInF1YWxpdHkiOjJ9XX1dLCJoYXJkcmVzZXJ2ZXMiOltdfQ==
 function M.new( db )
+  ---@type SoftResData
   local softres_data = {}
 
   local function persist( data )
@@ -71,28 +72,28 @@ function M.new( db )
   end
 
   local function get( item_id )
-    return softres_data[ item_id ] and m.clone( softres_data[ item_id ].players ) or {}
+    return softres_data[ item_id ] and m.clone( softres_data[ item_id ].rollers ) or {}
   end
 
-  local function get_all_players()
-    local player_name_map = {}
+  local function get_all_rollers()
+    local roller_name_map = {}
 
     for _, item in pairs( softres_data ) do
-      for _, player in pairs( item.soft_ressed and item.players or {} ) do
-        player_name_map[ player.name ] = player
+      for _, roller in pairs( item.soft_ressed and item.rollers or {} ) do
+        roller_name_map[ roller.name ] = roller
       end
     end
 
     local result = {}
 
-    for _, player in pairs( player_name_map ) do
-      table.insert( result, player )
+    for _, roller in pairs( roller_name_map ) do
+      table.insert( result, roller )
     end
 
     return result
   end
 
-  local function find_player( player_name, data )
+  local function find_roller( player_name, data )
     for _, player in ipairs( data ) do
       if player.name == player_name then return player end
     end
@@ -103,15 +104,15 @@ function M.new( db )
 
     if item_id then
       local item = softres_data[ item_id ]
-      local player = item and item.soft_ressed and find_player( player_name, item.players )
+      local player = item and item.soft_ressed and find_roller( player_name, item.rollers )
       if player and player.name == player_name then return true end
 
       return false
     end
 
     for _, item in pairs( softres_data ) do
-      local player = item.soft_ressed and find_player( player_name, item.players )
-      if player and player.name == player_name then return true end
+      local roller = item.soft_ressed and find_roller( player_name, item.rollers )
+      if roller and roller.name == player_name then return true end
     end
 
     return false
@@ -119,8 +120,8 @@ function M.new( db )
 
   local function sort_players()
     for _, item in pairs( softres_data ) do
-      if item.players then
-        table.sort( item.players, function( left, right ) return left.name < right.name end )
+      if item.rollers then
+        table.sort( item.rollers, function( left, right ) return left.name < right.name end )
       end
     end
   end
@@ -158,7 +159,7 @@ function M.new( db )
 
   return {
     get = get,
-    get_all_players = get_all_players,
+    get_all_rollers = get_all_rollers,
     is_player_softressing = is_player_softressing,
     get_item_ids = get_item_ids,
     get_item_quality = get_item_quality,

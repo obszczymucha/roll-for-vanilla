@@ -5,19 +5,16 @@ if m.SoftResDataTransformer then return end
 
 local M = {}
 
+local make_roller = m.Types.make_roller
+
 ---@alias RaidResData table -- TODO: document this
 
----@class Roller
----@field name string
----@field rolls number
-
 ---@class SoftRessedItem
----@field players Roller[]
+---@field rollers Roller[]
 ---@field quality number
 ---@field soft_ressed boolean
 ---@field hard_ressed boolean
 
----@alias ItemId number
 ---@alias SoftResData table<ItemId, SoftRessedItem>
 
 -- The input is a data from softres.it/raidres.fly.dev format.
@@ -34,16 +31,16 @@ function M.transform( data )
   local hard_reserves = data.hardreserves or {}
   local soft_reserves = data.softreserves or {}
 
-  local function find_player( player_name, players )
-    for _, player in ipairs( players ) do
-      if player.name == player_name then
-        return player
+  local function find_roller( roller_name, rollers )
+    for _, roller in ipairs( rollers ) do
+      if roller.name == roller_name then
+        return roller
       end
     end
   end
 
   for _, sr in ipairs( soft_reserves or {} ) do
-    local player_name = sr.name
+    local roller_name = sr.name
     local item_ids = sr.items or {}
 
     for _, item in ipairs( item_ids ) do
@@ -53,15 +50,15 @@ function M.transform( data )
         result[ item_id ] = result[ item_id ] or {
           soft_ressed = true,
           quality = item.quality,
-          players = {}
+          rollers = {}
         }
 
-        local player = find_player( player_name, result[ item_id ].players )
+        local roller = find_roller( roller_name, result[ item_id ].rollers )
 
-        if not player then
-          table.insert( result[ item_id ].players, { name = player_name, rolls = 1 } )
+        if not roller then
+          table.insert( result[ item_id ].rollers, make_roller( roller_name, 1 ) )
         else
-          player.rolls = player.rolls + 1
+          roller.rolls = roller.rolls + 1
         end
       end
     end

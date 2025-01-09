@@ -21,8 +21,8 @@ local sr = tu.soft_res_item
 local make_data = tu.create_softres_data
 
 local C = types.PlayerClass
-local winner = types.winner
-local player = types.player
+local winner = types.make_winner
+local player = types.make_player
 local RT = types.RollType
 local RS = types.RollingStrategy
 local tracker = tracker_mod.new()

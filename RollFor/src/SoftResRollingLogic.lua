@@ -5,45 +5,78 @@ if m.SoftResRollingLogic then return end
 
 local M = {}
 local map = m.map
-local count_elements = m.count_elements
 local pretty_print = m.pretty_print
 local take = m.take
 local rlu = m.RollingLogicUtils
 local RollType = m.Types.RollType
 local RollingStrategy = m.Types.RollingStrategy
+local make_winning_roll = m.Types.make_winning_roll
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
 local State = { AfterRoll = 1, TimerStopped = 2, ManualStop = 3 }
 
-local function is_the_winner_the_only_player_with_extra_rolls( rollers, rolls )
-  local extra_rolls = rlu.players_with_available_rolls( rollers )
-  if getn( extra_rolls ) > 1 then return false end
+local function has_everyone_rolled( rollers, rolls )
+  local rolled_player_names = {}
+  map( rolls, function( roll ) rolled_player_names[ roll.player.name ] = true end )
 
-  local sorted_rolls = rlu.sort_rolls( rolls )
-  return getn( sorted_rolls[ 1 ].players ) == 1 and sorted_rolls[ 1 ].players[ 1 ] == extra_rolls[ 1 ].name
+  for _, roller in ipairs( rollers ) do
+    if not rolled_player_names[ roller.name ] then return false end
+  end
+
+  return true
+end
+
+local function players_with_available_rolls( rollers )
+  return m.filter( rollers, function( roller ) return roller.rolls > 0 end )
+end
+
+local function is_the_winner_the_only_player_with_extra_rolls( rollers, rolls )
+  local rollers_with_remaining_rolls = players_with_available_rolls( rollers )
+  local roller_count = getn( rollers_with_remaining_rolls )
+  local roll_count = getn( rolls )
+
+  if roller_count == 0 or roller_count > 1 or roll_count == 0 then return false end
+
+  return rollers_with_remaining_rolls[ 1 ].name == rolls[ 1 ].player.name
 end
 
 local function winner_found( rollers, rolls )
-  return rlu.has_everyone_rolled( rollers, rolls ) and is_the_winner_the_only_player_with_extra_rolls( rollers, rolls )
+  return has_everyone_rolled( rollers, rolls ) and is_the_winner_the_only_player_with_extra_rolls( rollers, rolls )
 end
 
 ---@param announce AnnounceFn
 ---@param ace_timer AceTimer
----@param group_roster GroupRoster
+---@param sr_players RollingPlayer[]
 ---@param item Item
 ---@param item_count number
 ---@param seconds number
 ---@param on_rolling_finished RollingFinishedCallback
 ---@param config Config
 ---@param roll_controller RollController
-function M.new( announce, ace_timer, group_roster, sr_players, item, item_count, seconds, on_rolling_finished, on_softres_rolls_available, roll_controller,
-                config )
+function M.new(
+    announce,
+    ace_timer,
+    sr_players,
+    item,
+    item_count,
+    seconds,
+    on_rolling_finished,
+    on_softres_rolls_available,
+    roll_controller,
+    config
+)
   local rolls = {}
   local rolling = false
   local seconds_left = seconds
   local timer
+
+  local function sort_rolls()
+    table.sort( rolls, function( a, b )
+      return a.roll > b.roll
+    end )
+  end
 
   local function have_all_rolls_been_exhausted()
     for _, v in ipairs( sr_players ) do
@@ -51,6 +84,12 @@ function M.new( announce, ace_timer, group_roster, sr_players, item, item_count,
     end
 
     return true
+  end
+
+  local function find_player( player_name )
+    for _, player in ipairs( sr_players ) do
+      if player.name == player_name then return player end
+    end
   end
 
   local function stop_timer()
@@ -66,6 +105,8 @@ function M.new( announce, ace_timer, group_roster, sr_players, item, item_count,
   end
 
   local function find_winner( state )
+    sort_rolls()
+
     local rolls_exhausted = have_all_rolls_been_exhausted()
 
     if state == State.AfterRoll and not rolls_exhausted then return end
@@ -74,11 +115,11 @@ function M.new( announce, ace_timer, group_roster, sr_players, item, item_count,
       stop_listening()
     end
 
-    local roll_count = count_elements( rolls )
+    local roll_count = getn( rolls )
 
     if state == State.TimerStopped and not rolls_exhausted then
       stop_timer()
-      on_softres_rolls_available( rlu.players_with_available_rolls( sr_players ) )
+      on_softres_rolls_available( players_with_available_rolls( sr_players ) )
       return
     end
 
@@ -86,10 +127,22 @@ function M.new( announce, ace_timer, group_roster, sr_players, item, item_count,
       stop_listening()
     end
 
-    local sorted_rolls = rlu.sort_rolls( rolls, RollType.SoftRes )
-    local winners = take( sorted_rolls, item_count )
+    local function count_tied_rolls()
+      local result = 0
 
-    on_rolling_finished( item, item_count, winners )
+      for i = 1, roll_count - 1 do
+        if rolls[ i ].roll == rolls[ i + 1 ].roll then
+          result = result + 1
+        end
+      end
+
+      return result
+    end
+
+    local tied_roll_count = count_tied_rolls()
+    local winner_rolls = take( rolls, tied_roll_count > item_count and tied_roll_count or item_count )
+
+    on_rolling_finished( item, item_count, winner_rolls )
   end
 
   local function on_roll( player_name, roll, min, max )
@@ -98,39 +151,35 @@ function M.new( announce, ace_timer, group_roster, sr_players, item, item_count,
     local tmog_threshold = config.tmog_roll_threshold()
 
     if not rolling or min ~= 1 or (max ~= tmog_threshold and max ~= os_threshold and max ~= ms_threshold) then return end
-    local player = group_roster.find_player( player_name )
+
+    local player = find_player( player_name )
     local ms_roll = max == ms_threshold
     local os_roll = max == os_threshold
     local roll_type = ms_roll and RollType.MainSpec or os_roll and RollType.OffSpec or RollType.Transmog
-    local player_class = player and player.class
 
     if not player then
-      pretty_print( string.format( "|cffff9f69%s|r cannot be found. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
-      roll_controller.add_ignored( player_name, player_class, roll_type, roll, "Not in GroupRoster." )
-      return
-    end
-
-    if not rlu.can_roll( sr_players, player_name ) then
+      -- TODO: move the messages to a separate module.
       pretty_print( string.format( "|cffff9f69%s|r did not SR %s. This roll (|cffff9f69%s|r) is ignored.", player_name, item.link, roll ) )
-      roll_controller.add_ignored( player_name, player_class, roll_type, roll, "Did not soft-res." )
+      roll_controller.add_ignored( player_name, nil, roll_type, roll, "Did not soft-res." )
       return
     end
 
     if not ms_roll then
       -- TODO: move the messages to a separate module.
       pretty_print( string.format( "|cffff9f69%s|r did SR %s, but didn't roll MS. This roll (|cffff9f69%s|r) is ignored.", player_name, item.link, roll ) )
-      roll_controller.add_ignored( player_name, player_class, roll_type, roll, "Didn't roll MS." )
+      roll_controller.add_ignored( player_name, player.class, roll_type, roll, "Didn't roll MS." )
       return
     end
 
-    if not rlu.has_rolls_left( sr_players, player_name ) then
+    if player.rolls == 0 then
+      -- TODO: move the messages to a separate module.
       pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
-      roll_controller.add_ignored( player_name, player_class, roll_type, roll, "Rolled too many times." )
+      roll_controller.add_ignored( player_name, player.class, roll_type, roll, "Rolled too many times." )
       return
     end
 
-    rlu.subtract_roll( sr_players, player_name )
-    rlu.record_roll( rolls, player_name, roll )
+    player.rolls = player.rolls - 1
+    table.insert( rolls, make_winning_roll( player, RollType.SoftRes, roll ) )
     roll_controller.add( player_name, player.class, RollType.SoftRes, roll )
 
     find_winner( State.AfterRoll )
@@ -187,19 +236,13 @@ function M.new( announce, ace_timer, group_roster, sr_players, item, item_count,
   end
 
   local function show_sorted_rolls( limit )
-    local function show( prefix, sorted_rolls )
-      pretty_print( string.format( "%s rolls:", prefix ) )
-      local i = 0
+    sort_rolls()
+    pretty_print( "SR rolls:" )
 
-      for _, v in ipairs( sorted_rolls ) do
-        if limit and limit > 0 and i > limit then return end
-
-        pretty_print( string.format( "[|cffff9f69%d|r]: %s", v[ "roll" ], m.prettify_table( v[ "players" ] ) ) )
-        i = i + 1
-      end
+    for i, v in ipairs( rolls ) do
+      if limit and limit > 0 and i > limit then return end
+      pretty_print( string.format( "[|cffff9f69%d|r]: %s", v.roll, m.colorize_player_by_class( v.player.name, v.player.class ) ) )
     end
-
-    show( "SR", rlu.sort_rolls( rolls, RollType.SoftRes ) )
   end
 
   local function print_rolling_complete( canceled )

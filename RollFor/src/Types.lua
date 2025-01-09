@@ -5,6 +5,9 @@ if m.Types then return end
 
 local M = {}
 
+---@alias PlayerName string
+---@alias ItemId number
+
 M.RollSlashCommand = {
   NormalRoll = "/rf",
   NoSoftResRoll = "/arf",
@@ -12,7 +15,6 @@ M.RollSlashCommand = {
   InstaRaidRoll = "/irr"
 }
 
---- Roll type constants
 ---@alias RollType
 ---| "MainSpec"
 ---| "OffSpec"
@@ -25,7 +27,6 @@ M.RollType = {
   SoftRes = "SoftRes"
 }
 
---- Rolling strategy constants
 --- @alias RollingStrategy
 ---| "NormalRoll"
 ---| "SoftResRoll"
@@ -42,12 +43,15 @@ local RollingStrategy = {
 
 M.RollingStrategy = RollingStrategy
 
---- Player type constants
---- @alias PlayerType
---- | "Player"
---- | "Winner"
+---@alias PlayerType
+---| "Player"
+---| "Roller"
+---| "RollingPlayer"
+---| "Winner"
 local PlayerType = {
   Player = "Player",
+  Roller = "Roller",
+  RollingPlayer = "RollingPlayer",
   Winner = "Winner",
 }
 
@@ -78,17 +82,62 @@ local PlayerClass = {
 
 M.PlayerClass = PlayerClass
 
----@alias Player { name: string, class: string }
+---@class Player
+---@field name string
+---@field class string
+---@field type PlayerType
 
---- Represents a player.
---- @param name string The name of the player.
---- @param class PlayerClass The class of the player.
---- @return Player
-M.player = function( name, class )
+--- Roller is a RollingPlayer that's not in the group (so we don't know their class).
+---@class Roller
+---@field name string
+---@field rolls number
+---@field type PlayerType
+
+---@class RollingPlayer
+---@field name string
+---@field class string
+---@field rolls number
+---@field type PlayerType
+
+---@class Winner
+---@field name string
+---@field class string
+---@field roll_type RollType
+---@field roll number
+---@field type PlayerType
+
+---@param name string
+---@param class PlayerClass
+---@return Player
+function M.make_player( name, class )
   return {
     name = name,
     class = class,
     type = PlayerType.Player
+  }
+end
+
+---@param name string
+---@param rolls number
+---@return Roller
+function M.make_roller( name, rolls )
+  return {
+    name = name,
+    rolls = rolls,
+    type = PlayerType.Roller
+  }
+end
+
+---@param name string
+---@param class PlayerClass
+---@param rolls number
+---@return RollingPlayer
+function M.make_rolling_player( name, class, rolls )
+  return {
+    name = name,
+    class = class,
+    rolls = rolls,
+    type = PlayerType.RollingPlayer
   }
 end
 
@@ -97,7 +146,8 @@ end
 ---@param class PlayerClass The class of the player.
 ---@param roll_type RollType The type of the roll.
 ---@param roll number The roll value.
-M.winner = function( name, class, roll_type, roll )
+---@return Winner
+function M.make_winner( name, class, roll_type, roll )
   return {
     name = name,
     class = class,
@@ -165,6 +215,20 @@ M.ItemQuality = ItemQuality
 ---@field ScheduleTimer fun( self: AceTimer, callback: function, delay: number, arg: any ): TimerId
 ---@field ScheduleRepeatingTimer fun( self: NotAceTimer, callback: function, delay: number, arg: any ): TimerId
 ---@field CancelTimer fun( self: AceTimer, timer_id: number )
+
+---@class WinningRoll
+---@field player RollingPlayer
+---@field roll_type RollType
+---@field roll number
+---@field value number | nil -- Master Loot candidate value
+
+---@param player RollingPlayer
+---@param roll_type RollType
+---@param roll number
+---@return WinningRoll
+function M.make_winning_roll( player, roll_type, roll )
+  return { player = player, roll_type = roll_type, roll = roll }
+end
 
 m.Types = M
 return M

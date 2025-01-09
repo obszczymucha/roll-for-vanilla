@@ -61,7 +61,7 @@ function M.new( db, api, absent_unfiltered_softres, name_matcher, softres_status
   end
 
   local function create_matches_and_show()
-    local absent_players = map( filter( absent_unfiltered_softres.get_all_players(), negate( is_matched ) ), function( v ) return v.name end )
+    local absent_players = map( filter( absent_unfiltered_softres.get_all_rollers(), negate( is_matched ) ), function( v ) return v.name end )
     local manually_matched = keys( db.manual_matches )
     manual_match_options = merge( {}, manually_matched, absent_players )
     show_manual_matches( manually_matched, absent_players )

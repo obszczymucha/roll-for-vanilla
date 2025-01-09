@@ -16,7 +16,7 @@ local hl = m.colors.hl
 local getn = table.getn
 
 ---@param announce AnnounceFn
----@param player_names string[]
+---@param players Player[]
 ---@param item Item
 ---@param item_count number
 ---@param on_rolling_finished RollingFinishedCallback
@@ -24,8 +24,8 @@ local getn = table.getn
 ---@param config Config
 ---@param group_roster GroupRoster
 ---@param roll_controller RollController
-function M.new( announce, player_names, item, item_count, on_rolling_finished, roll_type, config, group_roster, roll_controller )
-  local rollers, rolls = map( player_names, rlu.one_roll ), {}
+function M.new( announce, players, item, item_count, on_rolling_finished, roll_type, config, group_roster, roll_controller )
+  local rollers, rolls = map( players, rlu.one_roll ), {}
   local rolling = false
 
   local function stop_listening()
@@ -59,10 +59,10 @@ function M.new( announce, player_names, item, item_count, on_rolling_finished, r
       v.roll_type = roll_type
       return v
     end )
-    -- local winners = take( sorted_rolls, item_count )
-    local winners = { "abc" }
 
-    on_rolling_finished( item, item_count, winners, true ) -- Why the fuck doesn't it tell me it's a wrong type?
+    local winners = take( sorted_rolls, item_count )
+
+    on_rolling_finished( item, item_count, winners, true )
   end
 
   local function on_roll( player_name, roll, min, max )

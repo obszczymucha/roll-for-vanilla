@@ -76,9 +76,9 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
       return ResultType.FoundOutdatedData
     end
 
-    local softres_players = softres.get_all_players()
+    local rollers = softres.get_all_rollers()
 
-    if getn( softres_players ) == 0 then
+    if getn( rollers ) == 0 then
       if silent ~= true then pretty_print( "No soft-res items found." ) end
       return ResultType.NoItemsFound
     end
@@ -173,7 +173,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
       return
     end
 
-    local absent_softres_players_count = getn( absent_softres( softres ).get_all_players() )
+    local absent_softres_players_count = getn( absent_softres( softres ).get_all_rollers() )
 
     local item_count = m.count_elements( items )
     local unavailable_item_count = m.count_elements( unavailable_items )

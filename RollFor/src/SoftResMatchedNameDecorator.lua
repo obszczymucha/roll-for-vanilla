@@ -20,8 +20,8 @@ function M.new( name_matcher, softres )
     return map( softres.get( item_id ), f )
   end
 
-  local function get_all_players()
-    return map( softres.get_all_players(), f )
+  local function get_all_rollers()
+    return map( softres.get_all_rollers(), f )
   end
 
   local function is_player_softressing( player_name, item_id )
@@ -31,7 +31,7 @@ function M.new( name_matcher, softres )
 
   local decorator = m.clone( softres )
   decorator.get = get
-  decorator.get_all_players = get_all_players
+  decorator.get_all_rollers = get_all_rollers
   decorator.is_player_softressing = is_player_softressing
 
   return decorator

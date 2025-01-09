@@ -191,14 +191,15 @@ function M.new( group_roster, softres, top_threshold, bottom_threshold )
     matched_names = {}
     matched_names_below_threshold = {}
 
-    local function get_name( player ) return player.name end
-    local present_players = map( group_roster.get_all_players_in_my_group(), get_name )
-    local softres_player_names = map( softres.get_all_players(), get_name )
+    ---@param p Player | Roller
+    local function get_name( p ) return p.name end
+    local player_names = map( group_roster.get_all_players_in_my_group(), get_name )
+    local roller_names = map( softres.get_all_rollers(), get_name )
 
-    local present_players_who_did_not_softres = is_in_left_but_not_in_right( present_players, softres_player_names )
+    local present_players_who_did_not_softres = is_in_left_but_not_in_right( player_names, roller_names )
     if getn( present_players_who_did_not_softres ) == 0 then return end
 
-    local absent_players_who_did_softres = is_in_left_but_not_in_right( softres_player_names, present_players )
+    local absent_players_who_did_softres = is_in_left_but_not_in_right( roller_names, player_names )
     if getn( absent_players_who_did_softres ) == 0 then return end
 
     local predictions = get_similarity_predictions( present_players_who_did_not_softres, absent_players_who_did_softres, improved_descending )
