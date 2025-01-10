@@ -4,7 +4,6 @@ local m = RollFor
 if m.NonSoftResRollingLogic then return end
 
 local M = {}
-local map = m.map
 local count_elements = m.count_elements
 local pretty_print = m.pretty_print
 local merge = m.merge
@@ -13,12 +12,24 @@ local rlu = m.RollingLogicUtils
 local RollType = m.Types.RollType
 local RollingStrategy = m.Types.RollingStrategy
 
+---@type MakeRollFn
+local make_roll = m.Types.make_roll
+
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
+---@param players RollingPlayer[]
+local function have_all_players_rolled( players )
+  for _, v in pairs( players ) do
+    if v.rolls > 0 then return false end
+  end
+
+  return true
+end
+
 ---@param announce AnnounceFn
 ---@param ace_timer AceTimer
----@param group_roster GroupRoster
+---@param players RollingPlayer[]
 ---@param item Item
 ---@param item_count number
 ---@param info string?
@@ -26,8 +37,8 @@ local getn = table.getn
 ---@param on_rolling_finished RollingFinishedCallback
 ---@param config Config
 ---@param roll_controller RollController
-function M.new( announce, ace_timer, group_roster, item, item_count, info, seconds, on_rolling_finished, config, roll_controller )
-  local mainspec_rollers, mainspec_rolls = rlu.all_present_players( group_roster ), {}
+function M.new( announce, ace_timer, players, item, item_count, info, seconds, on_rolling_finished, config, roll_controller )
+  local mainspec_rollers, mainspec_rolls = players, {}
   local offspec_rollers, offspec_rolls = rlu.copy_rollers( mainspec_rollers ), {}
   local tmog_rollers, tmog_rolls = rlu.copy_rollers( mainspec_rollers ), {}
   local rolling = false
@@ -39,19 +50,39 @@ function M.new( announce, ace_timer, group_roster, item, item_count, info, secon
   local tmog_threshold = config.tmog_roll_threshold()
   local tmog_rolling_enabled = config.tmog_rolling_enabled()
 
+  local function sort_rolls()
+    table.sort( mainspec_rolls, function( a, b )
+      return a.roll > b.roll
+    end )
+
+    table.sort( offspec_rolls, function( a, b )
+      return a.roll > b.roll
+    end )
+
+    table.sort( tmog_rolls, function( a, b )
+      return a.roll > b.roll
+    end )
+  end
+
   local function have_all_rolls_been_exhausted()
-    local mainspec_roll_count = count_elements( mainspec_rolls )
-    local offspec_roll_count = count_elements( offspec_rolls )
-    local tmog_roll_count = count_elements( tmog_rolls )
+    local mainspec_roll_count = getn( mainspec_rolls )
+    local offspec_roll_count = getn( offspec_rolls )
+    local tmog_roll_count = getn( tmog_rolls )
     local total_roll_count = mainspec_roll_count + offspec_roll_count + tmog_roll_count
 
-    if item_count == getn( tmog_rollers ) and rlu.have_all_players_rolled( tmog_rollers ) or
-        item_count == getn( offspec_rollers ) and rlu.have_all_players_rolled( offspec_rollers ) or
+    if item_count == getn( tmog_rollers ) and have_all_players_rolled( tmog_rollers ) or
+        item_count == getn( offspec_rollers ) and have_all_players_rolled( offspec_rollers ) or
         item_count == getn( mainspec_rollers ) and total_roll_count == getn( mainspec_rollers ) then
       return true
     end
 
-    return rlu.have_all_players_rolled( mainspec_rollers )
+    return have_all_players_rolled( mainspec_rollers )
+  end
+
+  local function find_player( player_name )
+    for _, player in ipairs( players ) do
+      if player.name == player_name then return player end
+    end
   end
 
   local function stop_listening()
@@ -75,22 +106,10 @@ function M.new( announce, ace_timer, group_roster, item, item_count, info, secon
       return
     end
 
-    local sorted_mainspec_rolls = map( rlu.sort_rolls( mainspec_rolls, RollType.MainSpec ), function( v )
-      v.roll_type = RollType.MainSpec
-      return v
-    end )
+    sort_rolls()
 
-    local sorted_offspec_rolls = map( rlu.sort_rolls( offspec_rolls, RollType.OffSpec ), function( v )
-      v.roll_type = RollType.OffSpec
-      return v
-    end )
-
-    local sorted_tmog_rolls = map( rlu.sort_rolls( tmog_rolls, RollType.Transmog ), function( v )
-      v.roll_type = RollType.Transmog
-      return v
-    end )
-
-    local winners = take( merge( {}, sorted_mainspec_rolls, sorted_offspec_rolls, sorted_tmog_rolls ), item_count )
+    local all_rolls = merge( {}, mainspec_rolls, offspec_rolls, tmog_rolls )
+    local winners = take( all_rolls, item_count )
 
     on_rolling_finished( item, item_count, winners )
   end
@@ -102,23 +121,17 @@ function M.new( announce, ace_timer, group_roster, item, item_count, info, secon
     local ms_roll = max == ms_threshold
     local os_roll = max == os_threshold
     local roll_type = ms_roll and RollType.MainSpec or os_roll and RollType.OffSpec or RollType.Transmog
-    local player = group_roster.find_player( player_name )
-    local player_class = player and player.class
+    local player = find_player( player_name )
 
     if not rlu.has_rolls_left( ms_roll and mainspec_rollers or os_roll and offspec_rollers or tmog_rollers, player_name ) then
       pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
-      roll_controller.add_ignored( player_name, player_class, roll_type, roll, "Rolled too many times." )
+      roll_controller.add_ignored( player_name, player.class, roll_type, roll, "Rolled too many times." )
       return
     end
 
-    if not player then
-      pretty_print( string.format( "|cffff9f69%s|r cannot be found. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
-      roll_controller.add_ignored( player_name, player_class, roll_type, roll, "Not in GroupRoster." )
-      return
-    end
-
-    rlu.subtract_roll( ms_roll and mainspec_rollers or os_roll and offspec_rollers or tmog_rollers, player_name )
-    rlu.record_roll( ms_roll and mainspec_rolls or os_roll and offspec_rolls or tmog_rolls, player_name, roll )
+    player.rolls = player.rolls - 1
+    local t = ms_roll and mainspec_rolls or os_roll and offspec_rolls or tmog_rolls
+    table.insert( t, make_roll( player, roll_type, roll ) )
     roll_controller.add( player.name, player.class, roll_type, roll )
 
     if have_all_rolls_been_exhausted() then find_winner() end
@@ -172,7 +185,7 @@ function M.new( announce, ace_timer, group_roster, item, item_count, info, secon
       for _, v in ipairs( sorted_rolls ) do
         if limit and limit > 0 and i > limit then return end
 
-        pretty_print( string.format( "[|cffff9f69%d|r]: %s", v[ "roll" ], m.prettify_table( v[ "players" ] ) ) )
+        pretty_print( string.format( "[|cffff9f69%d|r]: %s", v.roll, v.player.name ) )
         i = i + 1
       end
     end
@@ -185,8 +198,10 @@ function M.new( announce, ace_timer, group_roster, item, item_count, info, secon
       return
     end
 
-    show( "Mainspec", rlu.sort_rolls( mainspec_rolls, RollType.MainSpec ) )
-    show( "Offspec", rlu.sort_rolls( offspec_rolls, RollType.OffSpec ) )
+    sort_rolls()
+    show( "Mainspec", mainspec_rolls )
+    show( "Offspec", offspec_rolls )
+    show( "Transmog", tmog_rolls )
   end
 
   local function print_rolling_complete( canceled )

@@ -22,7 +22,6 @@ local make_data = tu.create_softres_data
 
 local C = types.PlayerClass
 local winner = types.make_winner
-local player = types.make_player
 local RT = types.RollType
 local RS = types.RollingStrategy
 local tracker = tracker_mod.new()
@@ -180,7 +179,7 @@ function RaidRollPopupContentSpec:should_display_the_winner()
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   controller.start( RS.RaidRoll, item, 1, nil, seconds_left )
-  controller.finish( { player( p1.name, p1.class ) } )
+  controller.finish( { winner( p1.name, p1.class, item ) } )
 
   -- When
   local result = popup.get()
@@ -202,7 +201,7 @@ function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   controller.start( RS.RaidRoll, item, 1, nil, seconds_left )
-  controller.finish( { player( p1.name, p1.class ) } )
+  controller.finish( { winner( p1.name, p1.class, item ) } )
 
   -- When
   local result = popup.get()
@@ -225,7 +224,7 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_i
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   controller.start( RS.RaidRoll, item, 1, nil, seconds_left )
-  controller.finish( { player( p1.name, p1.class ) } )
+  controller.finish( { winner( p1.name, p1.class, item ) } )
 
   -- When
   local result = popup.get()
@@ -361,7 +360,7 @@ function NormalRollPopupContentSpec:should_display_the_winner()
   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.MainSpec, 69 )
-  controller.finish( { winner( p1.name, p1.class, RT.MainSpec, 69 ) } )
+  controller.finish( { winner( p1.name, p1.class, item, RT.MainSpec, 69 ) } )
 
   -- When
   local result = popup.get()
@@ -387,7 +386,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.MainSpec, 8 )
-  controller.finish( { winner( p1.name, p1.class, RT.MainSpec, 8 ) } )
+  controller.finish( { winner( p1.name, p1.class, item, RT.MainSpec, 8 ) } )
 
   -- When
   local result = popup.get()
@@ -413,7 +412,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.MainSpec, 11 )
-  controller.finish( { winner( p1.name, p1.class, RT.MainSpec, 11 ) } )
+  controller.finish( { winner( p1.name, p1.class, item, RT.MainSpec, 11 ) } )
 
   -- When
   local result = popup.get()
@@ -439,7 +438,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.MainSpec, 18 )
-  controller.finish( { winner( p1.name, p1.class, RT.MainSpec, 18 ) } )
+  controller.finish( { winner( p1.name, p1.class, item, RT.MainSpec, 18 ) } )
 
   -- When
   local result = popup.get()
@@ -469,7 +468,7 @@ function NormalRollPopupContentSpec:should_sort_the_rolls()
   controller.add( p2.name, p2.class, RT.MainSpec, 45 )
   controller.add( p1.name, p1.class, RT.Transmog, 69 )
   controller.add( p3.name, p3.class, RT.Transmog, 69 )
-  controller.finish( { winner( p2.name, p2.class, RT.MainSpec, 45 ) } )
+  controller.finish( { winner( p2.name, p2.class, item, RT.MainSpec, 45 ) } )
 
   -- When
   local result = popup.get()
@@ -499,7 +498,7 @@ function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.OffSpec, 69 )
-  controller.finish( { winner( p1.name, p1.class, RT.OffSpec, 69 ) } )
+  controller.finish( { winner( p1.name, p1.class, item, RT.OffSpec, 69 ) } )
 
   -- When
   local result = popup.get()
@@ -525,7 +524,7 @@ function NormalRollPopupContentSpec:should_display_the_transmog_winner()
   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.Transmog, 69 )
-  controller.finish( { winner( p1.name, p1.class, RT.Transmog, 69 ) } )
+  controller.finish( { winner( p1.name, p1.class, item, RT.Transmog, 69 ) } )
 
   -- When
   local result = popup.get()
@@ -641,7 +640,7 @@ function SoftResrollPopupContentSpec:should_display_the_winner()
   local item = i( "Hearthstone", item_id )
   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
   controller.tick( 1 )
-  controller.finish( { winner( "Psikutas", C.Warrior, RT.SoftRes, 69 ) } )
+  controller.finish( { winner( "Psikutas", C.Warrior, item, RT.SoftRes, 69 ) } )
 
   -- When
   local result = popup.get()
@@ -700,7 +699,7 @@ function SoftResrollPopupContentSpec:should_display_the_only_soft_resser()
   local item = i( "Hearthstone", item_id )
   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
   controller.tick( 1 )
-  controller.finish( { player( "Psikutas", C.Warrior ) } )
+  controller.finish( { winner( "Psikutas", C.Warrior, item, RT.SoftRes ) } )
 
   -- When
   local result = popup.get()

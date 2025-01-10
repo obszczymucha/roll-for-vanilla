@@ -16,7 +16,7 @@ local hl = m.colors.hl
 local getn = table.getn
 
 ---@param announce AnnounceFn
----@param players Player[]
+---@param players RollingPlayer[]
 ---@param item Item
 ---@param item_count number
 ---@param on_rolling_finished RollingFinishedCallback
@@ -138,9 +138,8 @@ function M.new( announce, players, item, item_count, on_rolling_finished, roll_t
     return rolling
   end
 
-  local function announce_rolling( text )
+  local function announce_rolling()
     rolling = true
-    announce( text )
   end
 
   return {

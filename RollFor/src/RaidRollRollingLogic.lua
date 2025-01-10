@@ -72,8 +72,8 @@ function M.new( announce, ace_timer, item, count, winner_tracker, roll_controlle
     roll_controller.finish( m_winners )
 
     for _, winner in ipairs( m_winners ) do
-      announce( string.format( "%s wins %s.", winner.name, item.link ) )
-      winner_tracker.track( winner.name, item.link, nil, nil, RollingStrategy.RaidRoll )
+      announce( string.format( "%s wins %s.", winner.name, item.link ) ) -- TODO: Remove from here and subscribe to an event.
+      winner_tracker.track( winner.name, item.link, nil, nil, RollingStrategy.RaidRoll ) -- TODO: Remove from here and subscribe to an event. 
     end
 
     m_rolling = false

@@ -5,6 +5,9 @@ if m.MasterLootCandidates then return end
 
 local M = {}
 
+---@type MakeItemCandidateFn
+local make_item_candidate = m.Types.make_item_candidate
+
 local function get_dummy_candidates()
   return {
     { name = "Ohhaimark",    class = "Warrior", value = 1 },
@@ -25,6 +28,12 @@ local function get_dummy_candidates()
   }
 end
 
+---@class MasterLootCandidates
+---@field get fun(): ItemCandidate[]
+---@field find fun( player_name: string ): ItemCandidate?
+
+---@param group_roster GroupRoster
+---@return MasterLootCandidates
 function M.new( group_roster )
   local function sort( candidates )
     table.sort( candidates, function( lhs, rhs )
@@ -49,7 +58,7 @@ function M.new( group_roster )
 
       for _, p in ipairs( players ) do
         if name == p.name then
-          table.insert( result, { name = name, class = p.class, value = i, online = p.online } )
+          table.insert( result, make_item_candidate( name, p.class, p.online, i ) )
         end
       end
     end

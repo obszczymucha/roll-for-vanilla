@@ -80,6 +80,10 @@ function M.pretty_print( message, color_fn, module_name )
   M.api.DEFAULT_CHAT_FRAME:AddMessage( string.format( "%s%s: %s", c( "RollFor" ), module_str, message ) )
 end
 
+function M.err( message, module_name )
+  M.pretty_print( message, M.colors.red, module_name )
+end
+
 function M.print_header( text, color_fn )
   local c = color_fn or M.colors.blue
   M.api.DEFAULT_CHAT_FRAME:AddMessage( c( text ) )
@@ -560,6 +564,11 @@ end
 function M.get_item_texture( item_id )
   local _, _, _, _, _, _, _, _, texture = M.api.GetItemInfo( item_id )
   return texture
+end
+
+function M.get_item_quality_and_texture( item_id )
+  local _, _, quality, _, _, _, _, _, texture = M.api.GetItemInfo( item_id )
+  return quality, texture
 end
 
 function M.pdump( o )

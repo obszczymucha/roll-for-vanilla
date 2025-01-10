@@ -7,10 +7,11 @@ local M = {}
 local map = m.map
 local pretty_print = m.pretty_print
 local take = m.take
-local rlu = m.RollingLogicUtils
-local RollType = m.Types.RollType
-local RollingStrategy = m.Types.RollingStrategy
-local make_winning_roll = m.Types.make_winning_roll
+local roll_type = m.Types.RollType.SoftRes
+local strategy = m.Types.RollingStrategy.SoftResRoll
+
+---@type MakeRollFn
+local make_roll = m.Types.make_roll
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
@@ -48,17 +49,18 @@ end
 
 ---@param announce AnnounceFn
 ---@param ace_timer AceTimer
----@param sr_players RollingPlayer[]
+---@param players RollingPlayer[]
 ---@param item Item
 ---@param item_count number
 ---@param seconds number
 ---@param on_rolling_finished RollingFinishedCallback
+---@param on_softres_rolls_available fun( rollers: RollingPlayer[] )
 ---@param config Config
 ---@param roll_controller RollController
 function M.new(
     announce,
     ace_timer,
-    sr_players,
+    players,
     item,
     item_count,
     seconds,
@@ -71,6 +73,7 @@ function M.new(
   local rolling = false
   local seconds_left = seconds
   local timer
+  local player_count = getn( players )
 
   local function sort_rolls()
     table.sort( rolls, function( a, b )
@@ -79,15 +82,15 @@ function M.new(
   end
 
   local function have_all_rolls_been_exhausted()
-    for _, v in ipairs( sr_players ) do
-      if v.rolls > 0 then return winner_found( sr_players, rolls ) end
+    for _, v in ipairs( players ) do
+      if v.rolls > 0 then return winner_found( players, rolls ) end
     end
 
     return true
   end
 
   local function find_player( player_name )
-    for _, player in ipairs( sr_players ) do
+    for _, player in ipairs( players ) do
       if player.name == player_name then return player end
     end
   end
@@ -119,7 +122,7 @@ function M.new(
 
     if state == State.TimerStopped and not rolls_exhausted then
       stop_timer()
-      on_softres_rolls_available( players_with_available_rolls( sr_players ) )
+      on_softres_rolls_available( players_with_available_rolls( players ) )
       return
     end
 
@@ -127,8 +130,8 @@ function M.new(
       stop_listening()
     end
 
-    local function count_tied_rolls()
-      local result = 0
+    local function count_top_roll_winners()
+      local result = 1
 
       for i = 1, roll_count - 1 do
         if rolls[ i ].roll == rolls[ i + 1 ].roll then
@@ -139,8 +142,8 @@ function M.new(
       return result
     end
 
-    local tied_roll_count = count_tied_rolls()
-    local winner_rolls = take( rolls, tied_roll_count > item_count and tied_roll_count or item_count )
+    local top_roll_winner_count = count_top_roll_winners()
+    local winner_rolls = take( rolls, top_roll_winner_count > item_count and top_roll_winner_count or item_count )
 
     on_rolling_finished( item, item_count, winner_rolls )
   end
@@ -154,8 +157,6 @@ function M.new(
 
     local player = find_player( player_name )
     local ms_roll = max == ms_threshold
-    local os_roll = max == os_threshold
-    local roll_type = ms_roll and RollType.MainSpec or os_roll and RollType.OffSpec or RollType.Transmog
 
     if not player then
       -- TODO: move the messages to a separate module.
@@ -179,8 +180,8 @@ function M.new(
     end
 
     player.rolls = player.rolls - 1
-    table.insert( rolls, make_winning_roll( player, RollType.SoftRes, roll ) )
-    roll_controller.add( player_name, player.class, RollType.SoftRes, roll )
+    table.insert( rolls, make_roll( player, roll_type, roll ) )
+    roll_controller.add( player_name, player.class, roll_type, roll )
 
     find_winner( State.AfterRoll )
   end
@@ -208,27 +209,31 @@ function M.new(
   local function accept_rolls()
     rolling = true
     timer = ace_timer.ScheduleRepeatingTimer( M, on_timer, 1.7 )
-    roll_controller.start( RollingStrategy.SoftResRoll, item, item_count, nil, seconds, sr_players )
+    roll_controller.start( strategy, item, item_count, nil, seconds, players )
     roll_controller.show()
   end
 
   local function announce_rolling()
-    local name_with_rolls = function( player )
-      if getn( sr_players ) == item_count then return player.name end
+    local function format_name_with_rolls( player )
+      if player_count == item_count then return player.name end
       local roll_count = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
       return string.format( "%s%s", player.name, roll_count )
     end
 
     local count_str = item_count > 1 and string.format( "%sx", item_count ) or ""
     local x_rolls_win = item_count > 1 and string.format( ". %d top rolls win.", item_count ) or ""
-    local ressed_by = m.prettify_table( map( sr_players, name_with_rolls ) )
+    local ressed_by = m.prettify_table( map( players, format_name_with_rolls ) )
 
-    if item_count == getn( sr_players ) then
+    if player_count == item_count then
       announce( string.format( "%s soft-ressed %s.", ressed_by, item.link ), true )
-      roll_controller.start( RollingStrategy.SoftResRoll, item, item_count, nil, nil, sr_players )
+      roll_controller.start( strategy, item, item_count, roll_type, nil, players )
       roll_controller.show()
-      local player_names = m.map( sr_players, function( p ) return p.name end )
-      on_rolling_finished( item, 0, player_names, false, true )
+
+      m.map( players, function( player )
+        M.winner_tracker.track( player, item.link, nil, nil, strategy )
+      end )
+
+      M.roll_controller.finish( players )
     else
       announce( string.format( "Roll for %s%s: (SR by %s)%s", count_str, item.link, ressed_by, x_rolls_win ), true )
       accept_rolls()
@@ -266,7 +271,7 @@ function M.new(
     stop_accepting_rolls = stop_accepting_rolls,
     cancel_rolling = cancel_rolling,
     is_rolling = is_rolling,
-    get_rolling_strategy = function() return m.Types.RollingStrategy.SoftResRoll end
+    get_rolling_strategy = function() return strategy end
   }
 end
 

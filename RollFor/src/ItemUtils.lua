@@ -41,13 +41,20 @@ M.interface = {
 ---@field amount_text string
 ---@field slot number
 
+---@alias MakeItemFn fun(
+---  id: number,
+---  name: string,
+---  link: ItemLink,
+---  quality: ItemQuality,
+---  texture: string )
+
 ---@class ItemUtils
 ---@field get_item_id fun( item_link: ItemLink ): number?
 ---@field get_item_name fun( item_link: ItemLink ): string
 ---@field parse_link fun( item_link: string ): ItemLink? -- Sometimes we need to parse the link from the "[Item Name]x4." string.
 ---@field parse_all_links fun( item_links: string ): ItemLink[]
 ---@field get_tooltip_link fun( item_link: ItemLink ): TooltipItemLink
----@field make_item fun( id: number, name: string, link: ItemLink, quality: ItemQuality, texture: string ): Item
+---@field make_item MakeItemFn
 ---@field make_distributable_item fun( id: number, name: string, link: ItemLink, tooltip_link: TooltipItemLink, quality: ItemQuality, quantity: number, texture: string, slot: number ): DistributableItem
 ---@field make_coin fun( texture: string, amount_text: string, slot: number ): Coin
 
@@ -57,8 +64,6 @@ function M.get_item_id( item_link )
   for item_id in string.gmatch( item_link, "|c%x%x%x%x%x%x%x%x|Hitem:(%d+):.+|r" ) do
     return tonumber( item_id )
   end
-
-  return nil
 end
 
 ---@param item_link ItemLink
@@ -120,6 +125,10 @@ function M.make_distributable_item( id, name, link, tooltip_link, quality, quant
   return { id = id, name = name, link = link, tooltip_link = tooltip_link, quality = quality, quantity = quantity, texture = texture, slot = slot }
 end
 
+---@param texture string
+---@param amount_text string
+---@param slot number
+---@return Coin
 function M.make_coin( texture, amount_text, slot )
   return { coin = true, texture = texture, amount_text = amount_text, slot = slot }
 end

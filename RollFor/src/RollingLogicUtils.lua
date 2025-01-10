@@ -6,6 +6,9 @@ if m.RollingLogicUtils then return end
 local M = {}
 local map = m.map
 
+---@type MakeRollingPlayerFn
+local make_rolling_player = m.Types.make_rolling_player
+
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
@@ -17,24 +20,21 @@ function M.can_roll( rollers, player_name )
   return false
 end
 
+---@param roller RollingPlayer
 function M.copy_roller( roller )
-  return { name = roller.name, rolls = roller.rolls }
+  return make_rolling_player( roller.name, roller.class, roller.online, roller.rolls )
 end
 
-function M.copy_rollers( t )
+---@param rollers RollingPlayer[]
+function M.copy_rollers( rollers )
   local result = {}
 
-  for k, v in pairs( t ) do
+  for k, v in pairs( rollers ) do
     result[ k ] = M.copy_roller( v )
   end
 
   return result
 end
-
----@class Roll
----@field player RollingPlayer
----@field rolls number[]
----@field roll_type RollType
 
 function M.one_roll( player_name )
   return { name = player_name, rolls = 1 }

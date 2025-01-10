@@ -5,6 +5,9 @@ if m.GroupRoster then return end
 
 local M = {}
 
+---@type MakePlayerFn
+local make_player = m.Types.make_player
+
 ---@class GroupRoster
 ---@field my_name fun(): string
 ---@field get_all_players_in_my_group fun( f: (fun( player: Player ): boolean)? ): Player[]
@@ -14,7 +17,7 @@ local M = {}
 ---@field am_i_in_raid fun(): boolean
 ---@field find_player fun( player_name: string ): Player?
 
----@param api fun():any
+---@param api fun(): any
 ---@return GroupRoster
 function M.new( api )
   local function my_name()
@@ -43,7 +46,7 @@ function M.new( api )
         local name = api().UnitName( v )
         local class = api().UnitClass( v )
         local online = api().UnitIsConnected( v ) and true or false
-        local player = { name = name, class = class, online = online }
+        local player = make_player( name, class, online )
         if name and (not f or f( player )) and class then table.insert( result, player ) end
       end
     end

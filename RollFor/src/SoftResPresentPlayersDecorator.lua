@@ -18,7 +18,7 @@ local clone = m.clone
 ---@field get_hr_item_ids fun(): ItemId[]
 ---@field is_item_hardressed fun( item_id: ItemId ): boolean
 ---@field import fun( data: RaidResData )
----@field clear fun()
+---@field clear fun( report: boolean )
 ---@field persist fun()
 
 ---@class GroupedSoftRes
@@ -30,7 +30,7 @@ local clone = m.clone
 ---@field get_hr_item_ids fun(): ItemId[]
 ---@field is_item_hardressed fun( item_id: ItemId ): boolean
 ---@field import fun( data: RaidResData )
----@field clear fun()
+---@field clear fun( report: boolean )
 ---@field persist fun()
 
 -- I decorate given softres class with present players logic.

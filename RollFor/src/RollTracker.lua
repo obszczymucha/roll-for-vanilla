@@ -38,7 +38,7 @@ local getn = table.getn
 ---@field preview fun( rolling_strategy: RollingStrategy, item: Item, count: number, info: string?, required_rolling_players: Player[] )
 ---@field start fun( rolling_strategy: RollingStrategy, item: Item, count: number, info: string?, seconds: number?, required_rolling_players: Player[]? )
 ---@field waiting_for_rolls fun()
----@field finish fun( winning_rolls: WinningRoll[] )
+---@field finish fun( winners: Winner[] )
 ---@field cancel fun()
 ---@field tie fun( required_rolling_players: Player[], roll_type: RollType, roll: number )
 ---@field tie_start fun()
@@ -156,10 +156,10 @@ function M.new()
     end
   end
 
-  ---@param winning_rolls WinningRoll[]
-  local function finish( winning_rolls )
+  ---@param winners Winner[]
+  local function finish( winners )
     M.debug.add( "finish" )
-    status = { type = S.Finished, winning_rolls = winning_rolls }
+    status = { type = S.Finished, winners = winners }
   end
 
   --- Indicates that the there was a tie.

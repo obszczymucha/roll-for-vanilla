@@ -9,6 +9,7 @@ local packed_value = mocking.packed_value
 
 require( "test/utils" ) -- Need to load this before modules to load lua50 stuff.
 require( "src/modules" )
+require( "src/Types" )
 local gr = require( "src/GroupRoster" )
 
 -- mock_api() checks if the type is a function and then ungroups the result.
@@ -101,8 +102,8 @@ function GetAllPlayersInMyGroupSpec:should_return_all_players_in_party()
 
   -- Then
   lu.assertEquals( result, {
-    { class = "Warrior", name = "Psikutas",     online = true },
-    { class = "Warrior", name = "Obszczymucha", online = true }
+    { class = "Warrior", name = "Psikutas",     online = true, type = "Player" },
+    { class = "Warrior", name = "Obszczymucha", online = true, type = "Player" }
   } )
 end
 

@@ -10,18 +10,11 @@ local M = {}
 local info = m.pretty_print
 local hl = m.colors.highlight
 local RollSlashCommand = m.Types.RollSlashCommand
-local RollType = m.Types.RollType
 local RS = m.Types.RollingStrategy
 local S = m.Types.RollingStatus
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
-
-local m_rolling_logic
-
-local function reset()
-  m_rolling_logic = nil
-end
 
 local function get_roll_announcement_chat_type( use_raid_warning )
   local chat_type = m.get_group_chat_type()
@@ -97,12 +90,12 @@ local function trade_complete_callback( recipient, items_given, items_received )
 end
 
 local function on_cancel_roll_command()
-  m_rolling_logic.cancel_rolling()
+  M.rolling_logic.cancel_rolling()
   M.roll_controller.cancel()
 end
 
 local function on_finish_roll_command()
-  m_rolling_logic.stop_accepting_rolls( true )
+  M.rolling_logic.stop_accepting_rolls( true )
 end
 
 local function select_player( item )
@@ -115,74 +108,21 @@ local function select_player( item )
 end
 
 ---@param item Item
-local function raid_roll_rolling_logic( item, count )
-  local dropped_item = M.loot_list.find_item( item.id )
-  local candidates = dropped_item and M.master_loot_candidates.get() or M.group_roster.get_all_players_in_my_group()
-  local online_candidates = m.filter( candidates, function( c ) return c.online == true end )
-
-  if dropped_item and getn( online_candidates ) == 0 then
-    m.pretty_print( "Game API didn't return any loot candidates.", m.colors.red )
-    return
-  end
-
-  return m.RaidRollRollingLogic.new(
-    announce,
-    M.ace_timer,
-    item,
-    count or 1,
-    M.winner_tracker,
-    M.roll_controller,
-    online_candidates
-  )
-end
-
----@param item Item
-local function insta_raid_roll_rolling_logic( item, count )
-  local dropped_item = M.loot_list.find_item( item.id )
-  local candidates = dropped_item and M.master_loot_candidates.get() or M.group_roster.get_all_players_in_my_group()
-  local online_candidates = m.filter( candidates, function( c ) return c.online == true end )
-
-  if dropped_item and getn( online_candidates ) == 0 then
-    m.pretty_print( "Game API didn't return any loot candidates.", m.colors.red )
-    return
-  end
-
-  return m.InstaRaidRollRollingLogic.new(
-    announce,
-    item,
-    count or 1,
-    M.winner_tracker,
-    M.roll_controller,
-    online_candidates
-  )
-end
-
----@param item Item
 local function raid_roll_item( item, count )
-  m_rolling_logic = raid_roll_rolling_logic( item, count )
-  if not m_rolling_logic then return end
+  local strategy = M.rolling_strategy_factory.raid_roll( item, count )
+  if not strategy then return end
 
-  M.winner_tracker.start_rolling( item.link )
-  m_rolling_logic.announce_rolling()
+  M.rolling_logic.roll( strategy )
+  M.winner_tracker.start_rolling( item.link ) -- TODO: Remove from here and subscribe to an event.
 end
 
 ---@param item Item
 local function insta_raid_roll_item( item, count )
-  m_rolling_logic = insta_raid_roll_rolling_logic( item, count )
-  if not m_rolling_logic then return end
+  local strategy = M.rolling_strategy_factory.insta_raid_roll( item, count )
+  if not strategy then return end
 
   M.winner_tracker.start_rolling( item.link )
-  m_rolling_logic.announce_rolling()
-end
-
----@param item Item
----@param item_count number
----@param message string?
----@param seconds number
----@param on_rolling_finished RollingFinishedCallback
-local function non_softres_rolling_logic( item, item_count, message, seconds, on_rolling_finished )
-  return m.NonSoftResRollingLogic.new( announce, M.ace_timer, M.group_roster, item, item_count or 1, message, seconds, on_rolling_finished, M.config,
-    M.roll_controller )
+  M.rolling_logic.roll( strategy )
 end
 
 -- local function free_roll_item( item_link )
@@ -196,52 +136,19 @@ end
 --   m_rolling_logic.announce_rolling()
 -- end
 
----@param rollers Roller[]
-local function on_softres_rolls_available( rollers )
-  local remaining_rollers = m.reindex_table( rollers )
-
-  local transform = function( player )
-    local rolls = player.rolls == 1 and "1 roll" or string.format( "%s rolls", player.rolls )
-    return string.format( "%s (%s)", player.name, rolls )
-  end
-
-  M.roll_controller.waiting_for_rolls()
-  local message = m.prettify_table( remaining_rollers, transform )
-  announce( string.format( "SR rolls remaining: %s", message ) )
-end
-
----@param item Item
----@param item_count number
----@param message string?
----@param seconds number
----@param on_rolling_finished RollingFinishedCallback
-local function soft_res_rolling_logic( item, item_count, message, seconds, on_rolling_finished )
-  ---@type RollingPlayer[]
-  local softressing_players = M.softres.get( item.id )
-
-  if getn( softressing_players ) == 0 then
-    return non_softres_rolling_logic( item, item_count or 1, message, seconds, on_rolling_finished )
-  end
-
-  return m.SoftResRollingLogic.new(
-    announce,
-    M.ace_timer,
-    softressing_players,
-    item,
-    item_count or 1,
-    seconds,
-    on_rolling_finished,
-    on_softres_rolls_available,
-    M.roll_controller,
-    M.config
-  )
-end
-
 local function roll_item( item, item_count )
   local count = item_count or M.loot_list.count( item.id )
-  m_rolling_logic = soft_res_rolling_logic( item, count, nil, M.config.default_rolling_time_seconds(), M.on_rolling_finished )
-  M.winner_tracker.start_rolling( item.link )
-  m_rolling_logic.announce_rolling()
+  local strategy = M.rolling_strategy_factory.softres_roll(
+    item,
+    count,
+    nil,
+    M.config.default_rolling_time_seconds(),
+    M.rolling_logic.on_rolling_finished,
+    M.rolling_logic.on_softres_rolls_available
+  )
+
+  M.rolling_logic.roll( strategy )
+  M.winner_tracker.start_rolling( item.link ) -- TODO: remove from here and subsctibe to an event.
 end
 
 local function create_components()
@@ -260,8 +167,7 @@ local function create_components()
   M.item_utils = m.ItemUtils
 
   M.version_broadcast = m.VersionBroadcast.new( db( "version_broadcast" ), version.str )
-  M.winner_history = m.WinnerHistory.new( db( "winner_history" ) )
-  M.awarded_loot = m.AwardedLoot.new( db( "awarded_loot" ), M.winner_history )
+  M.awarded_loot = m.AwardedLoot.new( db( "awarded_loot" ) )
   M.group_roster = m.GroupRoster.new( M.api )
   M.softres_db = db( "softres" )
   M.unfiltered_softres = m.SoftRes.new( M.softres_db )
@@ -335,7 +241,6 @@ local function create_components()
   M.master_loot_warning = m.MasterLootWarning.new( M.api, M.config, m.BossList.zones )
   M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, db( "auto_loot" ), M.config )
   M.new_group_event = m.NewGroupEvent.new()
-  M.new_group_event.subscribe( M.winner_history.start_session )
   M.auto_group_loot = m.AutoGroupLoot.new( M.loot_list, M.config, m.BossList.zones )
   M.auto_master_loot = m.AutoMasterLoot.new( M.config, m.BossList.zones )
   M.softres_roll_gui_data = m.SoftResRollGuiData.new( M.softres, M.group_roster )
@@ -412,6 +317,25 @@ local function create_components()
 
   M.loot_frame = m.LootFrame.new( m.FrameBuilder, M.loot_list, db( "loot_frame" ), M.roll_controller, M.roll_tracker, M.config, M.rolling_popup )
   M.roll_for_ad = m.RollForAd.new()
+
+  ---@type RollingStrategyFactory
+  M.rolling_strategy_factory = m.RollingStrategyFactory.new(
+    M.group_roster,
+    M.loot_list,
+    M.master_loot_candidates,
+    announce,
+    M.ace_timer,
+    M.winner_tracker,
+    M.roll_controller,
+    M.config,
+    M.softres
+  )
+
+  ---@type RollingLogic
+  M.rolling_logic = m.RollingLogic.new( announce, M.roll_controller, M.rolling_strategy_factory, M.master_loot_candidates, M.winner_tracker )
+
+  ---@type ArgsParser
+  M.args_parser = m.ArgsParser.new( m.ItemUtils, M.config )
 end
 
 function M.import_softres_data( softres_data )
@@ -439,184 +363,43 @@ function M.import_encoded_softres_data( data, data_loaded_callback )
   update_minimap_icon()
 end
 
----@param item Item
----@param item_count number
----@param winners Winners
----@param top_roll boolean
----@param rerolling boolean?
-function M.there_was_a_tie( item, item_count, winners, top_roll, rerolling )
-  local players = winners.players
-  local roll_type = winners.roll_type
-  local top_rollers_str = m.prettify_table( players )
-  local top_rollers_str_colored = m.prettify_table( players, hl )
-  local roll_type_str = roll_type == RollType.MainSpec and "" or string.format( " (%s)", m.roll_type_abbrev_chat( roll_type ) )
-
-  local message = function( rollers )
-    return string.format( "The %shighest %sroll was %d by %s%s.", not rerolling and top_roll and "" or "next ",
-      rerolling and "re-" or "", players.roll, rollers, roll_type_str )
-  end
-
-  M.roll_controller.tie( players, roll_type, players.roll )
-
-  info( message( top_rollers_str_colored ) )
-  announce( message( top_rollers_str ) )
-
-  local prefix = item_count > 1 and string.format( "%sx", item_count ) or ""
-  local suffix = item_count > 1 and string.format( " %s top rolls win.", item_count ) or ""
-
-  m_rolling_logic = m.TieRollingLogic.new(
-    announce,
-    players, -- Trackback: changed player_names to players
-    item,
-    item_count,
-    M.on_rolling_finished,
-    players.roll_type,
-    M.config,
-    M.group_roster,
-    M.roll_controller
-  )
-
-  local roll_threshold_str = M.config.roll_threshold( players.roll_type ).str
-
-  M.ace_timer.ScheduleTimer( M,
-    function()
-      M.roll_controller.tie_start()
-      m_rolling_logic.announce_rolling( string.format( "%s %s for %s%s now.%s", top_rollers_str, roll_threshold_str, prefix, item.link, suffix ) )
-    end, 2 )
-end
-
----@class Winners
----@field players Player[]
----@field roll_type RollType
-
----@alias RollingFinishedCallback fun(
----  item: Item,
----  item_count: number,
----  winners: Player[],
----  rerolling: boolean?,
----  there_was_no_rolling: boolean? )
-
----@type RollingFinishedCallback
----@param item Item
----@param item_count number
----@param winning_rolls WinningRoll[]
-function M.on_rolling_finished( item, item_count, winning_rolls, rerolling, there_was_no_rolling )
-  local function enrich_winning_rolls_with_candidate_value()
-    return m.map( winning_rolls, function( winning_roll )
-      local candidate = M.master_loot_candidates.find( winning_roll.player.name )
-      winning_roll.player.value = candidate and candidate.value
-      return winning_roll
-    end )
-  end
-
-  local announce_winner = function( v, top_roll )
-    local roll = v.roll
-    local players = v.players
-    table.sort( players )
-    local roll_type_str = v.roll_type == RollType.MainSpec and "" or string.format( " (%s)", m.roll_type_abbrev_chat( v.roll_type ) )
-
-    info( string.format( "%s %srolled the %shighest (%s) for %s%s.", m.prettify_table( players, hl ),
-      rerolling and "re-" or "", top_roll and "" or "next ", hl( roll ), item.link, roll_type_str ) )
-    announce(
-      string.format( "%s %srolled the %shighest (%d) for %s%s.", m.prettify_table( players ),
-        rerolling and "re-" or "", top_roll and "" or "next ", roll, item.link, roll_type_str ) )
-  end
-
-  if getn( winning_rolls ) == 0 then
-    info( string.format( "No one rolled for %s.", item.link ) )
-    announce( string.format( "No one rolled for %s.", item.link ) )
-    M.roll_controller.finish()
-
-    if not rerolling and M.config.auto_raid_roll() and m_rolling_logic.get_rolling_strategy() ~= RS.SoftResRoll then
-      m_rolling_logic = raid_roll_rolling_logic( item, item_count )
-
-      if m_rolling_logic then
-        m_rolling_logic.announce_rolling()
-      end
-    elseif m_rolling_logic and not m_rolling_logic.is_rolling() then
-      info( string.format( "Rolling for %s has finished.", item.link ) )
-    end
-
-    return
-  end
-
-  local items_left = item_count
-
-  for i = 1, getn( winning_rolls ) do
-    if items_left == 0 then
-      -- When the fuck does this happen?
-      if m_rolling_logic.is_rolling() then return end
-
-      -- Or this?
-      if i > 1 or not there_was_no_rolling then
-        info( string.format( "Rolling for %s has finished.", item.link ) )
-        return
-      end
-
-      -- SR winner(s) / no rolling (yes, there can be multiple if multiple SRed items dropped).
-      local enriched_winning_rolls = enrich_winning_rolls_with_candidate_value()
-      local rolling_strategy = m_rolling_logic and m_rolling_logic.get_rolling_strategy()
-      m.map( enriched_winning_rolls, function( winning_roll )
-        M.winner.tracker.track( winning_roll.player, item.link, winning_roll.roll_type, winning_roll.roll, rolling_strategy )
-      end )
-
-      M.roll_controller.finish( enriched_winning_rolls )
-
-      info( string.format( "Use %s %s to roll the item and ignore the softres.", hl( "/arf" ), item.link ), nil, "Tip" )
-      return
-    end
-
-    local v = winning_rolls[ i ]
-    local player_count = getn( v.players )
-
-    if player_count > 1 and player_count > items_left then
-      M.there_was_a_tie( item, items_left, winners[ i ], i == 1 )
-      return
-    end
-
-    items_left = items_left - player_count
-    announce_winner( winners[ i ], i == 1 )
-  end
-
-  local function handle_winners()
-    local roll_winners = enrich_roll_winners()
-    local rolling_strategy = m_rolling_logic and m_rolling_logic.get_rolling_strategy()
-    m.map( roll_winners, function( winner ) M.winner.tracker.track( winner, item.link, winner.roll_type, winner.roll, rolling_strategy ) end )
-    M.roll_controller.finish( roll_winners )
-  end
-
-  handle_winners()
-
-  if not m_rolling_logic.is_rolling() then
-    info( string.format( "Rolling for %s has finished.", item.link ) )
-  end
-end
-
 local function announce_hr( item )
   announce( string.format( "%s is hard-ressed.", item ), true )
 end
 
-local function parse_args( args )
-  for item_count, item_link, seconds, message in string.gmatch( args, "(%d*)[xX]?%s*(|%w+|Hitem.+|r)%s*(%d*)%s*(.*)" ) do
-    local count = (not item_count or item_count == "") and 1 or tonumber( item_count )
-    local item_id = M.item_utils.get_item_id( item_link )
-    local item_name = M.item_utils.get_item_name( item_link )
-    local texture = m.get_item_texture( item_id )
+local function make_strategy( strategy_type, item, count, message, seconds )
+  if strategy_type == RS.SoftResRoll then
+    return M.rolling_strategy_factory.softres_roll(
+      item,
+      count,
+      message,
+      seconds,
+      M.rolling_logic.on_rolling_finished,
+      M.rolling_logic.on_softres_rolls_available
+    )
+  elseif strategy_type == RS.NormalRoll then
+    return M.rolling_strategy_factory.normal_roll(
+      item,
+      count,
+      message,
+      seconds,
+      M.rolling_logic.on_rolling_finished
+    )
+  elseif strategy_type == RS.RaidRoll then
+    return M.rolling_strategy_factory.raid_roll( item, count )
+  elseif strategy_type == RS.InstaRaidRoll then
+    if not M.config.insta_raid_roll() then
+      info( string.format( "Insta raid-roll is %s.", m.msg.disabled ) )
+      return
+    end
 
-    local item = { id = item_id, link = item_link, name = item_name, texture = texture }
-    local secs = seconds and seconds ~= "" and seconds ~= " " and tonumber( seconds ) or M.config.default_rolling_time_seconds()
-
-    return item, count, secs < 4 and 4 or secs > 15 and 15 or secs, message
+    return M.rolling_strategy_factory.insta_raid_roll( item, count )
   end
 end
 
 local function on_roll_command( roll_slash_command )
-  local normal_roll = roll_slash_command == RollSlashCommand.NormalRoll
-  local raid_roll = roll_slash_command == RollSlashCommand.RaidRoll
-  local insta_raid_roll = roll_slash_command == RollSlashCommand.InstaRaidRoll
-
   return function( args )
-    if m_rolling_logic and m_rolling_logic.is_rolling() then
+    if M.rolling_logic.is_rolling() then
       if not args or args == "" then
         M.roll_controller.show()
         return
@@ -660,67 +443,55 @@ local function on_roll_command( roll_slash_command )
       return
     end
 
-    local item, count, seconds, message = parse_args( args )
+    local item, count, seconds, message = M.args_parser.parse( args )
 
     if not item then
       M.usage_printer.print_usage( roll_slash_command )
       return
     end
 
-    --TODO: What if we wanted to bypass the hard-res?
+    -- TODO: What if we wanted to bypass the hard-res?
+    -- Also, get rid of this here. Make a strategy for this shit or something.
     if M.softres.is_item_hardressed( item.id ) then
       announce_hr( item.link )
       return
     end
 
-    if normal_roll then
-      m_rolling_logic = soft_res_rolling_logic( item, count, message, seconds, M.on_rolling_finished )
-    elseif roll_slash_command == RollSlashCommand.NoSoftResRoll then
-      m_rolling_logic = non_softres_rolling_logic( item, count, message, seconds, M.on_rolling_finished )
-    elseif raid_roll then
-      m_rolling_logic = raid_roll_rolling_logic( item, count )
-    elseif insta_raid_roll and M.config.insta_raid_roll() then
-      m_rolling_logic = insta_raid_roll_rolling_logic( item, count )
-    elseif insta_raid_roll and not M.config.insta_raid_roll() then
-      info( string.format( "Insta raid-roll is %s.", m.msg.disabled ) )
-      return
-    else
+    local strategy_type = m.Types.slash_command_to_strategy_type( roll_slash_command )
+
+    if not strategy_type then
       info( string.format( "Unsupported command: %s", hl( roll_slash_command and roll_slash_command.slash_command or "?" ) ) )
       return
     end
 
-    if not m_rolling_logic then return end
+    local rolling_strategy = make_strategy( strategy_type, item, count, message, seconds )
+    if not rolling_strategy then return end
 
     M.winner_tracker.start_rolling( item.link )
-    m_rolling_logic.announce_rolling()
+    M.rolling_logic.roll( rolling_strategy )
   end
 end
 
 local function on_show_sorted_rolls_command( args )
-  if not m_rolling_logic then
-    info( "No rolls have been recorded." )
-    return
-  end
-
-  if m_rolling_logic.is_rolling() then
+  if M.rolling_logic.is_rolling() then
     info( "Rolling is in progress." )
     return
   end
 
   if args then
     for limit in string.gmatch( args, "(%d+)" ) do
-      m_rolling_logic.show_sorted_rolls( tonumber( limit ) )
+      M.rolling_logic.show_sorted_rolls( tonumber( limit ) )
       return
     end
   end
 
-  m_rolling_logic.show_sorted_rolls( 5 )
+  M.rolling_logic.show_sorted_rolls( 5 )
 end
 
 local function is_rolling_check( f )
   ---@diagnostic disable-next-line: unused-vararg
   return function( ... )
-    if not m_rolling_logic or not m_rolling_logic.is_rolling() then
+    if not M.rolling_logic.is_rolling() then
       info( "Rolling not in progress." )
       return
     end
@@ -766,10 +537,8 @@ local function on_softres_command( args )
   M.softres_gui.toggle()
 end
 
-local function on_roll( player, roll, min, max )
-  if m_rolling_logic and m_rolling_logic.is_rolling() then
-    m_rolling_logic.on_roll( player, roll, min, max )
-  end
+local function on_roll( player_name, roll, min, max )
+  M.rolling_logic.on_roll( player_name, roll, min, max )
 end
 
 local function on_loot_method_changed()
@@ -935,7 +704,6 @@ local function setup_slash_commands()
 end
 
 function M.on_first_enter_world()
-  reset()
   setup_storage()
   create_components()
   setup_slash_commands()
@@ -969,19 +737,7 @@ end
 function M.award_item( player_name, item_id, item_link )
   M.awarded_loot.award( player_name, item_id )
   M.roll_controller.loot_awarded( item_link )
-  local winners = M.winner_tracker.find_winners( item_link )
-
-  if getn( winners ) > 0 then
-    for _, winner in ipairs( winners ) do
-      if winner.winner_name == player_name then
-        M.winner_history.add( player_name, item_id, item_link, winner.roll_type, winner.winning_roll )
-      end
-    end
-  else
-    M.winner_history.add( player_name, item_id, item_link )
-  end
-
-  info( string.format( "%s received %s.", hl( player_name ), item_link ) )
+  info( string.format( "%s received %s.", hl( player_name ), item_link ) ) -- TODO: Remove from here and subscribe to an event.
   M.winner_tracker.untrack( player_name, item_link )
 end
 

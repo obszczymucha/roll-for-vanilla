@@ -24,8 +24,8 @@ function SoftResAwardedLootDecoratorSpec:should_return_all_softressing_players()
 
   -- Then
   eq( result, {
-    { name = "Jogobobek",    rolls = 1, class = "Warrior" },
-    { name = "Obszczymucha", rolls = 2, class = "Warrior" }
+    { name = "Jogobobek",    rolls = 1, class = "Warrior", type = "Roller" },
+    { name = "Obszczymucha", rolls = 2, class = "Warrior", type = "Roller" }
   } )
 end
 
@@ -42,13 +42,12 @@ function SoftResAwardedLootDecoratorSpec:should_not_return_players_that_received
 
   -- Then
   eq( result, {
-    { name = "Obszczymucha", rolls = 2, class = "Warrior" }
+    { name = "Obszczymucha", rolls = 2, class = "Warrior", type = "Roller" }
   } )
 end
 
 function SoftResAwardedLootDecoratorSpec:should_not_subtract_rolls()
   -- Given
-  local m = require( "src/modules" ).RollingLogicUtils
   player( "Jogobobek" )
   is_in_raid( leader( "Jogobobek" ), "Obszczymucha" )
   local rf = soft_res( sr( "Jogobobek", 123 ), sr( "Obszczymucha", 123 ), sr( "Obszczymucha", 123 ) )
@@ -57,11 +56,10 @@ function SoftResAwardedLootDecoratorSpec:should_not_subtract_rolls()
 
   -- When
   local result = softres.get( 123 )
-  m.subtract_roll( result, "Jogobobek" )
 
   -- Then
   eq( result, {
-    { name = "Obszczymucha", rolls = 2, class = "Warrior" }
+    { name = "Obszczymucha", rolls = 2, class = "Warrior", type = "Roller" }
   } )
 end
 

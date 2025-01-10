@@ -57,7 +57,6 @@ src\FrameBuilder.lua
 src\PopupBuilder.lua
 src\LootAwardPopup.lua
 src\MasterLootCandidates.lua
-src\WinnerHistory.lua
 src\NewGroupEvent.lua
 src\AutoGroupLoot.lua
 src\BossList.lua
@@ -77,4 +76,6 @@ src\SoftResLootListDecorator.lua
 src\LootFrame.lua
 src\RollForAd.lua
 src\LootAutoProcess.lua
+src\RollingStrategyFactory.lua
+src\RollingLogic.lua
 main.lua

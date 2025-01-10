@@ -15,6 +15,18 @@ M.RollSlashCommand = {
   InstaRaidRoll = "/irr"
 }
 
+function M.slash_command_to_strategy_type( slash_command )
+  if slash_command == M.RollSlashCommand.NormalRoll then
+    return M.RollingStrategy.SoftResRoll
+  elseif slash_command == M.RollSlashCommand.NoSoftResRoll then
+    return M.RollingStrategy.NormalRoll
+  elseif slash_command == M.RollSlashCommand.RaidRoll then
+    return M.RollingStrategy.RaidRoll
+  elseif slash_command == M.RollSlashCommand.InstaRaidRoll then
+    return M.RollingStrategy.InstaRaidRoll
+  end
+end
+
 ---@alias RollType
 ---| "MainSpec"
 ---| "OffSpec"
@@ -27,12 +39,13 @@ M.RollType = {
   SoftRes = "SoftRes"
 }
 
---- @alias RollingStrategy
+--- @alias RollingStrategyType
 ---| "NormalRoll"
 ---| "SoftResRoll"
 ---| "TieRoll"
 ---| "RaidRoll"
 ---| "InstaRaidRoll"
+
 local RollingStrategy = {
   NormalRoll = "NormalRoll",
   SoftResRoll = "SoftResRoll",
@@ -47,11 +60,13 @@ M.RollingStrategy = RollingStrategy
 ---| "Player"
 ---| "Roller"
 ---| "RollingPlayer"
+---| "ItemCandidate"
 ---| "Winner"
 local PlayerType = {
   Player = "Player",
   Roller = "Roller",
   RollingPlayer = "RollingPlayer",
+  ItemCandidate = "ItemCandidate",
   Winner = "Winner",
 }
 
@@ -82,10 +97,27 @@ local PlayerClass = {
 
 M.PlayerClass = PlayerClass
 
+
 ---@class Player
 ---@field name string
 ---@field class string
+---@field online boolean
 ---@field type PlayerType
+
+---@alias MakePlayerFn fun(
+---  name: string,
+---  class: PlayerClass,
+---  online: boolean ): Player
+---@type MakePlayerFn
+---@return Player
+function M.make_player( name, class, online )
+  return {
+    name = name,
+    class = class,
+    online = online,
+    type = PlayerType.Player
+  }
+end
 
 --- Roller is a RollingPlayer that's not in the group (so we don't know their class).
 ---@class Roller
@@ -93,30 +125,11 @@ M.PlayerClass = PlayerClass
 ---@field rolls number
 ---@field type PlayerType
 
----@class RollingPlayer
----@field name string
----@field class string
----@field rolls number
----@field type PlayerType
+---@alias MakeRollerFn fun(
+---  name: string,
+---  rolls: number ): Roller
 
----@class Winner
----@field name string
----@field class string
----@field roll_type RollType
----@field roll number
----@field type PlayerType
-
----@param name string
----@param class PlayerClass
----@return Player
-function M.make_player( name, class )
-  return {
-    name = name,
-    class = class,
-    type = PlayerType.Player
-  }
-end
-
+---@type MakeRollerFn
 ---@param name string
 ---@param rolls number
 ---@return Roller
@@ -128,31 +141,93 @@ function M.make_roller( name, rolls )
   }
 end
 
+---@class RollingPlayer
+---@field name string
+---@field class string
+---@field online boolean
+---@field rolls number
+---@field type PlayerType
+
+---@alias MakeRollingPlayerFn fun(
+---  name: string,
+---  class: PlayerClass,
+---  online: boolean,
+---  rolls: number ): RollingPlayer
+
+---@type MakeRollingPlayerFn
 ---@param name string
 ---@param class PlayerClass
+---@param online boolean
 ---@param rolls number
 ---@return RollingPlayer
-function M.make_rolling_player( name, class, rolls )
+function M.make_rolling_player( name, class, online, rolls )
   return {
     name = name,
     class = class,
+    online = online,
     rolls = rolls,
     type = PlayerType.RollingPlayer
   }
 end
 
---- Represents a player that won a roll.
----@param name string The name of the player.
----@param class PlayerClass The class of the player.
----@param roll_type RollType The type of the roll.
----@param roll number The roll value.
----@return Winner
-function M.make_winner( name, class, roll_type, roll )
+---@class ItemCandidate
+---@field name string
+---@field class string
+---@field online boolean
+---@field candidate_index number
+---@field type PlayerType
+
+---@alias MakeItemCandidateFn fun(
+---  name: string,
+---  class: PlayerClass,
+---  online: boolean,
+---  candidate_index: number ): ItemCandidate
+
+---@type MakeItemCandidateFn
+---@param name string
+---@param class PlayerClass
+---@param online boolean
+---@param candidate_index number
+---@return ItemCandidate
+function M.make_item_candidate( name, class, online, candidate_index )
   return {
     name = name,
     class = class,
+    online = online,
+    candidate_index = candidate_index,
+    type = PlayerType.ItemCandidate
+  }
+end
+
+---@class Winner
+---@field name string
+---@field class string
+---@field roll_type RollType
+---@field item Item -- Could be worth storing if we want to ever add a GUI for historical items. Dunno.
+---@field winning_roll number?
+---@field type PlayerType
+
+---@alias MakeWinnerFn fun(
+---  name: string,
+---  class: PlayerClass,
+---  roll_type: RollType,
+---  item: Item,
+---  winning_roll: number? ): Winner
+
+---@type MakeWinnerFn
+---@param name string
+---@param class PlayerClass
+---@param item Item
+---@param roll_type RollType?
+---@param winning_roll number?
+---@return Winner
+function M.make_winner( name, class, item, roll_type, winning_roll )
+  return {
+    name = name,
+    class = class,
+    item = item,
     roll_type = roll_type,
-    roll = roll,
+    winning_roll = winning_roll,
     type = PlayerType.Winner
   }
 end
@@ -216,17 +291,22 @@ M.ItemQuality = ItemQuality
 ---@field ScheduleRepeatingTimer fun( self: NotAceTimer, callback: function, delay: number, arg: any ): TimerId
 ---@field CancelTimer fun( self: AceTimer, timer_id: number )
 
----@class WinningRoll
----@field player RollingPlayer
+---@class Roll
+---@field player RollingPlayer | ItemCandidate
 ---@field roll_type RollType
 ---@field roll number
----@field value number | nil -- Master Loot candidate value
 
+---@alias MakeRollFn fun(
+---  player: RollingPlayer,
+---  roll_type: RollType,
+---  roll: number ): Roll
+
+---@type MakeRollFn
 ---@param player RollingPlayer
 ---@param roll_type RollType
 ---@param roll number
----@return WinningRoll
-function M.make_winning_roll( player, roll_type, roll )
+---@return Roll
+function M.make_roll( player, roll_type, roll )
   return { player = player, roll_type = roll_type, roll = roll }
 end
 
