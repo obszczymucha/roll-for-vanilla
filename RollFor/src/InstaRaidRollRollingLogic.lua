@@ -7,13 +7,24 @@ local M = {}
 local pp = m.pretty_print
 local hl = m.colors.hl
 local RollingStrategy = m.Types.RollingStrategy
+local roll_type = m.Types.RollType.MainSpec
 local clear_table = m.clear_table
+
+---@type MakeWinnerFn
+local make_winner = m.Types.make_winner
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
-function M.new( announce, item, count, winner_tracker, roll_controller, candidates )
-  m.pdump(candidates)
+-- TODO: Lots of similarity with RaidRollRollingLogic. Perhaps refactor.
+
+---@param announce AnnounceFn
+---@param item Item
+---@param item_count number
+---@param winner_tracker WinnerTracker
+---@param roll_controller RollController
+---@param candidates ItemCandidate[]|Player[]
+function M.new( announce, _, item, item_count, winner_tracker, roll_controller, candidates )
   local m_winners = {}
 
   local function clear_winners()
@@ -24,19 +35,26 @@ function M.new( announce, item, count, winner_tracker, roll_controller, candidat
   local function start_rolling()
     clear_winners()
 
-    roll_controller.start( RollingStrategy.InstaRaidRoll, item, count )
+    roll_controller.start( RollingStrategy.InstaRaidRoll, item, item_count )
 
-    for _ = 1, count do
+    for _ = 1, item_count do
       local roll = m.lua.math.random( 1, getn( candidates ) )
       table.insert( m_winners, candidates[ roll ] )
     end
 
-    roll_controller.finish( m_winners )
+    m.map( m_winners,
+      ---@param player ItemCandidate|Player
+      function( player )
+        if type( player ) == "table" then -- Fucking lua50 and its n.
+          local winner = make_winner( player.name, player.class, item, player.type == "ItemCandidate" or false, roll_type, nil )
 
-    for _, winner in ipairs( m_winners ) do
-      announce( string.format( "%s wins %s via insta raid-roll.", winner.name, item.link ) )
-      winner_tracker.track( winner.name, item.link, nil, nil, m.Types.RollingStrategy.InstaRaidRoll )
-    end
+          announce( string.format( "%s wins %s via insta raid-roll.", winner.name, item.link ) )
+          roll_controller.winner_found( winner )
+          winner_tracker.track( winner.name, item.link, roll_type, nil, m.Types.RollingStrategy.InstaRaidRoll )
+        end
+      end )
+
+    roll_controller.finish()
   end
 
   local function show_sorted_rolls()

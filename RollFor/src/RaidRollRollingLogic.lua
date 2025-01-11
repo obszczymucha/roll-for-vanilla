@@ -7,12 +7,24 @@ local M = {}
 local pretty_print = m.pretty_print
 local hl = m.colors.hl
 local RollingStrategy = m.Types.RollingStrategy
+local roll_type = m.Types.RollType.MainSpec
 local clear_table = m.clear_table
+
+---@type MakeWinnerFn
+local make_winner = m.Types.make_winner
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
-function M.new( announce, ace_timer, item, count, winner_tracker, roll_controller, candidates )
+-- TODO: Lots of similarity with InstaRaidRollRollingLogic. Perhaps refactor.
+
+---@param announce AnnounceFn
+---@param item Item
+---@param item_count number
+---@param winner_tracker WinnerTracker
+---@param roll_controller RollController
+---@param candidates ItemCandidate[]|Player[]
+function M.new( announce, ace_timer, item, item_count, winner_tracker, roll_controller, candidates )
   local m_rolling = false
   local m_winners = {}
 
@@ -49,33 +61,38 @@ function M.new( announce, ace_timer, item, count, winner_tracker, roll_controlle
     m_rolling = true
     clear_winners()
 
-    roll_controller.start( RollingStrategy.RaidRoll, item, count )
+    roll_controller.start( RollingStrategy.RaidRoll, item, item_count )
     roll_controller.show()
     announce( string.format( "Raid rolling %s...", item.link ) )
 
     print_players( candidates )
     ace_timer.ScheduleTimer( M, function()
-      for _ = 1, count do
+      for _ = 1, item_count do
         raid_roll()
       end
     end, 1 )
   end
 
-  local function on_roll( player, roll, min, max )
-    if player ~= m.my_name() then return end
+  local function on_roll( player_name, roll, min, max )
+    if player_name ~= m.my_name() then return end
     if min ~= 1 or max ~= getn( candidates ) then return end
 
     table.insert( m_winners, candidates[ roll ] )
+    if getn( m_winners ) < item_count then return end
 
-    if getn( m_winners ) < count then return end
+    m.map( m_winners,
+      ---@param player ItemCandidate|Player
+      function( player )
+        if type( player ) == "table" then -- Fucking lua50 and its n.
+          local winner = make_winner( player.name, player.class, item, player.type == "ItemCandidate" or false, roll_type, nil )
 
-    roll_controller.finish( m_winners )
+          announce( string.format( "%s wins %s.", winner.name, item.link ) )
+          roll_controller.winner_found( winner )
+          winner_tracker.track( winner.name, item.link, roll_type, nil, m.Types.RollingStrategy.RaidRoll )
+        end
+      end )
 
-    for _, winner in ipairs( m_winners ) do
-      announce( string.format( "%s wins %s.", winner.name, item.link ) ) -- TODO: Remove from here and subscribe to an event.
-      winner_tracker.track( winner.name, item.link, nil, nil, RollingStrategy.RaidRoll ) -- TODO: Remove from here and subscribe to an event. 
-    end
-
+    roll_controller.finish()
     m_rolling = false
   end
 

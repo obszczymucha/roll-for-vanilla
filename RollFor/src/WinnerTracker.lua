@@ -12,11 +12,11 @@ local EventType = {
 
 ---@class WinnerTracker
 ---@field start_rolling fun( item_link: string )
----@field track fun( winner_name: string, item_link: string, roll_type: RollType, winning_roll: number?, rolling_strategy: RollingStrategy )
+---@field track fun( winner_name: string, item_link: string, roll_type: RollType, winning_roll: number?, rolling_strategy: RollingStrategyType )
 ---@field untrack fun( winner_name: string, item_link: string )
 ---@field find_winners fun( item_link: string ): table[]
 ---@field subscribe_for_rolling_started fun( callback: fun() )
----@field subscribe_for_winner_found fun( callback: fun( winner_name: string, item_link: string, winning_roll: number, roll_type: RollType, rolling_strategy: RollingStrategy ) )
+---@field subscribe_for_winner_found fun( callback: fun( winner_name: string, item_link: string, winning_roll: number, roll_type: RollType, rolling_strategy: RollingStrategyType ) )
 ---@field clear fun()
 
 ---@param db table

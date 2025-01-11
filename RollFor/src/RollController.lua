@@ -10,13 +10,14 @@ local S = m.Types.RollingStatus
 ---@class RollController
 ---@field preview fun( item: Item, count: number )
 ---@field start fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, seconds: number?, required_rolling_players: Player[]?)
----@field finish fun( winners: Winner[] )
+---@field winner_found fun( winner: Winner )
+---@field finish fun()
 ---@field tick fun( seconds_left: number )
 ---@field add fun( player_name: string, player_class: string, roll_type: RollType, roll: number )
 ---@field add_ignored fun( player_name: string, player_class: string?, roll_type: RollType, roll: number, reason: string )
 ---@field cancel fun()
 ---@field subscribe fun( event_type: string, callback: fun( data: any ) )
----@field tie fun( tied_players: Player[], roll_type: RollType, roll: number )
+---@field tie fun( tied_players: RollingPlayer[], roll_type: RollType, roll: number, rerolling: boolean?, top_roll: boolean? )
 ---@field tie_start fun()
 ---@field waiting_for_rolls fun()
 ---@field show fun()
@@ -100,10 +101,10 @@ function M.new( roll_tracker )
     } )
   end
 
-  local function tie( tied_players, roll_type, roll )
+  local function tie( players, roll_type, roll, rerolling, top_roll )
     M.debug.add( "tie" )
-    roll_tracker.tie( tied_players, roll_type, roll )
-    notify_subscribers( "tie" )
+    roll_tracker.tie( players, roll_type, roll )
+    notify_subscribers( "tie", { players = players, roll_type = roll_type, roll = roll, rerolling = rerolling, top_roll = top_roll } )
   end
 
   local function tie_start()
@@ -115,15 +116,20 @@ function M.new( roll_tracker )
   local function tick( seconds_left )
     M.debug.add( "tick" )
     roll_tracker.tick( seconds_left )
-    notify_subscribers( "tick" )
+    notify_subscribers( "tick", { seconds_left = seconds_left } )
   end
 
-  ---@param winners Winner[]
-  ---@param rolling_strategy RollingStrategy
-  local function finish( winners, rolling_strategy )
+  ---@param winner Winner
+  local function winner_found( winner )
+    M.debug.add( "winner_found" )
+    roll_tracker.add_winner( winner )
+    notify_subscribers( "winner_found", { winner = winner } )
+  end
+
+  local function finish()
     M.debug.add( "finish" )
-    roll_tracker.finish( winners )
-    notify_subscribers( "finish", { winners = winners, rolling_strategy = rolling_strategy } )
+    roll_tracker.finish()
+    notify_subscribers( "finish" )
   end
 
   local function cancel()
@@ -236,6 +242,7 @@ function M.new( roll_tracker )
   return {
     preview = preview,
     start = start,
+    winner_found = winner_found,
     finish = finish,
     tick = tick,
     add = add,

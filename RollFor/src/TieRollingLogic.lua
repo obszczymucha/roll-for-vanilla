@@ -4,13 +4,13 @@ local m = RollFor
 if m.TieRollingLogic then return end
 
 local M = {}
-local map = m.map
-local count_elements = m.count_elements
 local pretty_print = m.pretty_print
 local take = m.take
-local rlu = m.RollingLogicUtils
 local RollType = m.Types.RollType
 local hl = m.colors.hl
+
+---@type MakeRollFn
+local make_roll = m.Types.make_roll
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
@@ -22,24 +22,40 @@ local getn = table.getn
 ---@param on_rolling_finished RollingFinishedCallback
 ---@param roll_type RollType
 ---@param config Config
----@param group_roster GroupRoster
 ---@param roll_controller RollController
-function M.new( announce, players, item, item_count, on_rolling_finished, roll_type, config, group_roster, roll_controller )
-  local rollers, rolls = map( players, rlu.one_roll ), {}
+function M.new( announce, players, item, item_count, on_rolling_finished, roll_type, config, roll_controller )
+  local rolls = {}
   local rolling = false
+  local player_count = getn( players )
+
+  local function find_player( player_name )
+    for _, player in ipairs( players ) do
+      if player.name == player_name then return player end
+    end
+  end
+
+  local function sort_rolls()
+    table.sort( rolls, function( a, b )
+      if a.roll == b.roll then
+        return a.player.name < b.player.name
+      else
+        return a.roll > b.roll
+      end
+    end )
+  end
 
   local function stop_listening()
     rolling = false
   end
 
   local function have_all_rolls_been_exhausted()
-    local roll_count = count_elements( rolls )
+    local roll_count = getn( rolls )
 
-    if getn( rollers ) == item_count and roll_count == getn( rollers ) then
+    if player_count == item_count and player_count == roll_count then
       return true
     end
 
-    for _, v in pairs( rollers ) do
+    for _, v in ipairs( players ) do
       if v.rolls > 0 then return false end
     end
 
@@ -48,21 +64,34 @@ function M.new( announce, players, item, item_count, on_rolling_finished, roll_t
 
   local function find_winner()
     stop_listening()
-    local roll_count = count_elements( rolls )
+    sort_rolls()
+
+    local roll_count = getn( rolls )
 
     if roll_count == 0 then
-      on_rolling_finished( item, item_count, {}, true )
+      roll_controller.finish()
+      -- on_rolling_finished( item, item_count, {}, true )
       return
     end
 
-    local sorted_rolls = map( rlu.sort_rolls( rolls, roll_type ), function( v )
-      v.roll_type = roll_type
-      return v
-    end )
+    local function count_top_roll_winners()
+      local result = 1
 
-    local winners = take( sorted_rolls, item_count )
+      for i = 1, roll_count - 1 do
+        if rolls[ i ].roll == rolls[ i + 1 ].roll then
+          result = result + 1
+        else
+          return result
+        end
+      end
 
-    on_rolling_finished( item, item_count, winners, true )
+      return result
+    end
+
+    local top_roll_winner_count = count_top_roll_winners()
+    local winner_rolls = take( rolls, top_roll_winner_count > item_count and top_roll_winner_count or item_count )
+
+    on_rolling_finished( item, item_count, winner_rolls, true )
   end
 
   local function on_roll( player_name, roll, min, max )
@@ -82,41 +111,34 @@ function M.new( announce, players, item, item_count, on_rolling_finished, roll_t
       return
     end
 
-    if not rlu.has_rolls_left( rollers, player_name ) then
-      pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
-      return
-    end
-
-    rlu.subtract_roll( rollers, player_name )
-    rlu.record_roll( rolls, player_name, roll )
-
-    local player = group_roster.find_player( player_name )
+    local player = find_player( player_name )
 
     if not player then
-      pretty_print( string.format( "|cffff9f69%s|r cannot be found. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
+      pretty_print( string.format( "|cffff9f69%s|r is not allowed to re-roll. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
       roll_controller.add_ignored( player_name, nil, roll_type, roll, "Not in GroupRoster." )
       return
     end
 
-    roll_controller.add( player_name, player and player.class, roll_type, roll )
+    if player.rolls == 0 then
+      pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
+      return
+    end
+
+    player.rolls = player.rolls - 1
+    table.insert( rolls, make_roll( player, roll_type, roll ) )
+    roll_controller.add( player_name, player.class, roll_type, roll )
 
     if have_all_rolls_been_exhausted() then find_winner() end
   end
 
   local function show_sorted_rolls( limit )
-    local function show( prefix, sorted_rolls )
-      pretty_print( string.format( "%s rolls:", prefix ) )
-      local i = 0
+    sort_rolls()
+    pretty_print( "Tie rolls:" )
 
-      for _, v in ipairs( sorted_rolls ) do
-        if limit and limit > 0 and i > limit then return end
-
-        pretty_print( string.format( "[|cffff9f69%d|r]: %s", v[ "roll" ], m.prettify_table( v[ "players" ] ) ) )
-        i = i + 1
-      end
+    for i, v in ipairs( rolls ) do
+      if limit and limit > 0 and i > limit then return end
+      pretty_print( string.format( "[|cffff9f69%d|r]: %s", v.roll, m.colorize_player_by_class( v.player.name, v.player.class ) ) )
     end
-
-    show( "Tie", rlu.sort_rolls( rolls, roll_type ) )
   end
 
   local function print_rolling_complete( canceled )

@@ -4,6 +4,7 @@ local lu = require( "luaunit" )
 local test_utils = require( "test/utils" )
 test_utils.mock_wow_api()
 require( "src/modules" )
+require( "src/Types" )
 require( "src/SoftResDataTransformer" )
 local mod = require( "src/SoftRes" )
 

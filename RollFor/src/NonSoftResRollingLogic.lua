@@ -51,17 +51,17 @@ function M.new( announce, ace_timer, players, item, item_count, info, seconds, o
   local tmog_rolling_enabled = config.tmog_rolling_enabled()
 
   local function sort_rolls()
-    table.sort( mainspec_rolls, function( a, b )
-      return a.roll > b.roll
-    end )
+    local f = function( a, b )
+      if a.roll == b.roll then
+        return a.player.name < b.player.name
+      else
+        return a.roll > b.roll
+      end
+    end
 
-    table.sort( offspec_rolls, function( a, b )
-      return a.roll > b.roll
-    end )
-
-    table.sort( tmog_rolls, function( a, b )
-      return a.roll > b.roll
-    end )
+    table.sort( mainspec_rolls, f )
+    table.sort( offspec_rolls, f )
+    table.sort( tmog_rolls, f )
   end
 
   local function have_all_rolls_been_exhausted()
@@ -109,9 +109,26 @@ function M.new( announce, ace_timer, players, item, item_count, info, seconds, o
     sort_rolls()
 
     local all_rolls = merge( {}, mainspec_rolls, offspec_rolls, tmog_rolls )
-    local winners = take( all_rolls, item_count )
+    local roll_count = getn( all_rolls )
 
-    on_rolling_finished( item, item_count, winners )
+    local function count_top_roll_winners()
+      local result = 1
+
+      for i = 1, roll_count - 1 do
+        if all_rolls[ i ].roll == all_rolls[ i + 1 ].roll then
+          result = result + 1
+        else
+          return result
+        end
+      end
+
+      return result
+    end
+
+    local top_roll_winner_count = count_top_roll_winners()
+    local winner_rolls = take( all_rolls, top_roll_winner_count > item_count and top_roll_winner_count or item_count )
+
+    on_rolling_finished( item, item_count, winner_rolls )
   end
 
   local function on_roll( player_name, roll, min, max )
@@ -147,10 +164,6 @@ function M.new( announce, ace_timer, players, item, item_count, info, seconds, o
     if seconds_left <= 0 then
       stop_accepting_rolls()
       return
-    elseif seconds_left == 3 then
-      announce( "Stopping rolls in 3" )
-    elseif seconds_left < 3 then
-      announce( tostring( seconds_left ) )
     end
 
     roll_controller.tick( seconds_left )

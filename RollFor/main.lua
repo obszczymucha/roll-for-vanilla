@@ -332,10 +332,19 @@ local function create_components()
   )
 
   ---@type RollingLogic
-  M.rolling_logic = m.RollingLogic.new( announce, M.roll_controller, M.rolling_strategy_factory, M.master_loot_candidates, M.winner_tracker )
+  M.rolling_logic = m.RollingLogic.new(
+    announce,
+    M.ace_timer,
+    M.roll_controller,
+    M.rolling_strategy_factory,
+    M.master_loot_candidates,
+    M.winner_tracker,
+    M.config
+  )
 
   ---@type ArgsParser
   M.args_parser = m.ArgsParser.new( m.ItemUtils, M.config )
+  M.roll_result_announcer = m.RollResultAnnouncer.new( announce, M.roll_controller, M.roll_tracker, M.config )
 end
 
 function M.import_softres_data( softres_data )

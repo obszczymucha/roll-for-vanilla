@@ -174,27 +174,23 @@ end
 ---@field name string
 ---@field class string
 ---@field online boolean
----@field candidate_index number
 ---@field type PlayerType
 
 ---@alias MakeItemCandidateFn fun(
 ---  name: string,
 ---  class: PlayerClass,
----  online: boolean,
----  candidate_index: number ): ItemCandidate
+---  online: boolean ): ItemCandidate
 
 ---@type MakeItemCandidateFn
 ---@param name string
 ---@param class PlayerClass
 ---@param online boolean
----@param candidate_index number
 ---@return ItemCandidate
-function M.make_item_candidate( name, class, online, candidate_index )
+function M.make_item_candidate( name, class, online )
   return {
     name = name,
     class = class,
     online = online,
-    candidate_index = candidate_index,
     type = PlayerType.ItemCandidate
   }
 end
@@ -202,32 +198,40 @@ end
 ---@class Winner
 ---@field name string
 ---@field class string
----@field roll_type RollType
 ---@field item Item -- Could be worth storing if we want to ever add a GUI for historical items. Dunno.
+---@field is_on_master_loot_candidate_list boolean
+---@field roll_type RollType
 ---@field winning_roll number?
+---@field rerolling boolean?
 ---@field type PlayerType
 
 ---@alias MakeWinnerFn fun(
 ---  name: string,
 ---  class: PlayerClass,
----  roll_type: RollType,
 ---  item: Item,
----  winning_roll: number? ): Winner
+---  is_on_master_loot_candidate_list: boolean,
+---  roll_type: RollType,
+---  winning_roll: number?,
+---  rerolling: boolean? ): Winner
 
 ---@type MakeWinnerFn
 ---@param name string
 ---@param class PlayerClass
 ---@param item Item
----@param roll_type RollType?
----@param winning_roll number?
+---@param is_on_master_loot_candidate_list boolean,
+---@param roll_type RollType,
+---@param winning_roll number?,
+---@param rerolling boolean?
 ---@return Winner
-function M.make_winner( name, class, item, roll_type, winning_roll )
+function M.make_winner( name, class, item, is_on_master_loot_candidate_list, roll_type, winning_roll, rerolling )
   return {
     name = name,
     class = class,
     item = item,
+    is_on_master_loot_candidate_list = is_on_master_loot_candidate_list,
     roll_type = roll_type,
     winning_roll = winning_roll,
+    rerolling = rerolling,
     type = PlayerType.Winner
   }
 end
@@ -292,7 +296,7 @@ M.ItemQuality = ItemQuality
 ---@field CancelTimer fun( self: AceTimer, timer_id: number )
 
 ---@class Roll
----@field player RollingPlayer | ItemCandidate
+---@field player RollingPlayer
 ---@field roll_type RollType
 ---@field roll number
 

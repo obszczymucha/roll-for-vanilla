@@ -7,6 +7,7 @@ local LootQuality = utils.LootQuality
 local modules = require( "src/modules" )
 local ItemUtils = require( "src/ItemUtils" )
 local make_item = ItemUtils.make_item
+require( "src/Types" )
 require( "src/SoftResDataTransformer" )
 require( "src/SoftRes" )
 local mod = require( "src/DroppedLootAnnounce" )
@@ -73,8 +74,8 @@ function ItemSummarySpec:should_create_the_summary()
     item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = LootQuality.Epic },
     how_many_dropped = 2,
     softressers = {
-      { name = "Obszczymucha", rolls = 1 },
-      { name = "Psikutas",     rolls = 1 }
+      { name = "Obszczymucha", rolls = 1, type = "Roller" },
+      { name = "Psikutas",     rolls = 1, type = "Roller" }
     },
     is_hardressed = false
   } )
@@ -110,8 +111,8 @@ function ItemSummarySpec:should_split_softresses_from_non_softresses_for_each_it
     item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = LootQuality.Epic },
     how_many_dropped = 2,
     softressers = {
-      { name = "Obszczymucha", rolls = 1 },
-      { name = "Psikutas",     rolls = 1 }
+      { name = "Obszczymucha", rolls = 1, type = "Roller" },
+      { name = "Psikutas",     rolls = 1, type = "Roller" }
     },
     is_hardressed = false
   } )

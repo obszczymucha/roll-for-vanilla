@@ -7,9 +7,7 @@ local M = {}
 
 local getn = table.getn
 local info = m.pretty_print
-local RT = m.Types.RollType
 local RS = m.Types.RollingStrategy
-local hl = m.colors.hl
 
 ---@class Winners
 ---@field players Player[]
@@ -34,11 +32,13 @@ local hl = m.colors.hl
 ---@field show_sorted_rolls fun( limit: number? )
 
 ---@param announce AnnounceFn
+---@param ace_timer AceTimer
 ---@param roll_controller RollController
 ---@param rolling_strategy_factory RollingStrategyFactory
 ---@param master_loot_candidates MasterLootCandidates
+---@param winner_tracker WinnerTracker
 ---@return RollingLogic
-function M.new( announce, roll_controller, rolling_strategy_factory, master_loot_candidates, winner_tracker )
+function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, master_loot_candidates, winner_tracker, config )
   ---@type RollingStrategy | nil
   local m_rolling_strategy
 
@@ -70,87 +70,90 @@ function M.new( announce, roll_controller, rolling_strategy_factory, master_loot
     return m_rolling_strategy and m_rolling_strategy.is_rolling() or false
   end
 
-  --  ---@param item Item
-  -- ---@param item_count number
-  -- ---@param winners Winners
-  -- ---@param top_roll boolean
-  -- ---@param rerolling boolean?
-  -- local function there_was_a_tie( item, item_count, winners, top_roll, rerolling )
-  --   local players = winners.players
-  --   local roll_type = winners.roll_type
-  --   local top_rollers_str = m.prettify_table( players )
-  --   local top_rollers_str_colored = m.prettify_table( players, hl )
-  --   local roll_type_str = roll_type == RT.MainSpec and "" or string.format( " (%s)", m.roll_type_abbrev_chat( roll_type ) )
-  --
-  --   local message = function( rollers )
-  --     return string.format( "The %shighest %sroll was %d by %s%s.", not rerolling and top_roll and "" or "next ",
-  --       rerolling and "re-" or "", players.roll, rollers, roll_type_str )
-  --   end
-  --
-  --   M.roll_controller.tie( players, roll_type, players.roll )
-  --
-  --   info( message( top_rollers_str_colored ) )
-  --   announce( message( top_rollers_str ) )
-  --
-  --   local prefix = item_count > 1 and string.format( "%sx", item_count ) or ""
-  --   local suffix = item_count > 1 and string.format( " %s top rolls win.", item_count ) or ""
-  --
-  --   m_rolling_strategy = nil
-  --   local strategy = rolling_strategy_factory.tie_roll()
-  --   if not strategy then return end
-  --
-  --   local roll_threshold_str = M.config.roll_threshold( players.roll_type ).str
-  --
-  --   M.ace_timer.ScheduleTimer( M,
-  --     function()
-  --       M.roll_controller.tie_start()
-  --       announce( string.format( "%s %s for %s%s now.%s", top_rollers_str, roll_threshold_str, prefix, item.link, suffix ) )
-  --       roll( strategy )
-  --     end, 2 )
-  -- end
+  ---param winning_rolls Roll[]
+  local function count_top_rolls( winning_rolls )
+    local roll_count = getn( winning_rolls or {} )
+    if roll_count == 0 then return 0 end
+
+    local top_roll = winning_rolls[ 1 ].roll
+    local result = 1
+
+    for i = 2, roll_count do
+      if winning_rolls[ i ].roll == top_roll then result = result + 1 end
+    end
+
+    return result
+  end
+
+  ---@param rolls Roll[]
+  ---@param item_count number
+  ---@return Roll[], Roll[]
+  local function split_winners_and_tied_rollers( rolls, item_count )
+    local top_roll_count = count_top_rolls( rolls )
+    if top_roll_count >= item_count then return {}, rolls end
+
+    local winning_rolls, tied_rolls = {}, {}
+
+    for i, top_roll in ipairs( rolls ) do
+      if i <= top_roll_count then
+        table.insert( winning_rolls, top_roll )
+      else
+        table.insert( tied_rolls, top_roll )
+      end
+    end
+
+    return winning_rolls, tied_rolls
+  end
+
+  ---@param item Item
+  ---@param item_count number
+  ---@param rolls Roll[]
+  ---@param rerolling boolean
+  local function there_was_a_tie( item, item_count, rolls, rerolling, on_rolling_finished )
+    local winning_rolls, tied_rolls = split_winners_and_tied_rollers( rolls, item_count )
+
+    for _, winning_roll in ipairs( winning_rolls ) do
+      local player = winning_roll.player
+      local winner = master_loot_candidates.transform_to_winner( player, item, winning_roll.roll_type, winning_roll.roll )
+
+      roll_controller.winner_found( winner )
+    end
+
+    local roll_type = tied_rolls[ 1 ].roll_type
+    local roll_value = tied_rolls[ 1 ].roll
+
+    ---@type RollingPlayer[]
+    local players = m.map( tied_rolls,
+      ---@param tied_roll Roll
+      function( tied_roll )
+        return tied_roll.player
+      end )
+
+    roll_controller.tie( players, roll_type, roll_value, rerolling, getn( winning_rolls ) == 0 or false )
+
+    local strategy = rolling_strategy_factory.tie_roll( players, item, item_count, on_rolling_finished, roll_type )
+    if not strategy then return end
+
+    ace_timer.ScheduleTimer( M,
+      function()
+        roll_controller.tie_start()
+        m_rolling_strategy = nil
+        roll( strategy )
+      end, 2 )
+  end
 
   ---@param item Item
   ---@param item_count number
   ---@param winning_rolls Roll[]
+  ---@param rerolling boolean?
   ---@type RollingFinishedCallback
   local function on_rolling_finished( item, item_count, winning_rolls, rerolling )
-    ---@return Roll[]
-    local function enrich_winning_rolls_with_candidate_value()
-      return m.map( winning_rolls,
-        ---@param winning_roll Roll
-        function( winning_roll )
-          local candidate = master_loot_candidates.find( winning_roll.player.name )
-
-          if candidate and candidate.candidate_index then
-            winning_roll.player.candidate_index = candidate.candidate_index
-          end
-
-          return winning_roll
-        end )
-    end
-
-    ---@param winning_roll Roll
-    ---@param top_roll boolean
-    local announce_winner = function( winning_roll, top_roll )
-      local roll_value = winning_roll.roll
-      local roll_type_str = winning_roll.roll_type == RT.MainSpec and "" or string.format( " (%s)", m.roll_type_abbrev_chat( winning_roll.roll_type ) )
-      local winner = winning_roll.player
-
-      info( string.format( "%s %srolled the %shighest (%s) for %s%s.", hl( winner.name ),
-        rerolling and "re-" or "", top_roll and "" or "next ", hl( roll_value ), item.link, roll_type_str ) )
-      announce(
-        string.format( "%s %srolled the %shighest (%d) for %s%s.", winner.name,
-          rerolling and "re-" or "", top_roll and "" or "next ", roll_value, item.link, roll_type_str ) )
-    end
-
     local winning_roll_count = getn( winning_rolls )
 
     if winning_roll_count == 0 then
-      info( string.format( "No one rolled for %s.", item.link ) )
-      announce( string.format( "No one rolled for %s.", item.link ) )
-      M.roll_controller.finish()
+      roll_controller.finish()
 
-      if not rerolling and M.config.auto_raid_roll() and m_rolling_strategy and m_rolling_strategy.get_rolling_strategy() ~= RS.SoftResRoll then
+      if not rerolling and config.auto_raid_roll() and m_rolling_strategy and m_rolling_strategy.get_rolling_strategy() ~= RS.SoftResRoll then
         m_rolling_strategy = nil
         local strategy = rolling_strategy_factory.raid_roll( item, item_count )
 
@@ -165,20 +168,30 @@ function M.new( announce, roll_controller, rolling_strategy_factory, master_loot
     end
 
     if winning_roll_count > item_count then
-      -- there_was_a_tie( item, item_count, winning_rolls )
-      roll_controller.finish( {} )
+      there_was_a_tie( item, item_count, winning_rolls, rerolling or false, on_rolling_finished )
       return
     end
 
-    for i, winning_roll in ipairs( winning_rolls ) do
-      announce_winner( winning_roll, i == 1 )
-    end
-
     local function handle_winners()
-      local roll_winners = enrich_winning_rolls_with_candidate_value()
-      local rolling_strategy = m_rolling_strategy and m_rolling_strategy.get_rolling_strategy()
-      m.map( roll_winners, function( winner ) winner_tracker.track( winner, item.link, winner.roll_type, winner.roll, rolling_strategy ) end )
-      roll_controller.finish( roll_winners )
+      local strategy = m_rolling_strategy and m_rolling_strategy.get_rolling_strategy()
+
+      if not strategy then
+        m.err( "Rolling strategy is missing." )
+        return
+      end
+
+      local winners = m.map( winning_rolls,
+        ---@param winning_roll Roll
+        function( winning_roll )
+          return master_loot_candidates.transform_to_winner( winning_roll.player, item, winning_roll.roll_type, winning_roll.roll, rerolling )
+        end )
+
+      m.map( winners, function( winner )
+        roll_controller.winner_found( winner )
+        winner_tracker.track( winner.name, item.link, winner.roll_type, winner.roll, strategy ) -- TODO: remove from here and subscribe to the event.
+      end )
+
+      roll_controller.finish()
     end
 
     handle_winners()

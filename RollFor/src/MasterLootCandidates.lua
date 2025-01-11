@@ -7,6 +7,8 @@ local M = {}
 
 ---@type MakeItemCandidateFn
 local make_item_candidate = m.Types.make_item_candidate
+---@type MakeWinnerFn
+local make_winner = m.Types.make_winner
 
 local function get_dummy_candidates()
   return {
@@ -31,6 +33,7 @@ end
 ---@class MasterLootCandidates
 ---@field get fun(): ItemCandidate[]
 ---@field find fun( player_name: string ): ItemCandidate?
+---@field transform_to_winner fun( player: RollingPlayer, item: Item, roll_type: RollType, winning_roll: number?, rerolling: boolean? ): Winner
 
 ---@param group_roster GroupRoster
 ---@return MasterLootCandidates
@@ -58,7 +61,7 @@ function M.new( group_roster )
 
       for _, p in ipairs( players ) do
         if name == p.name then
-          table.insert( result, make_item_candidate( name, p.class, p.online, i ) )
+          table.insert( result, make_item_candidate( name, p.class, p.online ) )
         end
       end
     end
@@ -74,9 +77,21 @@ function M.new( group_roster )
     return m.find_value_in_table( candidates, player_name, function( v ) return v.name end )
   end
 
+  ---@param player RollingPlayer
+  ---@param item Item
+  ---@param roll_type RollType
+  ---@param winning_roll number?
+  ---@param rerolling boolean?
+  ---@return Winner
+  local function transform_to_winner( player, item, roll_type, winning_roll, rerolling )
+    local candidate = find( player.name )
+    return make_winner( player.name, player.class, item, candidate and true or false, roll_type, winning_roll and winning_roll, rerolling )
+  end
+
   return {
     get = get,
-    find = find
+    find = find,
+    transform_to_winner = transform_to_winner
   }
 end
 

@@ -4,6 +4,7 @@ local lu = require( "luaunit" )
 local test_utils = require( "test/utils" )
 test_utils.mock_wow_api()
 require( "src/modules" )
+require( "src/Types" )
 local mod = require( "src/SoftResDataTransformer" )
 
 local sr = test_utils.soft_res_item
@@ -22,8 +23,21 @@ function SoftResDataTransformerSpec:should_transform_soft_ressed_items()
   -- Then
   lu.assertEquals( result,
     {
-      [ 123 ] = { players = { { name = "Psikutas", rolls = 2 }, { name = "Obszczymucha", rolls = 1 } }, soft_ressed = true, quality = 4 },
-      [ 69 ] = { players = { { name = "Obszczymucha", rolls = 1 } }, soft_ressed = true, quality = 2 }
+      [ 123 ] = {
+        rollers = {
+          { name = "Psikutas",     rolls = 2, type = "Roller" },
+          { name = "Obszczymucha", rolls = 1, type = "Roller" }
+        },
+        soft_ressed = true,
+        quality = 4
+      },
+      [ 69 ] = {
+        rollers = {
+          { name = "Obszczymucha", rolls = 1, type = "Roller" }
+        },
+        soft_ressed = true,
+        quality = 2
+      }
     } )
 end
 
@@ -54,7 +68,13 @@ function SoftResDataTransformerSpec:should_override_soft_ressed_items_with_hard_
   lu.assertEquals( result,
     {
       [ 123 ] = { hard_ressed = true, quality = 4 },
-      [ 69 ] = { players = { { name = "Obszczymucha", rolls = 1 } }, soft_ressed = true, quality = 4 },
+      [ 69 ] = {
+        rollers = {
+          { name = "Obszczymucha", rolls = 1, type = "Roller" }
+        },
+        soft_ressed = true,
+        quality = 4
+      },
       [ 42 ] = { hard_ressed = true, quality = 4 }
     } )
 end

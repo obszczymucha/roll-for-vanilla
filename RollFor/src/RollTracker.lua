@@ -38,13 +38,14 @@ local getn = table.getn
 ---@field preview fun( rolling_strategy: RollingStrategy, item: Item, count: number, info: string?, required_rolling_players: Player[] )
 ---@field start fun( rolling_strategy: RollingStrategy, item: Item, count: number, info: string?, seconds: number?, required_rolling_players: Player[]? )
 ---@field waiting_for_rolls fun()
----@field finish fun( winners: Winner[] )
+---@field add_winner fun( winner: Winner )
+---@field finish fun()
 ---@field cancel fun()
 ---@field tie fun( required_rolling_players: Player[], roll_type: RollType, roll: number )
 ---@field tie_start fun()
 ---@field add fun( player_name: string, player_class: string, roll_type: RollType, roll: number )
 ---@field add_ignored fun( player_name: string, roll_type: RollType, roll: number, reason: string )
----@field get fun(): { item: Item, count: number, status: RollStatus, iterations: RollIteration[] }, RollIteration
+---@field get fun(): { item: Item, count: number, status: RollStatus, iterations: RollIteration[], winners: Winner[] }, RollIteration
 ---@field tick fun( seconds_left: number )
 ---@field clear fun()
 
@@ -55,6 +56,20 @@ function M.new()
   local item_on_roll_count = 0
   local iterations = {}
   local current_iteration = 0
+
+  ---@type Winner[]
+  local winners = {}
+
+  local function clear_iterations()
+    clear_table( iterations )
+    iterations.n = 0
+  end
+
+  local function clear_winners()
+    clear_table( winners )
+    ---@diagnostic disable-next-line: inject-field
+    winners.n = 0
+  end
 
   local function update_roll( rolls, data )
     for _, line in ipairs( rolls ) do
@@ -108,8 +123,8 @@ function M.new()
 
   local function preview( rolling_strategy, item, count, info, required_rolling_players )
     M.debug.add( "preview" )
-    clear_table( iterations )
-    iterations.n = 0
+    clear_iterations()
+    clear_winners()
     current_iteration = 1
     status = { type = S.Preview }
     item_on_roll = item
@@ -135,8 +150,8 @@ function M.new()
   -- required_rolling_players should have { name = "", class = "" } structure
   local function start( rolling_strategy, item, count, info, seconds, required_rolling_players )
     M.debug.add( "start" )
-    clear_table( iterations )
-    iterations.n = 0
+    clear_iterations()
+    clear_winners()
     current_iteration = 1
     status = { type = S.InProgress, seconds_left = seconds }
 
@@ -156,17 +171,21 @@ function M.new()
     end
   end
 
-  ---@param winners Winner[]
-  local function finish( winners )
+  ---@param winner Winner
+  local function add_winner( winner )
+    M.debug.add( "add_winner" )
+    table.insert( winners, winner )
+  end
+
+  local function finish()
     M.debug.add( "finish" )
     status = { type = S.Finished, winners = winners }
   end
 
-  --- Indicates that the there was a tie.
-  --- @param required_rolling_players Player[] The players that are tied.
-  --- @param roll_type RollType The type of the roll.
-  --- @param roll number The roll value.
-  local function tie( required_rolling_players, roll_type, roll )
+  --- @param players RollingPlayer[]
+  --- @param roll_type RollType
+  --- @param roll number
+  local function tie( players, roll_type, roll )
     M.debug.add( "tie" )
     current_iteration = current_iteration + 1
     status = { type = S.TieFound }
@@ -177,7 +196,7 @@ function M.new()
       rolls = {}
     } )
 
-    for _, player in ipairs( required_rolling_players or {} ) do
+    for _, player in ipairs( players or {} ) do
       add( player.name, player.class, roll_type )
     end
   end
@@ -204,6 +223,7 @@ function M.new()
       count = item_on_roll_count,
       status = status,
       iterations = iterations,
+      winners = winners
     }, current_iteration > 0 and iterations[ current_iteration ] or nil
   end
 
@@ -226,8 +246,8 @@ function M.new()
   end
 
   local function clear()
-    clear_table( iterations )
-    iterations.n = 0
+    clear_iterations()
+    clear_winners()
     current_iteration = 0
     status = nil
     item_on_roll = nil
@@ -239,6 +259,7 @@ function M.new()
     preview = preview,
     start = start,
     waiting_for_rolls = waiting_for_rolls,
+    add_winner = add_winner,
     finish = finish,
     cancel = cancel,
     tie = tie,
