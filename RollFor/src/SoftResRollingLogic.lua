@@ -33,23 +33,38 @@ local function players_with_available_rolls( rollers )
   return m.filter( rollers, function( roller ) return roller.rolls > 0 end )
 end
 
-local function count_top_roll_winners( rolls )
+local function count_top_roll_winners( rolls, item_count )
   local roll_count = getn( rolls )
-  local result = 1
+  if roll_count == 0 then return 0 end
 
-  for i = 1, roll_count - 1 do
-    if rolls[ i ].roll == rolls[ i + 1 ].roll then
-      result = result + 1
-    else
-      return result
+  local function split_by_roll()
+    local result = {}
+    local last_roll
+
+    for _, roll in ipairs( rolls ) do
+      if not last_roll or last_roll ~= roll.roll then
+        table.insert( result, { roll } )
+        last_roll = roll.roll
+      else
+        table.insert( result[ getn( result ) ], roll )
+      end
     end
+
+    return result
+  end
+
+  local result = 0
+
+  for _, r in ipairs( split_by_roll() ) do
+    result = result + getn( r )
+    if result >= item_count then return result end
   end
 
   return result
 end
 
-local function is_the_winner_the_only_player_with_extra_rolls( rollers, rolls )
-  local top_roll_count = count_top_roll_winners( rolls )
+local function is_the_winner_the_only_player_with_extra_rolls( rollers, rolls, item_count )
+  local top_roll_count = count_top_roll_winners( rolls, item_count )
   local rollers_with_remaining_rolls = players_with_available_rolls( rollers )
   local roller_count = getn( rollers_with_remaining_rolls )
   local roll_count = getn( rolls )
@@ -59,8 +74,8 @@ local function is_the_winner_the_only_player_with_extra_rolls( rollers, rolls )
   return rollers_with_remaining_rolls[ 1 ].name == rolls[ 1 ].player.name
 end
 
-local function winner_found( rollers, rolls )
-  return has_everyone_rolled( rollers, rolls ) and is_the_winner_the_only_player_with_extra_rolls( rollers, rolls )
+local function winner_found( rollers, rolls, item_count )
+  return has_everyone_rolled( rollers, rolls ) and is_the_winner_the_only_player_with_extra_rolls( rollers, rolls, item_count )
 end
 
 ---@param announce AnnounceFn
@@ -107,7 +122,7 @@ function M.new(
 
   local function have_all_rolls_been_exhausted()
     for _, v in ipairs( players ) do
-      if v.rolls > 0 then return winner_found( players, rolls ) end
+      if v.rolls > 0 then return winner_found( players, rolls, item_count ) end
     end
 
     return true
@@ -154,7 +169,7 @@ function M.new(
       stop_listening()
     end
 
-    local top_roll_winner_count = count_top_roll_winners( rolls )
+    local top_roll_winner_count = count_top_roll_winners( rolls, item_count )
     local winner_rolls = take( rolls, top_roll_winner_count > item_count and top_roll_winner_count or item_count )
 
     on_rolling_finished( item, item_count, winner_rolls )
@@ -237,14 +252,15 @@ function M.new(
       roll_controller.start( strategy, item, item_count, roll_type, nil, players )
       roll_controller.show() -- TODO: is this still necessary?
 
-      m.map( players,
+      local winners = m.map( players,
         ---@param player RollingPlayer
         function( player )
           local winner = master_loot_candidates.transform_to_winner( player, item, roll_type, nil )
-          roll_controller.winner_found( winner )
           winner_tracker.track( winner.name, item.link, roll_type, nil, strategy ) -- TODO: remove from here and subscribe to the event
+          return winner
         end )
 
+      roll_controller.winners_found( item, winners, strategy )
       roll_controller.finish()
     else
       announce( string.format( "Roll for %s%s: (SR by %s)%s", count_str, item.link, ressed_by, x_rolls_win ), true )

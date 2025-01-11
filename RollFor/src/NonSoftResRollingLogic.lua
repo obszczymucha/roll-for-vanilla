@@ -20,7 +20,7 @@ local getn = table.getn
 
 ---@param players RollingPlayer[]
 local function have_all_players_rolled( players )
-  for _, v in pairs( players ) do
+  for _, v in ipairs( players ) do
     if v.rolls > 0 then return false end
   end
 
@@ -38,9 +38,13 @@ end
 ---@param config Config
 ---@param roll_controller RollController
 function M.new( announce, ace_timer, players, item, item_count, info, seconds, on_rolling_finished, config, roll_controller )
+  ---@type RollingPlayer[], Roll[]
   local mainspec_rollers, mainspec_rolls = players, {}
+  ---@type RollingPlayer[], Roll[]
   local offspec_rollers, offspec_rolls = rlu.copy_rollers( mainspec_rollers ), {}
+  ---@type RollingPlayer[], Roll[]
   local tmog_rollers, tmog_rolls = rlu.copy_rollers( mainspec_rollers ), {}
+
   local rolling = false
   local seconds_left = seconds
   local timer
@@ -79,8 +83,8 @@ function M.new( announce, ace_timer, players, item, item_count, info, seconds, o
     return have_all_players_rolled( mainspec_rollers )
   end
 
-  local function find_player( player_name )
-    for _, player in ipairs( players ) do
+  local function find_player( player_name, rollers )
+    for _, player in ipairs( rollers ) do
       if player.name == player_name then return player end
     end
   end
@@ -108,18 +112,34 @@ function M.new( announce, ace_timer, players, item, item_count, info, seconds, o
 
     sort_rolls()
 
+    ---@type Roll[]
     local all_rolls = merge( {}, mainspec_rolls, offspec_rolls, tmog_rolls )
     local roll_count = getn( all_rolls )
 
     local function count_top_roll_winners()
-      local result = 1
+      if roll_count == 0 then return 0 end
 
-      for i = 1, roll_count - 1 do
-        if all_rolls[ i ].roll == all_rolls[ i + 1 ].roll then
-          result = result + 1
-        else
-          return result
+      local function split_by_roll()
+        local result = {}
+        local last_roll
+
+        for _, roll in ipairs( all_rolls ) do
+          if not last_roll or last_roll ~= roll.roll then
+            table.insert( result, { roll } )
+            last_roll = roll.roll
+          else
+            table.insert( result[ getn( result ) ], roll )
+          end
         end
+
+        return result
+      end
+
+      local result = 0
+
+      for _, rolls in ipairs( split_by_roll() ) do
+        result = result + getn( rolls )
+        if result >= item_count then return result end
       end
 
       return result
@@ -138,9 +158,10 @@ function M.new( announce, ace_timer, players, item, item_count, info, seconds, o
     local ms_roll = max == ms_threshold
     local os_roll = max == os_threshold
     local roll_type = ms_roll and RollType.MainSpec or os_roll and RollType.OffSpec or RollType.Transmog
-    local player = find_player( player_name )
+    local rollers = ms_roll and mainspec_rollers or os_roll and offspec_rollers or tmog_rollers
+    local player = find_player( player_name, rollers )
 
-    if not rlu.has_rolls_left( ms_roll and mainspec_rollers or os_roll and offspec_rollers or tmog_rollers, player_name ) then
+    if player.rolls == 0 then
       pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
       roll_controller.add_ignored( player_name, player.class, roll_type, roll, "Rolled too many times." )
       return

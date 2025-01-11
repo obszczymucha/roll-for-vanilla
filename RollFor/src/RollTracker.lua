@@ -38,7 +38,7 @@ local getn = table.getn
 ---@field preview fun( rolling_strategy: RollingStrategy, item: Item, count: number, info: string?, required_rolling_players: Player[] )
 ---@field start fun( rolling_strategy: RollingStrategy, item: Item, count: number, info: string?, seconds: number?, required_rolling_players: Player[]? )
 ---@field waiting_for_rolls fun()
----@field add_winner fun( winner: Winner )
+---@field add_winners fun( winner: Winner[] )
 ---@field finish fun()
 ---@field cancel fun()
 ---@field tie fun( required_rolling_players: Player[], roll_type: RollType, roll: number )
@@ -171,10 +171,13 @@ function M.new()
     end
   end
 
-  ---@param winner Winner
-  local function add_winner( winner )
-    M.debug.add( "add_winner" )
-    table.insert( winners, winner )
+  ---@param new_winners Winner[]
+  local function add_winners( new_winners )
+    M.debug.add( "add_winners" )
+
+    for _, winner in ipairs( new_winners ) do
+      table.insert( winners, winner )
+    end
   end
 
   local function finish()
@@ -259,7 +262,7 @@ function M.new()
     preview = preview,
     start = start,
     waiting_for_rolls = waiting_for_rolls,
-    add_winner = add_winner,
+    add_winners = add_winners,
     finish = finish,
     cancel = cancel,
     tie = tie,

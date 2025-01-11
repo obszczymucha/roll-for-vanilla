@@ -6,7 +6,7 @@ if m.InstaRaidRollRollingLogic then return end
 local M = {}
 local pp = m.pretty_print
 local hl = m.colors.hl
-local RollingStrategy = m.Types.RollingStrategy
+local strategy = m.Types.RollingStrategy.InstaRaidRoll
 local roll_type = m.Types.RollType.MainSpec
 local clear_table = m.clear_table
 
@@ -18,13 +18,12 @@ local getn = table.getn
 
 -- TODO: Lots of similarity with RaidRollRollingLogic. Perhaps refactor.
 
----@param announce AnnounceFn
 ---@param item Item
 ---@param item_count number
 ---@param winner_tracker WinnerTracker
 ---@param roll_controller RollController
 ---@param candidates ItemCandidate[]|Player[]
-function M.new( announce, _, item, item_count, winner_tracker, roll_controller, candidates )
+function M.new( _, _, item, item_count, winner_tracker, roll_controller, candidates )
   local m_winners = {}
 
   local function clear_winners()
@@ -35,25 +34,24 @@ function M.new( announce, _, item, item_count, winner_tracker, roll_controller, 
   local function start_rolling()
     clear_winners()
 
-    roll_controller.start( RollingStrategy.InstaRaidRoll, item, item_count )
+    roll_controller.start( strategy, item, item_count )
 
     for _ = 1, item_count do
       local roll = m.lua.math.random( 1, getn( candidates ) )
       table.insert( m_winners, candidates[ roll ] )
     end
 
-    m.map( m_winners,
+    local winners = m.map( m_winners,
       ---@param player ItemCandidate|Player
       function( player )
         if type( player ) == "table" then -- Fucking lua50 and its n.
           local winner = make_winner( player.name, player.class, item, player.type == "ItemCandidate" or false, roll_type, nil )
-
-          announce( string.format( "%s wins %s via insta raid-roll.", winner.name, item.link ) )
-          roll_controller.winner_found( winner )
           winner_tracker.track( winner.name, item.link, roll_type, nil, m.Types.RollingStrategy.InstaRaidRoll )
+          return winner
         end
       end )
 
+    roll_controller.winners_found( item, winners, strategy )
     roll_controller.finish()
   end
 

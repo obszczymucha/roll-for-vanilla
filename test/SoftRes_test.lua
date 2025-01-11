@@ -35,7 +35,7 @@ function SoftResIntegrationSpec:should_create_a_proper_object_and_add_an_item()
 
   -- Then
   lu.assertEquals( result, {
-    { name = "Psikutas", rolls = 1 }
+    { name = "Psikutas", rolls = 1, type = "Roller" }
   } )
   lu.assertEquals( result2, {} )
 end
@@ -62,8 +62,8 @@ function SoftResIntegrationSpec:should_add_multiple_players()
 
   -- Then
   lu.assertEquals( result, {
-    { name = "Obszczymucha", rolls = 1 },
-    { name = "Psikutas",     rolls = 1 }
+    { name = "Obszczymucha", rolls = 1, type = "Roller" },
+    { name = "Psikutas",     rolls = 1, type = "Roller" }
   } )
 end
 
@@ -77,7 +77,7 @@ function SoftResIntegrationSpec:should_accumulate_rolls()
 
   -- Then
   lu.assertEquals( result, {
-    { name = "Psikutas", rolls = 2 }
+    { name = "Psikutas", rolls = 2, type = "Roller" }
   } )
 end
 

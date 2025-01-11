@@ -10,7 +10,7 @@ local S = m.Types.RollingStatus
 ---@class RollController
 ---@field preview fun( item: Item, count: number )
 ---@field start fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, seconds: number?, required_rolling_players: Player[]?)
----@field winner_found fun( winner: Winner )
+---@field winners_found fun( item: Item, winners: Winner[], strategy: RollingStrategyType )
 ---@field finish fun()
 ---@field tick fun( seconds_left: number )
 ---@field add fun( player_name: string, player_class: string, roll_type: RollType, roll: number )
@@ -119,11 +119,13 @@ function M.new( roll_tracker )
     notify_subscribers( "tick", { seconds_left = seconds_left } )
   end
 
-  ---@param winner Winner
-  local function winner_found( winner )
-    M.debug.add( "winner_found" )
-    roll_tracker.add_winner( winner )
-    notify_subscribers( "winner_found", { winner = winner } )
+  ---@param item Item
+  ---@param winners Winner[]
+  ---@param strategy RollingStrategyType
+  local function winners_found( item, winners, strategy )
+    M.debug.add( "winners_found" )
+    roll_tracker.add_winners( winners )
+    notify_subscribers( "winners_found", { item = item, winners = winners, rolling_strategy = strategy } )
   end
 
   local function finish()
@@ -242,7 +244,7 @@ function M.new( roll_tracker )
   return {
     preview = preview,
     start = start,
-    winner_found = winner_found,
+    winners_found = winners_found,
     finish = finish,
     tick = tick,
     add = add,

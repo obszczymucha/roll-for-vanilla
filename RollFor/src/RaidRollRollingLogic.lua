@@ -6,7 +6,7 @@ if m.RaidRollRollingLogic then return end
 local M = {}
 local pretty_print = m.pretty_print
 local hl = m.colors.hl
-local RollingStrategy = m.Types.RollingStrategy
+local strategy = m.Types.RollingStrategy.RaidRoll
 local roll_type = m.Types.RollType.MainSpec
 local clear_table = m.clear_table
 
@@ -18,7 +18,7 @@ local getn = table.getn
 
 -- TODO: Lots of similarity with InstaRaidRollRollingLogic. Perhaps refactor.
 
----@param announce AnnounceFn
+---@param ace_timer AceTimer
 ---@param item Item
 ---@param item_count number
 ---@param winner_tracker WinnerTracker
@@ -61,7 +61,7 @@ function M.new( announce, ace_timer, item, item_count, winner_tracker, roll_cont
     m_rolling = true
     clear_winners()
 
-    roll_controller.start( RollingStrategy.RaidRoll, item, item_count )
+    roll_controller.start( strategy, item, item_count )
     roll_controller.show()
     announce( string.format( "Raid rolling %s...", item.link ) )
 
@@ -80,18 +80,17 @@ function M.new( announce, ace_timer, item, item_count, winner_tracker, roll_cont
     table.insert( m_winners, candidates[ roll ] )
     if getn( m_winners ) < item_count then return end
 
-    m.map( m_winners,
+    local winners = m.map( m_winners,
       ---@param player ItemCandidate|Player
       function( player )
-        if type( player ) == "table" then -- Fucking lua50 and its n.
+        if type( player ) == "table" then                                                                  -- Fucking lua50 and its n.
           local winner = make_winner( player.name, player.class, item, player.type == "ItemCandidate" or false, roll_type, nil )
-
-          announce( string.format( "%s wins %s.", winner.name, item.link ) )
-          roll_controller.winner_found( winner )
-          winner_tracker.track( winner.name, item.link, roll_type, nil, m.Types.RollingStrategy.RaidRoll )
+          winner_tracker.track( winner.name, item.link, roll_type, nil, m.Types.RollingStrategy.RaidRoll ) -- TODO: Get the fuck outta here.
+          return winner
         end
       end )
 
+    roll_controller.winners_found( item, winners, strategy )
     roll_controller.finish()
     m_rolling = false
   end

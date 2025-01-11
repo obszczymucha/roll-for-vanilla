@@ -6,6 +6,7 @@ if m.RollResultAnnouncer then return end
 local M = {}
 
 local RT = m.Types.RollType
+local RS = m.Types.RollingStrategy
 local info = m.pretty_print
 local hl = m.colors.hl
 local getn = table.getn
@@ -14,32 +15,53 @@ local getn = table.getn
 ---@param roll_controller RollController
 ---@param roll_tracker RollTracker
 function M.new( announce, roll_controller, roll_tracker, config )
-  ---@param winner Winner
+  ---@param winners Winner[]
   ---@param top_roll boolean
-  local announce_winner = function( winner, top_roll )
-    local roll_value = winner.winning_roll
+  local announce_winner = function( winners, top_roll )
+    local roll_value = winners[ 1 ].winning_roll
 
     if not roll_value then
       return
     end
 
-    local roll_type = winner.roll_type
+    local roll_type = winners[ 1 ].roll_type
     local roll_type_str = roll_type == RT.MainSpec and "" or string.format( " (%s)", m.roll_type_abbrev_chat( roll_type ) )
-    local rerolling = winner.rerolling
-    local item = winner.item
+    local rerolling = winners[ 1 ].rerolling
+    local item = winners[ 1 ].item
 
-    info( string.format( "%s %srolled the %shighest (%s) for %s%s.", hl( winner.name ),
+    info( string.format( "%s %srolled the %shighest (%s) for %s%s.", m.prettify_table( winners, function( p ) return p.name end ),
       rerolling and "re-" or "", top_roll and "" or "next ", hl( roll_value ), item.link, roll_type_str ) )
     announce(
-      string.format( "%s %srolled the %shighest (%d) for %s%s.", winner.name,
+      string.format( "%s %srolled the %shighest (%d) for %s%s.", m.prettify_table( winners, function( p ) return p.name end ),
         rerolling and "re-" or "", top_roll and "" or "next ", roll_value, item.link, roll_type_str ) )
   end
 
-  local function on_finish()
-    local data = roll_tracker.get()
+  ---@param winners Winner[]
+  ---@return table<number, Winner[]>
+  local function split_winners_by_roll( winners )
+    if getn( winners ) == 0 then return {} end
+    local result = {}
+
+    local i = 0
+    local last_roll
+
+    for _, winner in ipairs( winners ) do
+      if not last_roll or last_roll ~= winner.winning_roll then
+        table.insert( result, { winner } )
+        i = i + 1
+        last_roll = winner.winning_roll
+      else
+        table.insert( result[ i ], winner )
+      end
+    end
+
+    return result
+  end
+
+  local function on_winners_found( data )
     if not data then return end
 
-    local item, winners = data.item, data.winners
+    local item, winners, strategy = data.item, data.winners, data.rolling_strategy
     local winner_count = getn( winners )
 
     if winner_count == 0 then
@@ -47,8 +69,17 @@ function M.new( announce, roll_controller, roll_tracker, config )
       announce( string.format( "No one rolled for %s.", item.link ) )
     end
 
-    for i, winner in ipairs( winners ) do
-      announce_winner( winner, i == 1 )
+    if strategy == RS.RaidRoll or strategy == RS.InstaRaidRoll then
+      for _, winner in ipairs( winners ) do
+        local suffix = strategy == RS.RaidRoll and "" or " via insta raid-roll"
+        announce( string.format( "%s wins %s%s.", winner.name, item.link, suffix ) )
+      end
+
+      return
+    end
+
+    for i, winners_by_roll in ipairs( split_winners_by_roll( winners ) ) do
+      announce_winner( winners_by_roll, i == 1 )
     end
   end
 
@@ -88,9 +119,11 @@ function M.new( announce, roll_controller, roll_tracker, config )
     if player_count == 0 then return end
 
     local roll_type = iteration.rolls[ 1 ].roll_type
-    local item, item_count = data.item, data.count
-    local prefix = item_count > 1 and string.format( "%sx", item_count ) or ""
-    local suffix = item_count > 1 and string.format( " %s top rolls win.", item_count ) or ""
+    local item, item_count, winners = data.item, data.count, data.winners
+    local winner_count = getn( winners )
+    local count = item_count - winner_count
+    local prefix = count > 1 and string.format( "%sx", count ) or ""
+    local suffix = count > 1 and string.format( " %s top rolls win.", count ) or ""
 
     local player_names = m.map( iteration.rolls,
       ---@param roll_data RollData
@@ -116,7 +149,21 @@ function M.new( announce, roll_controller, roll_tracker, config )
     end
   end
 
+  local function on_finish()
+    local data = roll_tracker.get()
+    if not data or not data.item then return end
+
+    local winner_count = getn( data.winners )
+
+    if winner_count == 0 then
+      local message = string.format( "No one rolled for %s.", data.item.link )
+      info( message )
+      announce( message )
+    end
+  end
+
   roll_controller.subscribe( "finish", on_finish )
+  roll_controller.subscribe( "winners_found", on_winners_found )
   roll_controller.subscribe( "tie", on_tie )
   roll_controller.subscribe( "tie_start", on_tie_start )
   roll_controller.subscribe( "tick", on_tick )

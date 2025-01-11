@@ -9,10 +9,6 @@ local getn = table.getn
 local info = m.pretty_print
 local RS = m.Types.RollingStrategy
 
----@class Winners
----@field players Player[]
----@field roll_type RollType
-
 ---@alias SoftresRollsAvailableCallback fun( rollers: RollingPlayer[] )
 
 ---@alias RollingFinishedCallback fun(
@@ -111,12 +107,19 @@ function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, 
   ---@param rerolling boolean
   local function there_was_a_tie( item, item_count, rolls, rerolling, on_rolling_finished )
     local winning_rolls, tied_rolls = split_winners_and_tied_rollers( rolls, item_count )
+    local count = item_count
 
-    for _, winning_roll in ipairs( winning_rolls ) do
-      local player = winning_roll.player
-      local winner = master_loot_candidates.transform_to_winner( player, item, winning_roll.roll_type, winning_roll.roll )
+    local winners = m.map( winning_rolls,
+      ---@param winning_roll Roll
+      function( winning_roll )
+        return master_loot_candidates.transform_to_winner( winning_roll.player, item, winning_roll.roll_type, winning_roll.roll, rerolling )
+      end )
 
-      roll_controller.winner_found( winner )
+    local winner_count = getn( winners )
+    count = count - winner_count
+
+    if winner_count > 0 then
+      roll_controller.winners_found( item, winners, RS.TieRoll )
     end
 
     local roll_type = tied_rolls[ 1 ].roll_type
@@ -131,7 +134,7 @@ function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, 
 
     roll_controller.tie( players, roll_type, roll_value, rerolling, getn( winning_rolls ) == 0 or false )
 
-    local strategy = rolling_strategy_factory.tie_roll( players, item, item_count, on_rolling_finished, roll_type )
+    local strategy = rolling_strategy_factory.tie_roll( players, item, count, on_rolling_finished, roll_type )
     if not strategy then return end
 
     ace_timer.ScheduleTimer( M,
@@ -186,8 +189,9 @@ function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, 
           return master_loot_candidates.transform_to_winner( winning_roll.player, item, winning_roll.roll_type, winning_roll.roll, rerolling )
         end )
 
+      roll_controller.winners_found( item, winners, strategy )
+
       m.map( winners, function( winner )
-        roll_controller.winner_found( winner )
         winner_tracker.track( winner.name, item.link, winner.roll_type, winner.roll, strategy ) -- TODO: remove from here and subscribe to the event.
       end )
 
