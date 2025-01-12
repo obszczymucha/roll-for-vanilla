@@ -7,6 +7,7 @@ local M = m.Module.new( "MasterLoot" )
 local pretty_print = m.pretty_print
 local hl = m.colors.hl
 local clear_table = m.clear_table
+local err = m.err
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
@@ -43,14 +44,22 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, loot_list
     local loot_item = loot_list.find_item( item.id )
     if not loot_item then return end
 
-    if not player.value then
-      pretty_print( "Player is not eligible for this item." )
+    if player.type ~= "ItemCandidate" and not (player.type == "Winner" and player.is_on_master_loot_candidate_list) then
+      err( "Player is not eligible for this item." )
       return
     end
 
     m_confirmed = { item = item, slot = loot_item.slot, player = player }
     m_slot_cache[ loot_item.slot ] = item
-    m.api.GiveMasterLoot( loot_item.slot, player.value )
+
+    local index = master_loot_candidates.get_index( player.name )
+
+    if not index then
+      err( "Player is not in the loot candidates list." )
+      return
+    end
+
+    m.api.GiveMasterLoot( loot_item.slot, index )
     master_loot_frame.hide()
   end
 

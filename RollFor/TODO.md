@@ -7,7 +7,7 @@
 5. Fix RollingPopupContent to display multiple winners if multiple items dropped and they're equal to the number of winners.
 6. Verify tie rolls visually.
 7. Update /htr with SR.
-8. Get master loot candidate index directly in the master looting function. Everything else relies on a boolean (is_on_master_loot_candidate_list).
+8. Fix auto raid-rolling (doesn't trigger now).
 
 Can of worms opened.
 
@@ -26,5 +26,4 @@ Support another scenario:
 The top roll is a tie (2 players).
 Then the other two rolls are also a tie.
 In this scenario the top tie rolls are the winners and we tie roll the others.
-
 

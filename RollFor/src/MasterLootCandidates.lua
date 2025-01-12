@@ -33,6 +33,7 @@ end
 ---@class MasterLootCandidates
 ---@field get fun(): ItemCandidate[]
 ---@field find fun( player_name: string ): ItemCandidate?
+---@field get_index fun( player_name: string ): number?
 ---@field transform_to_winner fun( player: RollingPlayer, item: Item, roll_type: RollType, winning_roll: number?, rerolling: boolean? ): Winner
 
 ---@param group_roster GroupRoster
@@ -88,9 +89,17 @@ function M.new( group_roster )
     return make_winner( player.name, player.class, item, candidate and true or false, roll_type, winning_roll and winning_roll, rerolling )
   end
 
+  local function get_index( player_name )
+    for i = 1, 40 do
+      local name = m.api.GetMasterLootCandidate( i )
+      if name == player_name then return i end
+    end
+  end
+
   return {
     get = get,
     find = find,
+    get_index = get_index,
     transform_to_winner = transform_to_winner
   }
 end

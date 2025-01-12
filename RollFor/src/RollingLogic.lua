@@ -156,7 +156,9 @@ function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, 
     if winning_roll_count == 0 then
       roll_controller.finish()
 
+      print("chuj")
       if not rerolling and config.auto_raid_roll() and m_rolling_strategy and m_rolling_strategy.get_rolling_strategy() ~= RS.SoftResRoll then
+        print("chuj2")
         m_rolling_strategy = nil
         local strategy = rolling_strategy_factory.raid_roll( item, item_count )
 

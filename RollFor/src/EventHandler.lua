@@ -38,7 +38,7 @@ function M.handle_events( main )
       main.new_group_event.on_group_changed()
     elseif event == "CHAT_MSG_PARTY" then
       main.roll_for_ad.on_chat_msg_party( arg1, arg2 )
-      --   main.on_chat_msg_system( arg1, arg2, arg3, arg4, arg5 )
+      main.on_chat_msg_system( arg1, arg2, arg3, arg4, arg5 )
     elseif event == "CHAT_MSG_RAID" then
       main.roll_for_ad.on_chat_msg_raid( arg1, arg2 )
     elseif event == "CHAT_MSG_RAID_LEADER" then

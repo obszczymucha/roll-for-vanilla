@@ -74,9 +74,9 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
     local content                 = { { type = "item_link_with_icon", link = item.link, texture = item.texture } }
     local data, current_iteration = roll_tracker.get()
 
-    local winner                  = data and data.status and data.status.winners and getn( data.status.winners ) > 0 and
-        data.item and data.status.winners[ 1 ].name == player.name and
-        data.item.link == item.link and data.status.winners[ 1 ]
+    local winner                  = data and data.status and data.winners and getn( data.winners ) > 0 and
+        data.item and data.winners[ 1 ].name == player.name and
+        data.item.link == item.link and data.winners[ 1 ]
 
     local winning_player          = winner or player
 
