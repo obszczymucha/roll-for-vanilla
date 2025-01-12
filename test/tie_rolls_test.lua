@@ -334,6 +334,39 @@ function TieRollsSpec:should_take_the_tie_roller_winner_if_one_tie_roller_is_ret
   )
 end
 
+function TieRollsSpec:should_consider_two_top_roll_tie_rollers_as_winners_and_reroll_the_rest()
+  -- Given
+  player( "Ohhaimark" )
+  is_in_raid( leader( "Ohhaimark" ), "Obszczymucha", "Jogobobek", "Psikutas" )
+
+  -- When
+  roll_for( "Hearthstone", 3 )
+  roll( "Obszczymucha", 69 )
+  roll( "Jogobobek", 69 )
+  roll( "Psikutas", 69 )
+  roll( "Ohhaimark", 69 )
+  tick() -- Tick to trigger a reroll.
+  roll( "Jogobobek", 100 )
+  roll( "Obszczymucha", 42 )
+  roll( "Psikutas", 100 )
+  roll( "Ohhaimark", 42 )
+  tick() -- Tick to trigger a reroll.
+  roll( "Obszczymucha", 1 )
+  roll( "Ohhaimark", 2 )
+
+  -- Then
+  assert_messages(
+    rw( "Roll for 3x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 3 top rolls win." ),
+    cr( "The highest roll was 69 by Jogobobek, Obszczymucha, Ohhaimark and Psikutas." ),
+    r( "Jogobobek, Obszczymucha, Ohhaimark and Psikutas /roll for 3x[Hearthstone] now. 3 top rolls win." ),
+    cr( "Jogobobek and Psikutas re-rolled the highest (100) for [Hearthstone]." ),
+    cr( "Obszczymucha and Ohhaimark re-rolled the next highest (42) for [Hearthstone]." ),
+    r( "Obszczymucha and Ohhaimark /roll for [Hearthstone] now." ),
+    cr( "Ohhaimark re-rolled the highest (2) for [Hearthstone]." ),
+    rolling_finished()
+  )
+end
+
 u.mock_libraries()
 u.load_real_stuff()
 
