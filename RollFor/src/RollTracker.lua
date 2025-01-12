@@ -23,7 +23,7 @@ local getn = table.getn
 ---@field roll number?
 
 ---@class RollIteration
----@field rolling_strategy RollingStrategy
+---@field rolling_strategy RollingStrategyType
 ---@field info string
 ---@field rolls RollData[]
 ---@field ignored_rolls RollData[]?
@@ -34,9 +34,11 @@ local getn = table.getn
 ---@field seconds_left number?
 ---@field winners Player[]?
 
+---@alias RollTrackerData { item: SoftResDistributableItem, count: number, status: RollStatus, iterations: RollIteration[], winners: Winner[] }
+
 ---@class RollTracker
----@field preview fun( rolling_strategy: RollingStrategy, item: Item, count: number, info: string?, required_rolling_players: Player[] )
----@field start fun( rolling_strategy: RollingStrategy, item: Item, count: number, info: string?, seconds: number?, required_rolling_players: Player[]? )
+---@field preview fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, required_rolling_players: Player[] )
+---@field start fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, seconds: number?, required_rolling_players: Player[]? )
 ---@field waiting_for_rolls fun()
 ---@field add_winners fun( winner: Winner[] )
 ---@field finish fun()
@@ -45,7 +47,7 @@ local getn = table.getn
 ---@field tie_start fun()
 ---@field add fun( player_name: string, player_class: string, roll_type: RollType, roll: number )
 ---@field add_ignored fun( player_name: string, roll_type: RollType, roll: number, reason: string )
----@field get fun(): { item: Item, count: number, status: RollStatus, iterations: RollIteration[], winners: Winner[] }, RollIteration
+---@field get fun(): RollTrackerData, RollIteration
 ---@field tick fun( seconds_left: number )
 ---@field clear fun()
 
@@ -130,8 +132,8 @@ function M.new()
     item_on_roll = item
     item_on_roll_count = count
 
-    if rolling_strategy == RS.SoftResRoll and required_rolling_players and getn( required_rolling_players ) == 1 then
-      status.winners = { required_rolling_players[ 1 ] }
+    if rolling_strategy == RS.SoftResRoll and required_rolling_players and getn( required_rolling_players ) == count then
+      status.winners = required_rolling_players
     end
 
     table.insert( iterations, {
@@ -182,7 +184,7 @@ function M.new()
 
   local function finish()
     M.debug.add( "finish" )
-    status = { type = S.Finished, winners = winners }
+    status = { type = S.Finished }
   end
 
   --- @param players RollingPlayer[]

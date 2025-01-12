@@ -512,10 +512,12 @@ function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
   local seconds_left = 7
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
-  controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
+  local strategy = RS.NormalRoll
+  controller.start( strategy, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.OffSpec, 69 )
-  controller.finish( { winner( p1.name, p1.class, item, RT.OffSpec, 69 ) } )
+  controller.winners_found( item, { winner( p1.name, p1.class, item, false, RT.OffSpec, 69 ) }, strategy )
+  controller.finish()
 
   -- When
   local result = popup.get()
@@ -538,10 +540,12 @@ function NormalRollPopupContentSpec:should_display_the_transmog_winner()
   local seconds_left = 7
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
-  controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
+  local strategy = RS.NormalRoll
+  controller.start( strategy, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.Transmog, 69 )
-  controller.finish( { winner( p1.name, p1.class, item, RT.Transmog, 69 ) } )
+  controller.winners_found( item, { winner( p1.name, p1.class, item, false, RT.Transmog, 69 ) }, strategy )
+  controller.finish()
 
   -- When
   local result = popup.get()
@@ -655,9 +659,11 @@ function SoftResrollPopupContentSpec:should_display_the_winner()
   local seconds_left = 7
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
-  controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
+  local strategy = RS.SoftResRoll
+  controller.start( strategy, item, 1, nil, seconds_left, softressing_players )
   controller.tick( 1 )
-  controller.finish( { winner( "Psikutas", C.Warrior, item, RT.SoftRes, 69 ) } )
+  controller.winners_found( item, { winner( "Psikutas", C.Warrior, item, false, RT.SoftRes, 69 ) }, strategy )
+  controller.finish()
 
   -- When
   local result = popup.get()
@@ -686,7 +692,7 @@ function SoftResrollPopupContentSpec:should_say_nobody_rolled()
   local item = i( "Hearthstone", item_id )
   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
   controller.tick( 1 )
-  controller.finish( {} )
+  controller.finish()
 
   -- When
   local result = popup.get()
@@ -714,9 +720,11 @@ function SoftResrollPopupContentSpec:should_display_the_only_soft_resser()
   local seconds_left = 7
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
-  controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
+  local strategy = RS.SoftResRoll
+  controller.start( strategy, item, 1, nil, seconds_left, softressing_players )
   controller.tick( 1 )
-  controller.finish( { winner( "Psikutas", C.Warrior, item, RT.SoftRes ) } )
+  controller.winners_found( item, { winner( "Psikutas", C.Warrior, item, false, RT.SoftRes ) }, strategy )
+  controller.finish()
 
   -- When
   local result = popup.get()

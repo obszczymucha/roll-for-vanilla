@@ -7,6 +7,18 @@ local M = {}
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
+---@type MakeSoftResDistributableItemFn
+local make_softres_distributable_item = m.ItemUtils.make_softres_distributable_item
+
+---@class SoftResLootList
+---@field get_items fun(): SoftResDistributableItem[]
+---@field get_source_guid fun(): string
+---@field find_item fun( item_id: number ): SoftResDistributableItem?
+---@field is_looting fun(): boolean
+---@field count fun( item_id: number ): number
+
+---@param loot_list LootList
+---@param softres GroupedSoftRes
 function M.new( loot_list, softres )
   local function sort( a, b )
     if a == nil then return false end
@@ -61,8 +73,16 @@ function M.new( loot_list, softres )
     return result
   end
 
+  local function find_item( item_id )
+    local result = loot_list.find_item( item_id )
+    if not result then return end
+
+    return make_softres_distributable_item( result, softres.get( result.id ), softres.is_item_hardressed( result.id ) )
+  end
+
   local decorator = m.clone( loot_list )
   decorator.get_items = get_items
+  decorator.find_item = find_item
 
   return decorator
 end

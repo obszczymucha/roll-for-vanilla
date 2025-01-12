@@ -34,6 +34,12 @@ M.interface = {
 
 ---@class DistributableItem : Item
 ---@field slot number
+---@field tooltip_link TooltipItemLink
+---@field quantity number
+
+---@class SoftResDistributableItem : DistributableItem
+---@field sr_players string[]?
+---@field hr boolean?
 
 ---@class Coin
 ---@field coin boolean -- always true
@@ -48,6 +54,11 @@ M.interface = {
 ---  quality: ItemQuality,
 ---  texture: string )
 
+---@alias MakeSoftResDistributableItemFn fun(
+---  item: DistributableItem,
+---  sr_players: string[]?,
+---  hr: boolean? )
+
 ---@class ItemUtils
 ---@field get_item_id fun( item_link: ItemLink ): number?
 ---@field get_item_name fun( item_link: ItemLink ): string
@@ -56,6 +67,7 @@ M.interface = {
 ---@field get_tooltip_link fun( item_link: ItemLink ): TooltipItemLink
 ---@field make_item MakeItemFn
 ---@field make_distributable_item fun( id: number, name: string, link: ItemLink, tooltip_link: TooltipItemLink, quality: ItemQuality, quantity: number, texture: string, slot: number ): DistributableItem
+---@field make_softres_distributable_item MakeSoftResDistributableItemFn
 ---@field make_coin fun( texture: string, amount_text: string, slot: number ): Coin
 
 ---@param item_link ItemLink
@@ -123,6 +135,25 @@ end
 ---@return DistributableItem
 function M.make_distributable_item( id, name, link, tooltip_link, quality, quantity, texture, slot )
   return { id = id, name = name, link = link, tooltip_link = tooltip_link, quality = quality, quantity = quantity, texture = texture, slot = slot }
+end
+
+---@param item DistributableItem
+---@param sr_players string[]?
+---@param hr boolean?
+---@return SoftResDistributableItem
+function M.make_softres_distributable_item( item, sr_players, hr )
+  return {
+    id = item.id,
+    name = item.name,
+    link = item.link,
+    tooltip_link = item.tooltip_link,
+    quality = item.quality,
+    quantity = item.quantity,
+    texture = item.texture,
+    slot = item.slot,
+    sr_players = sr_players,
+    hr = hr
+  }
 end
 
 ---@param texture string

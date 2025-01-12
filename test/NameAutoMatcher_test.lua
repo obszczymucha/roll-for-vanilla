@@ -2,14 +2,15 @@ package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../Roll
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
-local assert_messages = utils.assert_messages
-local c = utils.console_message
-local player = utils.player
-local leader = utils.raid_leader
-local is_in_raid = utils.is_in_raid
+-- local assert_messages = utils.assert_messages
+-- local c = utils.console_message
+-- local player = utils.player
+-- local leader = utils.raid_leader
+-- local is_in_raid = utils.is_in_raid
 
 NameAutoMatcherSpec = {}
 
+-- Disabled because it uses softres.it encoded data.
 -- function NameAutoMatcherSpec:should_load_encoded_softres_and_match_names()
 --   -- Given
 --   player( "Psikutas" )

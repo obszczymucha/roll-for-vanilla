@@ -23,7 +23,7 @@ local S = m.Types.RollingStatus
 ---@field show fun()
 ---@field award_aborted fun( item: Item )
 ---@field loot_awarded fun( item_link: string )
----@field award_loot fun( player: Player, item: Item, rolling_strategy: RollingStrategy, origin: string )
+---@field award_loot fun( player: Player, item: Item, rolling_strategy: RollingStrategyType )
 ---@field loot_opened fun()
 ---@field loot_closed fun()
 ---@field player_already_has_unique_item fun()
@@ -56,6 +56,8 @@ function M.new( roll_tracker )
     return c
   end
 
+  ---@param item SoftResDistributableItem
+  ---@param count number
   local function preview( item, count )
     roll_tracker.preview( RS.SoftResRoll, item, count or 1, nil, item.sr_players )
     local color = get_color( item.quality )
@@ -66,7 +68,7 @@ function M.new( roll_tracker )
     notify_subscribers( "preview", { item = item } )
   end
 
-  ---@param rolling_strategy RollingStrategy
+  ---@param rolling_strategy RollingStrategyType
   ---@param item Item
   ---@param count number
   ---@param info string?
@@ -180,9 +182,9 @@ function M.new( roll_tracker )
     process_next_item()
   end
 
-  local function award_loot( player, item, rolling_strategy, origin )
+  local function award_loot( player, item, rolling_strategy )
     M.debug.add( "award_loot" )
-    notify_subscribers( "award_loot", { player = player, item = item, rolling_strategy = rolling_strategy, origin = origin } )
+    notify_subscribers( "award_loot", { player = player, item = item, rolling_strategy = rolling_strategy } )
   end
 
   local function loot_opened()

@@ -23,6 +23,11 @@ function on_change() {
   local event="$1"
   local filename="$2"
 
+  if [[ "$filename" == "test/"* ]]; then
+    echo "Ignoring test: $filename" >&2
+    return
+  fi
+
   case "$event" in
     "CREATE,ISDIR")
       echo "Creating directory: $filename" >&2

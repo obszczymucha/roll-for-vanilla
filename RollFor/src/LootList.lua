@@ -10,6 +10,8 @@ local clear = m.clear_table
 ---@field get_items fun(): DistributableItem[]
 ---@field get_source_guid fun(): string
 ---@field find_item fun( item_id: number ): DistributableItem?
+---@field is_looting fun(): boolean
+---@field count fun( item_id: number ): number
 
 ---@param loot_facade LootFacade
 ---@param item_utils ItemUtils
