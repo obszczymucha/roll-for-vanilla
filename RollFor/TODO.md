@@ -8,6 +8,7 @@
 6. Verify tie rolls visually.
 7. Update /htr with SR.
 8. Fix auto raid-rolling (doesn't trigger now).
+9. After rolling 2x raid roll rolls only 1.
 
 Can of worms opened.
 
@@ -18,6 +19,8 @@ Top roll is 96
 The other two rolls are tied.
 Now fucking what :D
 In this scenario we have to mark the top roll as a winner and tie roll the others.
+
+The above is unit tested. Verify in the GUI.
 
 
 Support another scenario:

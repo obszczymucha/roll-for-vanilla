@@ -2,46 +2,34 @@ package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../Roll
 
 local lu = require( "luaunit" )
 local eq = lu.assertEquals
-local utils = require( "test/utils" )
-local fr = utils.force_require
+local u = require( "test/utils" )
+local fr = u.force_require
 local m = require( "src/modules" )
 
-local player = utils.player
-local master_looter = utils.master_looter
-local leader = utils.raid_leader
-local is_in_raid = utils.is_in_raid
-local rw = utils.raid_warning
-local cr = utils.console_and_raid_message
-local c = utils.console_message
-local r = utils.raid_message
-local rolling_not_in_progress = utils.rolling_not_in_progress
-local rolling_finished = utils.rolling_finished
-local roll_for = utils.roll_for
-local finish_rolling = utils.finish_rolling
-local roll = utils.roll
-local roll_os = utils.roll_os
-local assert_messages = utils.assert_messages
-local soft_res = utils.soft_res
-local sr = utils.soft_res_item
-local repeating_tick = utils.repeating_tick
-local tick = utils.tick
-local item = utils.item
-local item_link = utils.item_link
-local award = utils.award
-local trade_with = utils.trade_with
-local trade_items = utils.trade_items
-local trade_complete = utils.trade_complete
-local confirm_master_looting = utils.confirm_master_looting
-local clear_dropped_items_db = utils.clear_dropped_items_db
-local loot_threshold = utils.loot_threshold
-local LootQuality = utils.LootQuality
-local mock_blizzard_loot_buttons = utils.mock_blizzard_loot_buttons
-local mock_shift_key_pressed = utils.mock_shift_key_pressed
-local mock_alt_key_pressed = utils.mock_alt_key_pressed
-local mock_control_key_pressed = utils.mock_control_key_pressed
-local run_command = utils.run_command
-local modifier_keys_not_pressed = utils.modifier_keys_not_pressed
-local targetting_enemy = utils.targetting_enemy
+local player, leader, master_looter = u.player, u.raid_leader, u.master_looter
+local is_in_raid = u.is_in_raid
+local r, rw = u.raid_message, u.raid_warning
+local c, cr = u.console_message, u.console_and_raid_message
+local rolling_finished, rolling_not_in_progress = u.rolling_finished, u.rolling_not_in_progress
+local roll_for, roll, roll_os = u.roll_for, u.roll, u.roll_os
+local finish_rolling = u.finish_rolling
+local assert_messages = u.assert_messages
+local sr, soft_res = u.soft_res_item, u.soft_res
+local tick, repeating_tick = u.tick, u.repeating_tick
+local item, item_link = u.item, u.item_link
+local award = u.award
+local trade_with, trade_items, trade_complete = u.trade_with, u.trade_items, u.trade_complete
+local confirm_master_looting = u.confirm_master_looting
+local clear_dropped_items_db = u.clear_dropped_items_db
+local loot_threshold = u.loot_threshold
+local mock_blizzard_loot_buttons = u.mock_blizzard_loot_buttons
+local mock_shift_key_pressed = u.mock_shift_key_pressed
+local mock_alt_key_pressed = u.mock_alt_key_pressed
+local mock_control_key_pressed = u.mock_control_key_pressed
+local modifier_keys_not_pressed = u.modifier_keys_not_pressed
+local run_command = u.run_command
+local targetting_enemy = u.targetting_enemy
+local LootQuality = u.LootQuality
 
 local loot_event_facade
 local loot_list
@@ -375,7 +363,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   loot()
   roll_for( "Hearthstone", 1, 123 )
   trade_with( "Obszczymucha" )
-  trade_items( nil, { item_link = utils.item_link( "Hearthstone", 123 ), quantity = 1 } )
+  trade_items( nil, { item_link = u.item_link( "Hearthstone", 123 ), quantity = 1 } )
   trade_complete()
   tick()
   roll_for( "Hearthstone", 1, 123 )
@@ -418,7 +406,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   -- When
   loot()
   roll_for( "Hearthstone", 1, 123 )
-  utils.mock( "GiveMasterLoot", function() end )
+  u.mock( "GiveMasterLoot", function() end )
   local candidate = m.Types.make_item_candidate( "Obszczymucha", "Warrior", true )
   rf.master_loot.on_confirm( candidate, dropped_item )
   loot_event_facade.notify( "LootSlotCleared", 1 )
@@ -492,7 +480,7 @@ function SoftResIntegrationSpec:should_not_allow_a_sr_winner_to_roll_again_if_th
   roll( "Elizalee", 27 )
   repeating_tick( 6 )
   run_command( "FR" )
-  utils.mock( "GiveMasterLoot", function() end )
+  u.mock( "GiveMasterLoot", function() end )
   local candidate = m.Types.make_item_candidate( "Trololoo", "Warlock", true )
   rf.master_loot.on_confirm( candidate, dropped_item )
   loot_event_facade.notify( "LootSlotCleared", 1 )
@@ -568,8 +556,8 @@ function SoftResIntegrationSpec:should_stop_rolling_if_player_who_won_still_has_
   )
 end
 
-utils.mock_libraries()
-utils.load_real_stuff( function( module_name )
+u.mock_libraries()
+u.load_real_stuff( function( module_name )
   if module_name == "src/LootAwardPopup" then return require( "mocks/LootAwardPopupMock" ) end
   if module_name == "src/Config" then return mock_config() end
   if module_name == "src/LootList" then require( "mocks/LootList" ) end

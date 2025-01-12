@@ -103,7 +103,7 @@ function M.new( announce, roll_controller, roll_tracker, config )
     local roll_type_str = roll_type == RT.MainSpec and "" or string.format( " (%s)", m.roll_type_abbrev_chat( roll_type ) )
 
     local message = function( rollers )
-      return string.format( "The %shighest %sroll was %d by %s%s.", not rerolling and top_roll and "" or "next ",
+      return string.format( "The %shighest %sroll was %d by %s%s.", rerolling and top_roll and "" or not rerolling and top_roll and "" or "next ",
         rerolling and "re-" or "", roll or 1337, rollers, roll_type_str )
     end
 
