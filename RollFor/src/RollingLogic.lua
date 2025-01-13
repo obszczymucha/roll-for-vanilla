@@ -119,7 +119,7 @@ function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, 
     count = count - winner_count
 
     if winner_count > 0 then
-      roll_controller.winners_found( item, winners, RS.TieRoll )
+      roll_controller.winners_found( item, item_count, winners, RS.TieRoll )
     end
 
     local roll_type = tied_rolls[ 1 ].roll_type
@@ -132,7 +132,7 @@ function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, 
         return tied_roll.player
       end )
 
-    roll_controller.tie( players, roll_type, roll_value, rerolling, getn( winning_rolls ) == 0 or false )
+    roll_controller.tie( players, item, count, roll_type, roll_value, rerolling, getn( winning_rolls ) == 0 or false )
 
     local strategy = rolling_strategy_factory.tie_roll( players, item, count, on_rolling_finished, roll_type )
     if not strategy then return end
@@ -156,9 +156,7 @@ function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, 
     if winning_roll_count == 0 then
       roll_controller.finish()
 
-      print("chuj")
       if not rerolling and config.auto_raid_roll() and m_rolling_strategy and m_rolling_strategy.get_rolling_strategy() ~= RS.SoftResRoll then
-        print("chuj2")
         m_rolling_strategy = nil
         local strategy = rolling_strategy_factory.raid_roll( item, item_count )
 
@@ -191,7 +189,7 @@ function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, 
           return master_loot_candidates.transform_to_winner( winning_roll.player, item, winning_roll.roll_type, winning_roll.roll, rerolling )
         end )
 
-      roll_controller.winners_found( item, winners, strategy )
+      roll_controller.winners_found( item, item_count, winners, strategy )
 
       m.map( winners, function( winner )
         winner_tracker.track( winner.name, item.link, winner.roll_type, winner.roll, strategy ) -- TODO: remove from here and subscribe to the event.

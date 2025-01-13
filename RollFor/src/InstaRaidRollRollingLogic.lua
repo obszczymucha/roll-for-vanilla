@@ -51,7 +51,7 @@ function M.new( _, _, item, item_count, winner_tracker, roll_controller, candida
         end
       end )
 
-    roll_controller.winners_found( item, winners, strategy )
+    roll_controller.winners_found( item, item_count, winners, strategy )
     roll_controller.finish()
   end
 

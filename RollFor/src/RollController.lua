@@ -10,14 +10,14 @@ local S = m.Types.RollingStatus
 ---@class RollController
 ---@field preview fun( item: Item, count: number )
 ---@field start fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, seconds: number?, required_rolling_players: Player[]?)
----@field winners_found fun( item: Item, winners: Winner[], strategy: RollingStrategyType )
+---@field winners_found fun( item: Item, item_count: number, winners: Winner[], strategy: RollingStrategyType )
 ---@field finish fun()
 ---@field tick fun( seconds_left: number )
 ---@field add fun( player_name: string, player_class: string, roll_type: RollType, roll: number )
 ---@field add_ignored fun( player_name: string, player_class: string?, roll_type: RollType, roll: number, reason: string )
 ---@field cancel fun()
 ---@field subscribe fun( event_type: string, callback: fun( data: any ) )
----@field tie fun( tied_players: RollingPlayer[], roll_type: RollType, roll: number, rerolling: boolean?, top_roll: boolean? )
+---@field tie fun( tied_players: RollingPlayer[], item: Item, item_count: number, roll_type: RollType, roll: number, rerolling: boolean?, top_roll: boolean? )
 ---@field tie_start fun()
 ---@field waiting_for_rolls fun()
 ---@field show fun()
@@ -103,10 +103,18 @@ function M.new( roll_tracker )
     } )
   end
 
-  local function tie( players, roll_type, roll, rerolling, top_roll )
+  local function tie( players, item, item_count, roll_type, roll, rerolling, top_roll )
     M.debug.add( "tie" )
     roll_tracker.tie( players, roll_type, roll )
-    notify_subscribers( "tie", { players = players, roll_type = roll_type, roll = roll, rerolling = rerolling, top_roll = top_roll } )
+    notify_subscribers( "tie", {
+      players = players,
+      item = item,
+      item_count = item_count,
+      roll_type = roll_type,
+      roll = roll,
+      rerolling = rerolling,
+      top_roll = top_roll
+    } )
   end
 
   local function tie_start()
@@ -122,12 +130,13 @@ function M.new( roll_tracker )
   end
 
   ---@param item Item
+  ---@param item_count number
   ---@param winners Winner[]
   ---@param strategy RollingStrategyType
-  local function winners_found( item, winners, strategy )
+  local function winners_found( item, item_count, winners, strategy )
     M.debug.add( "winners_found" )
     roll_tracker.add_winners( winners )
-    notify_subscribers( "winners_found", { item = item, winners = winners, rolling_strategy = strategy } )
+    notify_subscribers( "winners_found", { item = item, item_count = item_count, winners = winners, rolling_strategy = strategy } )
   end
 
   local function finish()

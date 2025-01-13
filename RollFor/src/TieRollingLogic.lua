@@ -75,14 +75,29 @@ function M.new( announce, players, item, item_count, on_rolling_finished, roll_t
     end
 
     local function count_top_roll_winners()
-      local result = 1
+      if roll_count == 0 then return 0 end
 
-      for i = 1, roll_count - 1 do
-        if rolls[ i ].roll == rolls[ i + 1 ].roll then
-          result = result + 1
-        else
-          return result
+      local function split_by_roll()
+        local result = {}
+        local last_roll
+
+        for _, roll in ipairs( rolls ) do
+          if not last_roll or last_roll ~= roll.roll then
+            table.insert( result, { roll } )
+            last_roll = roll.roll
+          else
+            table.insert( result[ getn( result ) ], roll )
+          end
         end
+
+        return result
+      end
+
+      local result = 0
+
+      for _, r in ipairs( split_by_roll() ) do
+        result = result + getn( r )
+        if result >= item_count then return result end
       end
 
       return result

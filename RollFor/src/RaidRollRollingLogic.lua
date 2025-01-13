@@ -90,7 +90,7 @@ function M.new( announce, ace_timer, item, item_count, winner_tracker, roll_cont
         end
       end )
 
-    roll_controller.winners_found( item, winners, strategy )
+    roll_controller.winners_found( item, item_count, winners, strategy )
     roll_controller.finish()
     m_rolling = false
   end

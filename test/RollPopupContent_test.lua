@@ -181,7 +181,7 @@ function RaidRollPopupContentSpec:should_display_the_winner()
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.RaidRoll
   controller.start( strategy, item, 1, nil, seconds_left )
-  controller.winners_found( item, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
+  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
   controller.finish()
 
   -- When
@@ -205,7 +205,7 @@ function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.RaidRoll
   controller.start( strategy, item, 1, nil, seconds_left )
-  controller.winners_found( item, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
+  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
   controller.finish()
 
   -- When
@@ -230,7 +230,7 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_i
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.RaidRoll
   controller.start( strategy, item, 1, nil, seconds_left )
-  controller.winners_found( item, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
+  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
   controller.finish()
 
   -- When
@@ -368,7 +368,7 @@ function NormalRollPopupContentSpec:should_display_the_winner()
   controller.start( strategy, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.MainSpec, 69 )
-  controller.winners_found( item, { winner( p1.name, p1.class, item, false, RT.MainSpec, 69 ) }, strategy )
+  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec, 69 ) }, strategy )
   controller.finish()
 
   -- When
@@ -396,7 +396,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   controller.start( strategy, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.MainSpec, 8 )
-  controller.winners_found( item, { winner( p1.name, p1.class, item, false, RT.MainSpec, 8 ) }, strategy )
+  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec, 8 ) }, strategy )
   controller.finish()
 
   -- When
@@ -424,7 +424,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   controller.start( strategy, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.MainSpec, 11 )
-  controller.winners_found( item, { winner( p1.name, p1.class, item, false, RT.MainSpec, 11 ) }, strategy )
+  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec, 11 ) }, strategy )
   controller.finish()
 
   -- When
@@ -452,7 +452,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   controller.start( strategy, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.MainSpec, 18 )
-  controller.winners_found( item, { winner( p1.name, p1.class, item, false, RT.MainSpec, 18 ) }, strategy )
+  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec, 18 ) }, strategy )
   controller.finish()
 
   -- When
@@ -484,7 +484,7 @@ function NormalRollPopupContentSpec:should_sort_the_rolls()
   controller.add( p2.name, p2.class, RT.MainSpec, 45 )
   controller.add( p1.name, p1.class, RT.Transmog, 69 )
   controller.add( p3.name, p3.class, RT.Transmog, 69 )
-  controller.winners_found( item, { winner( p2.name, p2.class, item, false, RT.MainSpec, 45 ) }, strategy )
+  controller.winners_found( item, 1, { winner( p2.name, p2.class, item, false, RT.MainSpec, 45 ) }, strategy )
   controller.finish()
 
   -- When
@@ -516,7 +516,7 @@ function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
   controller.start( strategy, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.OffSpec, 69 )
-  controller.winners_found( item, { winner( p1.name, p1.class, item, false, RT.OffSpec, 69 ) }, strategy )
+  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.OffSpec, 69 ) }, strategy )
   controller.finish()
 
   -- When
@@ -544,7 +544,7 @@ function NormalRollPopupContentSpec:should_display_the_transmog_winner()
   controller.start( strategy, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.Transmog, 69 )
-  controller.winners_found( item, { winner( p1.name, p1.class, item, false, RT.Transmog, 69 ) }, strategy )
+  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.Transmog, 69 ) }, strategy )
   controller.finish()
 
   -- When
@@ -662,7 +662,7 @@ function SoftResrollPopupContentSpec:should_display_the_winner()
   local strategy = RS.SoftResRoll
   controller.start( strategy, item, 1, nil, seconds_left, softressing_players )
   controller.tick( 1 )
-  controller.winners_found( item, { winner( "Psikutas", C.Warrior, item, false, RT.SoftRes, 69 ) }, strategy )
+  controller.winners_found( item, 1, { winner( "Psikutas", C.Warrior, item, false, RT.SoftRes, 69 ) }, strategy )
   controller.finish()
 
   -- When
@@ -723,7 +723,7 @@ function SoftResrollPopupContentSpec:should_display_the_only_soft_resser()
   local strategy = RS.SoftResRoll
   controller.start( strategy, item, 1, nil, seconds_left, softressing_players )
   controller.tick( 1 )
-  controller.winners_found( item, { winner( "Psikutas", C.Warrior, item, false, RT.SoftRes ) }, strategy )
+  controller.winners_found( item, 1, { winner( "Psikutas", C.Warrior, item, false, RT.SoftRes ) }, strategy )
   controller.finish()
 
   -- When
@@ -816,7 +816,7 @@ function TieRollPopupContentSpec:should_display_tied_rolls()
   controller.add( p1.name, p1.class, RT.MainSpec, 69 )
   controller.tick( 1 )
   controller.add( p2.name, p2.class, RT.MainSpec, 69 )
-  controller.tie( { p1, p2 }, RT.MainSpec, 69 )
+  controller.tie( { p1, p2 }, item, 1, RT.MainSpec, 69 )
 
   -- When
   local result = popup.get()
@@ -844,7 +844,7 @@ function TieRollPopupContentSpec:should_display_tied_rolls_with_waiting_message(
   controller.add( p1.name, p1.class, RT.MainSpec, 69 )
   controller.tick( 1 )
   controller.add( p2.name, p2.class, RT.MainSpec, 69 )
-  controller.tie( { p1, p2 }, RT.MainSpec, 69 )
+  controller.tie( { p1, p2 }, item, 1, RT.MainSpec, 69 )
   controller.tie_start()
 
   -- When

@@ -283,7 +283,7 @@ function SoftResIntegrationSpec:should_ask_for_a_reroll_if_there_is_a_tie_and_ig
   -- Then
   assert_messages(
     rw( "Roll for [Hearthstone]: (SR by Pimp, Ponpon, Psikutas and Rikus)" ),
-    cr( "The highest roll was 69 by Pimp, Ponpon and Psikutas (SR)." ),
+    cr( "Pimp, Ponpon and Psikutas rolled the highest (69) for [Hearthstone] (SR)." ),
     r( "Pimp, Ponpon and Psikutas /roll for [Hearthstone] now." ),
     c( "RollFor: Rikus is not allowed to re-roll. This roll (100) is ignored." ),
     cr( "Psikutas re-rolled the highest (100) for [Hearthstone] (SR)." ),

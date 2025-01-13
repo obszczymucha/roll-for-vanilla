@@ -260,7 +260,7 @@ function M.new(
           return winner
         end )
 
-      roll_controller.winners_found( item, winners, strategy )
+      roll_controller.winners_found( item, item_count, winners, strategy )
       roll_controller.finish()
     else
       announce( string.format( "Roll for %s%s: (SR by %s)%s", count_str, item.link, ressed_by, x_rolls_win ), true )

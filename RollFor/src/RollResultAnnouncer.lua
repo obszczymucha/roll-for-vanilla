@@ -29,11 +29,22 @@ function M.new( announce, roll_controller, roll_tracker, config )
     local rerolling = winners[ 1 ].rerolling
     local item = winners[ 1 ].item
 
-    info( string.format( "%s %srolled the %shighest (%s) for %s%s.", m.prettify_table( winners, function( p ) return p.name end ),
-      rerolling and "re-" or "", top_roll and "" or "next ", hl( roll_value ), item.link, roll_type_str ) )
-    announce(
-      string.format( "%s %srolled the %shighest (%d) for %s%s.", m.prettify_table( winners, function( p ) return p.name end ),
-        rerolling and "re-" or "", top_roll and "" or "next ", roll_value, item.link, roll_type_str ) )
+    local function message( rollers, f )
+      return string.format(
+        "%s %srolled the %shighest (%s) for %s%s.",
+        rollers,
+        rerolling and "re-" or "",
+        top_roll and "" or "next ",
+        f and f( roll_value ) or roll_value,
+        -- item_count and item_count > 1 and string.format( "%sx", item_count ) or "",
+        item.link,
+        roll_type_str
+      )
+    end
+
+    local rollers = m.prettify_table( winners, function( p ) return p.name end )
+    info( message( rollers, hl ) )
+    announce( message( rollers ) )
   end
 
   ---@param winners Winner[]
@@ -83,13 +94,14 @@ function M.new( announce, roll_controller, roll_tracker, config )
     end
   end
 
-  ---@param data { players: RollingPlayer[], roll_type: RollType, roll: number, rerolling: boolean?, top_roll: boolean? }
+  ---@param data { players: RollingPlayer[], item: Item, item_count: number, roll_type: RollType, roll: number, rerolling: boolean?, top_roll: boolean? }
   local function on_tie( data )
     local players = data.players
     local roll_type = data.roll_type
-    local roll = data.roll
+    local roll_value = data.roll
     local rerolling = data.rerolling
     local top_roll = data.top_roll
+    local item = data.item
 
     local player_names = m.map( players,
       function( p )
@@ -102,9 +114,17 @@ function M.new( announce, roll_controller, roll_tracker, config )
     local top_rollers_str_colored = m.prettify_table( player_names, hl )
     local roll_type_str = roll_type == RT.MainSpec and "" or string.format( " (%s)", m.roll_type_abbrev_chat( roll_type ) )
 
-    local message = function( rollers )
-      return string.format( "The %shighest %sroll was %d by %s%s.", rerolling and top_roll and "" or not rerolling and top_roll and "" or "next ",
-        rerolling and "re-" or "", roll or 1337, rollers, roll_type_str )
+    local function message( rollers, f )
+      return string.format(
+        "%s %srolled the %shighest (%s) for %s%s.",
+        rollers,
+        rerolling and "re-" or "",
+        top_roll and "" or "next ",
+        f and f( roll_value ) or roll_value,
+        -- item_count and item_count > 1 and string.format( "%sx", item_count ) or "",
+        item.link,
+        roll_type_str
+      )
     end
 
     info( message( top_rollers_str_colored ) )
