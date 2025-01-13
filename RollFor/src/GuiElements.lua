@@ -288,6 +288,16 @@ function M.button( parent )
   return button
 end
 
+function M.award_button( parent )
+  local button = m.api.CreateFrame( "Button", nil, parent, "StaticPopupButtonTemplate" )
+  button:SetWidth( 100 )
+  button:SetHeight( 20 )
+  button:SetText( "" )
+  button:GetFontString():SetPoint( "CENTER", 0, -1 )
+
+  return button
+end
+
 function M.info( parent )
   local frame = m.api.CreateFrame( "Frame", nil, parent )
   frame:SetWidth( 11 )

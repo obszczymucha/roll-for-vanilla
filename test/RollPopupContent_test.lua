@@ -16,7 +16,9 @@ local softres_mod = require( "src/SoftRes" )
 local loot_list_mod = require( "mocks/LootList" )
 local new = require( "src/RollingPopupContent" ).new
 local ItemUtils = require( "src/ItemUtils" )
-local make_item = ItemUtils.make_item
+local make_distributable_item = ItemUtils.make_distributable_item
+local make_softres_distributable_item = ItemUtils.make_softres_distributable_item
+local get_tooltip_link = ItemUtils.get_tooltip_link
 local item_link = tu.item_link
 local sr = tu.soft_res_item
 local make_data = tu.create_softres_data
@@ -117,9 +119,15 @@ local function strip_functions( t )
   return t
 end
 
-local function i( name, id )
+---@param name string
+---@param id number
+---@param sr_players string[]?
+---@param hr boolean?
+local function i( name, id, sr_players, hr )
   local link = item_link( name, id )
-  return make_item( id, name, link )
+  local tooltip_link = get_tooltip_link( link )
+  local item = make_distributable_item( id, name, link, tooltip_link )
+  return make_softres_distributable_item( item, sr_players or {}, hr )
 end
 
 local function cleanse( t )
@@ -563,6 +571,103 @@ end
 
 SoftResrollPopupContentSpec = {}
 
+function SoftResrollPopupContentSpec:should_preview_rolls()
+  -- Given
+  local popup = new_mod()
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
+  local group_roster = mock_group_roster( p1, p2 )
+  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+  local item_id = 123
+  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local item = i( "Hearthstone", item_id, softressing_players )
+  controller.preview( item, 1 )
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,             count = 1 },
+      { type = "roll",                player_name = "Obszczymucha", player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
+      { type = "roll",                player_name = "Psikutas",     player_class = C.Warrior, roll_type = RT.SoftRes },
+      { type = "roll",                player_name = "Psikutas",     player_class = C.Warrior, roll_type = RT.SoftRes },
+      { type = "button",              label = "Roll",               width = 70 },
+      { type = "button",              label = "Award...",           width = 90 }
+    } )
+end
+
+function SoftResrollPopupContentSpec:should_preview_the_winner()
+  -- Given
+  local popup = new_mod()
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
+  local group_roster = mock_group_roster( p1, p2 )
+  local data = make_data( sr( p1.name, 123 ) )
+  local item_id = 123
+  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local item = i( "Hearthstone", item_id, softressing_players )
+  controller.preview( item, 1 )
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                          count = 1 },
+      { type = "text",                value = "Psikutas soft-ressed this item.", padding = 11 },
+      { type = "button",              label = "Close",                           width = 70 }
+    } )
+end
+
+function SoftResrollPopupContentSpec:should_preview_the_winners()
+  -- Given
+  local popup = new_mod()
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
+  local group_roster = mock_group_roster( p1, p2 )
+  local data = make_data( sr( p1.name, 123 ), sr( p2.name, 123 ) )
+  local item_id = 123
+  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local item = i( "Hearthstone", item_id, softressing_players )
+  controller.preview( item, 2 )
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                              count = 2 },
+      { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 11 },
+      { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 4 },
+      { type = "button",              label = "Close",                               width = 70 }
+    } )
+end
+
+function SoftResrollPopupContentSpec:should_preview_the_winners_with_no_difference_if_one_has_many_rolls()
+  -- Given
+  local popup = new_mod()
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
+  local group_roster = mock_group_roster( p1, p2 )
+  local data = make_data( sr( p1.name, 123 ), sr( p1.name ), sr( p2.name, 123 ) )
+  local item_id = 123
+  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local item = i( "Hearthstone", item_id, softressing_players )
+  controller.preview( item, 2 )
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                              count = 2 },
+      { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 11 },
+      { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 4 },
+      { type = "button",              label = "Close",                               width = 70 }
+    } )
+end
+
 function SoftResrollPopupContentSpec:should_return_initial_softres_content()
   -- Given
   local popup = new_mod()
@@ -732,9 +837,9 @@ function SoftResrollPopupContentSpec:should_display_the_only_soft_resser()
   -- Then
   lu.assertEquals( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link,                                 count = 1 },
-      { type = "text",                value = "Psikutas is the only one soft-ressing.", padding = 11 },
-      { type = "button",              label = "Close",                                  width = 70 }
+      { type = "item_link_with_icon", link = item.link,                          count = 1 },
+      { type = "text",                value = "Psikutas soft-ressed this item.", padding = 11 },
+      { type = "button",              label = "Close",                           width = 70 }
     } )
 end
 

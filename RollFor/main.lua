@@ -98,9 +98,11 @@ local function on_finish_roll_command()
   M.rolling_logic.stop_accepting_rolls( true )
 end
 
-local function select_player( item )
+---@param item DistributableItem
+---@param strategy RollingStrategyType
+local function select_player( item, strategy )
   local anchor = M.rolling_popup.get_frame()
-  M.master_loot.show_loot_candidates_frame( item )
+  M.master_loot.show_loot_candidates_frame( item, strategy )
   local player_list = M.master_loot_frame.get_frame()
 
   player_list:ClearAllPoints()
@@ -191,7 +193,9 @@ local function create_components()
   M.winner_tracker = m.WinnerTracker.new( db( "winner_tracker" ) )
   M.loot_facade = m.LootFacade.new( m.EventFrame.new( m.api ), m.api )
 
+  ---@diagnostic disable-next-line: unused-local, unused-function
   local function get_dummy_items()
+    ---@diagnostic disable-next-line: unused-function
     local function item_link( name, id, quality )
       assert( name, "name is nil" )
       assert( id, "id is nil" )
@@ -201,8 +205,7 @@ local function create_components()
     end
 
     -- local ids = { 17204, 16961, 18842, 16961, 16961, 18842, 16865, 16961, 17109, 16961, 18466, 11980, 12820, 3676 }
-    local ids = { 18842, 3676 }
-    table.sort( ids )
+    local ids = { 18842, 18842, 3676 }
     local result = {}
 
     for i, item_id in ipairs( ids ) do
@@ -210,21 +213,21 @@ local function create_components()
       item.id = item_id
       item.slot = i
 
-      for j = 1, 5000 do
-        if not item.name then
-          item.name, item.tooltip_link, item.quality, _, _, _, _, _, item.texture = m.api.GetItemInfo( item.id )
-        end
+      if not item.name then
+        item.name, item.tooltip_link, item.quality, _, _, _, _, _, item.texture = m.api.GetItemInfo( item.id )
       end
 
       item.link = item_link( item.name, item.id, item.quality )
       table.insert( result, item )
     end
 
+    table.sort( result, function( a, b ) return a.quality > b.quality end )
+
     return result
   end
 
-  -- M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils, get_dummy_items() )
-  M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils )
+  M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils, get_dummy_items )
+  -- M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils )
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
 
   M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.loot_list, announce, M.dropped_loot, M.softres, M.winner_tracker )
@@ -232,6 +235,8 @@ local function create_components()
   M.roll_controller = m.RollController.new( M.roll_tracker, M.loot_list, M.config )
   M.master_loot_frame = m.MasterLootFrame.new( M.winner_tracker, M.roll_controller, M.config )
   M.master_loot_candidates = m.MasterLootCandidates.new( M.group_roster ) -- remove group_roster for testing (dummy candidates)
+
+  ---@type MasterLoot
   M.master_loot = m.MasterLoot.new(
     M.master_loot_candidates,
     M.award_item,

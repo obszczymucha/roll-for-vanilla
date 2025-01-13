@@ -82,12 +82,12 @@ function M.new( frame_builder )
 
     if button_width > max_width then max_width = button_width end
 
-    if getn( buttons ) > 0 then
+    if button_count > 0 then
       height = height + 23
     end
 
     popup:SetWidth( max_width + 50 )
-    popup:SetHeight( height + bottom_margin )
+    popup:SetHeight( height + (button_count > 0 and bottom_margin or 23) )
 
     align_buttons( popup, lines )
   end

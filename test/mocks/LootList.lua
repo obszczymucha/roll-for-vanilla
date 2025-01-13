@@ -22,10 +22,23 @@ function M.new()
     end
   end
 
+  local function count( item_id )
+    local result = 0
+
+    for _, item in ipairs( M.items ) do
+      if item.id == item_id then
+        result = result + 1
+      end
+    end
+
+    return result
+  end
+
   return {
     get_items = get_items,
     get_source_guid = get_source_guid,
-    find_item = find_item
+    find_item = find_item,
+    count = count
   }
 end
 

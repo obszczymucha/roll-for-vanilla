@@ -139,7 +139,7 @@ function M.new( announce, roll_controller, roll_tracker, config )
     if player_count == 0 then return end
 
     local roll_type = iteration.rolls[ 1 ].roll_type
-    local item, item_count, winners = data.item, data.count, data.winners
+    local item, item_count, winners = data.item, data.item_count, data.winners
     local winner_count = getn( winners )
     local count = item_count - winner_count
     local prefix = count > 1 and string.format( "%sx", count ) or ""

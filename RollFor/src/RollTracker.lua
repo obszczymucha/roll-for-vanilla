@@ -34,7 +34,7 @@ local getn = table.getn
 ---@field seconds_left number?
 ---@field winners Player[]?
 
----@alias RollTrackerData { item: SoftResDistributableItem, count: number, status: RollStatus, iterations: RollIteration[], winners: Winner[] }
+---@alias RollTrackerData { item: SoftResDistributableItem, item_count: number, status: RollStatus, iterations: RollIteration[], winners: Winner[] }
 
 ---@class RollTracker
 ---@field preview fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, required_rolling_players: Player[] )
@@ -225,7 +225,7 @@ function M.new()
 
     return {
       item = item_on_roll,
-      count = item_on_roll_count,
+      item_count = item_on_roll_count,
       status = status,
       iterations = iterations,
       winners = winners

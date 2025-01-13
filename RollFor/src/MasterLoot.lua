@@ -12,6 +12,22 @@ local err = m.err
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
+---@class MasterLoot
+---@field on_loot_opened fun()
+---@field on_loot_closed fun()
+---@field on_recipient_inventory_full fun()
+---@field on_player_is_too_far fun()
+---@field on_unknown_error_message fun( message: string )
+---@field on_confirm fun( player: ItemCandidate|Winner, item: DistributableItem )
+---@field show_loot_candidates_frame fun( item: DistributableItem, strategy: RollingStrategyType )
+---@field on_loot_slot_cleared fun( slot: number )
+---@field on_loot_received fun( player_name: string, item_id: number, item_link: string )
+
+---@param master_loot_candidates MasterLootCandidates
+---@param award_item fun( player_name: string, item_id: number, item_link: string )
+---@param master_loot_frame MasterLootFrame
+---@param loot_list LootList
+---@return MasterLoot
 function M.new( master_loot_candidates, award_item, master_loot_frame, loot_list )
   local m_confirmed = nil
   local m_slot_cache = {}
@@ -40,6 +56,8 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, loot_list
     m_slot_cache[ slot ] = nil
   end
 
+  ---@param player ItemCandidate|Winner
+  ---@param item any
   local function on_confirm( player, item )
     local loot_item = loot_list.find_item( item.id )
     if not loot_item then return end
@@ -63,7 +81,9 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, loot_list
     master_loot_frame.hide()
   end
 
-  local function show_loot_candidates_frame( item )
+  ---@param item DistributableItem
+  ---@param strategy RollingStrategyType
+  local function show_loot_candidates_frame( item, strategy )
     master_loot_frame.create()
     master_loot_frame.hide()
 
@@ -75,7 +95,7 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, loot_list
       return
     end
 
-    master_loot_frame.create_candidate_frames( candidates, item )
+    master_loot_frame.create_candidate_frames( candidates, item, strategy )
     master_loot_frame.show( item.link )
   end
 

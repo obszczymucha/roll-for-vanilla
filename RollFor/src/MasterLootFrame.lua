@@ -150,6 +150,18 @@ local function create_button( parent, index, rows )
   return frame
 end
 
+---@class MasterLootFrame
+---@field restore_loot_buttons fun()
+---@field create fun()
+---@field create_candidate_frames fun( candidates: ItemCandidate[], item: DistributableItem, strategy: RollingStrategyType )
+---@field show fun( item_link: ItemLink )
+---@field hide fun()
+---@field get_frame fun(): Frame
+
+---@param winner_tracker WinnerTracker
+---@param roll_controller RollController
+---@param config Config
+---@return MasterLootFrame
 function M.new( winner_tracker, roll_controller, config )
   local m_frame
   local m_buttons = {}
@@ -167,7 +179,10 @@ function M.new( winner_tracker, roll_controller, config )
     m_frame:SetHeight( (button_height + vertical_padding) * total_rows + vertical_padding + 9 )
   end
 
-  local function create_candidate_frames( candidates, item )
+  ---@param candidates ItemCandidate[]
+  ---@param item DistributableItem
+  ---@param strategy RollingStrategyType
+  local function create_candidate_frames( candidates, item, strategy )
     local total = getn( candidates )
     local rows = config.master_loot_frame_rows()
 
@@ -201,7 +216,7 @@ function M.new( winner_tracker, roll_controller, config )
       button:SetScript( "OnClick", function()
         ---@diagnostic disable-next-line: undefined-global
         local self = button
-        roll_controller.award_loot( self.player, item )
+        roll_controller.award_loot( self.player, item, strategy )
       end )
 
       button:Show()

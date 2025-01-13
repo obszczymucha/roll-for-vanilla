@@ -24,7 +24,8 @@ function M.new( config, roll_tracker, loot_list, roll_controller )
     end
 
     if first_item and first_item.quality >= threshold and not data.status then
-      roll_controller.preview( first_item )
+      local count = loot_list.count( first_item.id )
+      roll_controller.preview( first_item, count )
     end
   end
 

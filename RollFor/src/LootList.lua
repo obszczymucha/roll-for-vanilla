@@ -5,6 +5,7 @@ if m.LootList then return end
 local M = m.Module.new( "LootList" )
 local interface = m.Interface
 local clear = m.clear_table
+local getn = table.getn
 
 ---@class LootList
 ---@field get_items fun(): DistributableItem[]
@@ -16,12 +17,12 @@ local clear = m.clear_table
 ---@param loot_facade LootFacade
 ---@param item_utils ItemUtils
 ---@return LootList
-function M.new( loot_facade, item_utils, dummy_items )
+function M.new( loot_facade, item_utils, dummy_items_fn )
   interface.validate( loot_facade, m.LootFacade.interface )
   interface.validate( item_utils, m.ItemUtils.interface )
 
   local lf = loot_facade
-  local items = dummy_items or {}
+  local items = {}
   local looting = false
   local source_guid
 
@@ -31,11 +32,21 @@ function M.new( loot_facade, item_utils, dummy_items )
     source_guid = nil
   end
 
+  local function add_item( item, i )
+    local dummy_items = dummy_items_fn and dummy_items_fn() or {}
+    local dummy_item_count = getn( dummy_items )
+    local new_item = i > dummy_item_count and item or dummy_items[ i ]
+
+    table.insert( items, new_item )
+  end
+
   local function on_loot_opened()
     M.debug.add( "loot_opened" )
     clear_items()
     looting = true
     source_guid = lf.get_source_guid()
+
+    local item_count = 1
 
     for slot = 1, lf.get_item_count() do
       if lf.is_coin( slot ) then
@@ -52,16 +63,19 @@ function M.new( loot_facade, item_utils, dummy_items )
         local tooltip_link = link and item_utils.get_tooltip_link( link )
 
         if item_id and item_name then
-          table.insert( items, item_utils.make_distributable_item(
-            item_id,
-            item_name,
-            link,
-            tooltip_link,
-            info and info.quality,
-            info and info.quantity,
-            info and info.texture,
-            slot
-          ) )
+          add_item(
+            item_utils.make_distributable_item(
+              item_id,
+              item_name,
+              link,
+              tooltip_link,
+              info and info.quality,
+              info and info.quantity,
+              info and info.texture,
+              slot
+            ), item_count )
+
+          item_count = item_count + 1
         end
       end
     end

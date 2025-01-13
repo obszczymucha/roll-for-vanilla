@@ -6,6 +6,7 @@ if m.RollController then return end
 local M = m.Module.new( "RollController" )
 local RS = m.Types.RollingStrategy
 local S = m.Types.RollingStatus
+local getn = table.getn
 
 ---@class RollController
 ---@field preview fun( item: Item, count: number )
@@ -23,7 +24,7 @@ local S = m.Types.RollingStatus
 ---@field show fun()
 ---@field award_aborted fun( item: Item )
 ---@field loot_awarded fun( item_link: string )
----@field award_loot fun( player: Player, item: Item, rolling_strategy: RollingStrategyType )
+---@field award_loot fun( player: ItemCandidate, item: DistributableItem, rolling_strategy: RollingStrategyType )
 ---@field loot_opened fun()
 ---@field loot_closed fun()
 ---@field player_already_has_unique_item fun()
@@ -59,7 +60,8 @@ function M.new( roll_tracker )
   ---@param item SoftResDistributableItem
   ---@param count number
   local function preview( item, count )
-    roll_tracker.preview( RS.SoftResRoll, item, count or 1, nil, item.sr_players )
+    local sr_count = getn( item.sr_players )
+    roll_tracker.preview( sr_count > 0 and RS.SoftResRoll or RS.NormalRoll, item, count or 1, nil, item.sr_players )
     local color = get_color( item.quality )
 
     M.debug.add( "border_color" )
@@ -191,9 +193,12 @@ function M.new( roll_tracker )
     process_next_item()
   end
 
-  local function award_loot( player, item, rolling_strategy )
+  ---@param player ItemCandidate
+  ---@param item DistributableItem
+  ---@param strategy RollingStrategyType
+  local function award_loot( player, item, strategy )
     M.debug.add( "award_loot" )
-    notify_subscribers( "award_loot", { player = player, item = item, rolling_strategy = rolling_strategy } )
+    notify_subscribers( "award_loot", { player = player, item = item, rolling_strategy = strategy } )
   end
 
   local function loot_opened()

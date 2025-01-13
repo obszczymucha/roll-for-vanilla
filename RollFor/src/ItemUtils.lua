@@ -38,7 +38,7 @@ M.interface = {
 ---@field quantity number
 
 ---@class SoftResDistributableItem : DistributableItem
----@field sr_players string[]?
+---@field sr_players RollingPlayer[]?
 ---@field hr boolean?
 
 ---@class Coin
@@ -56,7 +56,7 @@ M.interface = {
 
 ---@alias MakeSoftResDistributableItemFn fun(
 ---  item: DistributableItem,
----  sr_players: string[]?,
+---  sr_players: RollingPlayer[]?,
 ---  hr: boolean? )
 
 ---@class ItemUtils

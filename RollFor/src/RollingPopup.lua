@@ -155,6 +155,18 @@ function M.new( popup_builder, db, config, roll_controller )
           else
             frame:Enable()
           end
+        elseif type == "award_button" then
+          frame:SetWidth( v.width or button_defaults.width )
+          frame:SetHeight( v.height or button_defaults.height )
+          frame:SetText( v.label or "" )
+          frame:SetScale( v.scale or button_defaults.scale )
+          frame:SetScript( "OnClick", v.on_click or function() end )
+
+          if v.disabled then
+            frame:Disable()
+          else
+            frame:Enable()
+          end
         elseif type == "info" then
           frame.tooltip_info = v.value
           frame:ClearAllPoints()
