@@ -204,6 +204,31 @@ function RaidRollPopupContentSpec:should_display_the_winner()
     } )
 end
 
+function RaidRollPopupContentSpec:should_display_the_winner_and_the_award_button()
+  -- Given
+  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
+  local item_id = 123
+  local seconds_left = 7
+  local item = i( "Hearthstone", item_id )
+  local p1 = p( "Psikutas", C.Warrior )
+  local strategy = RS.RaidRoll
+  controller.start( strategy, item, 1, nil, seconds_left )
+  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, true, RT.MainSpec ) }, strategy )
+  controller.finish()
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                       count = 1 },
+      { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
+      { type = "button",              label = "Award winner",                 width = 130 },
+      { type = "button",              label = "Close",                        width = 70 }
+    } )
+end
+
 function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again_button()
   -- Given
   local popup = new_mod( mock_config( { auto_raid_roll = true, raid_roll_again = true } ) )
@@ -251,6 +276,120 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_i
       { type = "text",                value = "Psikutas wins the raid-roll.",                     padding = 8 },
       { type = "info",                value = "Use /rf config auto-rr to enable auto raid-roll.", anchor = "RollForRollingFrame" },
       { type = "button",              label = "Close",                                            width = 70 }
+    } )
+end
+
+InstaRaidRollPopupContentSpec = {}
+
+function InstaRaidRollPopupContentSpec:should_return_initial_content()
+  -- Given
+  local popup = new_mod()
+  local item_id = 123
+  local seconds_left = 7
+  local item = i( "Hearthstone", item_id )
+  controller.start( RS.InstaRaidRoll, item, 1, nil, seconds_left )
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                count = 1 },
+      { type = "text",                value = "Insta raid rolling...", padding = 8 },
+    } )
+end
+
+function InstaRaidRollPopupContentSpec:should_return_initial_content_with_multiple_items_to_roll()
+  -- Given
+  local popup = new_mod()
+  local item_id = 123
+  local seconds_left = 7
+  local item = i( "Hearthstone", item_id )
+  controller.start( RS.InstaRaidRoll, item, 2, nil, seconds_left )
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                count = 2 },
+      { type = "text",                value = "Insta raid rolling...", padding = 8 },
+    } )
+end
+
+function InstaRaidRollPopupContentSpec:should_display_the_winner()
+  -- Given
+  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
+  local item_id = 123
+  local seconds_left = 7
+  local item = i( "Hearthstone", item_id )
+  local p1 = p( "Psikutas", C.Warrior )
+  local strategy = RS.InstaRaidRoll
+  controller.start( strategy, item, 1, nil, seconds_left )
+  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
+  controller.finish()
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                             count = 1 },
+      { type = "text",                value = "Psikutas wins the insta raid-roll.", padding = 8 },
+      { type = "button",              label = "Close",                              width = 70 }
+    } )
+end
+
+function InstaRaidRollPopupContentSpec:should_display_the_winner_and_the_award_button()
+  -- Given
+  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
+  local item_id = 123
+  local seconds_left = 7
+  local item = i( "Hearthstone", item_id )
+  local p1 = p( "Psikutas", C.Warrior )
+  local strategy = RS.InstaRaidRoll
+  controller.start( strategy, item, 1, nil, seconds_left )
+  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, true, RT.MainSpec ) }, strategy )
+  controller.finish()
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                             count = 1 },
+      { type = "text",                value = "Psikutas wins the insta raid-roll.", padding = 8 },
+      { type = "button",              label = "Award winner",                       width = 130 },
+      { type = "button",              label = "Close",                              width = 70 }
+    } )
+end
+
+function InstaRaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again_button()
+  -- Given
+  local popup = new_mod( mock_config( { auto_raid_roll = true, raid_roll_again = true } ) )
+  local item_id = 123
+  local seconds_left = 7
+  local item = i( "Hearthstone", item_id )
+  local p1 = p( "Psikutas", C.Warrior )
+  local strategy = RS.InstaRaidRoll
+  controller.start( strategy, item, 1, nil, seconds_left )
+  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
+  controller.finish()
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                             count = 1 },
+      { type = "text",                value = "Psikutas wins the insta raid-roll.", padding = 8 },
+      { type = "button",              label = "Raid roll again",                    width = 130 },
+      { type = "button",              label = "Close",                              width = 70 }
     } )
 end
 
@@ -781,6 +920,38 @@ function SoftResrollPopupContentSpec:should_display_the_winner()
       { type = "roll",                player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes },
       { type = "roll",                player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes },
       { type = "text",                value = "Psikutas wins the soft-res roll with a 69.", padding = 11 },
+      { type = "button",              label = "Close",                                      width = 70 }
+    } )
+end
+
+function SoftResrollPopupContentSpec:should_display_the_winner_and_the_award_button()
+  -- Given
+  local popup = new_mod()
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
+  local group_roster = mock_group_roster( p1, p2 )
+  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+  local item_id = 123
+  local seconds_left = 7
+  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local item = i( "Hearthstone", item_id )
+  local strategy = RS.SoftResRoll
+  controller.start( strategy, item, 1, nil, seconds_left, softressing_players )
+  controller.tick( 1 )
+  controller.winners_found( item, 1, { winner( "Psikutas", C.Warrior, item, true, RT.SoftRes, 69 ) }, strategy )
+  controller.finish()
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                                     count = 1 },
+      { type = "roll",                player_name = "Obszczymucha",                         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
+      { type = "roll",                player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes },
+      { type = "roll",                player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes },
+      { type = "text",                value = "Psikutas wins the soft-res roll with a 69.", padding = 11 },
+      { type = "button",              label = "Award winner",                               width = 130 },
       { type = "button",              label = "Close",                                      width = 70 }
     } )
 end
