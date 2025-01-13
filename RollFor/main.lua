@@ -662,7 +662,11 @@ end
 local function show_how_to_roll()
   announce( "How to roll:" )
   local ms = M.config.ms_roll_threshold() ~= 100 and string.format( " (%s)", M.config.ms_roll_threshold() or "100" ) or ""
-  announce( string.format( "For main-spec, type: /roll%s", ms ) )
+
+  local sr = M.softres.get_all_rollers()
+  local sr_count = getn( sr )
+
+  announce( string.format( "For main-spec%s, type: /roll%s", sr_count > 0 and " and soft-res" or "", ms ) )
   announce( string.format( "For off-spec, type: /roll %s", M.config.os_roll_threshold() ) )
 
   if M.config.tmog_rolling_enabled() then
