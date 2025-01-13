@@ -160,7 +160,7 @@ function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, 
         m_rolling_strategy = nil
         local strategy = rolling_strategy_factory.raid_roll( item, item_count )
 
-        if m_rolling_strategy then
+        if strategy then
           roll( strategy )
         end
       elseif m_rolling_strategy and not m_rolling_strategy.is_rolling() then

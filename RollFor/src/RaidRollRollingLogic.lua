@@ -63,7 +63,7 @@ function M.new( announce, ace_timer, item, item_count, winner_tracker, roll_cont
 
     roll_controller.start( strategy, item, item_count )
     roll_controller.show()
-    announce( string.format( "Raid rolling %s...", item.link ) )
+    announce( string.format( "Raid rolling %s%s...", item_count and item_count > 1 and string.format( "%sx", item_count ) or "", item.link ) )
 
     print_players( candidates )
     ace_timer.ScheduleTimer( M, function()

@@ -120,7 +120,7 @@ function RaidRollSpec:should_raid_roll_two_items_in_party_chat()
 
   -- Then
   assert_messages(
-    p( "Raid rolling [Hearthstone]..." ),
+    p( "Raid rolling 2x[Hearthstone]..." ),
     p( "[1]:Psikutas, [2]:Obszczymucha" ),
     p( "Obszczymucha wins [Hearthstone]." ),
     p( "Psikutas wins [Hearthstone]." )
