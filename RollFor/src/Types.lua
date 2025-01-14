@@ -32,6 +32,14 @@ end
 ---| "OffSpec"
 ---| "Transmog"
 ---| "SoftRes"
+
+---@class RT
+---@field MainSpec "MainSpec"
+---@field OffSpec "OffSpec"
+---@field Transmog "Transmog"
+---@field SoftRes "SoftRes"
+
+---@type RT
 M.RollType = {
   MainSpec = "MainSpec",
   OffSpec = "OffSpec",

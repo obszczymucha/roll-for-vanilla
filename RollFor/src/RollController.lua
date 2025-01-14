@@ -23,8 +23,8 @@ local getn = table.getn
 ---@field waiting_for_rolls fun()
 ---@field show fun()
 ---@field award_aborted fun( item: Item )
----@field loot_awarded fun( item_link: string )
----@field award_loot fun( player: ItemCandidate, item: DistributableItem, rolling_strategy: RollingStrategyType )
+---@field loot_awarded fun( player_name: string, item_id: number, item_link: string )
+---@field award_loot fun( player: ItemCandidate, item: DroppedItem, rolling_strategy: RollingStrategyType )
 ---@field loot_opened fun()
 ---@field loot_closed fun()
 ---@field player_already_has_unique_item fun()
@@ -57,7 +57,7 @@ function M.new( roll_tracker )
     return c
   end
 
-  ---@param item SoftResDistributableItem
+  ---@param item SoftRessedDroppedItem
   ---@param count number
   local function preview( item, count )
     local sr_count = getn( item.sr_players )
@@ -186,15 +186,18 @@ function M.new( roll_tracker )
     end
   end
 
-  local function loot_awarded( item_link )
-    roll_tracker.clear()
+  ---@param player_name string
+  ---@param item_id number
+  ---@param item_link string
+  local function loot_awarded( player_name, item_id, item_link )
     M.debug.add( "loot_awarded" )
-    notify_subscribers( "loot_awarded", item_link )
+    roll_tracker.loot_awarded( player_name, item_id )
+    notify_subscribers( "loot_awarded", { player_name = player_name, item_id = item_id, item_link = item_link } )
     process_next_item()
   end
 
   ---@param player ItemCandidate
-  ---@param item DistributableItem
+  ---@param item DroppedItem
   ---@param strategy RollingStrategyType
   local function award_loot( player, item, strategy )
     M.debug.add( "award_loot" )

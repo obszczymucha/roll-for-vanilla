@@ -34,7 +34,7 @@ local getn = table.getn
 ---@field seconds_left number?
 ---@field winners Player[]?
 
----@alias RollTrackerData { item: SoftResDistributableItem, item_count: number, status: RollStatus, iterations: RollIteration[], winners: Winner[] }
+---@alias RollTrackerData { item: SoftRessedDroppedItem, item_count: number, status: RollStatus, iterations: RollIteration[], winners: Winner[] }
 
 ---@class RollTracker
 ---@field preview fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, required_rolling_players: Player[] )
@@ -50,6 +50,7 @@ local getn = table.getn
 ---@field get fun(): RollTrackerData, RollIteration
 ---@field tick fun( seconds_left: number )
 ---@field clear fun()
+---@field loot_awarded fun( player_name: string, item_id: number )
 
 ---@return RollTracker
 function M.new()
@@ -260,6 +261,23 @@ function M.new()
     M.debug.add( "cleared" )
   end
 
+  ---@param player_name string
+  ---@param item_id number
+  local function loot_awarded( player_name, item_id )
+    if not item_on_roll or item_on_roll.id ~= item_id then return end
+
+    for i, winner in ipairs( winners ) do
+      if winner.name == player_name then
+        table.remove( winners, i )
+        return
+      end
+    end
+
+    if getn( winners ) == 0 then
+      clear()
+    end
+  end
+
   return {
     preview = preview,
     start = start,
@@ -273,7 +291,8 @@ function M.new()
     add_ignored = add_ignored,
     get = get,
     tick = tick,
-    clear = clear
+    clear = clear,
+    loot_awarded = loot_awarded
   }
 end
 

@@ -105,12 +105,12 @@ function M.new(
     ---@param item Item
     ---@param item_count number
     return function( item, item_count )
-      local dropped_item = loot_list.find_item( item.id )
-      local candidates = dropped_item and master_loot_candidates.get() or group_roster.get_all_players_in_my_group()
+      local slot = loot_list.get_slot( item.id )
+      local candidates = slot and master_loot_candidates.get() or group_roster.get_all_players_in_my_group()
       ---@type ItemCandidate[]|Player[]
       local online_candidates = m.filter( candidates, function( c ) return c.online == true end )
 
-      if dropped_item and getn( online_candidates ) == 0 then
+      if slot and getn( online_candidates ) == 0 then
         m.pretty_print( "Game API didn't return any loot candidates.", m.colors.red )
         return
       end

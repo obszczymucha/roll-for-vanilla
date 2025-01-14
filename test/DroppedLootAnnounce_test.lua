@@ -6,6 +6,7 @@ utils.mock_wow_api()
 local LootQuality = utils.LootQuality
 local modules = require( "src/modules" )
 local ItemUtils = require( "src/ItemUtils" )
+local LT = ItemUtils.LootType
 local make_item = ItemUtils.make_item
 require( "src/Types" )
 require( "src/SoftResDataTransformer" )
@@ -71,7 +72,7 @@ function ItemSummarySpec:should_create_the_summary()
   lu.assertEquals( #items, 4 )
   lu.assertEquals( #result, 3 )
   lu.assertEquals( result[ 1 ], {
-    item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = LootQuality.Epic },
+    item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = LootQuality.Epic, type = LT.Item },
     how_many_dropped = 2,
     softressers = {
       { name = "Obszczymucha", rolls = 1, type = "Roller" },
@@ -81,14 +82,14 @@ function ItemSummarySpec:should_create_the_summary()
   } )
 
   lu.assertEquals( result[ 2 ], {
-    item = { id = 111, link = "[Big mace]", name = "Big mace", quality = LootQuality.Epic },
+    item = { id = 111, link = "[Big mace]", name = "Big mace", quality = LootQuality.Epic, type = LT.Item },
     how_many_dropped = 1,
     softressers = {},
     is_hardressed = true
   } )
 
   lu.assertEquals( result[ 3 ], {
-    item = { id = 112, link = "[Small mace]", name = "Small mace", quality = LootQuality.Epic },
+    item = { id = 112, link = "[Small mace]", name = "Small mace", quality = LootQuality.Epic, type = LT.Item },
     how_many_dropped = 1,
     softressers = {},
     is_hardressed = false
@@ -108,7 +109,7 @@ function ItemSummarySpec:should_split_softresses_from_non_softresses_for_each_it
   lu.assertEquals( #items, 4 )
   lu.assertEquals( #result, 2 )
   lu.assertEquals( result[ 1 ], {
-    item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = LootQuality.Epic },
+    item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = LootQuality.Epic, type = LT.Item },
     how_many_dropped = 2,
     softressers = {
       { name = "Obszczymucha", rolls = 1, type = "Roller" },
@@ -118,7 +119,7 @@ function ItemSummarySpec:should_split_softresses_from_non_softresses_for_each_it
   } )
 
   lu.assertEquals( result[ 2 ], {
-    item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = LootQuality.Epic },
+    item = { id = 123, link = "[Hearthstone]", name = "Hearthstone", quality = LootQuality.Epic, type = LT.Item },
     how_many_dropped = 2,
     softressers = {},
     is_hardressed = false

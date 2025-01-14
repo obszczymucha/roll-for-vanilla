@@ -8,9 +8,9 @@ local clear = m.clear_table
 local getn = table.getn
 
 ---@class LootList
----@field get_items fun(): DistributableItem[]
+---@field get_items fun(): DroppedItem[]
 ---@field get_source_guid fun(): string
----@field find_item fun( item_id: number ): DistributableItem?
+---@field get_slot fun( item_id: number ): DroppedItem?
 ---@field is_looting fun(): boolean
 ---@field count fun( item_id: number ): number
 
@@ -21,23 +21,24 @@ function M.new( loot_facade, item_utils, dummy_items_fn )
   interface.validate( loot_facade, m.LootFacade.interface )
   interface.validate( item_utils, m.ItemUtils.interface )
 
-  local lf = loot_facade
+  ---@alias Slot number
+  ---@type table<Slot, Coin|DroppedItem>
   local items = {}
+  local lf = loot_facade
   local looting = false
   local source_guid
 
   local function clear_items()
     clear( items )
-    items.n = 0
     source_guid = nil
   end
 
-  local function add_item( item, i )
+  local function add_item( slot, item, item_count )
     local dummy_items = dummy_items_fn and dummy_items_fn() or {}
     local dummy_item_count = getn( dummy_items )
-    local new_item = i > dummy_item_count and item or dummy_items[ i ]
+    local new_item = item_count > dummy_item_count and item or dummy_items[ item_count ]
 
-    table.insert( items, new_item )
+    items[ slot ] = new_item
   end
 
   local function on_loot_opened()
@@ -53,7 +54,7 @@ function M.new( loot_facade, item_utils, dummy_items_fn )
         local info = lf.get_info( slot )
 
         if info then
-          table.insert( items, item_utils.make_coin( info.texture, info.name, slot ) )
+          items[ slot ] = item_utils.make_coin( info.texture, info.name, slot )
         end
       else
         local link = lf.get_link( slot )
@@ -63,8 +64,8 @@ function M.new( loot_facade, item_utils, dummy_items_fn )
         local tooltip_link = link and item_utils.get_tooltip_link( link )
 
         if item_id and item_name then
-          add_item(
-            item_utils.make_distributable_item(
+          add_item( slot,
+            item_utils.make_dropped_item(
               item_id,
               item_name,
               link,
@@ -79,10 +80,6 @@ function M.new( loot_facade, item_utils, dummy_items_fn )
         end
       end
     end
-
-    for i, item in ipairs( items ) do
-      item.index = i
-    end
   end
 
   local function on_loot_closed()
@@ -93,18 +90,7 @@ function M.new( loot_facade, item_utils, dummy_items_fn )
 
   local function on_loot_slot_cleared( slot )
     M.debug.add( "loot_slot_cleared" )
-    local index
-
-    for i, item in ipairs( items ) do
-      if item.slot == slot then
-        index = i
-        break
-      end
-    end
-
-    if index then
-      table.remove( items, index )
-    end
+    items[ slot ] = nil
   end
 
   local function get_items()
@@ -115,11 +101,12 @@ function M.new( loot_facade, item_utils, dummy_items_fn )
   loot_facade.subscribe( "LootClosed", on_loot_closed )
   loot_facade.subscribe( "LootSlotCleared", on_loot_slot_cleared )
 
-  ---@return DistributableItem?
-  local function find_item( item_id )
-    for _, item in ipairs( items ) do
+  ---@param item_id number
+  ---@return number?
+  local function get_slot( item_id )
+    for slot, item in pairs( items ) do
       if item.id == item_id then
-        return item
+        return slot
       end
     end
   end
@@ -143,7 +130,7 @@ function M.new( loot_facade, item_utils, dummy_items_fn )
   return {
     get_items = get_items,
     get_source_guid = function() return source_guid end,
-    find_item = find_item,
+    get_slot = get_slot,
     is_looting = is_looting,
     count = count
   }

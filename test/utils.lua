@@ -914,7 +914,7 @@ end
 
 function M.award( player, item_name, item_id )
   local rf = M.load_roll_for()
-  rf.award_item( player, item_id, M.item_link( item_name, item_id ) )
+  rf.on_loot_awarded( player, item_id, M.item_link( item_name, item_id ) )
 end
 
 function M.load_libstub()

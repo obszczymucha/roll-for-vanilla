@@ -14,10 +14,10 @@ function M.new()
     return M.source_guid or "PrincessKenny"
   end
 
-  local function find_item( item_id )
-    for _, item in ipairs( M.items or {} ) do
+  local function get_slot( item_id )
+    for slot, item in pairs( M.items or {} ) do
       if item.id == item_id then
-        return item
+        return slot
       end
     end
   end
@@ -25,7 +25,7 @@ function M.new()
   local function count( item_id )
     local result = 0
 
-    for _, item in ipairs( M.items ) do
+    for _, item in pairs( M.items ) do
       if item.id == item_id then
         result = result + 1
       end
@@ -37,7 +37,7 @@ function M.new()
   return {
     get_items = get_items,
     get_source_guid = get_source_guid,
-    find_item = find_item,
+    get_slot = get_slot,
     count = count
   }
 end

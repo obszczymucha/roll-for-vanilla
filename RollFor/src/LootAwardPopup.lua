@@ -81,9 +81,9 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
     local winning_player          = winner or player
 
     if rolling_strategy == RS.RaidRoll or not rolling_strategy and current_iteration and current_iteration.rolling_strategy == RS.RaidRoll and winner then
-      m.map( RollingPopupContent.raid_roll_winners_content( { winning_player } ), function( w ) table.insert( content, w ) end )
+      m.map( RollingPopupContent.raid_roll_winners_content( { winning_player }, item, rolling_strategy ), function( w ) table.insert( content, w ) end )
     elseif rolling_strategy == RS.InstaRaidRoll or not rolling_strategy and current_iteration and current_iteration.rolling_strategy == RS.InstaRaidRoll and winner then
-      for _, w in ipairs( RollingPopupContent.insta_raid_roll_winners_content( { winning_player } ) ) do
+      for _, w in ipairs( RollingPopupContent.insta_raid_roll_winners_content( { winning_player }, item, rolling_strategy ) ) do
         table.insert( content, w )
       end
     else

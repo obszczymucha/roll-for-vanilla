@@ -4,16 +4,22 @@ if m.SoftResLootListDecorator then return end
 
 local M = {}
 
+---@type LT
+local LT = m.ItemUtils.LootType
+
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
----@type MakeSoftResDistributableItemFn
-local make_softres_distributable_item = m.ItemUtils.make_softres_distributable_item
+---@type MakeSoftRessedDroppedItemFn
+local make_softres_dropped_item = m.ItemUtils.make_softres_dropped_item
+
+---@type MakeHardRessedDroppedItemFn
+local make_hardres_dropped_item = m.ItemUtils.make_hardres_dropped_item
 
 ---@class SoftResLootList
----@field get_items fun(): SoftResDistributableItem[]
+---@field get_items fun(): SoftRessedDroppedItem[]
 ---@field get_source_guid fun(): string
----@field find_item fun( item_id: number ): SoftResDistributableItem?
+---@field find_item fun( item_id: number ): SoftRessedDroppedItem?
 ---@field is_looting fun(): boolean
 ---@field count fun( item_id: number ): number
 
@@ -24,8 +30,8 @@ function M.new( loot_list, softres )
     if a == nil then return false end
     if b == nil then return true end
 
-    if a.coin and not b.coin then return false end
-    if b.coin and not a.coin then return true end
+    if a.type == LT.Coin and b.type ~= LT.Coin then return false end
+    if b.type == LT.Coin and a.type ~= LT.Coin then return true end
 
     local sr_a = a.sr_players and getn( a.sr_players ) or 0
     local sr_b = b.sr_players and getn( b.sr_players ) or 0
@@ -74,10 +80,16 @@ function M.new( loot_list, softres )
   end
 
   local function find_item( item_id )
-    local result = loot_list.find_item( item_id )
-    if not result then return end
+    local item = loot_list.get_slot( item_id )
+    if not item then return end
 
-    return make_softres_distributable_item( result, softres.get( result.id ), softres.is_item_hardressed( result.id ) )
+    local hr = softres.is_item_hardressed( item_id )
+
+    if hr then
+      return make_hardres_dropped_item( item )
+    else
+      return make_softres_dropped_item( item, softres.get( item.id ) )
+    end
   end
 
   local decorator = m.clone( loot_list )

@@ -14,10 +14,12 @@ require( "src/SoftResDataTransformer" )
 local softres_decorator = require( "src/SoftResPresentPlayersDecorator" )
 local softres_mod = require( "src/SoftRes" )
 local loot_list_mod = require( "mocks/LootList" )
-local new = require( "src/RollingPopupContent" ).new
 local ItemUtils = require( "src/ItemUtils" )
-local make_distributable_item = ItemUtils.make_distributable_item
-local make_softres_distributable_item = ItemUtils.make_softres_distributable_item
+local new = require( "src/RollingPopupContent" ).new
+local make_dropped_item = ItemUtils.make_dropped_item
+local make_item = ItemUtils.make_item
+local make_softres_dropped_item = ItemUtils.make_softres_dropped_item
+local make_hardres_dropped_item = ItemUtils.make_hardres_dropped_item
 local get_tooltip_link = ItemUtils.get_tooltip_link
 local item_link = tu.item_link
 local sr = tu.soft_res_item
@@ -30,6 +32,8 @@ local RS = types.RollingStrategy
 local tracker = tracker_mod.new()
 local controller = controller_mod.new( tracker )
 local loot_list = loot_list_mod.new()
+
+local getn = table.getn
 
 local function p( player_name, player_class )
   return {
@@ -126,8 +130,17 @@ end
 local function i( name, id, sr_players, hr )
   local link = item_link( name, id )
   local tooltip_link = get_tooltip_link( link )
-  local item = make_distributable_item( id, name, link, tooltip_link )
-  return make_softres_distributable_item( item, sr_players or {}, hr )
+  local item = make_dropped_item( id, name, link, tooltip_link )
+
+  if hr then
+    return make_hardres_dropped_item( item )
+  end
+
+  if getn( sr_players or {} ) > 0 then
+    return make_softres_dropped_item( item, sr_players or {} )
+  end
+
+  return make_item( id, name, link )
 end
 
 local function cleanse( t )
@@ -276,6 +289,36 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_i
       { type = "text",                value = "Psikutas wins the raid-roll.",                     padding = 8 },
       { type = "info",                value = "Use /rf config auto-rr to enable auto raid-roll.", anchor = "RollForRollingFrame" },
       { type = "button",              label = "Close",                                            width = 70 }
+    } )
+end
+
+function RaidRollPopupContentSpec:should_display_the_winners()
+  -- Given
+  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
+  local item_id = 123
+  local seconds_left = 7
+  local item = i( "Hearthstone", item_id )
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
+  local strategy = RS.RaidRoll
+  controller.start( strategy, item, 2, nil, seconds_left )
+  controller.winners_found( item, 1, {
+    winner( p1.name, p1.class, item, true, RT.MainSpec ),
+    winner( p2.name, p2.class, item, true, RT.MainSpec )
+  }, strategy )
+  controller.finish()
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                        count = 2 },
+      { type = "text",                value = "Psikutas wins the raid-roll.",  padding = 8 },
+      { type = "award_button",        label = "Award",                         padding = 6, width = 90 },
+      { type = "text",                value = "Jogobobek wins the raid-roll.", padding = 8 },
+      { type = "award_button",        label = "Award",                         padding = 6, width = 90 },
+      { type = "button",              label = "Close",                         width = 70 }
     } )
 end
 

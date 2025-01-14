@@ -3,6 +3,9 @@ local m = RollFor
 
 if m.GuiElements then return end
 
+---@type LT
+local LT = m.ItemUtils.LootType
+
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 local hl = m.colors.hl
@@ -432,7 +435,8 @@ function M.dropped_item( parent, text )
     item = v
     container.index.text:SetText( v.index )
     container.icon.texture:SetTexture( v.texture )
-    container.text:SetText( m.colorize_item_by_quality( v.coin and v.amount_text or v.name, v.coin and 0 or v.quality ) )
+    local is_coin = v.type == LT.Coin
+    container.text:SetText( m.colorize_item_by_quality( is_coin and v.amount_text or v.name, is_coin and 0 or v.quality ) )
 
     if v.hr then
       container.comment.text:SetText( m.colors.red( "HR" ) )

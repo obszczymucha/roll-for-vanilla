@@ -7,9 +7,10 @@ require( "src/Interface" )
 require( "src/WowApi" )
 ---@diagnostic disable-next-line: different-requires
 local LootFacade = require( "test/mocks/LootFacade" )
-require("src/DebugBuffer")
-require("src/Module")
-require( "src/ItemUtils" )
+require( "src/DebugBuffer" )
+require( "src/Module" )
+local ItemUtils = require( "src/ItemUtils" )
+local LT = ItemUtils.LootType
 require( "src/LootList" )
 require( "src/SoftResLootListDecorator" )
 
@@ -40,7 +41,8 @@ function LootListSpec.should_return_a_coin_entry_if_its_the_only_one_that_droppe
 
   -- Then
   eq( getn( result ), 1 )
-  eq( result[ 1 ].coin, true )
+  eq( result[ 1 ].type, LT.Coin )
+  eq( loot_list.get_slot( result[ 1 ].id ), 1 )
   eq( result[ 1 ].texture, "Interface\\Icons\\INV_Misc_Coin_06" )
   eq( result[ 1 ].amount_text, "64 Copper" )
 end
@@ -62,11 +64,11 @@ function LootListSpec.should_return_an_item_entry_if_its_the_only_one_that_dropp
 
   -- Then
   eq( getn( result ), 1 )
-  eq( result[ 1 ].coin, nil )
+  eq( result[ 1 ].type, LT.DroppedItem )
   eq( result[ 1 ].id, 123 )
   eq( result[ 1 ].name, "Big item" )
   eq( result[ 1 ].texture, "tex" )
-  eq( result[ 1 ].slot, 1 )
+  eq( loot_list.get_slot( result[ 1 ].id ), 1 )
   eq( result[ 1 ].link, link )
   eq( result[ 1 ].quality, LootQuality.Epic )
 end
@@ -91,14 +93,14 @@ function LootListSpec.should_sort_the_coin_last()
 
   -- Then
   eq( getn( result ), 2 )
-  eq( result[ 1 ].coin, nil )
+  eq( result[ 1 ].type, LT.DroppedItem )
   eq( result[ 1 ].id, 123 )
   eq( result[ 1 ].name, "Big item" )
   eq( result[ 1 ].texture, "tex" )
-  eq( result[ 1 ].slot, 1 )
+  eq( loot_list.get_slot( result[ 1 ].id ), 1 )
   eq( result[ 1 ].link, link )
   eq( result[ 1 ].quality, LootQuality.Epic )
-  eq( result[ 2 ].coin, true )
+  eq( result[ 2 ].type, LT.Coin )
   eq( result[ 2 ].texture, "coin texture" )
   eq( result[ 2 ].amount_text, "1337 Copper" )
 end
@@ -124,25 +126,25 @@ function LootListSpec.should_sort_the_items_by_quality_and_then_name()
 
   -- Then
   eq( getn( result ), 3 )
-  eq( result[ 1 ].coin, nil )
+  eq( result[ 1 ].type, LT.DroppedItem )
   eq( result[ 1 ].id, 222 )
   eq( result[ 1 ].name, "Big item" )
   eq( result[ 1 ].texture, "tex" )
-  eq( result[ 1 ].slot, 2 )
+  eq( loot_list.get_slot( result[ 1 ].id ), 2 )
   eq( result[ 1 ].link, links[ 2 ] )
   eq( result[ 1 ].quality, LootQuality.Epic )
-  eq( result[ 2 ].coin, nil )
+  eq( result[ 2 ].type, LT.DroppedItem )
   eq( result[ 2 ].id, 333 )
   eq( result[ 2 ].name, "Average item" )
   eq( result[ 2 ].texture, "tex" )
-  eq( result[ 2 ].slot, 3 )
+  eq( loot_list.get_slot( result[ 2 ].id ), 3 )
   eq( result[ 2 ].link, links[ 3 ] )
   eq( result[ 2 ].quality, LootQuality.Rare )
-  eq( result[ 3 ].coin, nil )
+  eq( result[ 3 ].type, LT.DroppedItem )
   eq( result[ 3 ].id, 111 )
   eq( result[ 3 ].name, "Small item" )
   eq( result[ 3 ].texture, "tex" )
-  eq( result[ 3 ].slot, 1 )
+  eq( loot_list.get_slot( result[ 3 ].id ), 1 )
   eq( result[ 3 ].link, links[ 1 ] )
   eq( result[ 3 ].quality, LootQuality.Rare )
 end

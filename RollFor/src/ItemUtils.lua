@@ -5,14 +5,45 @@ if m.ItemUtils then return end
 
 local M = {}
 
-M.interface = {
-  get_item_id = "function",
-  get_item_name = "function",
-  parse_all_links = "function",
-  get_tooltip_link = "function",
-  make_item = "function",
-  make_distributable_item = "function"
+---@class LT
+---@field Item "Item"
+---@field SoftRessedItem "SoftRessedItem"
+---@field HardRessedItem "HardRessedItem"
+---@field Coin "Coin"
+---@field DroppedItem "DroppedItem"
+---@field SoftRessedDroppedItem "SoftRessedDroppedItem"
+---@field HardRessedDroppedItem "HardRessedDroppedItem"
+
+---@type LT
+local LootType = {
+  Item = "Item",
+  SoftRessedItem = "SoftRessedItem",
+  HardRessedItem = "HardRessedItem",
+  Coin = "Coin",
+  DroppedItem = "DroppedItem",
+  SoftRessedDroppedItem = "SoftRessedDroppedItem",
+  HardRessedDroppedItem = "HardRessedDroppedItem"
 }
+
+M.LootType = LootType
+
+---@alias LootType
+---| "Item"
+---| "SoftRessedItem"
+---| "HardRessedItem"
+---| DroppedLootType
+
+---@alias DroppedLootType
+---| CoinType
+---| DroppedItemType
+
+---@alias CoinType
+---| "Coin"
+
+---@alias DroppedItemType
+---| "DroppedItem"
+---| "SoftRessedDroppedItem"
+---| "HardRessedDroppedItem"
 
 ---@alias ItemQuality
 ---| 0 -- Poor
@@ -31,33 +62,39 @@ M.interface = {
 ---@field link ItemLink
 ---@field quality ItemQuality?
 ---@field texture string?
+---@field type "Item"
 
----@class DistributableItem : Item
----@field slot number
+---@class DroppedItem : Item
 ---@field tooltip_link TooltipItemLink
 ---@field quantity number
+---@field type "DroppedItem"
 
----@class SoftResDistributableItem : DistributableItem
+---@class SoftRessedDroppedItem : DroppedItem
 ---@field sr_players RollingPlayer[]?
----@field hr boolean?
+---@field type "SoftRessedDroppedItem"
+
+---@class HardRessedDroppedItem : DroppedItem
+---@field type "HardRessedDroppedItem"
 
 ---@class Coin
----@field coin boolean -- always true
 ---@field texture string
 ---@field amount_text string
 ---@field slot number
+---@field type "Coin"
 
 ---@alias MakeItemFn fun(
 ---  id: number,
 ---  name: string,
 ---  link: ItemLink,
 ---  quality: ItemQuality,
----  texture: string )
+---  texture: string ): Item
 
----@alias MakeSoftResDistributableItemFn fun(
----  item: DistributableItem,
----  sr_players: RollingPlayer[]?,
----  hr: boolean? )
+---@alias MakeSoftRessedDroppedItemFn fun(
+---  item: DroppedItem,
+---  sr_players: RollingPlayer[]? ): SoftRessedDroppedItem
+
+---@alias MakeHardRessedDroppedItemFn fun(
+---  item: DroppedItem ): HardRessedDroppedItem
 
 ---@class ItemUtils
 ---@field get_item_id fun( item_link: ItemLink ): number?
@@ -66,8 +103,9 @@ M.interface = {
 ---@field parse_all_links fun( item_links: string ): ItemLink[]
 ---@field get_tooltip_link fun( item_link: ItemLink ): TooltipItemLink
 ---@field make_item MakeItemFn
----@field make_distributable_item fun( id: number, name: string, link: ItemLink, tooltip_link: TooltipItemLink, quality: ItemQuality, quantity: number, texture: string, slot: number ): DistributableItem
----@field make_softres_distributable_item MakeSoftResDistributableItemFn
+---@field make_dropped_item fun( id: number, name: string, link: ItemLink, tooltip_link: TooltipItemLink, quality: ItemQuality, quantity: number, texture: string, slot: number ): DroppedItem
+---@field make_softres_dropped_item MakeSoftRessedDroppedItemFn
+---@field make_hardres_dropped_item MakeSoftRessedDroppedItemFn
 ---@field make_coin fun( texture: string, amount_text: string, slot: number ): Coin
 
 ---@param item_link ItemLink
@@ -121,7 +159,14 @@ end
 ---@param texture string?
 ---@return Item
 function M.make_item( id, name, link, quality, texture )
-  return { id = id, name = name, link = link, quality = quality, texture = texture }
+  return {
+    id = id,
+    name = name,
+    link = link,
+    quality = quality,
+    texture = texture,
+    type = LootType.Item
+  }
 end
 
 ---@param id number
@@ -131,17 +176,24 @@ end
 ---@param quality ItemQuality?
 ---@param quantity number?
 ---@param texture string?
----@param slot number?
----@return DistributableItem
-function M.make_distributable_item( id, name, link, tooltip_link, quality, quantity, texture, slot )
-  return { id = id, name = name, link = link, tooltip_link = tooltip_link, quality = quality, quantity = quantity, texture = texture, slot = slot }
+---@return DroppedItem
+function M.make_dropped_item( id, name, link, tooltip_link, quality, quantity, texture )
+  return {
+    id = id,
+    name = name,
+    link = link,
+    tooltip_link = tooltip_link,
+    quality = quality,
+    quantity = quantity,
+    texture = texture,
+    type = LootType.DroppedItem
+  }
 end
 
----@param item DistributableItem
+---@param item DroppedItem
 ---@param sr_players string[]?
----@param hr boolean?
----@return SoftResDistributableItem
-function M.make_softres_distributable_item( item, sr_players, hr )
+---@return SoftRessedDroppedItem
+function M.make_softres_dropped_item( item, sr_players )
   return {
     id = item.id,
     name = item.name,
@@ -150,18 +202,35 @@ function M.make_softres_distributable_item( item, sr_players, hr )
     quality = item.quality,
     quantity = item.quantity,
     texture = item.texture,
-    slot = item.slot,
     sr_players = sr_players,
-    hr = hr
+    type = LootType.SoftRessedDroppedItem
+  }
+end
+
+---@param item DroppedItem
+---@return HardRessedDroppedItem
+function M.make_hardres_dropped_item( item )
+  return {
+    id = item.id,
+    name = item.name,
+    link = item.link,
+    tooltip_link = item.tooltip_link,
+    quality = item.quality,
+    quantity = item.quantity,
+    texture = item.texture,
+    type = LootType.HardRessedDroppedItem
   }
 end
 
 ---@param texture string
 ---@param amount_text string
----@param slot number
 ---@return Coin
-function M.make_coin( texture, amount_text, slot )
-  return { coin = true, texture = texture, amount_text = amount_text, slot = slot }
+function M.make_coin( texture, amount_text )
+  return {
+    texture = texture,
+    amount_text = amount_text,
+    type = "Coin"
+  }
 end
 
 m.ItemUtils = M

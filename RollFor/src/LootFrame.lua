@@ -4,6 +4,9 @@ if m.LootFrame then return end
 
 local M = m.Module.new( "LootFrame" )
 
+---@type LT
+local LT = m.ItemUtils.LootType
+
 M.center_point = { point = "CENTER", relative_point = "CENTER", x = -260, y = 220 }
 local S = m.Types.RollingStatus
 
@@ -59,7 +62,7 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
 
     local loot_method = m.api.GetLootMethod()
 
-    if m.is_player_master_looter() and not item.coin then
+    if m.is_player_master_looter() and item.type ~= LT.Coin then
       local count = loot_list.count( item.id )
       roll_controller.preview( item, count )
       return
@@ -216,7 +219,7 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
     local roll_data = roll_tracker.get()
     local item = roll_data and roll_data.status and roll_data.status ~= S.Preview and roll_data.item
 
-    if item and loot_list.find_item( item.id ) then
+    if item and loot_list.get_slot( item.id ) then
       selected_item = item
     end
 

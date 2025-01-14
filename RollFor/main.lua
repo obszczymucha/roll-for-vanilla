@@ -72,7 +72,7 @@ local function trade_complete_callback( recipient, items_given, items_received )
       local item_name = M.dropped_loot.get_dropped_item_name( item_id )
 
       if item_name then
-        M.award_item( recipient, item_id, item.link )
+        M.on_loot_awarded( recipient, item_id, item.link )
       end
     end
   end
@@ -98,7 +98,7 @@ local function on_finish_roll_command()
   M.rolling_logic.stop_accepting_rolls( true )
 end
 
----@param item DistributableItem
+---@param item DroppedItem
 ---@param strategy RollingStrategyType
 local function select_player( item, strategy )
   local anchor = M.rolling_popup.get_frame()
@@ -232,6 +232,8 @@ local function create_components()
 
   M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.loot_list, announce, M.dropped_loot, M.softres, M.winner_tracker )
   M.roll_tracker = m.RollTracker.new()
+
+  ---@type RollController
   M.roll_controller = m.RollController.new( M.roll_tracker, M.loot_list, M.config )
   M.master_loot_frame = m.MasterLootFrame.new( M.winner_tracker, M.roll_controller, M.config )
   M.master_loot_candidates = m.MasterLootCandidates.new( M.group_roster ) -- remove group_roster for testing (dummy candidates)
@@ -239,7 +241,7 @@ local function create_components()
   ---@type MasterLoot
   M.master_loot = m.MasterLoot.new(
     M.master_loot_candidates,
-    M.award_item,
+    M.on_loot_awarded,
     M.master_loot_frame,
     M.loot_list
   )
@@ -762,9 +764,12 @@ local function on_party_message( message, player )
   end
 end
 
-function M.award_item( player_name, item_id, item_link )
+---@param player_name string
+---@param item_id number
+---@param item_link string
+function M.on_loot_awarded( player_name, item_id, item_link )
   M.awarded_loot.award( player_name, item_id )
-  M.roll_controller.loot_awarded( item_link )
+  M.roll_controller.loot_awarded( player_name, item_id, item_link )
   info( string.format( "%s received %s.", hl( player_name ), item_link ) ) -- TODO: Remove from here and subscribe to an event.
   M.winner_tracker.untrack( player_name, item_link )
 end

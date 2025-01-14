@@ -153,7 +153,7 @@ end
 ---@class MasterLootFrame
 ---@field restore_loot_buttons fun()
 ---@field create fun()
----@field create_candidate_frames fun( candidates: ItemCandidate[], item: DistributableItem, strategy: RollingStrategyType )
+---@field create_candidate_frames fun( candidates: ItemCandidate[], item: DroppedItem, strategy: RollingStrategyType )
 ---@field show fun( item_link: ItemLink )
 ---@field hide fun()
 ---@field get_frame fun(): Frame
@@ -180,7 +180,7 @@ function M.new( winner_tracker, roll_controller, config )
   end
 
   ---@param candidates ItemCandidate[]
-  ---@param item DistributableItem
+  ---@param item DroppedItem
   ---@param strategy RollingStrategyType
   local function create_candidate_frames( candidates, item, strategy )
     local total = getn( candidates )

@@ -18,17 +18,17 @@ local getn = table.getn
 ---@field on_recipient_inventory_full fun()
 ---@field on_player_is_too_far fun()
 ---@field on_unknown_error_message fun( message: string )
----@field on_confirm fun( player: ItemCandidate|Winner, item: DistributableItem )
----@field show_loot_candidates_frame fun( item: DistributableItem, strategy: RollingStrategyType )
+---@field on_confirm fun( player: ItemCandidate|Winner, item: DroppedItem )
+---@field show_loot_candidates_frame fun( item: DroppedItem, strategy: RollingStrategyType )
 ---@field on_loot_slot_cleared fun( slot: number )
 ---@field on_loot_received fun( player_name: string, item_id: number, item_link: string )
 
 ---@param master_loot_candidates MasterLootCandidates
----@param award_item fun( player_name: string, item_id: number, item_link: string )
+---@param on_loot_awarded fun( player_name: string, item_id: number, item_link: string )
 ---@param master_loot_frame MasterLootFrame
 ---@param loot_list LootList
 ---@return MasterLoot
-function M.new( master_loot_candidates, award_item, master_loot_frame, loot_list )
+function M.new( master_loot_candidates, on_loot_awarded, master_loot_frame, loot_list )
   local m_confirmed = nil
   local m_slot_cache = {}
 
@@ -49,7 +49,7 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, loot_list
     local cached_item = m_slot_cache[ slot ]
 
     if cached_item.id == m_confirmed.item.id then
-      award_item( m_confirmed.player.name, m_confirmed.item.id, m_confirmed.item.link )
+      on_loot_awarded( m_confirmed.player.name, m_confirmed.item.id, m_confirmed.item.link )
       reset_confirmation()
     end
 
@@ -57,18 +57,18 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, loot_list
   end
 
   ---@param player ItemCandidate|Winner
-  ---@param item any
+  ---@param item Item
   local function on_confirm( player, item )
-    local loot_item = loot_list.find_item( item.id )
-    if not loot_item then return end
+    local slot = loot_list.get_slot( item.id )
+    if not slot then return end
 
     if player.type ~= "ItemCandidate" and not (player.type == "Winner" and player.is_on_master_loot_candidate_list) then
       err( "Player is not eligible for this item." )
       return
     end
 
-    m_confirmed = { item = item, slot = loot_item.slot, player = player }
-    m_slot_cache[ loot_item.slot ] = item
+    m_confirmed = { item = item, slot = slot, player = player }
+    m_slot_cache[ slot ] = item
 
     local index = master_loot_candidates.get_index( player.name )
 
@@ -77,11 +77,11 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, loot_list
       return
     end
 
-    m.api.GiveMasterLoot( loot_item.slot, index )
+    m.api.GiveMasterLoot( slot, index )
     master_loot_frame.hide()
   end
 
-  ---@param item DistributableItem
+  ---@param item DroppedItem
   ---@param strategy RollingStrategyType
   local function show_loot_candidates_frame( item, strategy )
     master_loot_frame.create()
@@ -123,7 +123,7 @@ function M.new( master_loot_candidates, award_item, master_loot_frame, loot_list
     local is_looting = loot_list.is_looting()
     if m_confirmed and is_looting then return end
 
-    award_item( player_name, item_id, item_link )
+    on_loot_awarded( player_name, item_id, item_link )
     reset_confirmation()
   end
 

@@ -4,6 +4,10 @@ local m = RollFor
 if m.LootAutoProcess then return end
 
 local M = {}
+
+---@type LT
+local LT = m.ItemUtils.LootType
+
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 local clear_table = m.clear_table
@@ -16,7 +20,8 @@ function M.new( config, roll_tracker, loot_list, roll_controller )
     local threshold = m.api.GetLootThreshold()
     local data = roll_tracker.get()
     local items = loot_list.get_items()
-    local first_item = items and getn( items ) > 0 and not items[ 1 ].coin and items[ 1 ]
+    local is_coin = items[ 1 ].type == LT.Coin
+    local first_item = items and getn( items ) > 0 and not is_coin and items[ 1 ]
 
     if selected_loot_list_item then
       roll_controller.process_next_item( selected_loot_list_item )
