@@ -1017,12 +1017,7 @@ function M.master_loot( item_link )
   M.mock( "IsModifiedClick", false )
   M.mock( "CloseDropDownMenus", function() end )
   M.mock( "GetLootSlotLink", function() return item_link end )
-  local button = _G[ "LootButton1" ]
-  button.hasItem = true
-  button.quality = M.LootQuality.Epic
-  button.slot = 1
   M.mock_object( "LootFrame", {} )
-  button:Click()
   -- local player_frame = get_player_frame_from_master_looter_frame( player_name )
   -- player_frame:Click()
 end

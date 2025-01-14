@@ -256,14 +256,6 @@ function M.new(
     return { type = "button", label = "Award...", width = 90, on_click = function() select_player( data.item ) end }
   end
 
-  -- local function free_roll_button( data )
-  --   return { type = "button", label = "Free roll", width = 90, on_click = function() free_roll_item( data.item.link ) end }
-  -- end
-  --
-  -- local function loot_yourself( data )
-  --   return { type = "button", label = "Loot", width = 55, on_click = function() loot_to_yourself( data.item.slot ) end }
-  -- end
-
   local function roll_button( data )
     return { type = "button", label = "Roll", width = 70, on_click = function() roll_item( data.item ) end }
   end

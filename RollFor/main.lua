@@ -208,10 +208,9 @@ local function create_components()
     local ids = { 18842, 18842, 3676 }
     local result = {}
 
-    for i, item_id in ipairs( ids ) do
+    for _, item_id in ipairs( ids ) do
       local item = {}
       item.id = item_id
-      item.slot = i
 
       if not item.name then
         item.name, item.tooltip_link, item.quality, _, _, _, _, _, item.texture = m.api.GetItemInfo( item.id )

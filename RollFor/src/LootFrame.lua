@@ -75,7 +75,8 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
       -- For looting to work in vanilla, the frame must be of a "LootButton" type and
       -- then it comes with the SetSlot function that we need to use to set the slot.
       -- This will probably be a pain in the ass when porting.
-      button:SetSlot( item.slot )
+      local slot = loot_list.get_slot( item.id )
+      button:SetSlot( slot )
     end
   end
 

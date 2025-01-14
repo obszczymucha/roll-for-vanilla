@@ -40,7 +40,8 @@ function M.new( config, roll_tracker, loot_list, roll_controller )
 
   local function on_loot_opened()
     for _, item in ipairs( loot_list.get_items() ) do
-      loot_cache[ item.slot ] = item
+      local slot = loot_list.get_slot( item.id )
+      loot_cache[ slot ] = item
     end
 
     if not config.auto_process_loot() or not m.is_player_master_looter() then return end

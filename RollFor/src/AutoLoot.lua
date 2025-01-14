@@ -36,13 +36,14 @@ function M.new( loot_list, api, db, config )
 
     for _, item in ipairs( loot_list.get_items() ) do
       local quality = item.quality or 0
+      local slot = loot_list.get_slot( item.id )
 
-      if item.id and item.slot then
+      if item.id and slot then
         if quality < threshold or config.auto_loot() and item_ids[ item.id ] then
           local index = find_my_candidate_index()
 
           if index then
-            api().GiveMasterLoot( item.slot, index )
+            api().GiveMasterLoot( slot, index )
           end
         end
       end
