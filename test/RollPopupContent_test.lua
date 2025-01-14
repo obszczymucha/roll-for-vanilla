@@ -171,6 +171,7 @@ function RaidRollPopupContentSpec:should_return_initial_content()
     {
       { type = "item_link_with_icon", link = item.link,          count = 1 },
       { type = "text",                value = "Raid rolling...", padding = 8 },
+      { type = "empty_line",          height = 5 },
     } )
 end
 
@@ -190,6 +191,7 @@ function RaidRollPopupContentSpec:should_return_initial_content_with_multiple_it
     {
       { type = "item_link_with_icon", link = item.link,          count = 2 },
       { type = "text",                value = "Raid rolling...", padding = 8 },
+      { type = "empty_line",          height = 5 },
     } )
 end
 

@@ -171,6 +171,8 @@ function M.new( popup_builder, db, config, roll_controller )
           frame.tooltip_info = v.value
           frame:ClearAllPoints()
           frame:SetPoint( "TOPRIGHT", v.anchor, "TOPRIGHT", -5, -5 )
+        elseif type == "empty_line" then
+          frame:SetHeight( v.height or 4 )
         end
 
         if type ~= "button" then

@@ -43,6 +43,13 @@ local function create_text_in_container( type, parent, container_width, alignmen
   return container
 end
 
+function M.empty_line( parent )
+  local result = m.api.CreateFrame( "Frame", nil, parent )
+  result:SetWidth( 2 )
+
+  return result
+end
+
 function M.item_link( parent )
   local result = m.api.CreateFrame( "Button", nil, parent )
 

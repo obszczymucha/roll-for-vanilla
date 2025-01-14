@@ -402,6 +402,7 @@ function M.new(
 
     if data.status.type == S.InProgress and current_iteration.rolling_strategy == RS.RaidRoll then
       table.insert( result, { type = "text", value = "Raid rolling...", padding = 8 } )
+      table.insert( result, { type = "empty_line", height = 5 } )
       return result
     end
 
