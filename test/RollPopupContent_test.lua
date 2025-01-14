@@ -7,6 +7,7 @@ require( "src/modules" )
 local types = require( "src/Types" )
 require( "src/DebugBuffer" )
 require( "src/Module" )
+local ItemUtils = require( "src/ItemUtils" )
 local tracker_mod = require( "src/RollTracker" )
 local controller_mod = require( "src/RollController" )
 require( "src/Types" )
@@ -14,7 +15,6 @@ require( "src/SoftResDataTransformer" )
 local softres_decorator = require( "src/SoftResPresentPlayersDecorator" )
 local softres_mod = require( "src/SoftRes" )
 local loot_list_mod = require( "mocks/LootList" )
-local ItemUtils = require( "src/ItemUtils" )
 local new = require( "src/RollingPopupContent" ).new
 local make_dropped_item = ItemUtils.make_dropped_item
 local make_item = ItemUtils.make_item
@@ -753,6 +753,68 @@ function NormalRollPopupContentSpec:should_display_the_transmog_winner()
     } )
 end
 
+function NormalRollPopupContentSpec:should_display_the_winners()
+  -- Given
+  local popup = new_mod()
+  local item_id = 123
+  local seconds_left = 7
+  local item = i( "Hearthstone", item_id )
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Hunter )
+  local strategy = RS.NormalRoll
+  controller.start( strategy, item, 2, nil, seconds_left )
+  controller.tick( 1 )
+  controller.winners_found( item, 1, {
+    winner( p1.name, p1.class, item, false, RT.MainSpec, 54 ),
+    winner( p2.name, p2.class, item, false, RT.OffSpec, 69 )
+  }, strategy )
+  controller.finish()
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                                      count = 2 },
+      { type = "text",                value = "Psikutas wins the main-spec roll with a 54.", padding = 11 },
+      { type = "text",                value = "Jogobobek wins the off-spec roll with a 69.", padding = 5 },
+      { type = "button",              label = "Raid roll",                                   width = 90 },
+      { type = "button",              label = "Close",                                       width = 70 }
+    } )
+end
+
+function NormalRollPopupContentSpec:should_display_the_winners_and_the_award_buttons()
+  -- Given
+  local popup = new_mod()
+  local item_id = 123
+  local seconds_left = 7
+  local item = i( "Hearthstone", item_id )
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Hunter )
+  local strategy = RS.NormalRoll
+  controller.start( strategy, item, 2, nil, seconds_left )
+  controller.tick( 1 )
+  controller.winners_found( item, 1, {
+    winner( p1.name, p1.class, item, true, RT.MainSpec, 54 ),
+    winner( p2.name, p2.class, item, true, RT.OffSpec, 69 )
+  }, strategy )
+  controller.finish()
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                                      count = 2 },
+      { type = "text",                value = "Psikutas wins the main-spec roll with a 54.", padding = 11 },
+      { type = "award_button",        label = "Award",                                       padding = 6, width = 90 },
+      { type = "text",                value = "Jogobobek wins the off-spec roll with a 69.", padding = 8 },
+      { type = "award_button",        label = "Award",                                       padding = 6, width = 90 },
+      { type = "button",              label = "Raid roll",                                   width = 90 },
+      { type = "button",              label = "Close",                                       width = 70 }
+    } )
+end
+
 SoftResrollPopupContentSpec = {}
 
 function SoftResrollPopupContentSpec:should_preview_rolls()
@@ -800,7 +862,8 @@ function SoftResrollPopupContentSpec:should_preview_the_winner()
     {
       { type = "item_link_with_icon", link = item.link,                          count = 1 },
       { type = "text",                value = "Psikutas soft-ressed this item.", padding = 11 },
-      { type = "button",              label = "Close",                           width = 70 }
+      { type = "button",              label = "Close",                           width = 70 },
+      { type = "button",              label = "Award...",                        width = 90 }
     } )
 end
 
@@ -824,7 +887,8 @@ function SoftResrollPopupContentSpec:should_preview_the_winners()
       { type = "item_link_with_icon", link = item.link,                              count = 2 },
       { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 11 },
       { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 4 },
-      { type = "button",              label = "Close",                               width = 70 }
+      { type = "button",              label = "Close",                               width = 70 },
+      { type = "button",              label = "Award...",                            width = 90 }
     } )
 end
 
@@ -848,7 +912,8 @@ function SoftResrollPopupContentSpec:should_preview_the_winners_with_no_differen
       { type = "item_link_with_icon", link = item.link,                              count = 2 },
       { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 11 },
       { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 4 },
-      { type = "button",              label = "Close",                               width = 70 }
+      { type = "button",              label = "Close",                               width = 70 },
+      { type = "button",              label = "Award...",                            width = 90 }
     } )
 end
 
@@ -1055,7 +1120,8 @@ function SoftResrollPopupContentSpec:should_display_the_only_soft_resser()
     {
       { type = "item_link_with_icon", link = item.link,                          count = 1 },
       { type = "text",                value = "Psikutas soft-ressed this item.", padding = 11 },
-      { type = "button",              label = "Close",                           width = 70 }
+      { type = "button",              label = "Close",                           width = 70 },
+      { type = "button",              label = "Award...",                        width = 90 }
     } )
 end
 
@@ -1121,6 +1187,74 @@ function SoftResrollPopupContentSpec:should_say_waiting_for_remaining_rolls()
       { type = "text",                value = "Waiting for remaining rolls...", padding = 11 },
       { type = "button",              label = "Finish early",                   width = 100 },
       { type = "button",              label = "Cancel",                         width = 100 }
+    } )
+end
+
+function SoftResrollPopupContentSpec:should_display_the_winners()
+  -- Given
+  local popup = new_mod()
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
+  local group_roster = mock_group_roster( p1, p2 )
+  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+  local item_id = 123
+  local seconds_left = 7
+  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local item = i( "Hearthstone", item_id )
+  local strategy = RS.SoftResRoll
+  controller.start( strategy, item, 2, nil, seconds_left, softressing_players )
+  controller.tick( 1 )
+  controller.winners_found( item, 2, {
+    winner( "Psikutas", C.Warrior, item, false, RT.SoftRes ),
+    winner( "Obszczymucha", C.Druid, item, false, RT.SoftRes )
+  }, strategy )
+  controller.finish()
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                              count = 2 },
+      { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 11 },
+      { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 4 },
+      { type = "button",              label = "Close",                               width = 70 },
+      { type = "button",              label = "Award...",                            width = 90 }
+    } )
+end
+
+function SoftResrollPopupContentSpec:should_display_the_winners_and_the_award_buttons()
+  -- Given
+  local popup = new_mod()
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
+  local group_roster = mock_group_roster( p1, p2 )
+  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+  local item_id = 123
+  local seconds_left = 7
+  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local item = i( "Hearthstone", item_id )
+  local strategy = RS.SoftResRoll
+  controller.start( strategy, item, 2, nil, seconds_left, softressing_players )
+  controller.tick( 1 )
+  controller.winners_found( item, 2, {
+    winner( "Psikutas", C.Warrior, item, true, RT.SoftRes ),
+    winner( "Obszczymucha", C.Druid, item, true, RT.SoftRes )
+  }, strategy )
+  controller.finish()
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  lu.assertEquals( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                              count = 2 },
+      { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 11 },
+      { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
+      { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 8 },
+      { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
+      { type = "button",              label = "Close",                               width = 70 },
+      { type = "button",              label = "Award...",                            width = 90 }
     } )
 end
 

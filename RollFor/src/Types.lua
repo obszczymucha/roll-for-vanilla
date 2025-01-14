@@ -64,12 +64,21 @@ local RollingStrategy = {
 
 M.RollingStrategy = RollingStrategy
 
+---@class PT
+---@field Player "Player"
+---@field Roller "Roller"
+---@field RollingPlayer "RollingPlayer"
+---@field ItemCandidate "ItemCandidate"
+---@field Winner "Winner"
+
 ---@alias PlayerType
 ---| "Player"
 ---| "Roller"
 ---| "RollingPlayer"
 ---| "ItemCandidate"
 ---| "Winner"
+
+---@type PT
 local PlayerType = {
   Player = "Player",
   Roller = "Roller",
@@ -110,7 +119,7 @@ M.PlayerClass = PlayerClass
 ---@field name string
 ---@field class string
 ---@field online boolean
----@field type PlayerType
+---@field type "Player"
 
 ---@alias MakePlayerFn fun(
 ---  name: string,
@@ -131,7 +140,7 @@ end
 ---@class Roller
 ---@field name string
 ---@field rolls number
----@field type PlayerType
+---@field type "Roller"
 
 ---@alias MakeRollerFn fun(
 ---  name: string,
@@ -154,7 +163,7 @@ end
 ---@field class string
 ---@field online boolean
 ---@field rolls number
----@field type PlayerType
+---@field type "RollingPlayer"
 
 ---@alias MakeRollingPlayerFn fun(
 ---  name: string,
@@ -182,7 +191,7 @@ end
 ---@field name string
 ---@field class string
 ---@field online boolean
----@field type PlayerType
+---@field type "ItemCandidate"
 
 ---@alias MakeItemCandidateFn fun(
 ---  name: string,
@@ -211,7 +220,7 @@ end
 ---@field roll_type RollType
 ---@field winning_roll number?
 ---@field rerolling boolean?
----@field type PlayerType
+---@field type "Winner"
 
 ---@alias MakeWinnerFn fun(
 ---  name: string,

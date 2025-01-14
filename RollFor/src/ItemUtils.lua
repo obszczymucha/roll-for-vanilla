@@ -70,7 +70,7 @@ M.LootType = LootType
 ---@field type "DroppedItem"
 
 ---@class SoftRessedDroppedItem : DroppedItem
----@field sr_players RollingPlayer[]?
+---@field sr_players RollingPlayer[]
 ---@field type "SoftRessedDroppedItem"
 
 ---@class HardRessedDroppedItem : DroppedItem
@@ -79,7 +79,6 @@ M.LootType = LootType
 ---@class Coin
 ---@field texture string
 ---@field amount_text string
----@field slot number
 ---@field type "Coin"
 
 ---@alias MakeItemFn fun(
@@ -91,7 +90,7 @@ M.LootType = LootType
 
 ---@alias MakeSoftRessedDroppedItemFn fun(
 ---  item: DroppedItem,
----  sr_players: RollingPlayer[]? ): SoftRessedDroppedItem
+---  sr_players: ItemCandidate[] ): SoftRessedDroppedItem
 
 ---@alias MakeHardRessedDroppedItemFn fun(
 ---  item: DroppedItem ): HardRessedDroppedItem
@@ -103,10 +102,10 @@ M.LootType = LootType
 ---@field parse_all_links fun( item_links: string ): ItemLink[]
 ---@field get_tooltip_link fun( item_link: ItemLink ): TooltipItemLink
 ---@field make_item MakeItemFn
----@field make_dropped_item fun( id: number, name: string, link: ItemLink, tooltip_link: TooltipItemLink, quality: ItemQuality, quantity: number, texture: string, slot: number ): DroppedItem
+---@field make_dropped_item fun( id: number, name: string, link: ItemLink, tooltip_link: TooltipItemLink, quality: ItemQuality, quantity: number, texture: string ): DroppedItem
 ---@field make_softres_dropped_item MakeSoftRessedDroppedItemFn
----@field make_hardres_dropped_item MakeSoftRessedDroppedItemFn
----@field make_coin fun( texture: string, amount_text: string, slot: number ): Coin
+---@field make_hardres_dropped_item MakeHardRessedDroppedItemFn
+---@field make_coin fun( texture: string, amount_text: string ): Coin
 
 ---@param item_link ItemLink
 ---@return number?
@@ -191,7 +190,7 @@ function M.make_dropped_item( id, name, link, tooltip_link, quality, quantity, t
 end
 
 ---@param item DroppedItem
----@param sr_players string[]?
+---@param sr_players ItemCandidate[]
 ---@return SoftRessedDroppedItem
 function M.make_softres_dropped_item( item, sr_players )
   return {

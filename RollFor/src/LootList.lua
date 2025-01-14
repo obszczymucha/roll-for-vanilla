@@ -54,7 +54,7 @@ function M.new( loot_facade, item_utils, dummy_items_fn )
         local info = lf.get_info( slot )
 
         if info then
-          items[ slot ] = item_utils.make_coin( info.texture, info.name, slot )
+          items[ slot ] = item_utils.make_coin( info.texture, info.name )
         end
       else
         local link = lf.get_link( slot )
@@ -72,8 +72,7 @@ function M.new( loot_facade, item_utils, dummy_items_fn )
               tooltip_link,
               info and info.quality,
               info and info.quantity,
-              info and info.texture,
-              slot
+              info and info.texture
             ), item_count )
 
           item_count = item_count + 1
@@ -94,7 +93,13 @@ function M.new( loot_facade, item_utils, dummy_items_fn )
   end
 
   local function get_items()
-    return items
+    local result = {}
+
+    for _, item in pairs( items ) do
+      table.insert( result, item )
+    end
+
+    return result
   end
 
   loot_facade.subscribe( "LootOpened", on_loot_opened )

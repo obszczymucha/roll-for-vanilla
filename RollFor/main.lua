@@ -197,9 +197,6 @@ local function create_components()
   local function get_dummy_items()
     ---@diagnostic disable-next-line: unused-function
     local function item_link( name, id, quality )
-      assert( name, "name is nil" )
-      assert( id, "id is nil" )
-      assert( quality, "quality is nil" )
       local color = m.api.ITEM_QUALITY_COLORS[ quality ].hex or "|cffffffff"
       return string.format( "%s|Hitem:%s::::::::20:257::::::|h[%s]|h|r", color, id or "3299", name )
     end
@@ -208,15 +205,13 @@ local function create_components()
     local ids = { 18842, 18842, 3676 }
     local result = {}
 
-    for _, item_id in ipairs( ids ) do
+    ---@diagnostic disable-next-line: unused-local
+    for i, item_id in ipairs( ids ) do
       local item = {}
       item.id = item_id
-
-      if not item.name then
-        item.name, item.tooltip_link, item.quality, _, _, _, _, _, item.texture = m.api.GetItemInfo( item.id )
-      end
-
+      item.name, item.tooltip_link, item.quality, _, _, _, _, _, item.texture = m.api.GetItemInfo( item.id )
       item.link = item_link( item.name, item.id, item.quality )
+
       table.insert( result, item )
     end
 

@@ -10,6 +10,12 @@ local LT = m.ItemUtils.LootType
 M.center_point = { point = "CENTER", relative_point = "CENTER", x = -260, y = 220 }
 local S = m.Types.RollingStatus
 
+---@param frame_builder table
+---@param loot_list LootList
+---@param db table
+---@param roll_controller RollController
+---@param roll_tracker RollTracker
+---@param config Config
 function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, config )
   local scale = 1.0
   ---@class Frame
@@ -142,7 +148,7 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
     M.debug.add( "select" )
     selected_item = data and data.item or nil
     update()
-    roll_controller.loot_list_item_selected( selected_item )
+    roll_controller.loot_list_item_selected()
   end
 
   local function deselect()

@@ -17,9 +17,9 @@ local make_softres_dropped_item = m.ItemUtils.make_softres_dropped_item
 local make_hardres_dropped_item = m.ItemUtils.make_hardres_dropped_item
 
 ---@class SoftResLootList
----@field get_items fun(): SoftRessedDroppedItem[]
+---@field get_items fun(): (SoftRessedDroppedItem|HardRessedDroppedItem)[]
 ---@field get_source_guid fun(): string
----@field find_item fun( item_id: number ): SoftRessedDroppedItem?
+---@field get_slot fun( item_id: number ): number?
 ---@field is_looting fun(): boolean
 ---@field count fun( item_id: number ): number
 
@@ -64,10 +64,13 @@ function M.new( loot_list, softres )
     local result = m.map( loot_list.get_items(), function( item )
       if type( item ) ~= "table" then return item end -- Fucking lua50 and its "n".
 
-      item.sr_players = softres.get( item.id )
-      item.hr = softres.is_item_hardressed( item.id )
+      local hr = softres.is_item_hardressed( item.id )
 
-      return item
+      if hr then
+        return make_hardres_dropped_item( item )
+      else
+        return make_softres_dropped_item( item, softres.get( item.id ) )
+      end
     end )
 
     table.sort( result, sort )
@@ -79,22 +82,8 @@ function M.new( loot_list, softres )
     return result
   end
 
-  local function find_item( item_id )
-    local item = loot_list.get_slot( item_id )
-    if not item then return end
-
-    local hr = softres.is_item_hardressed( item_id )
-
-    if hr then
-      return make_hardres_dropped_item( item )
-    else
-      return make_softres_dropped_item( item, softres.get( item.id ) )
-    end
-  end
-
   local decorator = m.clone( loot_list )
   decorator.get_items = get_items
-  decorator.find_item = find_item
 
   return decorator
 end
