@@ -393,37 +393,6 @@ function M.dropped_item( parent, text )
   container.comment:SetHeight( 16 )
   container.text:SetTextColor( 1, 1, 1 )
 
-  container.comment:SetScript( "OnEnter", function()
-    if not item.sr_players or getn( item.sr_players ) == 0 then return end
-
-    ---@diagnostic disable-next-line: undefined-global
-    local self = this
-    self.tooltip_scale = m.api.GameTooltip:GetScale()
-    m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
-
-    m.api.GameTooltip:AddLine( m.colors.blue( "Soft-ressed by" ), 1, 1, 1 )
-
-    for _, player in ipairs( item.sr_players ) do
-      local rolls = player.rolls and player.rolls > 1 and m.colors.hl( string.format( " [%s rolls]", player.rolls ) ) or ""
-      m.api.GameTooltip:AddLine( string.format( "%s%s", m.colorize_player_by_class( player.name, player.class ), m.colors.white( rolls ) ) )
-    end
-
-    m.api.GameTooltip:SetScale( 0.75 )
-    m.api.GameTooltip:Show()
-  end )
-
-  container.comment:SetScript( "OnLeave", function()
-    ---@diagnostic disable-next-line: undefined-global
-    local self = this
-    m.api.GameTooltip:Hide()
-    m.api.GameTooltip:SetScale( self.tooltip_scale or 1 )
-  end )
-  if text then
-    container.text:SetText( text )
-  else
-    container.text:SetText( "PrincessKenny" )
-  end
-
   container:SetHeight( container.text:GetHeight() )
 
   local function resize()
@@ -445,7 +414,7 @@ function M.dropped_item( parent, text )
     local is_coin = v.type == LT.Coin
     container.text:SetText( m.colorize_item_by_quality( is_coin and v.amount_text or v.name, is_coin and 0 or v.quality ) )
 
-    if v.hr then
+    if v.type == LT.HardRessedItem or v.type == LT.HardRessedDroppedItem then
       container.comment.text:SetText( m.colors.red( "HR" ) )
       container.comment:Show()
       container.text:ClearAllPoints()
@@ -565,11 +534,49 @@ function M.dropped_item( parent, text )
     not_hovered_color()
   end
 
+  container.comment:SetScript( "OnEnter", function()
+    if not item.sr_players or getn( item.sr_players ) == 0 then return end
+
+    ---@diagnostic disable-next-line: undefined-global
+    local self = this
+    self.tooltip_scale = m.api.GameTooltip:GetScale()
+    m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
+
+    m.api.GameTooltip:AddLine( m.colors.blue( "Soft-ressed by" ), 1, 1, 1 )
+
+    for _, player in ipairs( item.sr_players ) do
+      local rolls = player.rolls and player.rolls > 1 and m.colors.hl( string.format( " [%s rolls]", player.rolls ) ) or ""
+      m.api.GameTooltip:AddLine( string.format( "%s%s", m.colorize_player_by_class( player.name, player.class ), m.colors.white( rolls ) ) )
+    end
+
+    m.api.GameTooltip:SetScale( 0.75 )
+    m.api.GameTooltip:Show()
+
+    hovered_color()
+  end )
+
+  container.comment:SetScript( "OnLeave", function()
+    ---@diagnostic disable-next-line: undefined-global
+    local self = this
+    m.api.GameTooltip:Hide()
+    m.api.GameTooltip:SetScale( self.tooltip_scale or 1 )
+    mouse_down = false
+
+    not_hovered_color()
+  end )
+
+  if text then
+    container.text:SetText( text )
+  else
+    container.text:SetText( "PrincessKenny" )
+  end
+
   container.icon:SetScript( "OnEnter", on_enter )
   container.icon:SetScript( "OnLeave", on_leave )
 
   container:SetScript( "OnEnter", function()
     hovered_color()
+    on_enter()
   end )
 
   container:SetScript( "OnLeave", on_leave )
