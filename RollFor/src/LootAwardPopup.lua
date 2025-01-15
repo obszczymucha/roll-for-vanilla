@@ -212,7 +212,7 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
 
   roll_controller.subscribe( "start", hide )
   roll_controller.subscribe( "loot_awarded", hide )
-  roll_controller.subscribe( "award_loot", show )
+  roll_controller.subscribe( "show_master_loot_confirmation", show )
   roll_controller.subscribe( "loot_closed", abort )
   roll_controller.subscribe( "player_already_has_unique_item", player_already_has_unique_item )
   roll_controller.subscribe( "player_has_full_bags", player_has_full_bags )

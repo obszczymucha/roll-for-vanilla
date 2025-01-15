@@ -18,6 +18,7 @@ local LT = m.ItemUtils.LootType
 local c = m.colorize_player_by_class
 local blue = m.colors.blue
 local red = m.colors.red
+local grey = m.colors.grey
 local r = m.roll_type_color
 local hl = m.colors.hl
 
@@ -250,11 +251,13 @@ function M.new(
 
   ---@param result table
   ---@param winners Winner[]
-  ---@param item DroppedItem
+  ---@param item Item|DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
   ---@param strategy RollingStrategyType
   local function add_bottom_award_winner_button( result, winners, item, strategy )
     if getn( winners ) > 1 then return end
+    if item.type ~= LT.DroppedItem and item.type ~= LT.SoftRessedDroppedItem then return end
 
+    local dropped_item = assert( item --[[@as DroppedItem|SoftRessedDroppedItem]] )
     local winner = winners[ 1 ]
     if not winner.is_on_master_loot_candidate_list then return end
 
@@ -264,7 +267,7 @@ function M.new(
       width = 130,
       on_click = function()
         local player = make_item_candidate( winner.name, winner.class, true )
-        roll_controller.award_loot( player, item, strategy )
+        roll_controller.show_master_loot_confirmation( player, dropped_item, strategy )
       end
     } )
   end
@@ -281,16 +284,24 @@ function M.new(
     return { type = "button", label = "Close", width = 70, on_click = function() popup:hide() end }
   end
 
+  ---@param padding number?
+  ---@param color function?
+  ---@diagnostic disable-next-line: unused-local, unused-function
+  local function separator( padding, color )
+    local col = color or grey
+    return { type = "text", value = col( "-" ), padding = padding or 3 }
+  end
+
   ---@param result table
   ---@param players Roller[]|Winner[]
-  ---@param item DroppedItem
+  ---@param item Item|DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
   ---@param strategy RollingStrategyType
   local function softres_winners_content( result, players, item, strategy )
     local last_award_button_visible = false
 
     for i, player in ipairs( players ) do
       -- if i > 1 and last_award_button_visible then
-      --   table.insert( result, { type = "text", value = grey( "-" ), padding = 3 } )
+      --   table.insert( result, separator() )
       -- end
 
       ---@diagnostic disable-next-line: param-type-mismatch
@@ -300,20 +311,13 @@ function M.new(
 
       m.pdump( winner )
       if winner.is_on_master_loot_candidate_list then
-        table.insert( result, award_winner_button( winner, item, strategy, roll_controller.award_loot ) )
+        table.insert( result, award_winner_button( winner, item, strategy, roll_controller.show_master_loot_confirmation ) )
         last_award_button_visible = true
       end
     end
 
     table.insert( result, close_button() )
     table.insert( result, select_player_button( item ) )
-
-    -- if show_award_button then
-    --   table.insert( result, bottom_award_winner_button( winners, item, strategy ) )
-    --   -- table.insert( result, free_roll_button( data ) )
-    --   -- table.insert( result, select_player_button( data ) )
-    -- else
-    -- end
 
     return result
   end
@@ -322,7 +326,8 @@ function M.new(
   ---@param data RollTrackerData
   ---@param strategy RollingStrategyType
   local function raid_roll_content( result, data, strategy )
-    m.map( M.raid_roll_winners_content( data.winners, data.item, strategy, roll_controller.award_loot ), function( winner ) table.insert( result, winner ) end )
+    m.map( M.raid_roll_winners_content( data.winners, data.item, strategy, roll_controller.show_master_loot_confirmation ),
+      function( winner ) table.insert( result, winner ) end )
 
     if not config.auto_raid_roll() then
       table.insert( result,
@@ -441,7 +446,8 @@ function M.new(
     end
 
     if roll_winners( data ) then
-      m.map( M.roll_winner_content( data.winners, data.item, current_iteration and current_iteration.rolling_strategy, roll_controller.award_loot ),
+      m.map(
+        M.roll_winner_content( data.winners, data.item, current_iteration and current_iteration.rolling_strategy, roll_controller.show_master_loot_confirmation ),
         function( winner ) table.insert( result, winner ) end )
 
       add_bottom_award_winner_button( result, data.winners, data.item, strategy )
@@ -505,7 +511,14 @@ function M.new(
           popup:hide()
 
           local player = make_item_candidate( winner.name, winner.class, true )
-          roll_controller.award_loot( player, data.item, current_iteration.rolling_strategy )
+
+          if data.item.type == LT.DroppedItem or data.item.type == LT.SoftRessedDroppedItem then
+            local item = assert( data.item --[[@as DroppedItem|SoftRessedDroppedItem]] )
+            roll_controller.show_master_loot_confirmation( player, item, current_iteration.rolling_strategy )
+          else
+            error( string.format( "Item was of %s type", data.item.type ) )
+          end
+
           return
         end
       end

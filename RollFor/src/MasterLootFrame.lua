@@ -216,7 +216,7 @@ function M.new( winner_tracker, roll_controller, config )
       button:SetScript( "OnClick", function()
         ---@diagnostic disable-next-line: undefined-global
         local self = button
-        roll_controller.award_loot( self.player, item, strategy )
+        roll_controller.show_master_loot_confirmation( self.player, item, strategy )
       end )
 
       button:Show()
@@ -286,7 +286,7 @@ function M.new( winner_tracker, roll_controller, config )
     resize_frame( total, rows )
   end )
 
-  roll_controller.subscribe( "award_loot", hide )
+  roll_controller.subscribe( "show_master_loot_confirmation", hide )
   roll_controller.subscribe( "start", hide )
 
   return {

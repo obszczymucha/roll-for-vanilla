@@ -17,7 +17,6 @@ local softres_mod = require( "src/SoftRes" )
 local loot_list_mod = require( "mocks/LootList" )
 local new = require( "src/RollingPopupContent" ).new
 local make_dropped_item = ItemUtils.make_dropped_item
-local make_item = ItemUtils.make_item
 local make_softres_dropped_item = ItemUtils.make_softres_dropped_item
 local make_hardres_dropped_item = ItemUtils.make_hardres_dropped_item
 local get_tooltip_link = ItemUtils.get_tooltip_link
@@ -140,7 +139,7 @@ local function i( name, id, sr_players, hr )
     return make_softres_dropped_item( item, sr_players or {} )
   end
 
-  return make_item( id, name, link )
+  return item
 end
 
 local function cleanse( t )

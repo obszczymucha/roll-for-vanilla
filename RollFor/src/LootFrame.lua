@@ -268,7 +268,7 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
   end
 
   roll_controller.subscribe( "preview", select )
-  roll_controller.subscribe( "award_loot", select )
+  roll_controller.subscribe( "show_master_loot_confirmation", select )
   roll_controller.subscribe( "award_aborted", select )
   roll_controller.subscribe( "rolling_popup_closed", deselect )
   roll_controller.subscribe( "loot_awarded", deselect )

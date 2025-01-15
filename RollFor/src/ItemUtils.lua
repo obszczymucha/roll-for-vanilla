@@ -90,7 +90,7 @@ M.LootType = LootType
 
 ---@alias MakeSoftRessedDroppedItemFn fun(
 ---  item: DroppedItem,
----  sr_players: ItemCandidate[] ): SoftRessedDroppedItem
+---  sr_players: RollingPlayer[] ): SoftRessedDroppedItem
 
 ---@alias MakeHardRessedDroppedItemFn fun(
 ---  item: DroppedItem ): HardRessedDroppedItem
@@ -190,7 +190,7 @@ function M.make_dropped_item( id, name, link, tooltip_link, quality, quantity, t
 end
 
 ---@param item DroppedItem
----@param sr_players ItemCandidate[]
+---@param sr_players RollingPlayer[]
 ---@return SoftRessedDroppedItem
 function M.make_softres_dropped_item( item, sr_players )
   return {

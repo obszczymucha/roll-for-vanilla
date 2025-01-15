@@ -4,12 +4,10 @@ local m = RollFor
 if m.RollController then return end
 
 local M = m.Module.new( "RollController" )
-local RS = m.Types.RollingStrategy
 local S = m.Types.RollingStatus
-local getn = table.getn
 
 ---@class RollController
----@field preview fun( item: Item, count: number )
+---@field preview fun( item: DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem, count: number )
 ---@field start fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, seconds: number?, required_rolling_players: Player[]?)
 ---@field winners_found fun( item: Item, item_count: number, winners: Winner[], strategy: RollingStrategyType )
 ---@field finish fun()
@@ -24,7 +22,7 @@ local getn = table.getn
 ---@field show fun()
 ---@field award_aborted fun( item: Item )
 ---@field loot_awarded fun( player_name: string, item_id: number, item_link: string )
----@field award_loot fun( player: ItemCandidate, item: DroppedItem, rolling_strategy: RollingStrategyType )
+---@field show_master_loot_confirmation fun( player: ItemCandidate, item: DroppedItem|SoftRessedDroppedItem, rolling_strategy: RollingStrategyType )
 ---@field loot_opened fun()
 ---@field loot_closed fun()
 ---@field player_already_has_unique_item fun()
@@ -57,11 +55,10 @@ function M.new( roll_tracker )
     return c
   end
 
-  ---@param item SoftRessedDroppedItem
+  ---@param item DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
   ---@param count number
   local function preview( item, count )
-    local sr_count = getn( item.sr_players )
-    roll_tracker.preview( sr_count > 0 and RS.SoftResRoll or RS.NormalRoll, item, count or 1, nil, item.sr_players )
+    roll_tracker.preview( item, count )
     local color = get_color( item.quality )
 
     M.debug.add( "border_color" )
@@ -197,11 +194,11 @@ function M.new( roll_tracker )
   end
 
   ---@param player ItemCandidate
-  ---@param item DroppedItem
+  ---@param item DroppedItem|SoftRessedDroppedItem
   ---@param strategy RollingStrategyType
-  local function award_loot( player, item, strategy )
-    M.debug.add( "award_loot" )
-    notify_subscribers( "award_loot", { player = player, item = item, rolling_strategy = strategy } )
+  local function show_master_loot_confirmation( player, item, strategy )
+    M.debug.add( "show_master_loot_confirmation" )
+    notify_subscribers( "show_master_loot_confirmation", { player = player, item = item, rolling_strategy = strategy } )
   end
 
   local function loot_opened()
@@ -276,7 +273,7 @@ function M.new( roll_tracker )
     show = show,
     award_aborted = award_aborted,
     loot_awarded = loot_awarded,
-    award_loot = award_loot,
+    show_master_loot_confirmation = show_master_loot_confirmation,
     loot_opened = loot_opened,
     loot_closed = loot_closed,
     player_already_has_unique_item = player_already_has_unique_item,

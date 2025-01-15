@@ -36,18 +36,22 @@ local getn = table.getn
 ---@class RollStatus
 ---@field type RollingStatus
 ---@field seconds_left number?
----@field winners Player[]?
 
----@alias RollTrackerData { item: SoftRessedDroppedItem, item_count: number, status: RollStatus, iterations: RollIteration[], winners: Winner[] }
+---@alias RollTrackerData {
+---  item: Item|DroppedItem|SoftRessedDroppedItem|HardRessedDroppedItem,
+---  item_count: number,
+---  status: RollStatus,
+---  iterations: RollIteration[],
+---  winners: Winner[] }
 
 ---@class RollTracker
----@field preview fun( item: DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem, count: number, info: string? )
----@field start fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, seconds: number?, required_rolling_players: Player[]? )
+---@field preview fun( item: DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem, count: number )
+---@field start fun( rolling_strategy: RollingStrategyType, item: Item|DroppedItem|SoftRessedDroppedItem, count: number, info: string?, seconds: number?, required_rolling_players: RollingPlayer[]? )
 ---@field waiting_for_rolls fun()
----@field add_winners fun( winner: Winner[] )
+---@field add_winners fun( winners: Winner[] )
 ---@field finish fun()
 ---@field cancel fun()
----@field tie fun( required_rolling_players: Player[], roll_type: RollType, roll: number )
+---@field tie fun( required_rolling_players: RollingPlayer[], roll_type: RollType, roll: number )
 ---@field tie_start fun()
 ---@field add fun( player_name: string, player_class: string, roll_type: RollType, roll: number )
 ---@field add_ignored fun( player_name: string, roll_type: RollType, roll: number, reason: string )
@@ -130,8 +134,7 @@ function M.new()
 
   ---@param item DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
   ---@param count number
-  ---@param info string
-  local function preview( item, count, info )
+  local function preview( item, count )
     M.debug.add( "preview" )
     clear_iterations()
     clear_winners()
@@ -142,24 +145,29 @@ function M.new()
 
     table.insert( iterations, {
       rolling_strategy = item.type == LT.SoftRessedDroppedItem and RS.SoftResRoll or RS.NormalRoll,
-      info = info,
       rolls = {}
     } )
 
     if item.type == LT.SoftRessedDroppedItem then
-      ---@type ItemCandidate[]
+      ---@type RollingPlayer[]
       local candidates = item.sr_players
       status.winners = candidates
 
       for _, player in ipairs( candidates or {} ) do
         for _ = 1, player.rolls or 1 do
-          add( player.name, player.class, rolling_strategy == RS.SoftResRoll and RT.SoftRes )
+          add( player.name, player.class, RT.SoftRes )
         end
       end
     end
   end
 
-  -- required_rolling_players should have { name = "", class = "" } structure
+
+  ---@param rolling_strategy RollingStrategyType
+  ---@param item Item|DroppedItem|SoftRessedDroppedItem
+  ---@param count number
+  ---@param info string
+  ---@param seconds number
+  ---@param required_rolling_players RollingPlayer[]?
   local function start( rolling_strategy, item, count, info, seconds, required_rolling_players )
     M.debug.add( "start" )
     clear_iterations()
