@@ -10,8 +10,6 @@ local getn = table.getn
 local RT = m.Types.RollType
 local RS = m.Types.RollingStrategy
 local S = m.Types.RollingStatus
----@type PT
-local PT = m.Types.PlayerType
 ---@type LT
 local LT = m.ItemUtils.LootType
 
@@ -254,7 +252,7 @@ function M.new(
   ---@param item Item|DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
   ---@param strategy RollingStrategyType
   local function add_bottom_award_winner_button( result, winners, item, strategy )
-    if getn( winners ) > 1 then return end
+    if getn( winners ) ~= 1 then return end
     if item.type ~= LT.DroppedItem and item.type ~= LT.SoftRessedDroppedItem then return end
 
     local dropped_item = assert( item --[[@as DroppedItem|SoftRessedDroppedItem]] )
@@ -293,23 +291,20 @@ function M.new(
   end
 
   ---@param result table
-  ---@param players Roller[]|Winner[]
+  ---@param players Winner[]
   ---@param item Item|DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
   ---@param strategy RollingStrategyType
   local function softres_winners_content( result, players, item, strategy )
     local last_award_button_visible = false
 
-    for i, player in ipairs( players ) do
+    for i, winner in ipairs( players ) do
       -- if i > 1 and last_award_button_visible then
       --   table.insert( result, separator() )
       -- end
 
-      ---@diagnostic disable-next-line: param-type-mismatch
-      local winner = player.type == PT.Winner and player or roller_to_winner( player )
       local padding = last_award_button_visible and 8 or i > 1 and 4 or nil
       table.insert( result, M.sr_content( winner, padding ) )
 
-      m.pdump( winner )
       if winner.is_on_master_loot_candidate_list then
         table.insert( result, award_winner_button( winner, item, strategy, roll_controller.show_master_loot_confirmation ) )
         last_award_button_visible = true
@@ -397,7 +392,7 @@ function M.new(
 
     if preview and roll_count == 0 then
       if data.item_count and data.item_count > 1 then
-        table.insert( result, { type = "text", value = string.format( "%s top rolls will win.", hl( data.item_count ) ), padding = top_padding } )
+        table.insert( result, { type = "text", value = string.format( "%s top rolls win.", hl( data.item_count ) ), padding = top_padding } )
       end
 
       table.insert( result, roll_button( data ) )
@@ -516,7 +511,8 @@ function M.new(
             local item = assert( data.item --[[@as DroppedItem|SoftRessedDroppedItem]] )
             roll_controller.show_master_loot_confirmation( player, item, current_iteration.rolling_strategy )
           else
-            error( string.format( "Item was of %s type", data.item.type ) )
+            m.pdump( data.item )
+            m.trace( string.format( "Item was of %s type.", data and data.item and data.item.type or "nil" ) )
           end
 
           return

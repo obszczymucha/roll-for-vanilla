@@ -407,9 +407,9 @@ function M.dropped_item( parent, text )
     container:SetPoint( "RIGHT", 0, 0 )
   end
 
-  container.SetItem = function( _, v )
+  container.SetItem = function( _, index, v )
     item = v
-    container.index.text:SetText( v.index )
+    container.index.text:SetText( index )
     container.icon.texture:SetTexture( v.texture )
     local is_coin = v.type == LT.Coin
     container.text:SetText( m.colorize_item_by_quality( is_coin and v.amount_text or v.name, is_coin and 0 or v.quality ) )

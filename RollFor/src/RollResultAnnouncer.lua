@@ -76,8 +76,7 @@ function M.new( announce, roll_controller, roll_tracker, config )
     local winner_count = getn( winners )
 
     if winner_count == 0 then
-      info( string.format( "No one rolled for %s.", item.link ) )
-      announce( string.format( "No one rolled for %s.", item.link ) )
+      return
     end
 
     if strategy == RS.RaidRoll or strategy == RS.InstaRaidRoll then

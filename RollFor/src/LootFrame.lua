@@ -104,11 +104,11 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
 
     local frames = {}
 
-    for _, v in ipairs( content ) do
+    for i, v in ipairs( content ) do
       loot_frame.add_line( v.type, function( type, frame )
         if type == "dropped_item" then
           local item = v.item
-          frame:SetItem( item )
+          frame:SetItem( i, item )
           frame:SetHeight( height )
           frame:SetOnClick( on_click )
           frame:ClearAllPoints()

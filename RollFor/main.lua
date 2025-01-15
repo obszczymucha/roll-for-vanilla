@@ -204,13 +204,14 @@ local function create_components()
     -- local ids = { 17204, 16961, 18842, 16961, 16961, 18842, 16865, 16961, 17109, 16961, 18466, 11980, 12820, 3676 }
     local ids = { 18842, 18842, 3676 }
     local result = {}
+    ---@type MakeDroppedItemFn
+    local make_dropped_item = m.ItemUtils.make_dropped_item
 
     ---@diagnostic disable-next-line: unused-local
     for i, item_id in ipairs( ids ) do
-      local item = {}
-      item.id = item_id
-      item.name, item.tooltip_link, item.quality, _, _, _, _, _, item.texture = m.api.GetItemInfo( item.id )
-      item.link = item_link( item.name, item.id, item.quality )
+      local name, tooltip_link, quality, _, _, _, _, _, texture = m.api.GetItemInfo( item_id )
+      local link = item_link( name, item_id, quality )
+      local item = make_dropped_item( item_id, name, link, tooltip_link, quality, 1, texture )
 
       table.insert( result, item )
     end
@@ -259,6 +260,7 @@ local function create_components()
 
   local rolling_popup_db = db( "rolling_popup" )
 
+  ---@type LootAutoProcess
   M.loot_auto_process = m.LootAutoProcess.new( M.config, M.roll_tracker, M.loot_list, M.roll_controller )
   M.rolling_popup = m.RollingPopup.new( m.PopupBuilder.new( m.FrameBuilder ), rolling_popup_db, M.config, M.roll_controller )
   M.rolling_popup_content = m.RollingPopupContent.new(

@@ -36,6 +36,7 @@ local getn = table.getn
 ---@class RollStatus
 ---@field type RollingStatus
 ---@field seconds_left number?
+---@field winners RollingPlayer[]?
 
 ---@alias RollTrackerData {
 ---  item: Item|DroppedItem|SoftRessedDroppedItem|HardRessedDroppedItem,
@@ -278,6 +279,12 @@ function M.new()
     M.debug.add( "cleared" )
   end
 
+  local function clear_if_no_winners()
+    if getn( winners ) == 0 then
+      clear()
+    end
+  end
+
   ---@param player_name string
   ---@param item_id number
   local function loot_awarded( player_name, item_id )
@@ -286,13 +293,13 @@ function M.new()
     for i, winner in ipairs( winners ) do
       if winner.name == player_name then
         table.remove( winners, i )
+        clear_if_no_winners()
+
         return
       end
     end
 
-    if getn( winners ) == 0 then
-      clear()
-    end
+    clear_if_no_winners()
   end
 
   return {

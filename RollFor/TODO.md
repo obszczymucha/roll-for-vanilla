@@ -7,3 +7,4 @@
 5. Fix RollingPopupContent to display multiple winners if multiple items dropped and they're equal to the number of winners.
 6. Verify tie rolls visually.
 7. Add a safety mechanism not to reset awarded loot if the SR list is re-imported.
+8. Fix auto-master loot enabling it in Durotar.

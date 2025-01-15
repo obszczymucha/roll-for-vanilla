@@ -12,21 +12,34 @@ local LT = m.ItemUtils.LootType
 local getn = table.getn
 local clear_table = m.clear_table
 
+---@class LootAutoProcess
+---@field on_loot_opened fun()
+---@field on_loot_slot_cleared fun( slot: number )
+---@field on_loot_closed fun()
+
+---@param config Config
+---@param roll_tracker RollTracker
+---@param loot_list LootList
+---@param roll_controller RollController
 function M.new( config, roll_tracker, loot_list, roll_controller )
   local loot_cache = {}
   local selected_loot_list_item
 
   local function process_next_item()
+    if selected_loot_list_item then
+      roll_controller.process_next_item()
+      return
+    end
+
     local threshold = m.api.GetLootThreshold()
     local data = roll_tracker.get()
     local items = loot_list.get_items()
-    local is_coin = items[ 1 ].type == LT.Coin
-    local first_item = items and getn( items ) > 0 and not is_coin and items[ 1 ]
+    local item_count = getn( items )
 
-    if selected_loot_list_item then
-      roll_controller.process_next_item( selected_loot_list_item )
-      return
-    end
+    if item_count == 0 then return end
+
+    local is_coin = items[ 1 ].type == LT.Coin
+    local first_item = not is_coin and items[ 1 ]
 
     if first_item and first_item.quality >= threshold and not data.status then
       local count = loot_list.count( first_item.id )
@@ -41,7 +54,10 @@ function M.new( config, roll_tracker, loot_list, roll_controller )
   local function on_loot_opened()
     for _, item in ipairs( loot_list.get_items() ) do
       local slot = loot_list.get_slot( item.id )
-      loot_cache[ slot ] = item
+
+      if slot then
+        loot_cache[ slot ] = item
+      end
     end
 
     if not config.auto_process_loot() or not m.is_player_master_looter() then return end
@@ -71,8 +87,7 @@ function M.new( config, roll_tracker, loot_list, roll_controller )
   return {
     on_loot_opened = on_loot_opened,
     on_loot_slot_cleared = on_loot_slot_cleared,
-    on_loot_closed = on_loot_closed,
-    process_next_item = process_next_item
+    on_loot_closed = on_loot_closed
   }
 end
 

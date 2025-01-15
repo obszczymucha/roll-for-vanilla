@@ -5,6 +5,7 @@ if m.RollController then return end
 
 local M = m.Module.new( "RollController" )
 local S = m.Types.RollingStatus
+local getn = table.getn
 
 ---@class RollController
 ---@field preview fun( item: DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem, count: number )
@@ -33,6 +34,7 @@ local S = m.Types.RollingStatus
 ---@field loot_award_popup_closed fun()
 ---@field loot_list_item_selected fun()
 ---@field loot_list_item_deselected fun()
+---@field process_next_item fun()
 
 ---@param roll_tracker RollTracker
 ---@return RollController
@@ -168,6 +170,7 @@ function M.new( roll_tracker )
 
   local function process_next_item()
     M.debug.add( "process_next_item" )
+    if not m.is_player_master_looter() then return end
     notify_subscribers( "process_next_item" )
   end
 
@@ -191,6 +194,12 @@ function M.new( roll_tracker )
     roll_tracker.loot_awarded( player_name, item_id )
     notify_subscribers( "loot_awarded", { player_name = player_name, item_id = item_id, item_link = item_link } )
     process_next_item()
+
+    local data = roll_tracker.get()
+
+    if getn( data.winners ) == 0 then
+      notify_subscribers( "all_items_awarded" )
+    end
   end
 
   ---@param player ItemCandidate

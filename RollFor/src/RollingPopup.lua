@@ -224,7 +224,7 @@ function M.new( popup_builder, db, config, roll_controller )
     popup:backdrop_color( r, g, b, a )
   end
 
-  roll_controller.subscribe( "loot_awarded", hide )
+  roll_controller.subscribe( "all_items_awarded", hide )
 
   local function get_frame()
     if not popup then

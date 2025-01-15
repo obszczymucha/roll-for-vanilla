@@ -49,7 +49,7 @@ function M.assert_members( implementation, n1, n2, n3, n4, n5, n6, n7, n8, n9 )
       if debugstack then
         error( string.format( "Member '%s' is not present.", member_name ) .. "\n" .. debugstack(), 2 )
       else
-        error( string.format( "Member '%s' is not present.", member_name, debug.traceback() ), 2 )
+        error( string.format( "Member '%s' is not present: %s.", member_name, debug.traceback() ), 2 )
       end
     end
   end

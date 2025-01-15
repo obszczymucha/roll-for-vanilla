@@ -88,6 +88,15 @@ M.LootType = LootType
 ---  quality: ItemQuality,
 ---  texture: string ): Item
 
+---@alias MakeDroppedItemFn fun(
+---  id: number,
+---  name: string,
+---  link: ItemLink,
+---  tooltip_link: TooltipItemLink,
+---  quality: ItemQuality,
+---  quantity: number,
+---  texture: string ): DroppedItem
+
 ---@alias MakeSoftRessedDroppedItemFn fun(
 ---  item: DroppedItem,
 ---  sr_players: RollingPlayer[] ): SoftRessedDroppedItem
@@ -102,7 +111,7 @@ M.LootType = LootType
 ---@field parse_all_links fun( item_links: string ): ItemLink[]
 ---@field get_tooltip_link fun( item_link: ItemLink ): TooltipItemLink
 ---@field make_item MakeItemFn
----@field make_dropped_item fun( id: number, name: string, link: ItemLink, tooltip_link: TooltipItemLink, quality: ItemQuality, quantity: number, texture: string ): DroppedItem
+---@field make_dropped_item MakeDroppedItemFn
 ---@field make_softres_dropped_item MakeSoftRessedDroppedItemFn
 ---@field make_hardres_dropped_item MakeHardRessedDroppedItemFn
 ---@field make_coin fun( texture: string, amount_text: string ): Coin
@@ -228,7 +237,7 @@ function M.make_coin( texture, amount_text )
   return {
     texture = texture,
     amount_text = amount_text,
-    type = "Coin"
+    type = LootType.Coin
   }
 end
 

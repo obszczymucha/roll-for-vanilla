@@ -64,20 +64,23 @@ function M.new( loot_list, softres )
     local result = m.map( loot_list.get_items(), function( item )
       if type( item ) ~= "table" then return item end -- Fucking lua50 and its "n".
 
+      if item.type == LT.Coin then
+        return item
+      end
+
       local hr = softres.is_item_hardressed( item.id )
+      local sr_players = softres.get( item.id )
 
       if hr then
         return make_hardres_dropped_item( item )
+      elseif getn( sr_players ) > 0 then
+        return make_softres_dropped_item( item, sr_players )
       else
-        return make_softres_dropped_item( item, softres.get( item.id ) )
+        return item
       end
     end )
 
     table.sort( result, sort )
-
-    for i, item in ipairs( result ) do
-      item.index = i
-    end
 
     return result
   end

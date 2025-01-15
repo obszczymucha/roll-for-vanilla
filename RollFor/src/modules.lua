@@ -1,6 +1,9 @@
 RollFor = RollFor or {}
 local M = RollFor
 
+---@diagnostic disable-next-line: undefined-global
+local debugstack = debugstack
+
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
@@ -82,6 +85,14 @@ end
 
 function M.err( message, module_name )
   M.pretty_print( message, M.colors.red, module_name )
+end
+
+function M.trace( message )
+  local stacktrace = debugstack or debug.traceback
+
+  if stacktrace then
+    error( message .. "\n" .. stacktrace(), 2 )
+  end
 end
 
 function M.print_header( text, color_fn )

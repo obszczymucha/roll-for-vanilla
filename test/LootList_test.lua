@@ -21,10 +21,23 @@ local mock_value, mock_values = utils.mock_value, utils.mock_values
 
 LootListSpec = {}
 
-local softres = {
-  get = function() return {} end,
-  is_item_hardressed = function() return false end
-}
+---@return GroupedSoftRes
+local new_softres = function()
+  return {
+    get = function() return {} end,
+    is_item_hardressed = function() return false end,
+    get_all_rollers = function() return {} end,
+    is_softres_rolling = function() return false end,
+    is_hardres_rolling = function() return false end,
+    is_player_softressing = function() return false end,
+    get_item_ids = function() return {} end,
+    get_item_quality = function() return LootQuality.Poor end,
+    get_hr_item_ids = function() return {} end,
+    import = function() end,
+    clear = function() end,
+    persist = function() end
+  }
+end
 
 function LootListSpec.should_return_a_coin_entry_if_its_the_only_one_that_dropped()
   -- Given
@@ -33,7 +46,7 @@ function LootListSpec.should_return_a_coin_entry_if_its_the_only_one_that_droppe
   loot_facade.is_coin = mock_value( true )
   loot_facade.get_info = mock_value( { texture = "Interface\\Icons\\INV_Misc_Coin_06", name = "64 Copper", quantity = 0, quality = 0 } )
   local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
-  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, softres )
+  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, new_softres() )
 
   -- When
   LootFacade.notify( "LootOpened" )
@@ -56,7 +69,7 @@ function LootListSpec.should_return_an_item_entry_if_its_the_only_one_that_dropp
   loot_facade.get_link = mock_value( link )
   loot_facade.get_info = mock_value( { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Epic } )
   local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
-  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, softres )
+  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, new_softres() )
 
   -- When
   LootFacade.notify( "LootOpened" )
@@ -65,6 +78,62 @@ function LootListSpec.should_return_an_item_entry_if_its_the_only_one_that_dropp
   -- Then
   eq( getn( result ), 1 )
   eq( result[ 1 ].type, LT.DroppedItem )
+  eq( result[ 1 ].id, 123 )
+  eq( result[ 1 ].name, "Big item" )
+  eq( result[ 1 ].texture, "tex" )
+  eq( loot_list.get_slot( result[ 1 ].id ), 1 )
+  eq( result[ 1 ].link, link )
+  eq( result[ 1 ].quality, LootQuality.Epic )
+end
+
+function LootListSpec.should_return_a_hard_ressed_item_entry_if_its_the_only_one_that_dropped()
+  -- Given
+  local loot_facade = LootFacade.new()
+  loot_facade.get_item_count = mock_value( 1 )
+  loot_facade.is_coin = mock_value( false )
+  local link = item_link( "Big item", 123 )
+  loot_facade.get_link = mock_value( link )
+  loot_facade.get_info = mock_value( { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Epic } )
+  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local softres = new_softres()
+  softres.is_item_hardressed = mock_value( true )
+  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, softres )
+
+  -- When
+  LootFacade.notify( "LootOpened" )
+  local result = loot_list.get_items()
+
+  -- Then
+  eq( getn( result ), 1 )
+  eq( result[ 1 ].type, LT.HardRessedDroppedItem )
+  eq( result[ 1 ].id, 123 )
+  eq( result[ 1 ].name, "Big item" )
+  eq( result[ 1 ].texture, "tex" )
+  eq( loot_list.get_slot( result[ 1 ].id ), 1 )
+  eq( result[ 1 ].link, link )
+  eq( result[ 1 ].quality, LootQuality.Epic )
+end
+
+function LootListSpec.should_return_a_soft_ressed_item_entry_if_its_the_only_one_that_dropped()
+  -- Given
+  local loot_facade = LootFacade.new()
+  loot_facade.get_item_count = mock_value( 1 )
+  loot_facade.is_coin = mock_value( false )
+  local link = item_link( "Big item", 123 )
+  loot_facade.get_link = mock_value( link )
+  loot_facade.get_info = mock_value( { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Epic } )
+  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local softres = new_softres()
+  softres.get = mock_value( { { name = "player1" } } )
+  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, softres )
+
+  -- When
+  LootFacade.notify( "LootOpened" )
+  local result = loot_list.get_items()
+
+  -- Then
+  eq( getn( result ), 1 )
+  eq( result[ 1 ].type, LT.SoftRessedDroppedItem )
   eq( result[ 1 ].id, 123 )
   eq( result[ 1 ].name, "Big item" )
   eq( result[ 1 ].texture, "tex" )
@@ -85,7 +154,7 @@ function LootListSpec.should_sort_the_coin_last()
     { texture = "coin texture", name = "1337 Copper", quantity = 0, quality = 0 }
   )
   local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
-  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, softres )
+  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, new_softres() )
 
   -- When
   LootFacade.notify( "LootOpened" )
@@ -118,7 +187,7 @@ function LootListSpec.should_sort_the_items_by_quality_and_then_name()
     { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Rare }
   )
   local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
-  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, softres )
+  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, new_softres() )
 
   -- When
   LootFacade.notify( "LootOpened" )
