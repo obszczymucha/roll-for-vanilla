@@ -71,7 +71,7 @@ function M.raid_roll_winners_content( winners, item, strategy, on_award_click )
     local player = c( winner.name, winner.class )
     table.insert( result, { type = "text", value = string.format( "%s wins the %s.", player, blue( "raid-roll" ) ), padding = padding } )
 
-    if winner_count > 1 and winner.is_on_master_loot_candidate_list then
+    if on_award_click and winner_count > 1 and winner.is_on_master_loot_candidate_list then
       table.insert( result, award_winner_button( winner, item, strategy, on_award_click ) )
       last_award_button_visible = true
     end
@@ -81,13 +81,23 @@ function M.raid_roll_winners_content( winners, item, strategy, on_award_click )
 end
 
 ---@param winners Winner[]
-function M.insta_raid_roll_winners_content( winners )
+---@param item Item
+---@param strategy RollingStrategyType
+---@param on_award_click function
+function M.insta_raid_roll_winners_content( winners, item, strategy, on_award_click )
   local result = {}
+  local last_award_button_visible = false
+  local winner_count = getn( winners )
 
   for i, winner in ipairs( winners ) do
-    local padding = i == 1 and 8 or 2
+    local padding = last_award_button_visible and 8 or i > 1 and 2 or 8
     local player = c( winner.name, winner.class )
     table.insert( result, { type = "text", value = string.format( "%s wins the %s.", player, blue( "insta raid-roll" ) ), padding = padding } )
+
+    if on_award_click and winner_count > 1 and winner.is_on_master_loot_candidate_list then
+      table.insert( result, award_winner_button( winner, item, strategy, on_award_click ) )
+      last_award_button_visible = true
+    end
   end
 
   return result
@@ -344,7 +354,8 @@ function M.new(
   ---@param data RollTrackerData
   ---@param strategy RollingStrategyType
   local function insta_raid_roll_content( result, data, strategy )
-    m.map( M.insta_raid_roll_winners_content( data.winners ), function( winner ) table.insert( result, winner ) end )
+    m.map( M.insta_raid_roll_winners_content( data.winners, data.item, strategy, roll_controller.show_master_loot_confirmation ),
+      function( winner ) table.insert( result, winner ) end )
 
     add_bottom_award_winner_button( result, data.winners, data.item, strategy )
 

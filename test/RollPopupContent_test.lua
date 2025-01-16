@@ -313,6 +313,34 @@ function RaidRollPopupContentSpec:should_display_the_winners()
   local strategy = RS.RaidRoll
   controller.start( strategy, item, 2, nil, seconds_left )
   controller.winners_found( item, 1, {
+    winner( p1.name, p1.class, item, false, RT.MainSpec ),
+    winner( p2.name, p2.class, item, false, RT.MainSpec )
+  }, strategy )
+  controller.finish()
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  eq( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                        count = 2 },
+      { type = "text",                value = "Psikutas wins the raid-roll.",  padding = 8 },
+      { type = "text",                value = "Jogobobek wins the raid-roll.", padding = 2 },
+      { type = "button",              label = "Close",                         width = 70 }
+    } )
+end
+
+function RaidRollPopupContentSpec:should_display_the_winners_and_the_award_buttons()
+  -- Given
+  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
+  local item_id = 123
+  local seconds_left = 7
+  local item = i( "Hearthstone", item_id )
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
+  local strategy = RS.RaidRoll
+  controller.start( strategy, item, 2, nil, seconds_left )
+  controller.winners_found( item, 1, {
     winner( p1.name, p1.class, item, true, RT.MainSpec ),
     winner( p2.name, p2.class, item, true, RT.MainSpec )
   }, strategy )
@@ -330,6 +358,76 @@ function RaidRollPopupContentSpec:should_display_the_winners()
       { type = "text",                value = "Jogobobek wins the raid-roll.", padding = 8 },
       { type = "award_button",        label = "Award",                         padding = 6, width = 90 },
       { type = "button",              label = "Close",                         width = 70 }
+    } )
+end
+
+function RaidRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_content_unchanged_after_aborting_the_award()
+  -- Given
+  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
+  local item_id = 123
+  local seconds_left = 7
+  local item = i( "Hearthstone", item_id )
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
+  local strategy = RS.RaidRoll
+  local winners = {
+    winner( p1.name, p1.class, item, true, RT.MainSpec ),
+    winner( p2.name, p2.class, item, true, RT.MainSpec )
+  }
+  controller.start( strategy, item, 2, nil, seconds_left )
+  controller.winners_found( item, 1, winners, strategy )
+  controller.finish()
+  eq( popup.is_visible(), true )
+  controller.show_master_loot_confirmation( winners[ 1 ], item, strategy )
+  eq( popup.is_visible(), false )
+  controller.award_aborted( item )
+  eq( popup.is_visible(), true )
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  eq( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                        count = 2 },
+      { type = "text",                value = "Psikutas wins the raid-roll.",  padding = 8 },
+      { type = "award_button",        label = "Award",                         padding = 6, width = 90 },
+      { type = "text",                value = "Jogobobek wins the raid-roll.", padding = 8 },
+      { type = "award_button",        label = "Award",                         padding = 6, width = 90 },
+      { type = "button",              label = "Close",                         width = 70 }
+    } )
+end
+
+function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awarding_one()
+  -- Given
+  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
+  local item_id = 123
+  local seconds_left = 7
+  local item = i( "Hearthstone", item_id )
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
+  local strategy = RS.RaidRoll
+  local winners = {
+    winner( p1.name, p1.class, item, true, RT.MainSpec ),
+    winner( p2.name, p2.class, item, true, RT.MainSpec )
+  }
+  controller.start( strategy, item, 2, nil, seconds_left )
+  controller.winners_found( item, 1, winners, strategy )
+  controller.finish()
+  eq( popup.is_visible(), true )
+  controller.show_master_loot_confirmation( winners[ 1 ], item, strategy )
+  eq( popup.is_visible(), false )
+  controller.loot_awarded( "Jogobobek", item.id, item.link )
+  eq( popup.is_visible(), true )
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  eq( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                       count = 1 },
+      { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
+      { type = "button",              label = "Award winner",                 width = 130 },
+      { type = "button",              label = "Close",                        width = 70 }
     } )
 end
 
@@ -444,6 +542,64 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_
       { type = "text",                value = "Psikutas wins the insta raid-roll.", padding = 8 },
       { type = "button",              label = "Raid roll again",                    width = 130 },
       { type = "button",              label = "Close",                              width = 70 }
+    } )
+end
+
+function InstaRaidRollPopupContentSpec:should_display_the_winners()
+  -- Given
+  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
+  local item_id = 123
+  local seconds_left = 7
+  local item = i( "Hearthstone", item_id )
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
+  local strategy = RS.InstaRaidRoll
+  controller.start( strategy, item, 2, nil, seconds_left )
+  controller.winners_found( item, 1, {
+    winner( p1.name, p1.class, item, false, RT.MainSpec ),
+    winner( p2.name, p2.class, item, false, RT.MainSpec )
+  }, strategy )
+  controller.finish()
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  eq( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                              count = 2 },
+      { type = "text",                value = "Psikutas wins the insta raid-roll.",  padding = 8 },
+      { type = "text",                value = "Jogobobek wins the insta raid-roll.", padding = 2 },
+      { type = "button",              label = "Close",                               width = 70 }
+    } )
+end
+
+function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_award_buttons()
+  -- Given
+  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
+  local item_id = 123
+  local seconds_left = 7
+  local item = i( "Hearthstone", item_id )
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
+  local strategy = RS.InstaRaidRoll
+  controller.start( strategy, item, 2, nil, seconds_left )
+  controller.winners_found( item, 1, {
+    winner( p1.name, p1.class, item, true, RT.MainSpec ),
+    winner( p2.name, p2.class, item, true, RT.MainSpec )
+  }, strategy )
+  controller.finish()
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  eq( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                              count = 2 },
+      { type = "text",                value = "Psikutas wins the insta raid-roll.",  padding = 8 },
+      { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
+      { type = "text",                value = "Jogobobek wins the insta raid-roll.", padding = 8 },
+      { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
+      { type = "button",              label = "Close",                               width = 70 }
     } )
 end
 
