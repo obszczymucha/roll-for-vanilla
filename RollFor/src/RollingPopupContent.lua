@@ -286,13 +286,14 @@ function M.new(
   end
 
   ---@param result table
-  ---@param players Winner[]
+  ---@param winners Winner[]
   ---@param item Item|DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
   ---@param strategy RollingStrategyType
-  local function softres_winners_content( result, players, item, strategy )
+  local function softres_winners_content( result, winners, item, strategy )
     local last_award_button_visible = false
+    local winner_count = getn( winners )
 
-    for i, winner in ipairs( players ) do
+    for i, winner in ipairs( winners ) do
       -- if i > 1 and last_award_button_visible then
       --   table.insert( result, separator() )
       -- end
@@ -300,10 +301,14 @@ function M.new(
       local padding = last_award_button_visible and 8 or i > 1 and 4 or nil
       table.insert( result, M.sr_content( winner, padding ) )
 
-      if winner.is_on_master_loot_candidate_list then
+      if winner_count > 1 and winner.is_on_master_loot_candidate_list then
         table.insert( result, award_winner_button( winner, item, strategy, roll_controller.show_master_loot_confirmation ) )
         last_award_button_visible = true
       end
+    end
+
+    if winner_count == 1 then
+      add_bottom_award_winner_button( result, winners, item, strategy )
     end
 
     table.insert( result, close_button() )
