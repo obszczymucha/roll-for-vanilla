@@ -22,15 +22,15 @@ M.interface = {
 ---@field get_anchor_center fun(): table
 ---@field get_anchor_point fun(): table
 ---@field anchor fun( frame: Frame, point: string, relative_point: string, x: number, y: number )
----@field Show fun()
----@field Hide fun()
+---@field Show fun( self )
+---@field Hide fun( self )
 ---@field SetWidth fun( frame: Frame, width: number )
 ---@field SetHeight fun( frame: Frame, height: number )
 ---@field SetPoint fun( frame: Frame, point: string, relative_frame: Frame, relative_point: string, x: number, y: number )
 ---@field GetScale fun(): number
 ---@field GetWidth fun(): number
 ---@field ClearAllPoints fun()
----@field IsVisible fun(): boolean
+---@field IsVisible fun( self ): boolean
 
 ---@alias Anchor table
 

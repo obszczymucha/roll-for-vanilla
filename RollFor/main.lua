@@ -11,7 +11,6 @@ local info = m.pretty_print
 local hl = m.colors.highlight
 local RollSlashCommand = m.Types.RollSlashCommand
 local RS = m.Types.RollingStrategy
-local S = m.Types.RollingStatus
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
@@ -161,6 +160,8 @@ local function create_components()
 
   M.api = function() return m.api end
 
+  M.master_looter = m.MasterLooter.new( M.api(), m.my_name() )
+
   ---@type fun( softres: SoftRes ): GroupedSoftRes
   M.present_softres = function( softres ) return m.SoftResPresentPlayersDecorator.new( M.group_roster, softres ) end
   ---@type fun( softres: SoftRes ): GroupedSoftRes
@@ -225,11 +226,11 @@ local function create_components()
   -- M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils )
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
 
-  M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.loot_list, announce, M.dropped_loot, M.softres, M.winner_tracker )
+  M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.loot_list, announce, M.dropped_loot, M.softres, M.winner_tracker, M.master_looter )
   M.roll_tracker = m.RollTracker.new()
 
   ---@type RollController
-  M.roll_controller = m.RollController.new( M.roll_tracker, M.loot_list, M.config )
+  M.roll_controller = m.RollController.new( M.roll_tracker, M.loot_list, M.config, M.master_looter )
   M.master_loot_frame = m.MasterLootFrame.new( M.winner_tracker, M.roll_controller, M.config )
   M.master_loot_candidates = m.MasterLootCandidates.new( M.group_roster ) -- remove group_roster for testing (dummy candidates)
 
@@ -238,7 +239,8 @@ local function create_components()
     M.master_loot_candidates,
     M.on_loot_awarded,
     M.master_loot_frame,
-    M.loot_list
+    M.loot_list,
+    M.master_looter
   )
 
   M.softres_gui = m.SoftResGui.new( M.api, M.import_encoded_softres_data, M.softres_check, M.softres, clear_data, M.dropped_loot_announce.reset )
@@ -261,7 +263,7 @@ local function create_components()
   local rolling_popup_db = db( "rolling_popup" )
 
   ---@type LootAutoProcess
-  M.loot_auto_process = m.LootAutoProcess.new( M.config, M.roll_tracker, M.loot_list, M.roll_controller )
+  M.loot_auto_process = m.LootAutoProcess.new( M.config, M.roll_tracker, M.loot_list, M.roll_controller, M.master_looter )
   M.rolling_popup = m.RollingPopup.new( m.PopupBuilder.new( m.FrameBuilder ), rolling_popup_db, M.config, M.roll_controller )
   M.rolling_popup_content = m.RollingPopupContent.new(
     M.rolling_popup,
@@ -312,13 +314,6 @@ local function create_components()
     M.master_loot.on_loot_closed()
     M.roll_controller.loot_closed()
     M.loot_frame.hide()
-
-    local status = M.roll_tracker.get().status
-
-    if status and status.type == S.Preview then
-      M.rolling_popup.hide()
-    end
-
     M.loot_auto_process.on_loot_closed()
   end )
 

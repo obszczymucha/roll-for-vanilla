@@ -8,6 +8,14 @@ local M = {}
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
+---@class DroppedLoot
+---@field get_dropped_item_id fun( item_name: string ): number
+---@field get_dropped_item_name fun( item_id: number ): string
+---@field add fun( item_id: number, item_name: string )
+---@field clear fun()
+
+---@param db table
+---@return DroppedLoot
 function M.new( db )
   db.dropped_items = db.dropped_items or {}
 

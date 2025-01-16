@@ -1,7 +1,7 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-local lu = require( "luaunit" )
 local tu = require( "test/utils" )
+local lu, eq = tu.luaunit( "assertEquals" )
 tu.mock_wow_api()
 require( "src/modules" )
 local types = require( "src/Types" )
@@ -15,6 +15,9 @@ require( "src/SoftResDataTransformer" )
 local softres_decorator = require( "src/SoftResPresentPlayersDecorator" )
 local softres_mod = require( "src/SoftRes" )
 local loot_list_mod = require( "mocks/LootList" )
+local db_mod = require( "src/Db" )
+local rolling_popup_mod = require( "src/RollingPopup" )
+local master_looter_mock = require( "mocks/MasterLooter" )
 local new = require( "src/RollingPopupContent" ).new
 local make_dropped_item = ItemUtils.make_dropped_item
 local make_softres_dropped_item = ItemUtils.make_softres_dropped_item
@@ -29,7 +32,7 @@ local winner = types.make_winner
 local RT = types.RollType
 local RS = types.RollingStrategy
 local tracker = tracker_mod.new()
-local controller = controller_mod.new( tracker )
+local controller = controller_mod.new( tracker, master_looter_mock.new( true ) )
 local loot_list = loot_list_mod.new()
 
 local getn = table.getn
@@ -56,30 +59,37 @@ local function mock_group_roster( ... )
   }
 end
 
-local function mock_popup()
-  local content
-  local is_visible = false
-
-  local function refresh( _, new_content )
-    content = new_content
-  end
-
-  return {
-    refresh = refresh,
-    get = function() return content end,
-    show = function() is_visible = true end,
-    is_visible = function() return is_visible end,
-    border_color = function() end
-  }
-end
-
 local function mock_config( configuration )
   local c = configuration
 
   return {
     auto_raid_roll = function() return c and c.auto_raid_roll end,
-    raid_roll_again = function() return c and c.raid_roll_again end
+    raid_roll_again = function() return c and c.raid_roll_again end,
+    rolling_popup_lock = function() return c and c.rolling_popup_lock end,
+    subscribe = function() end,
+    rolling_popup = function() return true end
   }
+end
+
+local function mock_popup( config )
+  local content
+
+
+  local popup_builder = require( "mocks/PopupBuilder" )
+  local popup = rolling_popup_mod.new( popup_builder.new(), db_mod.new( {} )( "dummy" ), config or mock_config(), controller )
+  popup.get = function() return content end
+
+  local old_refresh = popup.refresh
+  popup.refresh = function( _, new_content )
+    content = new_content
+    old_refresh( _, new_content )
+  end
+
+  popup.is_visible = function()
+    return popup.get_frame():IsVisible()
+  end
+
+  return popup
 end
 
 local function new_softres( group_roster, data )
@@ -91,7 +101,7 @@ local function new_softres( group_roster, data )
 end
 
 local function new_mod( config, finish_early, cancel_roll, raid_roll, roll_item, insta_raid_roll, select_player )
-  local popup = mock_popup()
+  local popup = mock_popup( config )
   local noop = function() end
   local mod = new(
     popup,
@@ -166,7 +176,7 @@ function RaidRollPopupContentSpec:should_return_initial_content()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,          count = 1 },
       { type = "text",                value = "Raid rolling...", padding = 8 },
@@ -186,7 +196,7 @@ function RaidRollPopupContentSpec:should_return_initial_content_with_multiple_it
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,          count = 2 },
       { type = "text",                value = "Raid rolling...", padding = 8 },
@@ -210,7 +220,7 @@ function RaidRollPopupContentSpec:should_display_the_winner()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                       count = 1 },
       { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
@@ -234,7 +244,7 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_the_award_button
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                       count = 1 },
       { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
@@ -259,7 +269,7 @@ function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                       count = 1 },
       { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
@@ -284,7 +294,7 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_i
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                                           count = 1 },
       { type = "text",                value = "Psikutas wins the raid-roll.",                     padding = 8 },
@@ -312,7 +322,7 @@ function RaidRollPopupContentSpec:should_display_the_winners()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                        count = 2 },
       { type = "text",                value = "Psikutas wins the raid-roll.",  padding = 8 },
@@ -337,7 +347,7 @@ function InstaRaidRollPopupContentSpec:should_return_initial_content()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                count = 1 },
       { type = "text",                value = "Insta raid rolling...", padding = 8 },
@@ -356,7 +366,7 @@ function InstaRaidRollPopupContentSpec:should_return_initial_content_with_multip
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                count = 2 },
       { type = "text",                value = "Insta raid rolling...", padding = 8 },
@@ -379,7 +389,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                             count = 1 },
       { type = "text",                value = "Psikutas wins the insta raid-roll.", padding = 8 },
@@ -403,7 +413,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_and_the_award_b
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                             count = 1 },
       { type = "text",                value = "Psikutas wins the insta raid-roll.", padding = 8 },
@@ -428,7 +438,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                             count = 1 },
       { type = "text",                value = "Psikutas wins the insta raid-roll.", padding = 8 },
@@ -451,7 +461,7 @@ function NormalRollPopupContentSpec:should_return_initial_content()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "text",                value = "Rolling ends in 7 seconds.", padding = 11 },
@@ -472,7 +482,7 @@ function NormalRollPopupContentSpec:should_return_initial_content_and_auto_raid_
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "text",                value = "Rolling ends in 7 seconds.", padding = 11 },
@@ -495,7 +505,7 @@ function NormalRollPopupContentSpec:should_update_rolling_ends_message()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "text",                value = "Rolling ends in 5 seconds.", padding = 11 },
@@ -518,7 +528,7 @@ function NormalRollPopupContentSpec:should_display_cancel_message()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "text",                value = "Rolling has been canceled.", padding = 11 },
@@ -539,7 +549,7 @@ function NormalRollPopupContentSpec:should_update_rolling_ends_message_for_one_s
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                    count = 1 },
       { type = "text",                value = "Rolling ends in 1 second.", padding = 11 },
@@ -566,7 +576,7 @@ function NormalRollPopupContentSpec:should_display_the_winner()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                                      count = 1 },
       { type = "roll",                roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
@@ -594,7 +604,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                                      count = 1 },
       { type = "roll",                roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 8, padding = 11 },
@@ -622,7 +632,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                                       count = 1 },
       { type = "roll",                roll_type = RT.MainSpec,                                player_name = p1.name, player_class = p1.class, roll = 11, padding = 11 },
@@ -650,7 +660,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                                       count = 1 },
       { type = "roll",                roll_type = RT.MainSpec,                                player_name = p1.name, player_class = p1.class, roll = 18, padding = 11 },
@@ -682,7 +692,7 @@ function NormalRollPopupContentSpec:should_sort_the_rolls()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                                          count = 1 },
       { type = "roll",                roll_type = RT.MainSpec,                                   player_name = p2.name, player_class = p2.class, roll = 45, padding = 11 },
@@ -714,7 +724,7 @@ function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                                     count = 1 },
       { type = "roll",                roll_type = RT.OffSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
@@ -742,7 +752,7 @@ function NormalRollPopupContentSpec:should_display_the_transmog_winner()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                                     count = 1 },
       { type = "roll",                roll_type = RT.Transmog,                              player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
@@ -772,7 +782,7 @@ function NormalRollPopupContentSpec:should_display_the_winners()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                                      count = 2 },
       { type = "text",                value = "Psikutas wins the main-spec roll with a 54.", padding = 11 },
@@ -802,7 +812,7 @@ function NormalRollPopupContentSpec:should_display_the_winners_and_the_award_but
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                                      count = 2 },
       { type = "text",                value = "Psikutas wins the main-spec roll with a 54.", padding = 11 },
@@ -831,7 +841,7 @@ function SoftResrollPopupContentSpec:should_preview_rolls()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,             count = 1 },
       { type = "roll",                player_name = "Obszczymucha", player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -857,7 +867,7 @@ function SoftResrollPopupContentSpec:should_preview_the_winner()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                          count = 1 },
       { type = "text",                value = "Psikutas soft-ressed this item.", padding = 11 },
@@ -881,7 +891,7 @@ function SoftResrollPopupContentSpec:should_preview_the_winners()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                              count = 2 },
       { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 11 },
@@ -906,7 +916,7 @@ function SoftResrollPopupContentSpec:should_preview_the_winners_with_no_differen
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                              count = 2 },
       { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 11 },
@@ -932,7 +942,7 @@ function SoftResrollPopupContentSpec:should_return_initial_softres_content()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "roll",                player_name = "Obszczymucha",         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -961,7 +971,7 @@ function SoftResrollPopupContentSpec:should_update_rolling_ends_message()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "roll",                player_name = "Obszczymucha",         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -990,7 +1000,7 @@ function SoftResrollPopupContentSpec:should_update_rolling_ends_message_for_one_
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                    count = 1 },
       { type = "roll",                player_name = "Obszczymucha",        player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1022,7 +1032,7 @@ function SoftResrollPopupContentSpec:should_display_the_winner()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                                     count = 1 },
       { type = "roll",                player_name = "Obszczymucha",                         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1053,7 +1063,7 @@ function SoftResrollPopupContentSpec:should_display_the_winner_and_the_award_but
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                                     count = 1 },
       { type = "roll",                player_name = "Obszczymucha",                         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1083,7 +1093,7 @@ function SoftResrollPopupContentSpec:should_say_nobody_rolled()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                               count = 1 },
       { type = "roll",                player_name = "Obszczymucha",                   player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1115,7 +1125,7 @@ function SoftResrollPopupContentSpec:should_display_the_only_soft_resser()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                          count = 1 },
       { type = "text",                value = "Psikutas soft-ressed this item.", padding = 11 },
@@ -1147,7 +1157,7 @@ function SoftResrollPopupContentSpec:should_display_the_rolls()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                               count = 1 },
       { type = "roll",                player_name = "Psikutas",                       player_class = C.Warrior, roll_type = RT.SoftRes, roll = 69, padding = 11 },
@@ -1177,7 +1187,7 @@ function SoftResrollPopupContentSpec:should_say_waiting_for_remaining_rolls()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                         count = 1 },
       { type = "roll",                player_name = "Obszczymucha",             player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1212,7 +1222,7 @@ function SoftResrollPopupContentSpec:should_display_the_winners()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                              count = 2 },
       { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 11 },
@@ -1233,19 +1243,102 @@ function SoftResrollPopupContentSpec:should_display_the_winners_and_the_award_bu
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
   local strategy = RS.SoftResRoll
-  controller.start( strategy, item, 2, nil, seconds_left, softressing_players )
-  controller.tick( 1 )
-  controller.winners_found( item, 2, {
+  local winners = {
     winner( "Psikutas", C.Warrior, item, true, RT.SoftRes ),
     winner( "Obszczymucha", C.Druid, item, true, RT.SoftRes )
-  }, strategy )
+  }
+  controller.start( strategy, item, 2, nil, seconds_left, softressing_players )
+  controller.tick( 1 )
+  controller.winners_found( item, 2, winners, strategy )
   controller.finish()
 
   -- When
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                              count = 2 },
+      { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 11 },
+      { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
+      { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 8 },
+      { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
+      { type = "button",              label = "Close",                               width = 70 },
+      { type = "button",              label = "Award...",                            width = 90 }
+    } )
+end
+
+function SoftResrollPopupContentSpec:should_properly_hide_and_show_the_popup_with_content_unchanged_after_aborting_the_award()
+  -- Given
+  local popup = new_mod()
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
+  local group_roster = mock_group_roster( p1, p2 )
+  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+  local item_id = 123
+  local seconds_left = 7
+  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local item = i( "Hearthstone", item_id )
+  local strategy = RS.SoftResRoll
+  local winners = {
+    winner( "Psikutas", C.Warrior, item, true, RT.SoftRes ),
+    winner( "Obszczymucha", C.Druid, item, true, RT.SoftRes )
+  }
+  controller.start( strategy, item, 2, nil, seconds_left, softressing_players )
+  controller.tick( 1 )
+  controller.winners_found( item, 2, winners, strategy )
+  controller.finish()
+  eq( popup.is_visible(), true )
+  controller.show_master_loot_confirmation( winners[ 1 ], item, strategy )
+  eq( popup.is_visible(), false )
+  controller.award_aborted( item )
+  eq( popup.is_visible(), true )
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  eq( cleanse( result ),
+    {
+      { type = "item_link_with_icon", link = item.link,                              count = 2 },
+      { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 11 },
+      { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
+      { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 8 },
+      { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
+      { type = "button",              label = "Close",                               width = 70 },
+      { type = "button",              label = "Award...",                            width = 90 }
+    } )
+end
+
+function SoftResrollPopupContentSpec:should_display_the_remaining_winner_after_awarding_one()
+  -- Given
+  local popup = new_mod()
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
+  local group_roster = mock_group_roster( p1, p2 )
+  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+  local item_id = 123
+  local seconds_left = 7
+  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local item = i( "Hearthstone", item_id )
+  local strategy = RS.SoftResRoll
+  local winners = {
+    winner( "Psikutas", C.Warrior, item, true, RT.SoftRes ),
+    winner( "Obszczymucha", C.Druid, item, true, RT.SoftRes )
+  }
+  controller.start( strategy, item, 2, nil, seconds_left, softressing_players )
+  controller.tick( 1 )
+  controller.winners_found( item, 2, winners, strategy )
+  controller.finish()
+  eq( popup.is_visible(), true )
+  controller.show_master_loot_confirmation( winners[ 1 ], item, strategy )
+  eq( popup.is_visible(), false )
+  controller.loot_awarded( "Psikutas", item.id, item.link )
+  eq( popup.is_visible(), true )
+
+  -- When
+  local result = popup.get()
+
+  -- Then
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                              count = 2 },
       { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 11 },
@@ -1276,7 +1369,7 @@ function TieRollPopupContentSpec:should_display_tied_rolls()
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                count = 1 },
       { type = "roll",                player_name = "Obszczymucha",    player_class = C.Druid,   roll_type = RT.MainSpec, roll = 69,   padding = 11 },
@@ -1305,7 +1398,7 @@ function TieRollPopupContentSpec:should_display_tied_rolls_with_waiting_message(
   local result = popup.get()
 
   -- Then
-  lu.assertEquals( cleanse( result ),
+  eq( cleanse( result ),
     {
       { type = "item_link_with_icon", link = item.link,                         count = 1 },
       { type = "roll",                player_name = "Obszczymucha",             player_class = C.Druid,   roll_type = RT.MainSpec, roll = 69,   padding = 11 },

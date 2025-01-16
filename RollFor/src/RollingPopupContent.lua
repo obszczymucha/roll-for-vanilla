@@ -20,9 +20,6 @@ local grey = m.colors.grey
 local r = m.roll_type_color
 local hl = m.colors.hl
 
----@type MakeItemCandidateFn
-local make_item_candidate = m.Types.make_item_candidate
-
 local M = {}
 
 local top_padding = 11
@@ -44,7 +41,7 @@ end
 ---@param winner Winner
 ---@param item Item
 ---@param strategy RollingStrategyType
----@param on_click fun( player: ItemCandidate, item: Item, strategy: RollingStrategyType )
+---@param on_click fun( player: ItemCandidate|Winner, item: Item, strategy: RollingStrategyType )
 local function award_winner_button( winner, item, strategy, on_click )
   -- TODO: Think how to deal with multiple winners in terms of awarding.
   return {
@@ -53,8 +50,7 @@ local function award_winner_button( winner, item, strategy, on_click )
     width = 90,
     on_click = function()
       if on_click then
-        local player = make_item_candidate( winner.name, winner.class, true )
-        on_click( player, item, strategy )
+        on_click( winner, item, strategy )
       end
     end,
     padding = 6
@@ -264,8 +260,7 @@ function M.new(
       label = "Award winner",
       width = 130,
       on_click = function()
-        local player = make_item_candidate( winner.name, winner.class, true )
-        roll_controller.show_master_loot_confirmation( player, dropped_item, strategy )
+        roll_controller.show_master_loot_confirmation( winner, dropped_item, strategy )
       end
     } )
   end
@@ -505,11 +500,9 @@ function M.new(
         if winner.is_on_master_loot_candidate_list then
           popup:hide()
 
-          local player = make_item_candidate( winner.name, winner.class, true )
-
           if data.item.type == LT.DroppedItem or data.item.type == LT.SoftRessedDroppedItem then
             local item = assert( data.item --[[@as DroppedItem|SoftRessedDroppedItem]] )
-            roll_controller.show_master_loot_confirmation( player, item, current_iteration.rolling_strategy )
+            roll_controller.show_master_loot_confirmation( winner, item, current_iteration.rolling_strategy )
           else
             m.pdump( data.item )
             m.trace( string.format( "Item was of %s type.", data and data.item and data.item.type or "nil" ) )

@@ -132,21 +132,6 @@ function M.clone( t )
   return result
 end
 
-function M.is_player_master_looter()
-  if not M.api.IsInGroup() then return false end
-
-  local loot_method, id = M.api.GetLootMethod()
-  if loot_method ~= "master" or not id then return false end
-  if id == 0 then return true end
-
-  if M.api.IsInRaid() then
-    local name = M.api.GetRaidRosterInfo( id )
-    return name == M.my_name()
-  end
-
-  return M.api.UnitName( "party" .. id ) == M.my_name()
-end
-
 function M.is_master_loot()
   return M.api.GetLootMethod() == "master"
 end

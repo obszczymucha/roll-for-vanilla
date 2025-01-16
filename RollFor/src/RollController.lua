@@ -7,6 +7,9 @@ local M = m.Module.new( "RollController" )
 local S = m.Types.RollingStatus
 local getn = table.getn
 
+---@type PT
+local PT = m.Types.PlayerType
+
 ---@class RollController
 ---@field preview fun( item: DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem, count: number )
 ---@field start fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, seconds: number?, required_rolling_players: Player[]?)
@@ -23,7 +26,7 @@ local getn = table.getn
 ---@field show fun()
 ---@field award_aborted fun( item: Item )
 ---@field loot_awarded fun( player_name: string, item_id: number, item_link: string )
----@field show_master_loot_confirmation fun( player: ItemCandidate, item: DroppedItem|SoftRessedDroppedItem, rolling_strategy: RollingStrategyType )
+---@field show_master_loot_confirmation fun( player: ItemCandidate|Winner, item: DroppedItem|SoftRessedDroppedItem, rolling_strategy: RollingStrategyType )
 ---@field loot_opened fun()
 ---@field loot_closed fun()
 ---@field player_already_has_unique_item fun()
@@ -37,8 +40,9 @@ local getn = table.getn
 ---@field process_next_item fun()
 
 ---@param roll_tracker RollTracker
+---@param master_looter MasterLooter
 ---@return RollController
-function M.new( roll_tracker )
+function M.new( roll_tracker, master_looter )
   local callbacks = {}
 
   local function notify_subscribers( event_type, data )
@@ -170,7 +174,7 @@ function M.new( roll_tracker )
 
   local function process_next_item()
     M.debug.add( "process_next_item" )
-    if not m.is_player_master_looter() then return end
+    if not master_looter.is_player_master_looter() then return end
     notify_subscribers( "process_next_item" )
   end
 
@@ -202,11 +206,13 @@ function M.new( roll_tracker )
     end
   end
 
-  ---@param player ItemCandidate
+  ---@param player ItemCandidate|Winner
   ---@param item DroppedItem|SoftRessedDroppedItem
   ---@param strategy RollingStrategyType
   local function show_master_loot_confirmation( player, item, strategy )
     M.debug.add( "show_master_loot_confirmation" )
+    if player.type == PT.Winner and not player.is_on_master_loot_candidate_list then return end
+    notify_subscribers( "rolling_popup_hide" )
     notify_subscribers( "show_master_loot_confirmation", { player = player, item = item, rolling_strategy = strategy } )
   end
 
@@ -217,7 +223,13 @@ function M.new( roll_tracker )
 
   local function loot_closed()
     M.debug.add( "loot_closed" )
+    local status = roll_tracker.get().status
+
     notify_subscribers( "loot_closed" )
+
+    if status and status.type == S.Preview then
+      notify_subscribers( "rolling_popup_hide" )
+    end
   end
 
   local function player_already_has_unique_item()

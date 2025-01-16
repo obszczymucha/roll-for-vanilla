@@ -225,6 +225,7 @@ function M.new( popup_builder, db, config, roll_controller )
   end
 
   roll_controller.subscribe( "all_items_awarded", hide )
+  roll_controller.subscribe( "rolling_popup_hide", hide )
 
   local function get_frame()
     if not popup then

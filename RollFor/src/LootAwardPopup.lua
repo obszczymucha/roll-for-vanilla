@@ -34,13 +34,6 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
         :esc()
         :gui_elements( m.GuiElements )
         :frame_style( "PrincessKenny" )
-        :on_show( function()
-          ---@diagnostic disable-next-line: undefined-global
-          local rolling_frame = RollForRollingFrame
-          if rolling_frame then
-            rolling_frame:Hide()
-          end
-        end )
         :self_centered_anchor()
         :build()
 
