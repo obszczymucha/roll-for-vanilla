@@ -183,15 +183,22 @@ local function create_components()
 
   ---@type SoftRes
   M.matched_name_softres = m.SoftResMatchedNameDecorator.new( M.name_matcher, M.unfiltered_softres )
+
   ---@type SoftRes
   M.awarded_loot_softres = m.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
+
   ---@type GroupedSoftRes
   M.softres = M.present_softres( M.awarded_loot_softres )
 
+  ---@type DroppedLoot
   M.dropped_loot = m.DroppedLoot.new( db( "dropped_loot" ) )
   M.softres_check = m.SoftResCheck.new( M.matched_name_softres, M.group_roster, M.name_matcher, M.ace_timer,
     M.absent_softres, db( "softres_check" ) )
+
+  ---@type WinnerTracker
   M.winner_tracker = m.WinnerTracker.new( db( "winner_tracker" ) )
+
+  ---@type LootFacade
   M.loot_facade = m.LootFacade.new( m.EventFrame.new( m.api ), m.api )
 
   ---@diagnostic disable-next-line: unused-local, unused-function
@@ -224,14 +231,20 @@ local function create_components()
 
   M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils, get_dummy_items )
   -- M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils )
+
+  ---@type SoftResLootList
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
 
   M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.loot_list, announce, M.dropped_loot, M.softres, M.winner_tracker, M.master_looter )
+
+  ---@type RollTracker
   M.roll_tracker = m.RollTracker.new()
 
   ---@type RollController
-  M.roll_controller = m.RollController.new( M.roll_tracker, M.loot_list, M.config, M.master_looter )
+  M.roll_controller = m.RollController.new( M.roll_tracker, M.master_looter )
   M.master_loot_frame = m.MasterLootFrame.new( M.winner_tracker, M.roll_controller, M.config )
+
+  ---@type MasterLootCandidates
   M.master_loot_candidates = m.MasterLootCandidates.new( M.group_roster ) -- remove group_roster for testing (dummy candidates)
 
   ---@type MasterLoot

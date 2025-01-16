@@ -203,6 +203,8 @@ function M.new( roll_tracker, master_looter )
 
     if getn( data.winners ) == 0 then
       notify_subscribers( "all_items_awarded" )
+    else
+      notify_subscribers( "not_all_items_awarded" )
     end
   end
 

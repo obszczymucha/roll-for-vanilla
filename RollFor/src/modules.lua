@@ -568,7 +568,7 @@ function M.get_item_quality_and_texture( item_id )
 end
 
 function M.pdump( o )
-  print( M.dump( o ) )
+  print( "\n" .. M.dump( o ) )
 end
 
 return M

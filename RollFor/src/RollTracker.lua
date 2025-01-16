@@ -293,6 +293,7 @@ function M.new()
     for i, winner in ipairs( winners ) do
       if winner.name == player_name then
         table.remove( winners, i )
+        item_on_roll_count = item_on_roll_count - 1
         clear_if_no_winners()
 
         return

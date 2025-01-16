@@ -566,6 +566,7 @@ function M.new(
   roll_controller.subscribe( "show", show_and_refresh )
   roll_controller.subscribe( "border_color", border_color )
   roll_controller.subscribe( "award_aborted", award_aborted )
+  roll_controller.subscribe( "not_all_items_awarded", award_aborted )
   roll_controller.subscribe( "loot_opened", loot_opened )
   roll_controller.subscribe( "loot_closed", loot_closed )
 end

@@ -1340,10 +1340,8 @@ function SoftResrollPopupContentSpec:should_display_the_remaining_winner_after_a
   -- Then
   eq( cleanse( result ),
     {
-      { type = "item_link_with_icon", link = item.link,                              count = 2 },
-      { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 11 },
-      { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
-      { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 8 },
+      { type = "item_link_with_icon", link = item.link,                              count = 1 },
+      { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 11 },
       { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
       { type = "button",              label = "Close",                               width = 70 },
       { type = "button",              label = "Award...",                            width = 90 }
