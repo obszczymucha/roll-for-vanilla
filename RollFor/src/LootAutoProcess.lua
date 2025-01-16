@@ -28,11 +28,6 @@ function M.new( config, roll_tracker, loot_list, roll_controller, master_looter 
   local selected_loot_list_item
 
   local function process_next_item()
-    if selected_loot_list_item then
-      roll_controller.process_next_item()
-      return
-    end
-
     local threshold = m.api.GetLootThreshold()
     local data = roll_tracker.get()
     local items = loot_list.get_items()
@@ -83,8 +78,8 @@ function M.new( config, roll_tracker, loot_list, roll_controller, master_looter 
   end
 
   roll_controller.subscribe( "process_next_item", process_next_item )
-  roll_controller.subscribe( "loot_list_item_selected", on_loot_list_item_selected )
-  roll_controller.subscribe( "loot_list_item_deselected", on_loot_list_item_deselected )
+  -- roll_controller.subscribe( "loot_list_item_selected", on_loot_list_item_selected )
+  -- roll_controller.subscribe( "loot_list_item_deselected", on_loot_list_item_deselected )
 
   return {
     on_loot_opened = on_loot_opened,

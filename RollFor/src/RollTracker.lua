@@ -288,6 +288,7 @@ function M.new()
   ---@param player_name string
   ---@param item_id number
   local function loot_awarded( player_name, item_id )
+    m.pdump( item_on_roll or "nil" )
     if not item_on_roll or item_on_roll.id ~= item_id then return end
 
     for i, winner in ipairs( winners ) do
@@ -296,10 +297,12 @@ function M.new()
         item_on_roll_count = item_on_roll_count - 1
         clear_if_no_winners()
 
+        print("chuj1")
         return
       end
     end
 
+        print("chuj2")
     clear_if_no_winners()
   end
 

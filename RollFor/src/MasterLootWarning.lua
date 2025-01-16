@@ -33,7 +33,11 @@ local function create_frame( api )
   return frame
 end
 
-function M.new( api, config, boss_list )
+---@param api table
+---@param config Config
+---@param boss_list BossList
+---@param master_looter MasterLooter
+function M.new( api, config, boss_list, master_looter )
   local frame
   local is_visible = false
 
@@ -60,7 +64,7 @@ function M.new( api, config, boss_list )
   end
 
   local function toggle()
-    if not m.is_player_master_looter() and not m.is_player_a_leader() or config.auto_master_loot() then
+    if not master_looter.is_player_master_looter() and not m.is_player_a_leader() or config.auto_master_loot() then
       if is_visible then hide() end
       return
     end

@@ -158,7 +158,7 @@ function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, 
 
       if not rerolling and config.auto_raid_roll() and m_rolling_strategy and m_rolling_strategy.get_rolling_strategy() ~= RS.SoftResRoll then
         -- At some point item_count gets to 0.
-        -- print( item_count )
+        print( item_count )
         m_rolling_strategy = nil
         local strategy = rolling_strategy_factory.raid_roll( item, item_count )
 

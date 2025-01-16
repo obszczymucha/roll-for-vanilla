@@ -3,6 +3,9 @@ local m = RollFor
 
 if m.BossList then return end
 
+---@class BossList
+---@field zones table<string, string[]>
+
 local M    = {}
 
 M.zones    = {

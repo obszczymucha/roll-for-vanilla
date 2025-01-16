@@ -229,8 +229,7 @@ local function create_components()
     return result
   end
 
-  M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils, get_dummy_items )
-  -- M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils )
+  M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils ) --, get_dummy_items )
 
   ---@type SoftResLootList
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
@@ -265,7 +264,7 @@ local function create_components()
 
   M.usage_printer = m.UsagePrinter.new( M.config )
   M.minimap_button = m.MinimapButton.new( M.api, db( "minimap_button" ), M.softres_gui.toggle, M.softres_check, M.config )
-  M.master_loot_warning = m.MasterLootWarning.new( M.api, M.config, m.BossList.zones )
+  M.master_loot_warning = m.MasterLootWarning.new( M.api, M.config, m.BossList.zones, M.master_looter )
   M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, db( "auto_loot" ), M.config )
   M.new_group_event = m.NewGroupEvent.new()
   M.auto_group_loot = m.AutoGroupLoot.new( M.loot_list, M.config, m.BossList.zones )
@@ -336,7 +335,16 @@ local function create_components()
     M.loot_frame.update()
   end )
 
-  M.loot_frame = m.LootFrame.new( m.FrameBuilder, M.loot_list, db( "loot_frame" ), M.roll_controller, M.roll_tracker, M.config, M.rolling_popup )
+  M.loot_frame = m.LootFrame.new(
+    m.FrameBuilder,
+    M.loot_list,
+    db( "loot_frame" ),
+    M.roll_controller,
+    M.roll_tracker,
+    M.config,
+    M.master_looter
+  )
+
   M.roll_for_ad = m.RollForAd.new()
 
   ---@type RollingStrategyFactory

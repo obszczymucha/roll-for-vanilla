@@ -16,7 +16,8 @@ local S = m.Types.RollingStatus
 ---@param roll_controller RollController
 ---@param roll_tracker RollTracker
 ---@param config Config
-function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, config )
+---@param master_looter MasterLooter
+function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, config, master_looter )
   local scale = 1.0
   ---@class Frame
   local boss_name_frame
@@ -68,7 +69,7 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
 
     local loot_method = m.api.GetLootMethod()
 
-    if m.is_player_master_looter() and item.type ~= LT.Coin then
+    if master_looter.is_player_master_looter() and item.type ~= LT.Coin then
       local count = loot_list.count( item.id )
       roll_controller.preview( item, count )
       return
