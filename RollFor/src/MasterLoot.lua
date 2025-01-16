@@ -25,7 +25,7 @@ local getn = table.getn
 
 ---@param master_loot_candidates MasterLootCandidates
 ---@param on_loot_awarded fun( player_name: string, item_id: number, item_link: string )
----@param master_loot_frame MasterLootFrame
+---@param master_loot_frame MasterLootCandidateSelectionFrame
 ---@param loot_list LootList
 ---@param master_looter MasterLooter
 ---@return MasterLoot

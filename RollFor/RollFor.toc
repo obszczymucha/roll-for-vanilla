@@ -42,7 +42,7 @@ src\EventHandler.lua
 src\SoftResGui.lua
 src\VersionBroadcast.lua
 src\MasterLoot.lua
-src\MasterLootFrame.lua
+src\MasterLootCandidateSelectionFrame.lua
 src\SoftResCheck.lua
 src\SoftResRollingLogic.lua
 src\NonSoftResRollingLogic.lua

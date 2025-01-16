@@ -242,7 +242,7 @@ local function create_components()
 
   ---@type RollController
   M.roll_controller = m.RollController.new( M.roll_tracker, M.master_looter )
-  M.master_loot_frame = m.MasterLootFrame.new( M.winner_tracker, M.roll_controller, M.config )
+  M.master_loot_frame = m.MasterLootCandidateSelectionFrame.new( M.winner_tracker, M.roll_controller, M.config )
 
   ---@type MasterLootCandidates
   M.master_loot_candidates = m.MasterLootCandidates.new( M.group_roster ) -- remove group_roster for testing (dummy candidates)

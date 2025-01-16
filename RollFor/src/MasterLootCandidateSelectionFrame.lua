@@ -1,7 +1,7 @@
 RollFor = RollFor or {}
 local m = RollFor
 
-if m.MasterLootFrame then return end
+if m.MasterLootCandidateSelectionFrame then return end
 
 local M = {}
 
@@ -150,7 +150,7 @@ local function create_button( parent, index, rows )
   return frame
 end
 
----@class MasterLootFrame
+---@class MasterLootCandidateSelectionFrame
 ---@field restore_loot_buttons fun()
 ---@field create fun()
 ---@field create_candidate_frames fun( candidates: ItemCandidate[], item: DroppedItem, strategy: RollingStrategyType )
@@ -161,7 +161,7 @@ end
 ---@param winner_tracker WinnerTracker
 ---@param roll_controller RollController
 ---@param config Config
----@return MasterLootFrame
+---@return MasterLootCandidateSelectionFrame
 function M.new( winner_tracker, roll_controller, config )
   local m_frame
   local m_buttons = {}
@@ -299,5 +299,5 @@ function M.new( winner_tracker, roll_controller, config )
   }
 end
 
-m.MasterLootFrame = M
+m.MasterLootCandidateSelectionFrame = M
 return M

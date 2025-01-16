@@ -23,7 +23,7 @@ M.interface = {
 ---@field quality number
 
 ---@class LootFacade
----@field subscribe fun( event_name: LootEventName, callback: fun() )
+---@field subscribe fun( event_name: LootEventName, callback: fun( arg: any? ) )
 ---@field get_item_count fun(): number
 ---@field get_source_guid fun(): string
 ---@field get_link fun( slot: number ): ItemLink
