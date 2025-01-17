@@ -364,6 +364,14 @@ function M.new(
     return result
   end
 
+  local function finish_rolling_early_button()
+    return { type = "button", label = "Finish early", width = 100, on_click = roll_controller.finish_rolling_early }
+  end
+
+  local function cancel_rolling_button()
+    return { type = "button", label = "Cancel", width = 100, on_click = roll_controller.cancel_rolling }
+  end
+
   local function seconds_left_content( result, data, roll_count )
     local seconds = data.status.seconds_left
     table.insert( result,
@@ -373,10 +381,8 @@ function M.new(
       table.insert( result, { type = "text", value = string.format( "Auto %s is %s.", blue( "raid-roll" ), m.msg.enabled ) } )
     end
 
-    table.insert( result,
-      { type = "button", label = "Finish early", width = 100, on_click = roll_controller.finish_rolling_early } )
-    table.insert( result,
-      { type = "button", label = "Cancel", width = 100, on_click = roll_controller.cancel_rolling } )
+    table.insert( result, finish_rolling_early_button() )
+    table.insert( result, cancel_rolling_button() )
     return result
   end
 
@@ -472,10 +478,8 @@ function M.new(
 
     if data.status.type == S.Waiting then
       table.insert( result, { type = "text", value = "Waiting for remaining rolls...", padding = top_padding } )
-      table.insert( result,
-        { type = "button", label = "Finish early", width = 100, on_click = roll_controller.finish_rolling_early } )
-      table.insert( result,
-        { type = "button", label = "Cancel", width = 100, on_click = roll_controller.cancel_rolling } )
+      table.insert( result, finish_rolling_early_button() )
+      table.insert( result, cancel_rolling_button() )
       return result
     end
 

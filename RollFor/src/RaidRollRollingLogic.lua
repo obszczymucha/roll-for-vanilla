@@ -82,12 +82,15 @@ function M.new(
   end
 
   local function on_roll( player_name, roll, min, max )
+    print("chuj1")
     if player_name ~= player_info.get_name() then return end
     if min ~= 1 or max ~= getn( candidates ) then return end
 
+    print("chuj2")
     table.insert( m_winners, candidates[ roll ] )
     if getn( m_winners ) < item_count then return end
 
+    print("chuj3")
     local winners = m.map( m_winners,
       ---@param player ItemCandidate|Player
       function( player )
@@ -98,6 +101,9 @@ function M.new(
         end
       end )
 
+    print("chuj3")
+    print(string.format( "item_count: %s", item_count ))
+    m.pdump(winners)
     controller.winners_found( item, item_count, winners, strategy )
     controller.finish()
     m_rolling = false

@@ -18,7 +18,6 @@ local RS = m.Types.RollingStrategy
 ---  rerolling: boolean? )
 
 ---@class RollingLogic
----@field roll fun( rolling_strategy: RollingStrategy )
 ---@field on_softres_rolls_available SoftresRollsAvailableCallback
 ---@field on_rolling_finished RollingFinishedCallback
 ---@field is_rolling fun(): boolean
@@ -49,13 +48,20 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     chat.announce( string.format( "SR rolls remaining: %s", message ) )
   end
 
-  local function roll( strategy )
+  ---@param strategy RollingStrategy
+  ---@param strategy_type RollingStrategyType
+  ---@param item Item
+  ---@param item_count number
+  ---@param message string?
+  ---@param seconds number?
+  local function roll( strategy, strategy_type, item, item_count, message, seconds )
     if m_rolling_strategy and m_rolling_strategy.is_rolling() then
       m.err( "Rolling is already in progress." )
       return
     end
 
     m_rolling_strategy = strategy
+    roll_controller.rolling_started( strategy_type, item, item_count, message, seconds )
     m_rolling_strategy.start_rolling()
   end
 
@@ -169,7 +175,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
         local strategy = strategy_factory.raid_roll( item, item_count, facade )
 
         if strategy then
-          roll( strategy )
+          roll( strategy, item )
         end
       elseif m_rolling_strategy and not m_rolling_strategy.is_rolling() then
         info( string.format( "Rolling for %s has finished.", item.link ) )
@@ -214,13 +220,9 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
   end
 
   local function cancel_rolling()
-    print( "yes" )
     if not m_rolling_strategy then return end
-    print( "yes2" )
     m_rolling_strategy.cancel_rolling()
-    print( "yes3" )
     roll_controller.rolling_canceled()
-    print( "yes4" )
   end
 
   ---@param player_name string
@@ -282,11 +284,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     if not strategy then return end
 
     winner_tracker.start_rolling( data.item.link )
-    roll( strategy )
-
-    if not is_rolling() then return end
-
-    roll_controller.rolling_started( data.item )
+    roll( strategy, data.item )
   end
 
   roll_controller.subscribe( "finish_rolling_early", finish_rolling_early )
@@ -295,7 +293,6 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
 
   ---@type RollingLogic
   return {
-    roll = roll,
     on_rolling_finished = on_rolling_finished,
     on_softres_rolls_available = on_softres_rolls_available,
     is_rolling = is_rolling,

@@ -426,16 +426,21 @@ function M.fire_event( name, ... )
   end
 end
 
-function M.roll( player_name, roll, upper_bound )
-  M.fire_event( "CHAT_MSG_SYSTEM", string.format( "%s rolls %d (1-%d)", player_name, roll, upper_bound or 100 ) )
+function M.roll( player_name, roll, lower_bound, upper_bound )
+  M.fire_event(
+    "CHAT_MSG_SYSTEM",
+    string.format( "%s rolls %d (%s-%d)", player_name, roll, upper_bound and lower_bound or 1, not upper_bound and lower_bound or upper_bound or 100 )
+  )
 end
 
 function M.roll_os( player_name, roll )
   M.fire_event( "CHAT_MSG_SYSTEM", string.format( "%s rolls %d (1-99)", player_name, roll ) )
 end
 
-function M.mock_random_roll( player_name, roll, upper_bound )
-  M.mock( "RandomRoll", function() M.roll( player_name, roll, upper_bound ) end )
+function M.mock_random_roll( player_name, roll, upper_bound, f )
+  M.mock( "RandomRoll", function()
+    if f then f( player_name, roll, 1, upper_bound ) else M.roll( player_name, roll, 1, upper_bound ) end
+  end )
   M.mock( "GetMasterLootCandidate", function() return {} end )
 end
 

@@ -296,12 +296,10 @@ function M.new()
         item_on_roll_count = item_on_roll_count - 1
         clear_if_no_winners()
 
-        print("chuj1")
         return
       end
     end
 
-        print("chuj2")
     clear_if_no_winners()
   end
 

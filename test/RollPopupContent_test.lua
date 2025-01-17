@@ -29,6 +29,9 @@ local item_link = tu.item_link
 local sr = tu.soft_res_item
 local make_data = tu.create_softres_data
 local mock_multiple_math_random = tu.mock_multiple_math_random
+local mock_random_roll = tu.mock_random_roll
+local repeating_tick = tu.repeating_tick
+local tick = tu.tick
 
 local db = db_mod.new( {} )
 
@@ -40,6 +43,8 @@ local make_player = types.make_player
 local make_rolling_player = types.make_rolling_player
 
 local getn = table.getn
+
+local link = "item_link_with_icon"
 
 ---@param name string
 ---@param class PlayerClass
@@ -116,7 +121,7 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   local config = deps[ "Config" ] or mock_config()
   deps[ "Config" ] = config
 
-  local player_info = require( "mocks/PlayerInfo" ).new( "PrincessKenny", "Warrior", true, true )
+  local player_info = require( "mocks/PlayerInfo" ).new( "Psikutas", "Warrior", true, true )
   deps[ "PlayerInfo" ] = player_info
 
   local chat = require( "mocks/Chat" ).new()
@@ -210,9 +215,9 @@ end
 ---@param hr boolean?
 ---@return DroppedItem|SoftRessedDroppedItem|HardRessedDroppedItem
 local function i( name, id, sr_players, hr )
-  local link = item_link( name, id )
-  local tooltip_link = get_tooltip_link( link )
-  local item = make_dropped_item( id or 123, name, link, tooltip_link )
+  local l = item_link( name, id )
+  local tooltip_link = get_tooltip_link( l )
+  local item = make_dropped_item( id or 123, name, l, tooltip_link )
 
   if hr then
     return make_hardres_dropped_item( item )
@@ -240,80 +245,77 @@ RaidRollPopupContentSpec = {}
 function RaidRollPopupContentSpec:should_return_initial_content()
   -- Given
   local popup, controller = new()
-  local item_id, seconds_left = 123, 7
-  local item = i( "Hearthstone", item_id )
-  controller.start( RS.RaidRoll, item, 1, nil, seconds_left )
+  local item = i( "Hearthstone", 123 )
+  controller.start( RS.RaidRoll, item, 1 )
 
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,          count = 1 },
-      { type = "text",                value = "Raid rolling...", padding = 8 },
-      { type = "empty_line",          height = 5 },
+      { type = link,         link = item.link,          count = 1 },
+      { type = "text",       value = "Raid rolling...", padding = 8 },
+      { type = "empty_line", height = 5 },
     } )
 end
 
 function RaidRollPopupContentSpec:should_return_initial_content_with_multiple_items_to_roll()
   -- Given
   local popup, controller = new()
-  local item_id, seconds_left = 123, 7
-  local item = i( "Hearthstone", item_id )
-  controller.start( RS.RaidRoll, item, 2, nil, seconds_left )
+  local item = i( "Hearthstone", 123 )
+  controller.start( RS.RaidRoll, item, 2 )
 
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,          count = 2 },
-      { type = "text",                value = "Raid rolling...", padding = 8 },
-      { type = "empty_line",          height = 5 },
+      { type = link,         link = item.link,          count = 2 },
+      { type = "text",       value = "Raid rolling...", padding = 8 },
+      { type = "empty_line", height = 5 },
     } )
 end
 
 function RaidRollPopupContentSpec:should_display_the_winner()
   -- Given
-  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
-  local item_id, seconds_left = 123, 7
-  local item = i( "Hearthstone", item_id )
-  local p1 = p( "Psikutas", C.Warrior )
-  local strategy = RS.RaidRoll
-  controller.start( strategy, item, 1, nil, seconds_left )
-  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
-  controller.finish()
+  local config = mock_config( { auto_raid_roll = true } )
+  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
+  local popup, controller, roll = new( { [ "Config" ] = config, [ "GroupRoster" ] = group_roster } )
+  local item = i( "Hearthstone", 123 )
+  controller.start( RS.RaidRoll, item, 1 )
+  mock_random_roll( "Psikutas", 1, 2, roll )
+  tick()
 
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                       count = 1 },
-      { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
-      { type = "button",              label = "Close",                        width = 70 }
+      { type = link,     count = 1,   link = item.link },
+      { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
+      { type = "button", width = 70,  label = "Close" }
     } )
 end
 
 function RaidRollPopupContentSpec:should_display_the_winner_and_the_award_button()
   -- Given
-  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
-  local item_id, seconds_left = 123, 7
-  local item = i( "Hearthstone", item_id )
-  local p1 = p( "Psikutas", C.Warrior )
-  local strategy = RS.RaidRoll
-  controller.start( strategy, item, 1, nil, seconds_left )
-  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, true, RT.MainSpec ) }, strategy )
-  controller.finish()
+  local config = mock_config( { auto_raid_roll = true } )
+  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
+  local item = i( "Hearthstone", 123 )
+  local loot_list = mock_loot_list( { item } )
+  local popup, controller, roll = new( { [ "Config" ] = config, [ "GroupRoster" ] = group_roster, [ "LootList" ] = loot_list } )
+  controller.start( RS.RaidRoll, item, 1 )
+  mock_random_roll( "Psikutas", 1, 2, roll )
+  tick()
 
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                       count = 1 },
-      { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
-      { type = "button",              label = "Award winner",                 width = 130 },
-      { type = "button",              label = "Close",                        width = 70 }
+      { type = link,     count = 1,   link = item.link },
+      { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
+      { type = "button", width = 130, label = "Award winner" },
+      { type = "button", width = 70,  label = "Close" }
     } )
 end
 
 function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again_button()
   -- Given
   local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true, raid_roll_again = true } ) } )
-  local item_id, seconds_left = 123, 7
+  local item_id, seconds_left = 123, 8
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.RaidRoll
@@ -324,17 +326,17 @@ function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                       count = 1 },
-      { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
-      { type = "button",              label = "Raid roll again",              width = 130 },
-      { type = "button",              label = "Close",                        width = 70 }
+      { type = link,     count = 1,   link = item.link },
+      { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
+      { type = "button", width = 130, label = "Raid roll again" },
+      { type = "button", width = 70,  label = "Close" }
     } )
 end
 
 function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_info()
   -- Given
   local popup, controller = new()
-  local item_id, seconds_left = 123, 7
+  local item_id, seconds_left = 123, 8
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.RaidRoll
@@ -345,17 +347,17 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_i
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                                           count = 1 },
-      { type = "text",                value = "Psikutas wins the raid-roll.",                     padding = 8 },
-      { type = "info",                value = "Use /rf config auto-rr to enable auto raid-roll.", anchor = "RollForRollingFrame" },
-      { type = "button",              label = "Close",                                            width = 70 }
+      { type = link,     count = 1,                      link = item.link },
+      { type = "text",   padding = 8,                    value = "Psikutas wins the raid-roll." },
+      { type = "info",   anchor = "RollForRollingFrame", value = "Use /rf config auto-rr to enable auto raid-roll." },
+      { type = "button", width = 70,                     label = "Close" }
     } )
 end
 
 function RaidRollPopupContentSpec:should_display_the_winners()
   -- Given
   local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
-  local item_id, seconds_left = 123, 7
+  local item_id, seconds_left = 123, 8
   local item = i( "Hearthstone", item_id )
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
   local strategy = RS.RaidRoll
@@ -369,17 +371,17 @@ function RaidRollPopupContentSpec:should_display_the_winners()
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                        count = 2 },
-      { type = "text",                value = "Psikutas wins the raid-roll.",  padding = 8 },
-      { type = "text",                value = "Jogobobek wins the raid-roll.", padding = 2 },
-      { type = "button",              label = "Close",                         width = 70 }
+      { type = link,     count = 2,   link = item.link },
+      { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
+      { type = "text",   padding = 2, value = "Jogobobek wins the raid-roll." },
+      { type = "button", width = 70,  label = "Close" }
     } )
 end
 
 function RaidRollPopupContentSpec:should_display_the_winners_and_the_award_buttons()
   -- Given
   local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
-  local item_id, seconds_left = 123, 7
+  local item_id, seconds_left = 123, 8
   local item = i( "Hearthstone", item_id )
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
   local strategy = RS.RaidRoll
@@ -393,19 +395,19 @@ function RaidRollPopupContentSpec:should_display_the_winners_and_the_award_butto
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                        count = 2 },
-      { type = "text",                value = "Psikutas wins the raid-roll.",  padding = 8 },
-      { type = "award_button",        label = "Award",                         padding = 6, width = 90 },
-      { type = "text",                value = "Jogobobek wins the raid-roll.", padding = 8 },
-      { type = "award_button",        label = "Award",                         padding = 6, width = 90 },
-      { type = "button",              label = "Close",                         width = 70 }
+      { type = link,           count = 2,   link = item.link },
+      { type = "text",         padding = 8, value = "Psikutas wins the raid-roll." },
+      { type = "award_button", padding = 6, label = "Award",                        width = 90 },
+      { type = "text",         padding = 8, value = "Jogobobek wins the raid-roll." },
+      { type = "award_button", padding = 6, label = "Award",                        width = 90 },
+      { type = "button",       width = 70,  label = "Close" }
     } )
 end
 
 function RaidRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_content_unchanged_after_aborting_the_award()
   -- Given
   local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
-  local item_id, seconds_left = 123, 7
+  local item_id, seconds_left = 123, 8
   local item = i( "Hearthstone", item_id )
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
   local strategy = RS.RaidRoll
@@ -425,19 +427,19 @@ function RaidRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_c
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                        count = 2 },
-      { type = "text",                value = "Psikutas wins the raid-roll.",  padding = 8 },
-      { type = "award_button",        label = "Award",                         padding = 6, width = 90 },
-      { type = "text",                value = "Jogobobek wins the raid-roll.", padding = 8 },
-      { type = "award_button",        label = "Award",                         padding = 6, width = 90 },
-      { type = "button",              label = "Close",                         width = 70 }
+      { type = link,           count = 2,   link = item.link },
+      { type = "text",         padding = 8, value = "Psikutas wins the raid-roll." },
+      { type = "award_button", padding = 6, label = "Award",                        width = 90 },
+      { type = "text",         padding = 8, value = "Jogobobek wins the raid-roll." },
+      { type = "award_button", padding = 6, label = "Award",                        width = 90 },
+      { type = "button",       width = 70,  label = "Close" }
     } )
 end
 
 function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awarding_one()
   -- Given
   local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
-  local item_id, seconds_left = 123, 7
+  local item_id, seconds_left = 123, 8
   local item = i( "Hearthstone", item_id )
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
   local strategy = RS.RaidRoll
@@ -457,10 +459,10 @@ function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awar
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                       count = 1 },
-      { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
-      { type = "button",              label = "Award winner",                 width = 130 },
-      { type = "button",              label = "Close",                        width = 70 }
+      { type = link,     count = 1,   link = item.link },
+      { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
+      { type = "button", width = 130, label = "Award winner" },
+      { type = "button", width = 70,  label = "Close" }
     } )
 end
 
@@ -478,9 +480,9 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner()
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                             count = 1 },
-      { type = "text",                value = "Psikutas wins the insta raid-roll.", padding = 8 },
-      { type = "button",              label = "Close",                              width = 70 }
+      { type = link,     count = 1,   link = item.link },
+      { type = "text",   padding = 8, value = "Psikutas wins the insta raid-roll." },
+      { type = "button", width = 70,  label = "Close" }
     } )
 end
 
@@ -490,17 +492,16 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_and_the_award_b
   local item = i( "Hearthstone" )
   local loot_list = mock_loot_list( { item } )
   local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "LootList" ] = loot_list } )
-  m.RollController.debug.enable( true )
   controller.start( RS.InstaRaidRoll, item, 1 )
   controller.award_aborted( item )
 
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                             count = 1 },
-      { type = "text",                value = "Psikutas wins the insta raid-roll.", padding = 8 },
-      { type = "button",              label = "Award winner",                       width = 130 },
-      { type = "button",              label = "Close",                              width = 70 }
+      { type = link,     count = 1,   link = item.link },
+      { type = "text",   padding = 8, value = "Psikutas wins the insta raid-roll." },
+      { type = "button", width = 130, label = "Award winner" },
+      { type = "button", width = 70,  label = "Close" }
     } )
 end
 
@@ -518,11 +519,11 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_with_award_and_
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                             count = 1 },
-      { type = "text",                value = "Psikutas wins the insta raid-roll.", padding = 8 },
-      { type = "button",              label = "Award winner",                       width = 130 },
-      { type = "button",              label = "Raid roll again",                    width = 130 },
-      { type = "button",              label = "Close",                              width = 70 }
+      { type = link,     count = 1,   link = item.link },
+      { type = "text",   padding = 8, value = "Psikutas wins the insta raid-roll." },
+      { type = "button", width = 130, label = "Award winner" },
+      { type = "button", width = 130, label = "Raid roll again" },
+      { type = "button", width = 70,  label = "Close" }
     } )
 end
 
@@ -538,10 +539,10 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                             count = 1 },
-      { type = "text",                value = "Psikutas wins the insta raid-roll.", padding = 8 },
-      { type = "button",              label = "Raid roll again",                    width = 130 },
-      { type = "button",              label = "Close",                              width = 70 }
+      { type = link,     count = 1,   link = item.link },
+      { type = "text",   padding = 8, value = "Psikutas wins the insta raid-roll." },
+      { type = "button", width = 130, label = "Raid roll again" },
+      { type = "button", width = 70,  label = "Close" }
     } )
 end
 
@@ -557,11 +558,11 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_with_raid_roll
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                              count = 2 },
-      { type = "text",                value = "Jogobobek wins the insta raid-roll.", padding = 8 },
-      { type = "text",                value = "Psikutas wins the insta raid-roll.",  padding = 2 },
-      { type = "button",              label = "Raid roll again",                     width = 130 },
-      { type = "button",              label = "Close",                               width = 70 }
+      { type = link,     count = 2,   link = item.link },
+      { type = "text",   padding = 8, value = "Jogobobek wins the insta raid-roll." },
+      { type = "text",   padding = 2, value = "Psikutas wins the insta raid-roll." },
+      { type = "button", width = 130, label = "Raid roll again" },
+      { type = "button", width = 70,  label = "Close" }
     } )
 end
 
@@ -577,10 +578,10 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_without_raid_r
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                              count = 2 },
-      { type = "text",                value = "Jogobobek wins the insta raid-roll.", padding = 8 },
-      { type = "text",                value = "Psikutas wins the insta raid-roll.",  padding = 2 },
-      { type = "button",              label = "Close",                               width = 70 }
+      { type = link,     count = 2,   link = item.link },
+      { type = "text",   padding = 8, value = "Jogobobek wins the insta raid-roll." },
+      { type = "text",   padding = 2, value = "Psikutas wins the insta raid-roll." },
+      { type = "button", width = 70,  label = "Close" }
     } )
 end
 
@@ -597,12 +598,12 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_indivi
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                              count = 2 },
-      { type = "text",                value = "Psikutas wins the insta raid-roll.",  padding = 8 },
-      { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
-      { type = "text",                value = "Jogobobek wins the insta raid-roll.", padding = 8 },
-      { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
-      { type = "button",              label = "Close",                               width = 70 }
+      { type = link,           count = 2,   link = item.link },
+      { type = "text",         padding = 8, value = "Psikutas wins the insta raid-roll." },
+      { type = "award_button", padding = 6, label = "Award",                              width = 90 },
+      { type = "text",         padding = 8, value = "Jogobobek wins the insta raid-roll." },
+      { type = "award_button", padding = 6, label = "Award",                              width = 90 },
+      { type = "button",       width = 70,  label = "Close" }
     } )
 end
 
@@ -619,13 +620,13 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_indivi
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                              count = 2 },
-      { type = "text",                value = "Psikutas wins the insta raid-roll.",  padding = 8 },
-      { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
-      { type = "text",                value = "Jogobobek wins the insta raid-roll.", padding = 8 },
-      { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
-      { type = "button",              label = "Raid roll again",                     width = 130 },
-      { type = "button",              label = "Close",                               width = 70 }
+      { type = link,           count = 2,   link = item.link },
+      { type = "text",         padding = 8, value = "Psikutas wins the insta raid-roll." },
+      { type = "award_button", padding = 6, label = "Award",                              width = 90 },
+      { type = "text",         padding = 8, value = "Jogobobek wins the insta raid-roll." },
+      { type = "award_button", padding = 6, label = "Award",                              width = 90 },
+      { type = "button",       width = 130, label = "Raid roll again" },
+      { type = "button",       width = 70,  label = "Close" }
     } )
 end
 
@@ -635,15 +636,15 @@ function NormalRollPopupContentSpec:should_return_initial_content()
   -- Given
   local popup, controller = new()
   local item = i( "Hearthstone" )
-  controller.start( RS.NormalRoll, item, 1, nil, 7 )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
 
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                     count = 1 },
-      { type = "text",                value = "Rolling ends in 7 seconds.", padding = 11 },
-      { type = "button",              label = "Finish early",               width = 100 },
-      { type = "button",              label = "Cancel",                     width = 100 }
+      { type = link,     count = 1,    link = item.link },
+      { type = "text",   padding = 11, value = "Rolling ends in 8 seconds." },
+      { type = "button", width = 100,  label = "Finish early" },
+      { type = "button", width = 100,  label = "Cancel" }
     } )
 end
 
@@ -651,16 +652,16 @@ function NormalRollPopupContentSpec:should_return_initial_content_and_auto_raid_
   -- Given
   local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
   local item = i( "Hearthstone" )
-  controller.start( RS.NormalRoll, item, 1, nil, 7 )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
 
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                     count = 1 },
-      { type = "text",                value = "Rolling ends in 7 seconds.", padding = 11 },
-      { type = "text",                value = "Auto raid-roll is enabled." },
-      { type = "button",              label = "Finish early",               width = 100 },
-      { type = "button",              label = "Cancel",                     width = 100 }
+      { type = link,     link = item.link,                     count = 1 },
+      { type = "text",   value = "Rolling ends in 8 seconds.", padding = 11 },
+      { type = "text",   value = "Auto raid-roll is enabled." },
+      { type = "button", label = "Finish early",               width = 100 },
+      { type = "button", label = "Cancel",                     width = 100 }
     } )
 end
 
@@ -668,16 +669,16 @@ function NormalRollPopupContentSpec:should_update_rolling_ends_message()
   -- Given
   local popup, controller = new()
   local item = i( "Hearthstone" )
-  controller.start( RS.NormalRoll, item, 1, nil, 7 )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
   controller.tick( 5 )
 
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                     count = 1 },
-      { type = "text",                value = "Rolling ends in 5 seconds.", padding = 11 },
-      { type = "button",              label = "Finish early",               width = 100 },
-      { type = "button",              label = "Cancel",                     width = 100 }
+      { type = link,     count = 1,    link = item.link },
+      { type = "text",   padding = 11, value = "Rolling ends in 5 seconds." },
+      { type = "button", width = 100,  label = "Finish early" },
+      { type = "button", width = 100,  label = "Cancel" }
     } )
 end
 
@@ -685,16 +686,16 @@ function NormalRollPopupContentSpec:should_display_cancel_message()
   -- Given
   local popup, controller = new()
   local item = i( "Hearthstone" )
-  controller.start( RS.NormalRoll, item, 1, nil, 7 )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
   controller.tick( 5 )
   controller.cancel_rolling()
 
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                     count = 1 },
-      { type = "text",                value = "Rolling has been canceled.", padding = 11 },
-      { type = "button",              label = "Close",                      width = 70 }
+      { type = link,     count = 1,    link = item.link },
+      { type = "text",   padding = 11, value = "Rolling has been canceled." },
+      { type = "button", width = 70,   label = "Close" }
     } )
 end
 
@@ -702,16 +703,16 @@ function NormalRollPopupContentSpec:should_update_rolling_ends_message_for_one_s
   -- Given
   local popup, controller = new()
   local item = i( "Hearthstone" )
-  controller.start( RS.NormalRoll, item, 1, nil, 7 )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
   controller.tick( 1 )
 
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                    count = 1 },
-      { type = "text",                value = "Rolling ends in 1 second.", padding = 11 },
-      { type = "button",              label = "Finish early",              width = 100 },
-      { type = "button",              label = "Cancel",                    width = 100 }
+      { type = link,     count = 1,    link = item.link },
+      { type = "text",   padding = 11, value = "Rolling ends in 1 second." },
+      { type = "button", width = 100,  label = "Finish early" },
+      { type = "button", width = 100,  label = "Cancel" }
     } )
 end
 
@@ -722,19 +723,19 @@ function NormalRollPopupContentSpec:should_display_the_winners()
   local group_roster = mock_group_roster( { p1, p2 } )
   local popup, controller, roll = new( { [ "GroupRoster" ] = group_roster, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
   local item = i( "Hearthstone" )
-  controller.start( RS.NormalRoll, item, 1, nil, 7 )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
   roll( p1.name, 69, 1, 100 )
   roll( p2.name, 42, 1, 100 )
 
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                                      count = 1 },
-      { type = "roll",                roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
-      { type = "roll",                roll_type = RT.MainSpec,                               player_name = p2.name, player_class = p2.class, roll = 42 },
-      { type = "text",                value = "Psikutas wins the main-spec roll with a 69.", padding = 11 },
-      { type = "button",              label = "Raid roll",                                   width = 90 },
-      { type = "button",              label = "Close",                                       width = 70 }
+      { type = link,     link = item.link,                                      count = 1 },
+      { type = "roll",   roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
+      { type = "roll",   roll_type = RT.MainSpec,                               player_name = p2.name, player_class = p2.class, roll = 42 },
+      { type = "text",   value = "Psikutas wins the main-spec roll with a 69.", padding = 11 },
+      { type = "button", label = "Raid roll",                                   width = 90 },
+      { type = "button", label = "Close",                                       width = 70 }
     } )
 end
 
@@ -744,197 +745,217 @@ function NormalRollPopupContentSpec:should_display_the_winners_and_the_individua
   local group_roster = mock_group_roster( { p1, p2 } )
   local popup, controller, roll = new( { [ "GroupRoster" ] = group_roster } )
   local item = i( "Hearthstone" )
-  controller.start( RS.NormalRoll, item, 2, nil, 7 )
+  controller.start( RS.NormalRoll, item, 2, nil, 8 )
   roll( p1.name, 69, 1, 100 )
   roll( p2.name, 42, 1, 100 )
 
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = "item_link_with_icon", link = item.link,                                       count = 2 },
-      { type = "roll",                roll_type = RT.MainSpec,                                player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
-      { type = "roll",                roll_type = RT.MainSpec,                                player_name = p2.name, player_class = p2.class, roll = 42 },
-      { type = "text",                value = "Psikutas wins the main-spec roll with a 69.",  padding = 11 },
-      { type = "award_button",        label = "Award",                                        padding = 6,           width = 90 },
-      { type = "text",                value = "Ohhaimark wins the main-spec roll with a 42.", padding = 8 },
-      { type = "award_button",        label = "Award",                                        padding = 6,           width = 90 },
-      { type = "button",              label = "Raid roll",                                    width = 90 },
-      { type = "button",              label = "Close",                                        width = 70 }
+      { type = link,           link = item.link,                                       count = 2 },
+      { type = "roll",         roll_type = RT.MainSpec,                                player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
+      { type = "roll",         roll_type = RT.MainSpec,                                player_name = p2.name, player_class = p2.class, roll = 42 },
+      { type = "text",         value = "Psikutas wins the main-spec roll with a 69.",  padding = 11 },
+      { type = "award_button", label = "Award",                                        padding = 6,           width = 90 },
+      { type = "text",         value = "Ohhaimark wins the main-spec roll with a 42.", padding = 8 },
+      { type = "award_button", label = "Award",                                        padding = 6,           width = 90 },
+      { type = "button",       label = "Raid roll",                                    width = 90 },
+      { type = "button",       label = "Close",                                        width = 70 }
     } )
 end
 
--- function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_8()
---   -- Given
---   local popup, controller = new()
---   local item_id, seconds_left = 123, 7
---   local item = i( "Hearthstone", item_id )
---   local p1 = p( "Psikutas", C.Warrior )
---   local strategy = RS.NormalRoll
---   controller.start( strategy, item, 1, nil, seconds_left )
---   controller.tick( 1 )
---   controller.add( p1.name, p1.class, RT.MainSpec, 8 )
---   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec, 8 ) }, strategy )
---   controller.finish()
---
---   -- Then
---   eq( cleanse( popup.get() ),
---     {
---       { type = "item_link_with_icon", link = item.link,                                      count = 1 },
---       { type = "roll",                roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 8, padding = 11 },
---       { type = "text",                value = "Psikutas wins the main-spec roll with an 8.", padding = 11 },
---       { type = "button",              label = "Raid roll",                                   width = 90 },
---       { type = "button",              label = "Close",                                       width = 70 }
---     } )
--- end
---
--- function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_11()
---   -- Given
---   local popup, controller = new()
---   local item_id, seconds_left = 123, 7
---   local item = i( "Hearthstone", item_id )
---   local p1 = p( "Psikutas", C.Warrior )
---   local strategy = RS.NormalRoll
---   controller.start( strategy, item, 1, nil, seconds_left )
---   controller.tick( 1 )
---   controller.add( p1.name, p1.class, RT.MainSpec, 11 )
---   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec, 11 ) }, strategy )
---   controller.finish()
---
---   -- Then
---   eq( cleanse( popup.get() ),
---     {
---       { type = "item_link_with_icon", link = item.link,                                       count = 1 },
---       { type = "roll",                roll_type = RT.MainSpec,                                player_name = p1.name, player_class = p1.class, roll = 11, padding = 11 },
---       { type = "text",                value = "Psikutas wins the main-spec roll with an 11.", padding = 11 },
---       { type = "button",              label = "Raid roll",                                    width = 90 },
---       { type = "button",              label = "Close",                                        width = 70 }
---     } )
--- end
---
--- function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_18()
---   -- Given
---   local popup, controller = new()
---   local item_id, seconds_left = 123, 7
---   local item = i( "Hearthstone", item_id )
---   local p1 = p( "Psikutas", C.Warrior )
---   local strategy = RS.NormalRoll
---   controller.start( strategy, item, 1, nil, seconds_left )
---   controller.tick( 1 )
---   controller.add( p1.name, p1.class, RT.MainSpec, 18 )
---   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec, 18 ) }, strategy )
---   controller.finish()
---
---   -- Then
---   eq( cleanse( popup.get() ),
---     {
---       { type = "item_link_with_icon", link = item.link,                                       count = 1 },
---       { type = "roll",                roll_type = RT.MainSpec,                                player_name = p1.name, player_class = p1.class, roll = 18, padding = 11 },
---       { type = "text",                value = "Psikutas wins the main-spec roll with an 18.", padding = 11 },
---       { type = "button",              label = "Raid roll",                                    width = 90 },
---       { type = "button",              label = "Close",                                        width = 70 }
---     } )
--- end
---
--- function NormalRollPopupContentSpec:should_sort_the_rolls()
---   -- Given
---   local popup, controller = new()
---   local item_id, seconds_left = 123, 7
---   local item = i( "Hearthstone", item_id )
---   local p1, p2, p3 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid ), p( "Ponpon", C.Warlock )
---   local strategy = RS.NormalRoll
---   controller.start( strategy, item, 1, nil, seconds_left )
---   controller.tick( 1 )
---   controller.add( p1.name, p1.class, RT.MainSpec, 42 )
---   controller.add( p1.name, p1.class, RT.OffSpec, 68 )
---   controller.add( p2.name, p2.class, RT.MainSpec, 45 )
---   controller.add( p1.name, p1.class, RT.Transmog, 69 )
---   controller.add( p3.name, p3.class, RT.Transmog, 69 )
---   controller.winners_found( item, 1, { winner( p2.name, p2.class, item, false, RT.MainSpec, 45 ) }, strategy )
---   controller.finish()
---
---   -- Then
---   eq( cleanse( popup.get() ),
---     {
---       { type = "item_link_with_icon", link = item.link,                                          count = 1 },
---       { type = "roll",                roll_type = RT.MainSpec,                                   player_name = p2.name, player_class = p2.class, roll = 45, padding = 11 },
---       { type = "roll",                roll_type = RT.MainSpec,                                   player_name = p1.name, player_class = p1.class, roll = 42 },
---       { type = "roll",                roll_type = RT.OffSpec,                                    player_name = p1.name, player_class = p1.class, roll = 68 },
---       { type = "roll",                roll_type = RT.Transmog,                                   player_name = p3.name, player_class = p3.class, roll = 69 },
---       { type = "roll",                roll_type = RT.Transmog,                                   player_name = p1.name, player_class = p1.class, roll = 69 },
---       { type = "text",                value = "Obszczymucha wins the main-spec roll with a 45.", padding = 11 },
---       { type = "button",              label = "Raid roll",                                       width = 90 },
---       { type = "button",              label = "Close",                                           width = 70 }
---     } )
--- end
---
--- function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
---   -- Given
---   local popup, controller = new()
---   local item_id, seconds_left = 123, 7
---   local item = i( "Hearthstone", item_id )
---   local p1 = p( "Psikutas", C.Warrior )
---   local strategy = RS.NormalRoll
---   controller.start( strategy, item, 1, nil, seconds_left )
---   controller.tick( 1 )
---   controller.add( p1.name, p1.class, RT.OffSpec, 69 )
---   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.OffSpec, 69 ) }, strategy )
---   controller.finish()
---
---   -- Then
---   eq( cleanse( popup.get() ),
---     {
---       { type = "item_link_with_icon", link = item.link,                                     count = 1 },
---       { type = "roll",                roll_type = RT.OffSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
---       { type = "text",                value = "Psikutas wins the off-spec roll with a 69.", padding = 11 },
---       { type = "button",              label = "Raid roll",                                  width = 90 },
---       { type = "button",              label = "Close",                                      width = 70 }
---     } )
--- end
---
--- function NormalRollPopupContentSpec:should_display_the_transmog_winner()
---   -- Given
---   local popup, controller = new()
---   local item_id, seconds_left = 123, 7
---   local item = i( "Hearthstone", item_id )
---   local p1 = p( "Psikutas", C.Warrior )
---   local strategy = RS.NormalRoll
---   controller.start( strategy, item, 1, nil, seconds_left )
---   controller.tick( 1 )
---   controller.add( p1.name, p1.class, RT.Transmog, 69 )
---   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.Transmog, 69 ) }, strategy )
---   controller.finish()
---
---   -- Then
---   eq( cleanse( popup.get() ),
---     {
---       { type = "item_link_with_icon", link = item.link,                                     count = 1 },
---       { type = "roll",                roll_type = RT.Transmog,                              player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
---       { type = "text",                value = "Psikutas wins the transmog roll with a 69.", padding = 11 },
---       { type = "button",              label = "Raid roll",                                  width = 90 },
---       { type = "button",              label = "Close",                                      width = 70 }
---     } )
--- end
---
+function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_8()
+  -- Given
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
+  local group_roster = mock_group_roster( { p1, p2 } )
+  local popup, controller, roll = new( { [ "GroupRoster" ] = group_roster } )
+  local item = i( "Hearthstone" )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
+  roll( p1.name, 8, 1, 100 )
+  roll( p2.name, 7, 1, 100 )
+
+  -- Then
+  eq( cleanse( popup.get() ),
+    {
+      { type = link,     link = item.link,                                      count = 1 },
+      { type = "roll",   roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 8, padding = 11 },
+      { type = "roll",   roll_type = RT.MainSpec,                               player_name = p2.name, player_class = p2.class, roll = 7 },
+      { type = "text",   value = "Psikutas wins the main-spec roll with an 8.", padding = 11 },
+      { type = "button", label = "Award winner",                                width = 130 },
+      { type = "button", label = "Raid roll",                                   width = 90 },
+      { type = "button", label = "Close",                                       width = 70 }
+    } )
+end
+
+function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_11()
+  -- Given
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
+  local group_roster = mock_group_roster( { p1, p2 } )
+  local popup, controller, roll = new( { [ "GroupRoster" ] = group_roster } )
+  local item = i( "Hearthstone" )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
+  roll( p1.name, 8, 1, 100 )
+  roll( p2.name, 11, 1, 100 )
+
+  -- Then
+  eq( cleanse( popup.get() ),
+    {
+      { type = link,     link = item.link,                                        count = 1 },
+      { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p2.name, player_class = p2.class, roll = 11, padding = 11 },
+      { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p1.name, player_class = p1.class, roll = 8 },
+      { type = "text",   value = "Ohhaimark wins the main-spec roll with an 11.", padding = 11 },
+      { type = "button", label = "Award winner",                                  width = 130 },
+      { type = "button", label = "Raid roll",                                     width = 90 },
+      { type = "button", label = "Close",                                         width = 70 }
+    } )
+end
+
+function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_18()
+  -- Given
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
+  local group_roster = mock_group_roster( { p1, p2 } )
+  local popup, controller, roll = new( { [ "GroupRoster" ] = group_roster } )
+  local item = i( "Hearthstone" )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
+  roll( p1.name, 8, 1, 100 )
+  roll( p2.name, 18, 1, 100 )
+
+  -- Then
+  eq( cleanse( popup.get() ),
+    {
+      { type = link,     link = item.link,                                        count = 1 },
+      { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p2.name, player_class = p2.class, roll = 18, padding = 11 },
+      { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p1.name, player_class = p1.class, roll = 8 },
+      { type = "text",   value = "Ohhaimark wins the main-spec roll with an 18.", padding = 11 },
+      { type = "button", label = "Award winner",                                  width = 130 },
+      { type = "button", label = "Raid roll",                                     width = 90 },
+      { type = "button", label = "Close",                                         width = 70 }
+    } )
+end
+
+function NormalRollPopupContentSpec:should_sort_the_rolls()
+  -- Given
+  local p1, p2, p3 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid ), p( "Ponpon", C.Warlock )
+  local group_roster = mock_group_roster( { p1, p2, p3 } )
+  local popup, controller, roll = new( { [ "GroupRoster" ] = group_roster } )
+  local item = i( "Hearthstone" )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
+  roll( p1.name, 69, 1, 98 )
+  roll( p1.name, 68, 1, 99 )
+  roll( p1.name, 42, 1, 100 )
+  roll( p2.name, 45, 1, 100 )
+  roll( p3.name, 69, 1, 98 )
+  roll( p3.name, 13, 1, 100 )
+
+  -- Then
+  eq( cleanse( popup.get() ),
+    {
+      { type = link,     link = item.link,                                          count = 1 },
+      { type = "roll",   roll_type = RT.MainSpec,                                   player_name = p2.name, player_class = p2.class, roll = 45, padding = 11 },
+      { type = "roll",   roll_type = RT.MainSpec,                                   player_name = p1.name, player_class = p1.class, roll = 42 },
+      { type = "roll",   roll_type = RT.MainSpec,                                   player_name = p3.name, player_class = p3.class, roll = 13 },
+      { type = "roll",   roll_type = RT.OffSpec,                                    player_name = p1.name, player_class = p1.class, roll = 68 },
+      { type = "roll",   roll_type = RT.Transmog,                                   player_name = p3.name, player_class = p3.class, roll = 69 },
+      { type = "roll",   roll_type = RT.Transmog,                                   player_name = p1.name, player_class = p1.class, roll = 69 },
+      { type = "text",   value = "Obszczymucha wins the main-spec roll with a 45.", padding = 11 },
+      { type = "button", label = "Award winner",                                    width = 130 },
+      { type = "button", label = "Raid roll",                                       width = 90 },
+      { type = "button", label = "Close",                                           width = 70 }
+    } )
+end
+
+function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
+  -- Given
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
+  local group_roster = mock_group_roster( { p1, p2 } )
+  local popup, controller, roll = new( { [ "GroupRoster" ] = group_roster } )
+  local item = i( "Hearthstone" )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
+  roll( p2.name, 42, 1, 99 )
+  roll( p1.name, 69, 1, 99 )
+  repeating_tick( 8 )
+
+  -- Then
+  eq( cleanse( popup.get() ),
+    {
+      { type = link,     link = item.link,                                     count = 1 },
+      { type = "roll",   roll_type = RT.OffSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
+      { type = "roll",   roll_type = RT.OffSpec,                               player_name = p2.name, player_class = p2.class, roll = 42 },
+      { type = "text",   value = "Psikutas wins the off-spec roll with a 69.", padding = 11 },
+      { type = "button", label = "Award winner",                               width = 130 },
+      { type = "button", label = "Raid roll",                                  width = 90 },
+      { type = "button", label = "Close",                                      width = 70 }
+    } )
+end
+
+function NormalRollPopupContentSpec:should_display_the_transmog_winner()
+  -- Given
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
+  local group_roster = mock_group_roster( { p1, p2 } )
+  local popup, controller, roll = new( { [ "GroupRoster" ] = group_roster } )
+  local item = i( "Hearthstone" )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
+  roll( p2.name, 42, 1, 98 )
+  roll( p1.name, 69, 1, 98 )
+  repeating_tick( 8 )
+
+  -- Then
+  eq( cleanse( popup.get() ),
+    {
+      { type = link,     link = item.link,                                     count = 1 },
+      { type = "roll",   roll_type = RT.Transmog,                              player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
+      { type = "roll",   roll_type = RT.Transmog,                              player_name = p2.name, player_class = p2.class, roll = 42 },
+      { type = "text",   value = "Psikutas wins the transmog roll with a 69.", padding = 11 },
+      { type = "button", label = "Award winner",                               width = 130 },
+      { type = "button", label = "Raid roll",                                  width = 90 },
+      { type = "button", label = "Close",                                      width = 70 }
+    } )
+end
+
 -- function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_if_enabled()
 --   -- Given
---   local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
---   local item_id, seconds_left = 123, 7
---   local item = i( "Hearthstone", item_id )
---   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
+--   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
+--   local group_roster = mock_group_roster( { p1, p2 } )
+--   local popup, controller, roll = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ), [ "GroupRoster" ] = group_roster } )
+--   local item = i( "Hearthstone" )
+--   controller.start( RS.NormalRoll, item, 1, nil, 8 )
 --
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                     count = 1 },
---       { type = "text",                value = "Rolling ends in 7 seconds.", padding = 11 },
---       { type = "text",                value = "Auto raid-roll is enabled." },
---       { type = "button",              label = "Finish early",               width = 100 },
---       { type = "button",              label = "Cancel",                     width = 100 }
+--       { type = link,     link = item.link,                     count = 1 },
+--       { type = "text",   value = "Rolling ends in 8 seconds.", padding = 11 },
+--       { type = "text",   value = "Auto raid-roll is enabled." },
+--       { type = "button", label = "Finish early",               width = 100 },
+--       { type = "button", label = "Cancel",                     width = 100 }
+--     } )
+--
+--   -- When
+--   controller.finish_rolling_early()
+--
+--   -- Then
+--   eq( cleanse( popup.get() ),
+--     {
+--       { type = link,     link = item.link,                               count = 1 },
+--       { type = "text",   value = "Rolling has finished. No one rolled.", padding = 11 },
+--       { type = "button", label = "Raid roll",                            width = 90 },
+--       { type = "button", label = "Close",                                width = 70 }
 --     } )
 --
 --   -- Then
---   controller.finish_rolling_early()
+--   mock_random_roll( "Psikutas", 1, 2, roll )
+--   tick() -- To trigger the auto raid roll.
+--
+--   -- Then
+--   eq( cleanse( popup.get() ),
+--     {
+--       { type = link,     link = item.link,                               count = 1 },
+--       { type = "text",   value = "Rolling has finished. No one rolled.", padding = 11 },
+--       { type = "button", label = "Raid roll",                            width = 90 },
+--       { type = "button", label = "Close",                                width = 70 }
+--     } )
 -- end
+--
 --
 --
 -- SoftResrollPopupContentSpec = {}
@@ -953,7 +974,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,             count = 1 },
+--       { type = link, link = item.link,             count = 1 },
 --       { type = "roll",                player_name = "Obszczymucha", player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
 --       { type = "roll",                player_name = "Psikutas",     player_class = C.Warrior, roll_type = RT.SoftRes },
 --       { type = "roll",                player_name = "Psikutas",     player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -976,7 +997,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                          count = 1 },
+--       { type = link, link = item.link,                          count = 1 },
 --       { type = "text",                value = "Psikutas soft-ressed this item.", padding = 11 },
 --       { type = "button",              label = "Close",                           width = 70 },
 --       { type = "button",              label = "Award...",                        width = 90 }
@@ -997,7 +1018,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                              count = 2 },
+--       { type = link, link = item.link,                              count = 2 },
 --       { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 11 },
 --       { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 4 },
 --       { type = "button",              label = "Close",                               width = 70 },
@@ -1019,7 +1040,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                              count = 2 },
+--       { type = link, link = item.link,                              count = 2 },
 --       { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 11 },
 --       { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 4 },
 --       { type = "button",              label = "Close",                               width = 70 },
@@ -1032,7 +1053,7 @@ end
 --   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
 --   local group_roster = mock_group_roster( { p1, p2 } )
 --   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
---   local item_id, seconds_left = 123, 7
+--   local item_id, seconds_left = 123, 8
 --   local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
 --   local item = i( "Hearthstone", item_id )
 --   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left )
@@ -1040,7 +1061,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                     count = 1 },
+--       { type = link, link = item.link,                     count = 1 },
 --       { type = "roll",                player_name = "Obszczymucha",         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
 --       { type = "roll",                player_name = "Psikutas",             player_class = C.Warrior, roll_type = RT.SoftRes },
 --       { type = "roll",                player_name = "Psikutas",             player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -1055,7 +1076,7 @@ end
 --   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
 --   local group_roster = mock_group_roster( { p1, p2 } )
 --   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
---   local item_id, seconds_left = 123, 7
+--   local item_id, seconds_left = 123, 8
 --   local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
 --   local item = i( "Hearthstone", item_id )
 --   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left )
@@ -1064,7 +1085,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                     count = 1 },
+--       { type = link, link = item.link,                     count = 1 },
 --       { type = "roll",                player_name = "Obszczymucha",         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
 --       { type = "roll",                player_name = "Psikutas",             player_class = C.Warrior, roll_type = RT.SoftRes },
 --       { type = "roll",                player_name = "Psikutas",             player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -1079,7 +1100,7 @@ end
 --   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
 --   local group_roster = mock_group_roster( { p1, p2 } )
 --   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
---   local item_id, seconds_left = 123, 7
+--   local item_id, seconds_left = 123, 8
 --   local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
 --   local item = i( "Hearthstone", item_id )
 --   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left )
@@ -1088,7 +1109,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                    count = 1 },
+--       { type = link, link = item.link,                    count = 1 },
 --       { type = "roll",                player_name = "Obszczymucha",        player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
 --       { type = "roll",                player_name = "Psikutas",            player_class = C.Warrior, roll_type = RT.SoftRes },
 --       { type = "roll",                player_name = "Psikutas",            player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -1103,7 +1124,7 @@ end
 --   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
 --   local group_roster = mock_group_roster( { p1, p2 } )
 --   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
---   local item_id, seconds_left = 123, 7
+--   local item_id, seconds_left = 123, 8
 --   local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
 --   local item = i( "Hearthstone", item_id )
 --   local strategy = RS.SoftResRoll
@@ -1115,7 +1136,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                                     count = 1 },
+--       { type = link, link = item.link,                                     count = 1 },
 --       { type = "roll",                player_name = "Obszczymucha",                         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
 --       { type = "roll",                player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes },
 --       { type = "roll",                player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -1129,7 +1150,7 @@ end
 --   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
 --   local group_roster = mock_group_roster( { p1, p2 } )
 --   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
---   local item_id, seconds_left = 123, 7
+--   local item_id, seconds_left = 123, 8
 --   local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
 --   local item = i( "Hearthstone", item_id )
 --   local strategy = RS.SoftResRoll
@@ -1141,7 +1162,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                                     count = 1 },
+--       { type = link, link = item.link,                                     count = 1 },
 --       { type = "roll",                player_name = "Obszczymucha",                         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
 --       { type = "roll",                player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes },
 --       { type = "roll",                player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -1156,7 +1177,7 @@ end
 --   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
 --   local group_roster = mock_group_roster( { p1, p2 } )
 --   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
---   local item_id, seconds_left = 123, 7
+--   local item_id, seconds_left = 123, 8
 --   local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
 --   local item = i( "Hearthstone", item_id )
 --   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left )
@@ -1166,7 +1187,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                               count = 1 },
+--       { type = link, link = item.link,                               count = 1 },
 --       { type = "roll",                player_name = "Obszczymucha",                   player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
 --       { type = "roll",                player_name = "Psikutas",                       player_class = C.Warrior, roll_type = RT.SoftRes },
 --       { type = "roll",                player_name = "Psikutas",                       player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -1181,7 +1202,7 @@ end
 --   local p1 = p( "Psikutas", C.Warrior )
 --   local group_roster = mock_group_roster( { p1 } )
 --   local data = make_data( sr( p1.name, 123 ) )
---   local item_id, seconds_left = 123, 7
+--   local item_id, seconds_left = 123, 8
 --   local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
 --   local item = i( "Hearthstone", item_id )
 --   local strategy = RS.SoftResRoll
@@ -1193,7 +1214,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                          count = 1 },
+--       { type = link, link = item.link,                          count = 1 },
 --       { type = "text",                value = "Psikutas soft-ressed this item.", padding = 11 },
 --       { type = "button",              label = "Close",                           width = 70 },
 --       { type = "button",              label = "Award...",                        width = 90 }
@@ -1208,7 +1229,7 @@ end
 --   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
 --   local group_roster = mock_group_roster( { p1, p2 } )
 --   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
---   local item_id, seconds_left = 123, 7
+--   local item_id, seconds_left = 123, 8
 --   local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
 --   local item = i( "Hearthstone", item_id )
 --   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left )
@@ -1220,7 +1241,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                               count = 1 },
+--       { type = link, link = item.link,                               count = 1 },
 --       { type = "roll",                player_name = "Psikutas",                       player_class = C.Warrior, roll_type = RT.SoftRes, roll = 69, padding = 11 },
 --       { type = "roll",                player_name = "Obszczymucha",                   player_class = C.Druid,   roll_type = RT.SoftRes, roll = 42 },
 --       { type = "roll",                player_name = "Psikutas",                       player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -1235,7 +1256,7 @@ end
 --   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
 --   local group_roster = mock_group_roster( { p1, p2 } )
 --   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
---   local item_id, seconds_left = 123, 7
+--   local item_id, seconds_left = 123, 8
 --   local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
 --   local item = i( "Hearthstone", item_id )
 --   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left )
@@ -1245,7 +1266,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                         count = 1 },
+--       { type = link, link = item.link,                         count = 1 },
 --       { type = "roll",                player_name = "Obszczymucha",             player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
 --       { type = "roll",                player_name = "Psikutas",                 player_class = C.Warrior, roll_type = RT.SoftRes },
 --       { type = "roll",                player_name = "Psikutas",                 player_class = C.Warrior, roll_type = RT.SoftRes },
@@ -1260,7 +1281,7 @@ end
 --   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
 --   local group_roster = mock_group_roster( { p1, p2 } )
 --   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
---   local item_id, seconds_left = 123, 7
+--   local item_id, seconds_left = 123, 8
 --   local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
 --   local item = i( "Hearthstone", item_id )
 --   local strategy = RS.SoftResRoll
@@ -1275,7 +1296,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                              count = 2 },
+--       { type = link, link = item.link,                              count = 2 },
 --       { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 11 },
 --       { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 4 },
 --       { type = "button",              label = "Close",                               width = 70 },
@@ -1288,7 +1309,7 @@ end
 --   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
 --   local group_roster = mock_group_roster( { p1, p2 } )
 --   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
---   local item_id, seconds_left = 123, 7
+--   local item_id, seconds_left = 123, 8
 --   local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
 --   local item = i( "Hearthstone", item_id )
 --   local strategy = RS.SoftResRoll
@@ -1304,7 +1325,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                              count = 2 },
+--       { type = link, link = item.link,                              count = 2 },
 --       { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 11 },
 --       { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
 --       { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 8 },
@@ -1319,7 +1340,7 @@ end
 --   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
 --   local group_roster = mock_group_roster( { p1, p2 } )
 --   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
---   local item_id, seconds_left = 123, 7
+--   local item_id, seconds_left = 123, 8
 --   local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
 --   local item = i( "Hearthstone", item_id )
 --   local strategy = RS.SoftResRoll
@@ -1340,7 +1361,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                              count = 2 },
+--       { type = link, link = item.link,                              count = 2 },
 --       { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 11 },
 --       { type = "award_button",        label = "Award",                               padding = 6, width = 90 },
 --       { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 8 },
@@ -1355,7 +1376,7 @@ end
 --   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
 --   local group_roster = mock_group_roster( { p1, p2 } )
 --   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
---   local item_id, seconds_left = 123, 7
+--   local item_id, seconds_left = 123, 8
 --   local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
 --   local item = i( "Hearthstone", item_id )
 --   local strategy = RS.SoftResRoll
@@ -1376,7 +1397,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                              count = 1 },
+--       { type = link, link = item.link,                              count = 1 },
 --       { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 11 },
 --       { type = "button",              label = "Award winner",                        width = 130 },
 --       { type = "button",              label = "Close",                               width = 70 },
@@ -1389,7 +1410,7 @@ end
 -- function TieRollPopupContentSpec:should_display_tied_rolls()
 --   -- Given
 --   local popup, controller = new()
---   local item_id, seconds_left = 123, 7
+--   local item_id, seconds_left = 123, 8
 --   local item = i( "Hearthstone", item_id )
 --   local p1, p2 = rp( "Psikutas", C.Warrior ), rp( "Obszczymucha", C.Druid )
 --   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
@@ -1401,7 +1422,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                count = 1 },
+--       { type = link, link = item.link,                count = 1 },
 --       { type = "roll",                player_name = "Obszczymucha",    player_class = C.Druid,   roll_type = RT.MainSpec, roll = 69,   padding = 11 },
 --       { type = "roll",                player_name = "Psikutas",        player_class = C.Warrior, roll_type = RT.MainSpec, roll = 69 },
 --       { type = "text",                value = "There was a tie (69):", padding = 11 },
@@ -1413,7 +1434,7 @@ end
 -- function TieRollPopupContentSpec:should_display_tied_rolls_with_waiting_message()
 --   -- Given
 --   local popup, controller = new()
---   local item_id, seconds_left = 123, 7
+--   local item_id, seconds_left = 123, 8
 --   local item = i( "Hearthstone", item_id )
 --   local p1, p2 = rp( "Psikutas", C.Warrior ), rp( "Obszczymucha", C.Druid )
 --   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
@@ -1426,7 +1447,7 @@ end
 --   -- Then
 --   eq( cleanse( popup.get() ),
 --     {
---       { type = "item_link_with_icon", link = item.link,                         count = 1 },
+--       { type = link, link = item.link,                         count = 1 },
 --       { type = "roll",                player_name = "Obszczymucha",             player_class = C.Druid,   roll_type = RT.MainSpec, roll = 69,   padding = 11 },
 --       { type = "roll",                player_name = "Psikutas",                 player_class = C.Warrior, roll_type = RT.MainSpec, roll = 69 },
 --       { type = "text",                value = "There was a tie (69):",          padding = 11 },
