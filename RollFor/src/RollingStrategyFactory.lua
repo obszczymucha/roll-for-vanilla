@@ -10,7 +10,7 @@ local make_rolling_player = m.Types.make_rolling_player
 local getn = table.getn
 
 ---@class RollingStrategy
----@field announce_rolling fun()
+---@field start_rolling fun()
 ---@field on_roll fun( player_name: string, roll: number, min: number, max: number )
 ---@field show_sorted_rolls fun( limit: number? )
 ---@field stop_accepting_rolls fun( manual_stop: boolean )
@@ -26,25 +26,26 @@ local getn = table.getn
 ---@field tie_roll fun( players: RollingPlayer[], item: Item, item_count: number, on_rolling_finished: RollingFinishedCallback, roll_type: RollType ): RollingStrategy
 
 ---@param group_roster GroupRoster
----@param loot_list LootList
+---@param loot_list SoftResLootList
 ---@param master_loot_candidates MasterLootCandidates
----@param announce AnnounceFn
+---@param chat Chat
 ---@param ace_timer AceTimer
 ---@param winner_tracker WinnerTracker
 ---@param roll_controller RollController
 ---@param config Config
 ---@param softres GroupedSoftRes
----@return RollingStrategyFactory
+---@param player_info PlayerInfo
 function M.new(
     group_roster,
     loot_list,
     master_loot_candidates,
-    announce,
+    chat,
     ace_timer,
     winner_tracker,
     roll_controller,
     config,
-    softres
+    softres,
+    player_info
 )
   ---@param item Item
   ---@param item_count number
@@ -58,7 +59,7 @@ function M.new(
     end )
 
     return m.NonSoftResRollingLogic.new(
-      announce,
+      chat.announce,
       ace_timer,
       rollers,
       item,
@@ -86,7 +87,7 @@ function M.new(
     end
 
     return m.SoftResRollingLogic.new(
-      announce,
+      chat.announce,
       ace_timer,
       softressing_players,
       item,
@@ -115,7 +116,7 @@ function M.new(
         return
       end
 
-      return f( announce, ace_timer, item, item_count or 1, winner_tracker, roll_controller, online_candidates )
+      return f( chat.announce, ace_timer, item, item_count or 1, winner_tracker, roll_controller, online_candidates, player_info )
     end
   end
 
@@ -128,7 +129,7 @@ function M.new(
     )
 
     return m.TieRollingLogic.new(
-      announce,
+      chat.announce,
       rollers, -- Trackback: changed player_names to players
       item,
       item_count,
@@ -139,6 +140,7 @@ function M.new(
     )
   end
 
+  ---@type RollingStrategyFactory
   return {
     normal_roll = normal_roll,
     softres_roll = softres_roll,

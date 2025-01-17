@@ -11,10 +11,10 @@ local info = m.pretty_print
 local hl = m.colors.hl
 local getn = table.getn
 
----@param announce AnnounceFn
+---@param chat Chat
 ---@param roll_controller RollController
 ---@param roll_tracker RollTracker
-function M.new( announce, roll_controller, roll_tracker, config )
+function M.new( chat, roll_controller, roll_tracker, config )
   ---@param winners Winner[]
   ---@param top_roll boolean
   local announce_winner = function( winners, top_roll )
@@ -44,7 +44,7 @@ function M.new( announce, roll_controller, roll_tracker, config )
 
     local rollers = m.prettify_table( winners, function( p ) return p.name end )
     info( message( rollers, hl ) )
-    announce( message( rollers ) )
+    chat.announce( message( rollers ) )
   end
 
   ---@param winners Winner[]
@@ -82,7 +82,7 @@ function M.new( announce, roll_controller, roll_tracker, config )
     if strategy == RS.RaidRoll or strategy == RS.InstaRaidRoll then
       for _, winner in ipairs( winners ) do
         local suffix = strategy == RS.RaidRoll and "" or " via insta raid-roll"
-        announce( string.format( "%s wins %s%s.", winner.name, item.link, suffix ) )
+        chat.announce( string.format( "%s wins %s%s.", winner.name, item.link, suffix ) )
       end
 
       return
@@ -127,7 +127,7 @@ function M.new( announce, roll_controller, roll_tracker, config )
     end
 
     info( message( top_rollers_str_colored ) )
-    announce( message( top_rollers_str ) )
+    chat.announce( message( top_rollers_str ) )
   end
 
   local function on_tie_start()
@@ -153,7 +153,7 @@ function M.new( announce, roll_controller, roll_tracker, config )
     local top_rollers_str = m.prettify_table( player_names )
     local roll_threshold_str = config.roll_threshold( roll_type ).str
 
-    announce( string.format( "%s %s for %s%s now.%s", top_rollers_str, roll_threshold_str, prefix, item.link, suffix ) )
+    chat.announce( string.format( "%s %s for %s%s now.%s", top_rollers_str, roll_threshold_str, prefix, item.link, suffix ) )
   end
 
   local function on_tick( data )
@@ -162,9 +162,9 @@ function M.new( announce, roll_controller, roll_tracker, config )
     local seconds_left = data.seconds_left
 
     if seconds_left == 3 then
-      announce( "Stopping rolls in 3" )
+      chat.announce( "Stopping rolls in 3" )
     elseif seconds_left < 3 then
-      announce( tostring( seconds_left ) )
+      chat.announce( tostring( seconds_left ) )
     end
   end
 
@@ -177,7 +177,7 @@ function M.new( announce, roll_controller, roll_tracker, config )
     if winner_count == 0 then
       local message = string.format( "No one rolled for %s.", data.item.link )
       info( message )
-      announce( message )
+      chat.announce( message )
     end
   end
 

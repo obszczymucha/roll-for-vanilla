@@ -5,7 +5,10 @@ if m.AutoMasterLoot then return end
 
 local M = {}
 
-function M.new( config, boss_list )
+---@param config Config
+---@param boss_list BossList
+---@param player_info PlayerInfo
+function M.new( config, boss_list, player_info )
   local function on_player_target_changed()
     if not config.auto_master_loot() then return end
 
@@ -16,8 +19,8 @@ function M.new( config, boss_list )
     local bosses = boss_list[ zone_name ] or {}
     local is_a_boss = m.table_contains_value( bosses, target_name )
 
-    if is_a_boss and not m.is_master_loot() and m.is_player_a_leader() then
-      m.api.SetLootMethod( "master", m.my_name() )
+    if is_a_boss and not m.is_master_loot() and player_info.is_leader() then
+      m.api.SetLootMethod( "master", player_info.get_name() )
     end
   end
 

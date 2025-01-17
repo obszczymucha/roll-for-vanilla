@@ -19,22 +19,19 @@ local RS = m.Types.RollingStrategy
 
 ---@class RollingLogic
 ---@field roll fun( rolling_strategy: RollingStrategy )
----@field cancel_rolling fun()
 ---@field on_softres_rolls_available SoftresRollsAvailableCallback
 ---@field on_rolling_finished RollingFinishedCallback
 ---@field is_rolling fun(): boolean
 ---@field on_roll fun( player_name: string, roll_value: number, min: number, max: number )
----@field stop_accepting_rolls fun( manual_stop: boolean )
 ---@field show_sorted_rolls fun( limit: number? )
 
----@param announce AnnounceFn
+---@param chat Chat
 ---@param ace_timer AceTimer
 ---@param roll_controller RollController
 ---@param rolling_strategy_factory RollingStrategyFactory
 ---@param master_loot_candidates MasterLootCandidates
 ---@param winner_tracker WinnerTracker
----@return RollingLogic
-function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, master_loot_candidates, winner_tracker, config )
+function M.new( chat, ace_timer, roll_controller, rolling_strategy_factory, master_loot_candidates, winner_tracker, config )
   ---@type RollingStrategy | nil
   local m_rolling_strategy
 
@@ -49,7 +46,7 @@ function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, 
 
     roll_controller.waiting_for_rolls()
     local message = m.prettify_table( remaining_rollers, transform )
-    announce( string.format( "SR rolls remaining: %s", message ) )
+    chat.announce( string.format( "SR rolls remaining: %s", message ) )
   end
 
   local function roll( strategy )
@@ -59,7 +56,7 @@ function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, 
     end
 
     m_rolling_strategy = strategy
-    m_rolling_strategy.announce_rolling()
+    m_rolling_strategy.start_rolling()
   end
 
   local function is_rolling()
@@ -208,8 +205,13 @@ function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, 
   end
 
   local function cancel_rolling()
+    print("yes")
     if not m_rolling_strategy then return end
+    print("yes2")
     m_rolling_strategy.cancel_rolling()
+    print("yes3")
+    roll_controller.rolling_canceled()
+    print("yes4")
   end
 
   ---@param player_name string
@@ -222,9 +224,8 @@ function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, 
     end
   end
 
-  ---@param manual_stop boolean
-  local function stop_accepting_rolls( manual_stop )
-    if m_rolling_strategy then m_rolling_strategy.stop_accepting_rolls( manual_stop ) end
+  local function finish_rolling_early()
+    if m_rolling_strategy then m_rolling_strategy.stop_accepting_rolls( true ) end
   end
 
   ---@param limit number
@@ -232,14 +233,16 @@ function M.new( announce, ace_timer, roll_controller, rolling_strategy_factory, 
     if m_rolling_strategy then m_rolling_strategy.show_sorted_rolls( limit ) end
   end
 
+  roll_controller.subscribe( "finish_rolling_early", finish_rolling_early )
+  roll_controller.subscribe( "cancel_rolling", cancel_rolling )
+
+  ---@type RollingLogic
   return {
     roll = roll,
-    cancel_rolling = cancel_rolling,
     on_rolling_finished = on_rolling_finished,
     on_softres_rolls_available = on_softres_rolls_available,
     is_rolling = is_rolling,
     on_roll = on_roll,
-    stop_accepting_rolls = stop_accepting_rolls,
     show_sorted_rolls = show_sorted_rolls
   }
 end

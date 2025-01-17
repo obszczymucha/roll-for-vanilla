@@ -21,9 +21,9 @@ local clear_table = m.clear_table
 ---@param roll_tracker RollTracker
 ---@param loot_list LootList
 ---@param roll_controller RollController
----@param master_looter MasterLooter
+---@param player_info PlayerInfo
 ---@return LootAutoProcess
-function M.new( config, roll_tracker, loot_list, roll_controller, master_looter )
+function M.new( config, roll_tracker, loot_list, roll_controller, player_info )
   local loot_cache = {}
   local selected_loot_list_item
 
@@ -57,7 +57,7 @@ function M.new( config, roll_tracker, loot_list, roll_controller, master_looter 
       end
     end
 
-    if not config.auto_process_loot() or not master_looter.is_player_master_looter() then return end
+    if not config.auto_process_loot() or not player_info.is_master_looter() then return end
 
     if config.autostart_loot_process() then
       process_next_item()

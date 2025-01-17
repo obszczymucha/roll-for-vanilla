@@ -236,7 +236,7 @@ function M.new(
     roll_controller.show()
   end
 
-  local function announce_rolling()
+  local function start_rolling()
     local function format_name_with_rolls( player )
       if player_count == item_count then return player.name end
       local roll_count = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
@@ -292,8 +292,9 @@ function M.new(
     return rolling
   end
 
+  ---@type RollingStrategy
   return {
-    announce_rolling = announce_rolling,
+    start_rolling = start_rolling,
     on_roll = on_roll,
     show_sorted_rolls = show_sorted_rolls,
     stop_accepting_rolls = stop_accepting_rolls,

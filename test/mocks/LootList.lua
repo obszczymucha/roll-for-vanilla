@@ -34,11 +34,14 @@ function M.new()
     return result
   end
 
+  ---@type SoftResLootList
   return {
+    ---@diagnostic disable-next-line: assign-type-mismatch
     get_items = get_items,
     get_source_guid = get_source_guid,
     get_slot = get_slot,
-    count = count
+    count = count,
+    is_looting = function() return false end
   }
 end
 

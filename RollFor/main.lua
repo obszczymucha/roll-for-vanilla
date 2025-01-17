@@ -15,26 +15,6 @@ local RS = m.Types.RollingStrategy
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
-local function get_roll_announcement_chat_type( use_raid_warning )
-  local chat_type = m.get_group_chat_type()
-  if not use_raid_warning then return chat_type end
-
-  local rank = m.my_raid_rank()
-
-  if chat_type == "RAID" and rank > 0 then
-    return "RAID_WARNING"
-  else
-    return chat_type
-  end
-end
-
----@alias AnnounceFn fun( text: string, use_raid_warning: boolean? )
-
----@type AnnounceFn
-local function announce( text, use_raid_warning )
-  M.api().SendChatMessage( text, get_roll_announcement_chat_type( use_raid_warning ) )
-end
-
 local function clear_data()
   M.dropped_loot.clear()
   M.awarded_loot.clear()
@@ -68,9 +48,9 @@ local function trade_complete_callback( recipient, items_given, items_received )
     local item = items_given[ i ]
     if item then
       local item_id = M.item_utils.get_item_id( item.link )
-      local item_name = M.dropped_loot.get_dropped_item_name( item_id )
+      local item_name = item_id and M.dropped_loot.get_dropped_item_name( item_id )
 
-      if item_name then
+      if item_id and item_name then
         M.on_loot_awarded( recipient, item_id, item.link )
       end
     end
@@ -86,15 +66,6 @@ local function trade_complete_callback( recipient, items_given, items_received )
       end
     end
   end
-end
-
-local function on_cancel_roll_command()
-  M.rolling_logic.cancel_rolling()
-  M.roll_controller.cancel()
-end
-
-local function on_finish_roll_command()
-  M.rolling_logic.stop_accepting_rolls( true )
 end
 
 ---@param item DroppedItem
@@ -126,17 +97,6 @@ local function insta_raid_roll_item( item, count )
   M.rolling_logic.roll( strategy )
 end
 
--- local function free_roll_item( item_link )
---   local item_id = M.item_utils.get_item_id( item_link )
---   local item_name = M.item_utils.get_item_name( item_link )
---   local texture = m.get_item_texture( item_id )
---
---   local item = { id = item_id, link = item_link, name = item_name, texture = texture }
---   m_rolling_logic = non_softres_rolling_logic( item, 1, nil, M.config.default_rolling_time_seconds(), M.on_rolling_finished )
---   M.winner_tracker.start_rolling( item.link )
---   m_rolling_logic.announce_rolling()
--- end
-
 local function roll_item( item, item_count )
   local count = item_count or M.loot_list.count( item.id )
   local strategy = M.rolling_strategy_factory.softres_roll(
@@ -153,25 +113,34 @@ local function roll_item( item, item_count )
 end
 
 local function create_components()
+  ---@type AceTimer
   M.ace_timer = lib_stub( "AceTimer-3.0" )
 
   local db = m.Db.new( M.char_db )
+
+  ---@type Config
   M.config = m.Config.new( db( "config" ) )
 
   M.api = function() return m.api end
 
-  M.master_looter = m.MasterLooter.new( M.api(), m.my_name() )
+  ---@type PlayerInfo
+  M.player_info = m.PlayerInfo.new( M.api() )
 
-  ---@type fun( softres: SoftRes ): GroupedSoftRes
+  ---@type Chat
+  M.chat = m.Chat.new( M.api(), M.player_info )
+
+  ---@alias GroupedSoftResFn fun ( softres: SoftRes ): GroupedSoftRes
+  ---@type GroupedSoftResFn
   M.present_softres = function( softres ) return m.SoftResPresentPlayersDecorator.new( M.group_roster, softres ) end
-  ---@type fun( softres: SoftRes ): GroupedSoftRes
+  ---@type GroupedSoftResFn
   M.absent_softres = function( softres ) return m.SoftResAbsentPlayersDecorator.new( M.group_roster, softres ) end
 
+  ---@type ItemUtils
   M.item_utils = m.ItemUtils
 
-  M.version_broadcast = m.VersionBroadcast.new( db( "version_broadcast" ), version.str )
+  M.version_broadcast = m.VersionBroadcast.new( db( "version_broadcast" ), M.player_info, version.str )
   M.awarded_loot = m.AwardedLoot.new( db( "awarded_loot" ) )
-  M.group_roster = m.GroupRoster.new( M.api )
+  M.group_roster = m.GroupRoster.new( M.api, M.player_info )
   M.softres_db = db( "softres" )
   M.unfiltered_softres = m.SoftRes.new( M.softres_db )
   M.name_matcher = m.NameManualMatcher.new(
@@ -234,13 +203,13 @@ local function create_components()
   ---@type SoftResLootList
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
 
-  M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.loot_list, announce, M.dropped_loot, M.softres, M.winner_tracker, M.master_looter )
+  M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.loot_list, M.chat, M.dropped_loot, M.softres, M.winner_tracker, M.player_info )
 
   ---@type RollTracker
   M.roll_tracker = m.RollTracker.new()
 
   ---@type RollController
-  M.roll_controller = m.RollController.new( M.roll_tracker, M.master_looter )
+  M.roll_controller = m.RollController.new( M.roll_tracker, M.player_info )
   M.master_loot_frame = m.MasterLootCandidateSelectionFrame.new( M.winner_tracker, M.roll_controller, M.config )
 
   ---@type MasterLootCandidates
@@ -252,7 +221,7 @@ local function create_components()
     M.on_loot_awarded,
     M.master_loot_frame,
     M.loot_list,
-    M.master_looter
+    M.player_info
   )
 
   M.softres_gui = m.SoftResGui.new( M.api, M.import_encoded_softres_data, M.softres_check, M.softres, clear_data, M.dropped_loot_announce.reset )
@@ -264,10 +233,10 @@ local function create_components()
 
   M.usage_printer = m.UsagePrinter.new( M.config )
   M.minimap_button = m.MinimapButton.new( M.api, db( "minimap_button" ), M.softres_gui.toggle, M.softres_check, M.config )
-  M.master_loot_warning = m.MasterLootWarning.new( M.api, M.config, m.BossList.zones, M.master_looter )
+  M.master_loot_warning = m.MasterLootWarning.new( M.api, M.config, m.BossList.zones, M.player_info )
   M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, db( "auto_loot" ), M.config )
   M.new_group_event = m.NewGroupEvent.new()
-  M.auto_group_loot = m.AutoGroupLoot.new( M.loot_list, M.config, m.BossList.zones )
+  M.auto_group_loot = m.AutoGroupLoot.new( M.loot_list, M.config, m.BossList.zones, M.player_info )
   M.auto_master_loot = m.AutoMasterLoot.new( M.config, m.BossList.zones )
   M.softres_roll_gui_data = m.SoftResRollGuiData.new( M.softres, M.group_roster )
   M.tie_roll_gui_data = m.TieRollGuiData.new( M.group_roster )
@@ -275,7 +244,7 @@ local function create_components()
   local rolling_popup_db = db( "rolling_popup" )
 
   ---@type LootAutoProcess
-  M.loot_auto_process = m.LootAutoProcess.new( M.config, M.roll_tracker, M.loot_list, M.roll_controller, M.master_looter )
+  M.loot_auto_process = m.LootAutoProcess.new( M.config, M.roll_tracker, M.loot_list, M.roll_controller, M.player_info )
   M.rolling_popup = m.RollingPopup.new( m.PopupBuilder.new( m.FrameBuilder ), rolling_popup_db, M.config, M.roll_controller )
   M.rolling_popup_content = m.RollingPopupContent.new(
     M.rolling_popup,
@@ -283,8 +252,6 @@ local function create_components()
     M.roll_tracker,
     M.loot_list,
     M.config,
-    on_finish_roll_command,
-    on_cancel_roll_command,
     raid_roll_item,
     roll_item,
     insta_raid_roll_item,
@@ -335,6 +302,7 @@ local function create_components()
     M.loot_frame.update()
   end )
 
+  ---@type LootFrame
   M.loot_frame = m.LootFrame.new(
     m.FrameBuilder,
     M.loot_list,
@@ -342,27 +310,28 @@ local function create_components()
     M.roll_controller,
     M.roll_tracker,
     M.config,
-    M.master_looter
+    M.player_info
   )
 
-  M.roll_for_ad = m.RollForAd.new()
+  M.roll_for_ad = m.RollForAd.new( M.player_info )
 
   ---@type RollingStrategyFactory
   M.rolling_strategy_factory = m.RollingStrategyFactory.new(
     M.group_roster,
     M.loot_list,
     M.master_loot_candidates,
-    announce,
+    M.chat,
     M.ace_timer,
     M.winner_tracker,
     M.roll_controller,
     M.config,
-    M.softres
+    M.softres,
+    M.player_info
   )
 
   ---@type RollingLogic
   M.rolling_logic = m.RollingLogic.new(
-    announce,
+    M.chat,
     M.ace_timer,
     M.roll_controller,
     M.rolling_strategy_factory,
@@ -373,7 +342,7 @@ local function create_components()
 
   ---@type ArgsParser
   M.args_parser = m.ArgsParser.new( m.ItemUtils, M.config )
-  M.roll_result_announcer = m.RollResultAnnouncer.new( announce, M.roll_controller, M.roll_tracker, M.config )
+  M.roll_result_announcer = m.RollResultAnnouncer.new( M.chat, M.roll_controller, M.roll_tracker, M.config )
 end
 
 function M.import_softres_data( softres_data )
@@ -402,7 +371,7 @@ function M.import_encoded_softres_data( data, data_loaded_callback )
 end
 
 local function announce_hr( item )
-  announce( string.format( "%s is hard-ressed.", item ), true )
+  M.chat.announce( string.format( "%s is hard-ressed.", item ), true )
 end
 
 local function make_strategy( strategy_type, item, count, message, seconds )
@@ -584,19 +553,25 @@ local function on_loot_method_changed()
 end
 
 local function on_master_looter_changed( player_name )
-  if m.my_name() == player_name and m.is_master_loot() then
+  if M.player_info.get_name() == player_name and m.is_master_loot() then
     M.ace_timer.ScheduleTimer( M, M.config.print_raid_roll_settings, 0.1 )
   end
 end
 
--- This is a precaution thing. It is possible to assign the loot and then immediately move.
--- This fires LOOT_CLOSED first and we never get LOOT_SLOT_CLEARED. We have to handle that.
+-- This covers the scenario where the master looter assigns the loot and then moves immediately,
+-- causing the loot frame to close. In normal circumstances, when the last item gets assigned,
+-- the LOOT_SLOT_CLEARED fires and then LOOT_CLOSED event follows. In this case, however,
+-- LOOT_CLOSED fires first, because of the player movement and the LOOT_SLOT_CLEARED doesn't
+-- (because we're not looting anymore).
 function M.on_chat_msg_loot( message )
   for player_name, link_with_optional_quantity in string.gmatch( message, "(.-) receives loot: (.*)" ) do
     local item_link = M.item_utils.parse_link( link_with_optional_quantity )
     local item_id = item_link and M.item_utils.get_item_id( item_link )
 
-    M.master_loot.on_loot_received( player_name, item_id, item_link )
+    if item_id and item_link then
+      M.master_loot.on_loot_received( player_name, item_id, item_link )
+    end
+
     return
   end
 
@@ -604,7 +579,10 @@ function M.on_chat_msg_loot( message )
     local item_link = M.item_utils.parse_link( link_with_optional_quantity )
     local item_id = item_link and M.item_utils.get_item_id( item_link )
 
-    M.master_loot.on_loot_received( m.my_name(), item_id, item_link )
+    if item_id and item_link then
+      M.master_loot.on_loot_received( M.player_info.get_name(), item_id, item_link )
+    end
+
     return
   end
 end
@@ -679,17 +657,17 @@ local function simulate_loot_dropped( args )
 end
 
 local function show_how_to_roll()
-  announce( "How to roll:" )
+  M.chat.announce( "How to roll:" )
   local ms = M.config.ms_roll_threshold() ~= 100 and string.format( " (%s)", M.config.ms_roll_threshold() or "100" ) or ""
 
   local sr = M.softres.get_all_rollers()
   local sr_count = getn( sr )
 
-  announce( string.format( "For main-spec%s, type: /roll%s", sr_count > 0 and " and soft-res" or "", ms ) )
-  announce( string.format( "For off-spec, type: /roll %s", M.config.os_roll_threshold() ) )
+  M.chat.announce( string.format( "For main-spec%s, type: /roll%s", sr_count > 0 and " and soft-res" or "", ms ) )
+  M.chat.announce( string.format( "For off-spec, type: /roll %s", M.config.os_roll_threshold() ) )
 
   if M.config.tmog_rolling_enabled() then
-    announce( string.format( "For transmog, type: /roll %s", M.config.tmog_roll_threshold() ) )
+    M.chat.announce( string.format( "For transmog, type: /roll %s", M.config.tmog_roll_threshold() ) )
   end
 end
 
@@ -720,9 +698,9 @@ local function setup_slash_commands()
   SLASH_HTR1 = "/htr"
   M.api().SlashCmdList[ "HTR" ] = in_group_check( show_how_to_roll )
   SLASH_CR1 = "/cr"
-  M.api().SlashCmdList[ "CR" ] = is_rolling_check( on_cancel_roll_command )
+  M.api().SlashCmdList[ "CR" ] = is_rolling_check( M.roll_controller.cancel_rolling )
   SLASH_FR1 = "/fr"
-  M.api().SlashCmdList[ "FR" ] = is_rolling_check( on_finish_roll_command )
+  M.api().SlashCmdList[ "FR" ] = is_rolling_check( M.roll_controller.finish_rolling_early )
   SLASH_SSR1 = "/ssr"
   M.api().SlashCmdList[ "SSR" ] = on_show_sorted_rolls_command
   SLASH_RFR1 = "/rfr"

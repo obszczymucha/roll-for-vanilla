@@ -2,23 +2,21 @@ package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../Roll
 
 local tu = require( "test/utils" )
 local lu, eq = tu.luaunit( "assertEquals" )
-tu.mock_wow_api()
-require( "src/modules" )
+local api = tu.mock_wow_api()
+local m = require( "src/modules" )
 local types = require( "src/Types" )
 require( "src/DebugBuffer" )
 require( "src/Module" )
 local ItemUtils = require( "src/ItemUtils" )
-local tracker_mod = require( "src/RollTracker" )
-local controller_mod = require( "src/RollController" )
 require( "src/Types" )
 require( "src/SoftResDataTransformer" )
+require( "src/RaidRollRollingLogic" )
+require( "src/InstaRaidRollRollingLogic" )
 local softres_decorator = require( "src/SoftResPresentPlayersDecorator" )
 local softres_mod = require( "src/SoftRes" )
-local loot_list_mod = require( "mocks/LootList" )
 local db_mod = require( "src/Db" )
 local rolling_popup_mod = require( "src/RollingPopup" )
-local master_looter_mock = require( "mocks/MasterLooter" )
-local new = require( "src/RollingPopupContent" ).new
+local rolling_logic_mod = require( "src/RollingLogic" )
 local make_dropped_item = ItemUtils.make_dropped_item
 local make_softres_dropped_item = ItemUtils.make_softres_dropped_item
 local make_hardres_dropped_item = ItemUtils.make_hardres_dropped_item
@@ -27,13 +25,12 @@ local item_link = tu.item_link
 local sr = tu.soft_res_item
 local make_data = tu.create_softres_data
 
+local db = db_mod.new( {} )
+
 local C = types.PlayerClass
 local winner = types.make_winner
 local RT = types.RollType
 local RS = types.RollingStrategy
-local tracker = tracker_mod.new()
-local controller = controller_mod.new( tracker, master_looter_mock.new( true ) )
-local loot_list = loot_list_mod.new()
 
 local getn = table.getn
 
@@ -59,6 +56,7 @@ local function mock_group_roster( ... )
   }
 end
 
+---@return Config
 local function mock_config( configuration )
   local c = configuration
 
@@ -71,12 +69,11 @@ local function mock_config( configuration )
   }
 end
 
-local function mock_popup( config )
+local function mock_popup( config, controller )
   local content
 
-
   local popup_builder = require( "mocks/PopupBuilder" )
-  local popup = rolling_popup_mod.new( popup_builder.new(), db_mod.new( {} )( "dummy" ), config or mock_config(), controller )
+  local popup = rolling_popup_mod.new( popup_builder.new(), db( "dummy" ), config or mock_config(), controller )
   popup.get = function() return content end
 
   local old_refresh = popup.refresh
@@ -92,32 +89,100 @@ local function mock_popup( config )
   return popup
 end
 
+---@param group_roster GroupRoster
+---@param data table?
+---@return GroupedSoftRes
 local function new_softres( group_roster, data )
   local raw_softres = softres_mod.new()
   local result = softres_decorator.new( group_roster, raw_softres )
-  result.import( data )
+
+  if data then
+    result.import( data )
+  end
 
   return result
 end
 
-local function new_mod( config, finish_early, cancel_roll, raid_roll, roll_item, insta_raid_roll, select_player )
-  local popup = mock_popup( config )
-  local noop = function() end
-  local mod = new(
-    popup,
-    controller,
-    tracker,
+local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_player )
+  local deps = dependencies or {}
+
+  local config = deps[ "Config" ] or mock_config()
+  deps[ "Config" ] = config
+
+  local player_info = require( "mocks/PlayerInfo" ).new( "PrincessKenny", "Warrior", true, true )
+  deps[ "PlayerInfo" ] = player_info
+
+  local chat = require( "src/Chat" ).new( api, player_info )
+  deps[ "Chat" ] = chat
+
+  local group_roster = deps[ "GroupRoster" ] or require( "src/GroupRoster" ).new( api, player_info )
+  deps[ "GroupRoster" ] = group_roster
+
+  local loot_list = require( "mocks/LootList" ).new()
+  deps[ "SoftResLootList" ] = loot_list
+
+  local ml_candidates = require( "src/MasterLootCandidates" ).new( group_roster )
+  deps[ "MasterLootCandidates" ] = ml_candidates
+
+  local ace_timer = tu.mock_ace_timer()
+  deps[ "AceTimer" ] = ace_timer
+
+  local winner_tracker = require( "src/WinnerTracker" ).new( db( "winner_tracker" ) )
+  deps[ "WinnerTracker" ] = winner_tracker
+
+  local roll_tracker = require( "src/RollTracker" ).new()
+  deps[ "RollTracker" ] = roll_tracker
+
+  local roll_controller = require( "src/RollController" ).new(
+    roll_tracker,
+    player_info
+  )
+
+  local softres = deps[ "SoftRes" ] or new_softres( group_roster )
+
+  local strategy_factory = require( "src/RollingStrategyFactory" ).new(
+    group_roster,
     loot_list,
-    config or mock_config(),
-    finish_early or noop,
-    cancel_roll or noop,
+    ml_candidates,
+    chat,
+    ace_timer,
+    winner_tracker,
+    roll_controller,
+    config,
+    softres,
+    player_info
+  )
+  deps[ "RollingStrategyFactory" ] = strategy_factory
+
+  local rolling_logic = rolling_logic_mod.new(
+    chat,
+    ace_timer,
+    roll_controller,
+    strategy_factory,
+    ml_candidates,
+    winner_tracker,
+    config
+  )
+  deps[ "RollingLogic" ] = rolling_logic
+
+  local popup = mock_popup( config, roll_controller )
+  local noop = function() end
+
+  local rolling_popup_content = require( "src/RollingPopupContent" ).new(
+    popup,
+    roll_controller,
+    roll_tracker,
+    loot_list,
+    config,
     raid_roll or noop,
     roll_item or noop,
     insta_raid_roll or noop,
     select_player or noop
   )
+  deps[ "RollingPopupContent" ] = rolling_popup_content
 
-  return popup, mod
+  if m.RollController.debug.is_enabled() then m.RollController.debug.disable() end
+  return popup, roll_controller, deps
 end
 
 local function strip_functions( t )
@@ -166,17 +231,13 @@ RaidRollPopupContentSpec = {}
 
 function RaidRollPopupContentSpec:should_return_initial_content()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   controller.start( RS.RaidRoll, item, 1, nil, seconds_left )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,          count = 1 },
       { type = "text",                value = "Raid rolling...", padding = 8 },
@@ -186,17 +247,13 @@ end
 
 function RaidRollPopupContentSpec:should_return_initial_content_with_multiple_items_to_roll()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   controller.start( RS.RaidRoll, item, 2, nil, seconds_left )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,          count = 2 },
       { type = "text",                value = "Raid rolling...", padding = 8 },
@@ -206,9 +263,8 @@ end
 
 function RaidRollPopupContentSpec:should_display_the_winner()
   -- Given
-  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.RaidRoll
@@ -216,11 +272,8 @@ function RaidRollPopupContentSpec:should_display_the_winner()
   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                       count = 1 },
       { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
@@ -230,9 +283,8 @@ end
 
 function RaidRollPopupContentSpec:should_display_the_winner_and_the_award_button()
   -- Given
-  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.RaidRoll
@@ -240,11 +292,8 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_the_award_button
   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, true, RT.MainSpec ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                       count = 1 },
       { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
@@ -255,9 +304,8 @@ end
 
 function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again_button()
   -- Given
-  local popup = new_mod( mock_config( { auto_raid_roll = true, raid_roll_again = true } ) )
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true, raid_roll_again = true } ) } )
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.RaidRoll
@@ -265,11 +313,8 @@ function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again
   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                       count = 1 },
       { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
@@ -280,9 +325,8 @@ end
 
 function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_info()
   -- Given
-  local popup = new_mod( mock_config( { auto_raid_roll = false } ) )
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.RaidRoll
@@ -290,11 +334,8 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_i
   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                                           count = 1 },
       { type = "text",                value = "Psikutas wins the raid-roll.",                     padding = 8 },
@@ -305,9 +346,8 @@ end
 
 function RaidRollPopupContentSpec:should_display_the_winners()
   -- Given
-  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
   local strategy = RS.RaidRoll
@@ -318,11 +358,8 @@ function RaidRollPopupContentSpec:should_display_the_winners()
   }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                        count = 2 },
       { type = "text",                value = "Psikutas wins the raid-roll.",  padding = 8 },
@@ -333,9 +370,8 @@ end
 
 function RaidRollPopupContentSpec:should_display_the_winners_and_the_award_buttons()
   -- Given
-  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
   local strategy = RS.RaidRoll
@@ -346,11 +382,8 @@ function RaidRollPopupContentSpec:should_display_the_winners_and_the_award_butto
   }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                        count = 2 },
       { type = "text",                value = "Psikutas wins the raid-roll.",  padding = 8 },
@@ -363,9 +396,8 @@ end
 
 function RaidRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_content_unchanged_after_aborting_the_award()
   -- Given
-  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
   local strategy = RS.RaidRoll
@@ -382,11 +414,8 @@ function RaidRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_c
   controller.award_aborted( item )
   eq( popup.is_visible(), true )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                        count = 2 },
       { type = "text",                value = "Psikutas wins the raid-roll.",  padding = 8 },
@@ -399,9 +428,8 @@ end
 
 function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awarding_one()
   -- Given
-  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
   local strategy = RS.RaidRoll
@@ -418,11 +446,8 @@ function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awar
   controller.loot_awarded( "Jogobobek", item.id, item.link )
   eq( popup.is_visible(), true )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                       count = 1 },
       { type = "text",                value = "Psikutas wins the raid-roll.", padding = 8 },
@@ -435,17 +460,13 @@ InstaRaidRollPopupContentSpec = {}
 
 function InstaRaidRollPopupContentSpec:should_return_initial_content()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   controller.start( RS.InstaRaidRoll, item, 1, nil, seconds_left )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                count = 1 },
       { type = "text",                value = "Insta raid rolling...", padding = 8 },
@@ -454,17 +475,13 @@ end
 
 function InstaRaidRollPopupContentSpec:should_return_initial_content_with_multiple_items_to_roll()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   controller.start( RS.InstaRaidRoll, item, 2, nil, seconds_left )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                count = 2 },
       { type = "text",                value = "Insta raid rolling...", padding = 8 },
@@ -473,9 +490,8 @@ end
 
 function InstaRaidRollPopupContentSpec:should_display_the_winner()
   -- Given
-  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new( mock_config( { auto_raid_roll = true } ) )
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.InstaRaidRoll
@@ -483,11 +499,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner()
   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                             count = 1 },
       { type = "text",                value = "Psikutas wins the insta raid-roll.", padding = 8 },
@@ -497,9 +510,8 @@ end
 
 function InstaRaidRollPopupContentSpec:should_display_the_winner_and_the_award_button()
   -- Given
-  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new( mock_config( { auto_raid_roll = true } ) )
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.InstaRaidRoll
@@ -507,11 +519,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_and_the_award_b
   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, true, RT.MainSpec ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                             count = 1 },
       { type = "text",                value = "Psikutas wins the insta raid-roll.", padding = 8 },
@@ -522,9 +531,8 @@ end
 
 function InstaRaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again_button()
   -- Given
-  local popup = new_mod( mock_config( { auto_raid_roll = true, raid_roll_again = true } ) )
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true, raid_roll_again = true } ) } )
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.InstaRaidRoll
@@ -532,11 +540,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_
   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                             count = 1 },
       { type = "text",                value = "Psikutas wins the insta raid-roll.", padding = 8 },
@@ -547,9 +552,8 @@ end
 
 function InstaRaidRollPopupContentSpec:should_display_the_winners()
   -- Given
-  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new( mock_config( { auto_raid_roll = true } ) )
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
   local strategy = RS.InstaRaidRoll
@@ -560,11 +564,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners()
   }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                              count = 2 },
       { type = "text",                value = "Psikutas wins the insta raid-roll.",  padding = 8 },
@@ -575,9 +576,8 @@ end
 
 function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_award_buttons()
   -- Given
-  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new( mock_config( { auto_raid_roll = true } ) )
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
   local strategy = RS.InstaRaidRoll
@@ -588,11 +588,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_award_
   }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                              count = 2 },
       { type = "text",                value = "Psikutas wins the insta raid-roll.",  padding = 8 },
@@ -607,17 +604,13 @@ NormalRollPopupContentSpec = {}
 
 function NormalRollPopupContentSpec:should_return_initial_content()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "text",                value = "Rolling ends in 7 seconds.", padding = 11 },
@@ -628,17 +621,13 @@ end
 
 function NormalRollPopupContentSpec:should_return_initial_content_and_auto_raid_roll_message()
   -- Given
-  local popup = new_mod( mock_config( { auto_raid_roll = true } ) )
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "text",                value = "Rolling ends in 7 seconds.", padding = 11 },
@@ -650,18 +639,14 @@ end
 
 function NormalRollPopupContentSpec:should_update_rolling_ends_message()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
   controller.tick( 5 )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "text",                value = "Rolling ends in 5 seconds.", padding = 11 },
@@ -672,19 +657,16 @@ end
 
 function NormalRollPopupContentSpec:should_display_cancel_message()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  m.RollController.debug.enable( true )
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
   controller.tick( 5 )
-  controller.cancel()
-
-  -- When
-  local result = popup.get()
+  controller.cancel_rolling()
 
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "text",                value = "Rolling has been canceled.", padding = 11 },
@@ -694,18 +676,14 @@ end
 
 function NormalRollPopupContentSpec:should_update_rolling_ends_message_for_one_second_left()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
   controller.tick( 1 )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                    count = 1 },
       { type = "text",                value = "Rolling ends in 1 second.", padding = 11 },
@@ -716,9 +694,8 @@ end
 
 function NormalRollPopupContentSpec:should_display_the_winner()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.NormalRoll
@@ -728,11 +705,8 @@ function NormalRollPopupContentSpec:should_display_the_winner()
   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec, 69 ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                                      count = 1 },
       { type = "roll",                roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
@@ -744,9 +718,8 @@ end
 
 function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_8()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.NormalRoll
@@ -756,11 +729,8 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec, 8 ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                                      count = 1 },
       { type = "roll",                roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 8, padding = 11 },
@@ -772,9 +742,8 @@ end
 
 function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_11()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.NormalRoll
@@ -784,11 +753,8 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec, 11 ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                                       count = 1 },
       { type = "roll",                roll_type = RT.MainSpec,                                player_name = p1.name, player_class = p1.class, roll = 11, padding = 11 },
@@ -800,9 +766,8 @@ end
 
 function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_18()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.NormalRoll
@@ -812,11 +777,8 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec, 18 ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                                       count = 1 },
       { type = "roll",                roll_type = RT.MainSpec,                                player_name = p1.name, player_class = p1.class, roll = 18, padding = 11 },
@@ -828,9 +790,8 @@ end
 
 function NormalRollPopupContentSpec:should_sort_the_rolls()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1, p2, p3 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid ), p( "Ponpon", C.Warlock )
   local strategy = RS.NormalRoll
@@ -844,11 +805,8 @@ function NormalRollPopupContentSpec:should_sort_the_rolls()
   controller.winners_found( item, 1, { winner( p2.name, p2.class, item, false, RT.MainSpec, 45 ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                                          count = 1 },
       { type = "roll",                roll_type = RT.MainSpec,                                   player_name = p2.name, player_class = p2.class, roll = 45, padding = 11 },
@@ -864,9 +822,8 @@ end
 
 function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.NormalRoll
@@ -876,11 +833,8 @@ function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.OffSpec, 69 ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                                     count = 1 },
       { type = "roll",                roll_type = RT.OffSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
@@ -892,9 +846,8 @@ end
 
 function NormalRollPopupContentSpec:should_display_the_transmog_winner()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1 = p( "Psikutas", C.Warrior )
   local strategy = RS.NormalRoll
@@ -904,11 +857,8 @@ function NormalRollPopupContentSpec:should_display_the_transmog_winner()
   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.Transmog, 69 ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                                     count = 1 },
       { type = "roll",                roll_type = RT.Transmog,                              player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
@@ -920,9 +870,8 @@ end
 
 function NormalRollPopupContentSpec:should_display_the_winners()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Hunter )
   local strategy = RS.NormalRoll
@@ -934,11 +883,8 @@ function NormalRollPopupContentSpec:should_display_the_winners()
   }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                                      count = 2 },
       { type = "text",                value = "Psikutas wins the main-spec roll with a 54.", padding = 11 },
@@ -950,9 +896,8 @@ end
 
 function NormalRollPopupContentSpec:should_display_the_winners_and_the_award_buttons()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Hunter )
   local strategy = RS.NormalRoll
@@ -964,11 +909,8 @@ function NormalRollPopupContentSpec:should_display_the_winners_and_the_award_but
   }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                                      count = 2 },
       { type = "text",                value = "Psikutas wins the main-spec roll with a 54.", padding = 11 },
@@ -980,11 +922,32 @@ function NormalRollPopupContentSpec:should_display_the_winners_and_the_award_but
     } )
 end
 
+function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_if_enabled()
+  -- Given
+  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
+  local item_id, seconds_left = 123, 7
+  local item = i( "Hearthstone", item_id )
+  controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
+
+  -- Then
+  eq( cleanse( popup.get() ),
+    {
+      { type = "item_link_with_icon", link = item.link,                     count = 1 },
+      { type = "text",                value = "Rolling ends in 7 seconds.", padding = 11 },
+      { type = "text",                value = "Auto raid-roll is enabled." },
+      { type = "button",              label = "Finish early",               width = 100 },
+      { type = "button",              label = "Cancel",                     width = 100 }
+    } )
+
+  -- Then
+  controller.finish_rolling_early()
+end
+
 SoftResrollPopupContentSpec = {}
 
 function SoftResrollPopupContentSpec:should_preview_rolls()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
@@ -993,11 +956,8 @@ function SoftResrollPopupContentSpec:should_preview_rolls()
   local item = i( "Hearthstone", item_id, softressing_players )
   controller.preview( item, 1 )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,             count = 1 },
       { type = "roll",                player_name = "Obszczymucha", player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1010,7 +970,7 @@ end
 
 function SoftResrollPopupContentSpec:should_preview_the_winner()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ) )
@@ -1019,11 +979,8 @@ function SoftResrollPopupContentSpec:should_preview_the_winner()
   local item = i( "Hearthstone", item_id, softressing_players )
   controller.preview( item, 1 )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                          count = 1 },
       { type = "text",                value = "Psikutas soft-ressed this item.", padding = 11 },
@@ -1034,7 +991,7 @@ end
 
 function SoftResrollPopupContentSpec:should_preview_the_winners()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p2.name, 123 ) )
@@ -1043,11 +1000,8 @@ function SoftResrollPopupContentSpec:should_preview_the_winners()
   local item = i( "Hearthstone", item_id, softressing_players )
   controller.preview( item, 2 )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                              count = 2 },
       { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 11 },
@@ -1059,7 +1013,7 @@ end
 
 function SoftResrollPopupContentSpec:should_preview_the_winners_with_no_difference_if_one_has_many_rolls()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name ), sr( p2.name, 123 ) )
@@ -1068,11 +1022,8 @@ function SoftResrollPopupContentSpec:should_preview_the_winners_with_no_differen
   local item = i( "Hearthstone", item_id, softressing_players )
   controller.preview( item, 2 )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                              count = 2 },
       { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 11 },
@@ -1084,21 +1035,17 @@ end
 
 function SoftResrollPopupContentSpec:should_return_initial_softres_content()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local item_id = 123
-  local seconds_left = 7
+  local item_id, seconds_left = 123, 7
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "roll",                player_name = "Obszczymucha",         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1112,22 +1059,18 @@ end
 
 function SoftResrollPopupContentSpec:should_update_rolling_ends_message()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local item_id = 123
-  local seconds_left = 7
+  local item_id, seconds_left = 123, 7
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
   controller.tick( 5 )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                     count = 1 },
       { type = "roll",                player_name = "Obszczymucha",         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1141,22 +1084,18 @@ end
 
 function SoftResrollPopupContentSpec:should_update_rolling_ends_message_for_one_second_left()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local item_id = 123
-  local seconds_left = 7
+  local item_id, seconds_left = 123, 7
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
   controller.tick( 1 )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                    count = 1 },
       { type = "roll",                player_name = "Obszczymucha",        player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1170,12 +1109,11 @@ end
 
 function SoftResrollPopupContentSpec:should_display_the_winner()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local item_id = 123
-  local seconds_left = 7
+  local item_id, seconds_left = 123, 7
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
   local strategy = RS.SoftResRoll
@@ -1184,11 +1122,8 @@ function SoftResrollPopupContentSpec:should_display_the_winner()
   controller.winners_found( item, 1, { winner( "Psikutas", C.Warrior, item, false, RT.SoftRes, 69 ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                                     count = 1 },
       { type = "roll",                player_name = "Obszczymucha",                         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1201,12 +1136,11 @@ end
 
 function SoftResrollPopupContentSpec:should_display_the_winner_and_the_award_button()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local item_id = 123
-  local seconds_left = 7
+  local item_id, seconds_left = 123, 7
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
   local strategy = RS.SoftResRoll
@@ -1215,11 +1149,8 @@ function SoftResrollPopupContentSpec:should_display_the_winner_and_the_award_but
   controller.winners_found( item, 1, { winner( "Psikutas", C.Warrior, item, true, RT.SoftRes, 69 ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                                     count = 1 },
       { type = "roll",                player_name = "Obszczymucha",                         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1233,23 +1164,19 @@ end
 
 function SoftResrollPopupContentSpec:should_say_nobody_rolled()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local item_id = 123
-  local seconds_left = 7
+  local item_id, seconds_left = 123, 7
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
   controller.tick( 1 )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                               count = 1 },
       { type = "roll",                player_name = "Obszczymucha",                   player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1263,12 +1190,11 @@ end
 
 function SoftResrollPopupContentSpec:should_display_the_only_soft_resser()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1 = p( "Psikutas", C.Warrior )
   local group_roster = mock_group_roster( p1 )
   local data = make_data( sr( p1.name, 123 ) )
-  local item_id = 123
-  local seconds_left = 7
+  local item_id, seconds_left = 123, 7
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
   local strategy = RS.SoftResRoll
@@ -1277,11 +1203,8 @@ function SoftResrollPopupContentSpec:should_display_the_only_soft_resser()
   controller.winners_found( item, 1, { winner( "Psikutas", C.Warrior, item, false, RT.SoftRes ) }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                          count = 1 },
       { type = "text",                value = "Psikutas soft-ressed this item.", padding = 11 },
@@ -1295,12 +1218,11 @@ end
 -- The view is dumb, the controller should enforce any constraints.
 function SoftResrollPopupContentSpec:should_display_the_rolls()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local item_id = 123
-  local seconds_left = 7
+  local item_id, seconds_left = 123, 7
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
@@ -1309,11 +1231,8 @@ function SoftResrollPopupContentSpec:should_display_the_rolls()
   controller.add( p2.name, p2.class, RT.SoftRes, 42 )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                               count = 1 },
       { type = "roll",                player_name = "Psikutas",                       player_class = C.Warrior, roll_type = RT.SoftRes, roll = 69, padding = 11 },
@@ -1327,23 +1246,19 @@ end
 
 function SoftResrollPopupContentSpec:should_say_waiting_for_remaining_rolls()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local item_id = 123
-  local seconds_left = 7
+  local item_id, seconds_left = 123, 7
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
   controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
   controller.tick( 1 )
   controller.waiting_for_rolls()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                         count = 1 },
       { type = "roll",                player_name = "Obszczymucha",             player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1357,12 +1272,11 @@ end
 
 function SoftResrollPopupContentSpec:should_display_the_winners()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local item_id = 123
-  local seconds_left = 7
+  local item_id, seconds_left = 123, 7
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
   local strategy = RS.SoftResRoll
@@ -1374,11 +1288,8 @@ function SoftResrollPopupContentSpec:should_display_the_winners()
   }, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                              count = 2 },
       { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 11 },
@@ -1390,12 +1301,11 @@ end
 
 function SoftResrollPopupContentSpec:should_display_the_winners_and_the_award_buttons()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local item_id = 123
-  local seconds_left = 7
+  local item_id, seconds_left = 123, 7
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
   local strategy = RS.SoftResRoll
@@ -1408,11 +1318,8 @@ function SoftResrollPopupContentSpec:should_display_the_winners_and_the_award_bu
   controller.winners_found( item, 2, winners, strategy )
   controller.finish()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                              count = 2 },
       { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 11 },
@@ -1426,12 +1333,11 @@ end
 
 function SoftResrollPopupContentSpec:should_properly_hide_and_show_the_popup_with_content_unchanged_after_aborting_the_award()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local item_id = 123
-  local seconds_left = 7
+  local item_id, seconds_left = 123, 7
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
   local strategy = RS.SoftResRoll
@@ -1449,11 +1355,8 @@ function SoftResrollPopupContentSpec:should_properly_hide_and_show_the_popup_wit
   controller.award_aborted( item )
   eq( popup.is_visible(), true )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                              count = 2 },
       { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 11 },
@@ -1467,12 +1370,11 @@ end
 
 function SoftResrollPopupContentSpec:should_display_the_remaining_winner_after_awarding_one()
   -- Given
-  local popup = new_mod()
+  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local item_id = 123
-  local seconds_left = 7
+  local item_id, seconds_left = 123, 7
   local softressing_players = new_softres( group_roster, data ).get( item_id )
   local item = i( "Hearthstone", item_id )
   local strategy = RS.SoftResRoll
@@ -1490,11 +1392,8 @@ function SoftResrollPopupContentSpec:should_display_the_remaining_winner_after_a
   controller.loot_awarded( "Psikutas", item.id, item.link )
   eq( popup.is_visible(), true )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                              count = 1 },
       { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 11 },
@@ -1508,9 +1407,8 @@ TieRollPopupContentSpec = {}
 
 function TieRollPopupContentSpec:should_display_tied_rolls()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
@@ -1519,11 +1417,8 @@ function TieRollPopupContentSpec:should_display_tied_rolls()
   controller.add( p2.name, p2.class, RT.MainSpec, 69 )
   controller.tie( { p1, p2 }, item, 1, RT.MainSpec, 69 )
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                count = 1 },
       { type = "roll",                player_name = "Obszczymucha",    player_class = C.Druid,   roll_type = RT.MainSpec, roll = 69,   padding = 11 },
@@ -1536,9 +1431,8 @@ end
 
 function TieRollPopupContentSpec:should_display_tied_rolls_with_waiting_message()
   -- Given
-  local popup = new_mod()
-  local item_id = 123
-  local seconds_left = 7
+  local popup, controller = new()
+  local item_id, seconds_left = 123, 7
   local item = i( "Hearthstone", item_id )
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
@@ -1548,11 +1442,8 @@ function TieRollPopupContentSpec:should_display_tied_rolls_with_waiting_message(
   controller.tie( { p1, p2 }, item, 1, RT.MainSpec, 69 )
   controller.tie_start()
 
-  -- When
-  local result = popup.get()
-
   -- Then
-  eq( cleanse( result ),
+  eq( cleanse( popup.get() ),
     {
       { type = "item_link_with_icon", link = item.link,                         count = 1 },
       { type = "roll",                player_name = "Obszczymucha",             player_class = C.Druid,   roll_type = RT.MainSpec, roll = 69,   padding = 11 },

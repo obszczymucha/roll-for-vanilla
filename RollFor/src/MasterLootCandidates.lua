@@ -37,7 +37,6 @@ end
 ---@field transform_to_winner fun( player: RollingPlayer, item: Item|DroppedItem|SoftRessedDroppedItem|HardRessedDroppedItem, roll_type: RollType, winning_roll: number?, rerolling: boolean? ): Winner
 
 ---@param group_roster GroupRoster
----@return MasterLootCandidates
 function M.new( group_roster )
   local function sort( candidates )
     table.sort( candidates, function( lhs, rhs )
@@ -96,6 +95,7 @@ function M.new( group_roster )
     end
   end
 
+  ---@type MasterLootCandidates
   return {
     get = get,
     find = find,

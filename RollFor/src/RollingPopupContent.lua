@@ -146,10 +146,8 @@ end
 ---@param popup table
 ---@param roll_controller RollController
 ---@param roll_tracker RollTracker
----@param loot_list LootList
+---@param loot_list SoftResLootList
 ---@param config Config
----@param finish_early function
----@param cancel_roll function
 ---@param raid_roll function
 ---@param roll_item function
 ---@param insta_raid_roll function
@@ -160,8 +158,6 @@ function M.new(
     roll_tracker,
     loot_list,
     config,
-    finish_early,
-    cancel_roll,
     raid_roll,
     roll_item,
     insta_raid_roll,
@@ -378,9 +374,9 @@ function M.new(
     end
 
     table.insert( result,
-      { type = "button", label = "Finish early", width = 100, on_click = finish_early } )
+      { type = "button", label = "Finish early", width = 100, on_click = roll_controller.finish_rolling_early } )
     table.insert( result,
-      { type = "button", label = "Cancel", width = 100, on_click = cancel_roll } )
+      { type = "button", label = "Cancel", width = 100, on_click = roll_controller.cancel_rolling } )
     return result
   end
 
@@ -477,9 +473,9 @@ function M.new(
     if data.status.type == S.Waiting then
       table.insert( result, { type = "text", value = "Waiting for remaining rolls...", padding = top_padding } )
       table.insert( result,
-        { type = "button", label = "Finish early", width = 100, on_click = finish_early } )
+        { type = "button", label = "Finish early", width = 100, on_click = roll_controller.finish_rolling_early } )
       table.insert( result,
-        { type = "button", label = "Cancel", width = 100, on_click = cancel_roll } )
+        { type = "button", label = "Cancel", width = 100, on_click = roll_controller.cancel_rolling } )
       return result
     end
 
@@ -575,7 +571,7 @@ function M.new(
   roll_controller.subscribe( "winners_found", show_and_refresh )
   roll_controller.subscribe( "finish", show_and_refresh )
   roll_controller.subscribe( "roll", refresh )
-  roll_controller.subscribe( "cancel", refresh )
+  roll_controller.subscribe( "rolling_canceled", refresh )
   roll_controller.subscribe( "waiting_for_rolls", refresh )
   roll_controller.subscribe( "tie", show_and_refresh )
   roll_controller.subscribe( "tie_start", refresh )

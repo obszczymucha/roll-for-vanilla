@@ -10,7 +10,10 @@ local ADDON_NAME = "RollFor"
 local orange = m.colors.orange
 local c = m.colorize_player_by_class
 
-function M.new( db, my_version )
+---@param db table
+---@param player_info PlayerInfo
+---@param my_version string
+function M.new( db, player_info, my_version )
   local function version_recently_reminded()
     if not db.last_new_version_reminder_timestamp then return false end
 
@@ -66,16 +69,23 @@ function M.new( db, my_version )
   local function on_version_request( channel, requesting_player_name )
     if not channel or not requesting_player_name then return end
     m.api.SendAddonMessage( ADDON_NAME,
-      string.format( "VERSION_RESPONSE::%s::%s::%s::%s::%s", requesting_player_name, channel, m.my_name(), m.my_class(), my_version ), channel )
+      string.format(
+        "VERSION_RESPONSE::%s::%s::%s::%s::%s",
+        requesting_player_name,
+        channel,
+        player_info.get_name(),
+        player_info.get_class(),
+        my_version
+      ), channel )
   end
 
   local function on_version_response( requesting_player_name, channel, their_name, their_class, their_version )
-    if requesting_player_name ~= m.my_name() then return end
+    if requesting_player_name ~= player_info.get_name() then return end
     pp( string.format( "%s %s", c( their_name, their_class ), "v" .. (their_version or "unknown") ), orange, string.lower( channel ) )
   end
 
   local function version_request( channel )
-    m.api.SendAddonMessage( ADDON_NAME, string.format( "VERSION_REQUEST::%s::%s", channel, m.my_name() ), channel )
+    m.api.SendAddonMessage( ADDON_NAME, string.format( "VERSION_REQUEST::%s::%s", channel, player_info.get_name() ), channel )
   end
 
   local function group_version_request()

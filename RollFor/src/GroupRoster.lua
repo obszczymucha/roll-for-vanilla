@@ -9,7 +9,6 @@ local M = {}
 local make_player = m.Types.make_player
 
 ---@class GroupRoster
----@field my_name fun(): string
 ---@field get_all_players_in_my_group fun( f: (fun( player: Player ): boolean)? ): Player[]
 ---@field is_player_in_my_group fun( player_name: string ): boolean
 ---@field am_i_in_group fun(): boolean
@@ -18,17 +17,13 @@ local make_player = m.Types.make_player
 ---@field find_player fun( player_name: string ): Player?
 
 ---@param api fun(): any
----@return GroupRoster
-function M.new( api )
-  local function my_name()
-    return api().UnitName( "player" )
-  end
-
+---@param player_info PlayerInfo
+function M.new( api, player_info )
   local function get_all_players_in_my_group( f )
     local result = {}
 
     if not api().IsInGroup() then
-      local name = my_name() -- This breaks in game if we dont assign it to the variable.
+      local name = player_info.get_name()
       local class = api().UnitClass( "player" )
       table.insert( result, { name = name, class = class } )
       return result
@@ -84,8 +79,8 @@ function M.new( api )
     end
   end
 
+  ---@type GroupRoster
   return {
-    my_name = my_name,
     get_all_players_in_my_group = get_all_players_in_my_group,
     is_player_in_my_group = is_player_in_my_group,
     am_i_in_group = am_i_in_group,

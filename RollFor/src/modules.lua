@@ -80,7 +80,9 @@ function M.pretty_print( message, color_fn, module_name )
 
   local c = color_fn and type( color_fn ) == "function" and color_fn or color_fn and type( color_fn ) == "string" and M.colors[ color_fn ] or M.colors.blue
   local module_str = module_name and string.format( "%s%s%s", c( " [" ), M.colors.white( module_name ), c( "]" ) ) or ""
-  M.api.DEFAULT_CHAT_FRAME:AddMessage( string.format( "%s%s: %s", c( "RollFor" ), module_str, message ) )
+
+  local frame = M.api.DEFAULT_CHAT_FRAME
+  if frame then frame:AddMessage( string.format( "%s%s: %s", c( "RollFor" ), module_str, message ) ) end
 end
 
 function M.err( message, module_name )
@@ -136,28 +138,12 @@ function M.is_master_loot()
   return M.api.GetLootMethod() == "master"
 end
 
-function M.is_player_a_leader()
-  return M.api.UnitIsPartyLeader( "player" )
-end
-
-function M.my_name()
-  return M.api.UnitName( "player" )
-end
-
-function M.my_class()
-  return M.api.UnitClass( "player" )
-end
-
 function M.target_name()
   return M.api.UnitName( "target" )
 end
 
 function M.target_dead()
   return M.api.UnitIsDead( "target" )
-end
-
-function M.get_group_chat_type()
-  return M.api.IsInRaid() and "RAID" or "PARTY"
 end
 
 function M.decolorize( input )
@@ -256,18 +242,6 @@ function M.take( t, n )
   end
 
   return result
-end
-
-function M.my_raid_rank()
-  for i = 1, 40 do
-    local name, rank = M.api.GetRaidRosterInfo( i )
-
-    if name and name == M.my_name() then
-      return rank
-    end
-  end
-
-  return 0
 end
 
 function M.table_contains_value( t, value, f )
@@ -570,5 +544,7 @@ end
 function M.pdump( o )
   print( "\n" .. M.dump( o ) )
 end
+
+function M.noop() end
 
 return M

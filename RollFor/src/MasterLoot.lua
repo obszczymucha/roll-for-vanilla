@@ -27,9 +27,9 @@ local getn = table.getn
 ---@param on_loot_awarded fun( player_name: string, item_id: number, item_link: string )
 ---@param master_loot_frame MasterLootCandidateSelectionFrame
 ---@param loot_list LootList
----@param master_looter MasterLooter
+---@param player_info PlayerInfo
 ---@return MasterLoot
-function M.new( master_loot_candidates, on_loot_awarded, master_loot_frame, loot_list, master_looter )
+function M.new( master_loot_candidates, on_loot_awarded, master_loot_frame, loot_list, player_info )
   local m_confirmed = nil
   local m_slot_cache = {}
 
@@ -103,7 +103,7 @@ function M.new( master_loot_candidates, on_loot_awarded, master_loot_frame, loot
   local function on_loot_opened()
     clear_table( m_slot_cache )
 
-    if not master_looter.is_player_master_looter() then
+    if not player_info.is_master_looter() then
       return
     end
 

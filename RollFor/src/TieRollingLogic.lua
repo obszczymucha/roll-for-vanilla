@@ -175,12 +175,12 @@ function M.new( announce, players, item, item_count, on_rolling_finished, roll_t
     return rolling
   end
 
-  local function announce_rolling()
+  local function start_rolling()
     rolling = true
   end
 
   return {
-    announce_rolling = announce_rolling,
+    start_rolling = start_rolling,
     on_roll = on_roll,
     show_sorted_rolls = show_sorted_rolls,
     stop_accepting_rolls = stop_accepting_rolls,

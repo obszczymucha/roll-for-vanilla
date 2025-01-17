@@ -4,6 +4,11 @@ if m.LootFrame then return end
 
 local M = m.Module.new( "LootFrame" )
 
+---@class LootFrame
+---@field show fun()
+---@field update fun()
+---@field hide fun()
+
 ---@type LT
 local LT = m.ItemUtils.LootType
 
@@ -16,8 +21,8 @@ local S = m.Types.RollingStatus
 ---@param roll_controller RollController
 ---@param roll_tracker RollTracker
 ---@param config Config
----@param master_looter MasterLooter
-function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, config, master_looter )
+---@param player_info PlayerInfo
+function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, config, player_info )
   local scale = 1.0
   ---@class Frame
   local boss_name_frame
@@ -69,7 +74,7 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
 
     local loot_method = m.api.GetLootMethod()
 
-    if master_looter.is_player_master_looter() and item.type ~= LT.Coin then
+    if player_info.is_master_looter() and item.type ~= LT.Coin then
       local count = loot_list.count( item.id )
       roll_controller.preview( item, count )
       return
@@ -279,6 +284,7 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
     if boss_name_frame then boss_name_frame:position( M.center_point ) end
   end )
 
+  ---@type LootFrame
   return {
     show = show,
     update = update,

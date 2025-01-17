@@ -197,7 +197,7 @@ function M.new( announce, ace_timer, players, item, item_count, info, seconds, o
     roll_controller.show()
   end
 
-  local function announce_rolling()
+  local function start_rolling()
     local count_str = item_count > 1 and string.format( "%sx", item_count ) or ""
     local tmog_info = config.tmog_rolling_enabled() and string.format( " or /roll %s (TMOG)", config.tmog_roll_threshold() ) or ""
     local default_ms = config.ms_roll_threshold() ~= 100 and string.format( "%s ", config.ms_roll_threshold() ) or ""
@@ -252,8 +252,9 @@ function M.new( announce, ace_timer, players, item, item_count, info, seconds, o
     return rolling
   end
 
+  ---@type RollingStrategy
   return {
-    announce_rolling = announce_rolling,
+    start_rolling = start_rolling,
     on_roll = on_roll,
     show_sorted_rolls = show_sorted_rolls,
     stop_accepting_rolls = stop_accepting_rolls,

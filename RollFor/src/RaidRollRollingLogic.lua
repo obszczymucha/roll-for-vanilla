@@ -24,7 +24,8 @@ local getn = table.getn
 ---@param winner_tracker WinnerTracker
 ---@param roll_controller RollController
 ---@param candidates ItemCandidate[]|Player[]
-function M.new( announce, ace_timer, item, item_count, winner_tracker, roll_controller, candidates )
+---@param player_info PlayerInfo
+function M.new( announce, ace_timer, item, item_count, winner_tracker, roll_controller, candidates, player_info )
   local m_rolling = false
   local m_winners = {}
 
@@ -57,7 +58,7 @@ function M.new( announce, ace_timer, item, item_count, winner_tracker, roll_cont
     m.api.RandomRoll( 1, getn( candidates ) )
   end
 
-  local function announce_rolling()
+  local function start_rolling()
     m_rolling = true
     clear_winners()
 
@@ -74,7 +75,7 @@ function M.new( announce, ace_timer, item, item_count, winner_tracker, roll_cont
   end
 
   local function on_roll( player_name, roll, min, max )
-    if player_name ~= m.my_name() then return end
+    if player_name ~= player_info.get_name() then return end
     if min ~= 1 or max ~= getn( candidates ) then return end
 
     table.insert( m_winners, candidates[ roll ] )
@@ -110,12 +111,15 @@ function M.new( announce, ace_timer, item, item_count, winner_tracker, roll_cont
     end
   end
 
+  ---@type RollingStrategy
   return {
-    announce_rolling = announce_rolling, -- This probably doesn't belong here either.
+    start_rolling = start_rolling, -- This probably doesn't belong here either.
     on_roll = on_roll,
     is_rolling = is_rolling,
     show_sorted_rolls = show_sorted_rolls,
-    get_rolling_strategy = function() return m.Types.RollingStrategy.RaidRoll end
+    get_rolling_strategy = function() return m.Types.RollingStrategy.RaidRoll end,
+    cancel_rolling = m.noop(),
+    stop_accepting_rolls = m.noop()
   }
 end
 

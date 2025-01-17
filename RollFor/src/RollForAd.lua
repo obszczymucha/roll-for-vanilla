@@ -7,10 +7,11 @@ local M = {}
 
 local url = "https://github.com/obszczymucha/roll-for-vanilla/releases/download/latest/RollFor.zip"
 
-function M.new()
+---@param player_info PlayerInfo
+function M.new( player_info )
   local function on_chat_msg( channel )
     return function( message, player_name )
-      if message == "RollFor" and player_name == m.my_name() then
+      if message == "RollFor" and player_name == player_info.get_name() then
         m.api.SendChatMessage( url, channel )
       end
     end

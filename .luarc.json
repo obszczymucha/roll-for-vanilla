@@ -14,5 +14,6 @@
   ],
   "workspace.library": [],
     "diagnostics.disable": [
-    ]
+    ],
+  "Lua.hint.enable": true
 }

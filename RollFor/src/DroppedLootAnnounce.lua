@@ -248,17 +248,17 @@ local function should_announce( i, item_count, announcement )
 end
 
 ---@param loot_list LootList
----@param announce AnnounceFn
+---@param chat Chat
 ---@param dropped_loot DroppedLoot
 ---@param softres GroupedSoftRes
 ---@param winner_tracker WinnerTracker
----@param master_looter MasterLooter
-function M.new( loot_list, announce, dropped_loot, softres, winner_tracker, master_looter )
+---@param player_info PlayerInfo
+function M.new( loot_list, chat, dropped_loot, softres, winner_tracker, player_info )
   local announcing = false
   local announced_source_ids = {}
 
   local function on_loot_opened()
-    if not master_looter.is_player_master_looter() or announcing then
+    if not player_info.is_master_looter() or announcing then
       -- Wtf is this?
       if m.real_api then
         m.api = m.real_api
@@ -279,7 +279,7 @@ function M.new( loot_list, announce, dropped_loot, softres, winner_tracker, mast
     local target_msg = target and not m.api.UnitIsFriend( "player", "target" ) and string.format( "%s dropped ", target ) or ""
 
     if item_count > 0 then
-      announce(
+      chat.announce(
         string.format( "%s%s item%s%s", target_msg, item_count, item_count > 1 and "s" or "", target_msg == "" and " dropped:" or ":" ) )
 
       for i = 1, item_count do
@@ -291,7 +291,7 @@ function M.new( loot_list, announce, dropped_loot, softres, winner_tracker, mast
 
       for i, announcement in ipairs( announcements ) do
         if not trimmed and should_announce( i, item_count, announcement ) then
-          announce( announcement.text )
+          chat.announce( announcement.text )
 
           if announcement.entry.softres_count == 1 then
             winner_tracker.track( announcement.entry.softressers[ 1 ].name, announcement.entry.item_link, m.Types.RollType.SoftRes,
@@ -300,7 +300,7 @@ function M.new( loot_list, announce, dropped_loot, softres, winner_tracker, mast
         elseif not trimmed then
           if i > (announce_limit - 1) and item_count > announce_limit then
             local count = item_count - i + 1
-            announce( string.format( "and %s more item%s...", count, count > 1 and "s" or "" ) )
+            chat.announce( string.format( "and %s more item%s...", count, count > 1 and "s" or "" ) )
             trimmed = true
           end
         end

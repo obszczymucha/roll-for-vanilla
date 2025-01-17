@@ -51,7 +51,7 @@ local getn = table.getn
 ---@field waiting_for_rolls fun()
 ---@field add_winners fun( winners: Winner[] )
 ---@field finish fun()
----@field cancel fun()
+---@field rolling_canceled fun()
 ---@field tie fun( required_rolling_players: RollingPlayer[], roll_type: RollType, roll: number )
 ---@field tie_start fun()
 ---@field add fun( player_name: string, player_class: string, roll_type: RollType, roll: number )
@@ -61,7 +61,6 @@ local getn = table.getn
 ---@field clear fun()
 ---@field loot_awarded fun( player_name: string, item_id: number )
 
----@return RollTracker
 function M.new()
   local status
   local item_on_roll
@@ -264,8 +263,8 @@ function M.new()
     status.type = S.Waiting
   end
 
-  local function cancel()
-    M.debug.add( "cancel" )
+  local function rolling_canceled()
+    M.debug.add( "rolling_canceled" )
     status.type = S.Canceled
   end
 
@@ -306,13 +305,14 @@ function M.new()
     clear_if_no_winners()
   end
 
+  ---@type RollTracker
   return {
     preview = preview,
     start = start,
     waiting_for_rolls = waiting_for_rolls,
     add_winners = add_winners,
     finish = finish,
-    cancel = cancel,
+    rolling_canceled = rolling_canceled,
     tie = tie,
     tie_start = tie_start,
     add = add,

@@ -18,7 +18,7 @@ local PT = m.Types.PlayerType
 ---@field tick fun( seconds_left: number )
 ---@field add fun( player_name: string, player_class: string, roll_type: RollType, roll: number )
 ---@field add_ignored fun( player_name: string, player_class: string?, roll_type: RollType, roll: number, reason: string )
----@field cancel fun()
+---@field rolling_canceled fun()
 ---@field subscribe fun( event_type: string, callback: fun( data: any ) )
 ---@field tie fun( tied_players: RollingPlayer[], item: Item, item_count: number, roll_type: RollType, roll: number, rerolling: boolean?, top_roll: boolean? )
 ---@field tie_start fun()
@@ -37,12 +37,12 @@ local PT = m.Types.PlayerType
 ---@field loot_award_popup_closed fun()
 ---@field loot_list_item_selected fun()
 ---@field loot_list_item_deselected fun()
----@field process_next_item fun()
+---@field finish_rolling_early fun()
+---@field cancel_rolling fun()
 
 ---@param roll_tracker RollTracker
----@param master_looter MasterLooter
----@return RollController
-function M.new( roll_tracker, master_looter )
+---@param player_info PlayerInfo
+function M.new( roll_tracker, player_info )
   local callbacks = {}
 
   local function notify_subscribers( event_type, data )
@@ -141,9 +141,9 @@ function M.new( roll_tracker, master_looter )
     notify_subscribers( "finish" )
   end
 
-  local function cancel()
-    roll_tracker.cancel()
-    notify_subscribers( "cancel" )
+  local function rolling_canceled()
+    roll_tracker.rolling_canceled()
+    notify_subscribers( "rolling_canceled" )
   end
 
   local function subscribe( event_type, callback )
@@ -161,7 +161,7 @@ function M.new( roll_tracker, master_looter )
   end
 
   local function process_next_item()
-    if not master_looter.is_player_master_looter() then return end
+    if not player_info.is_master_looter() then return end
     notify_subscribers( "process_next_item" )
   end
 
@@ -254,6 +254,15 @@ function M.new( roll_tracker, master_looter )
     notify_subscribers( "loot_list_item_deselected" )
   end
 
+  local function finish_rolling_early()
+    notify_subscribers( "finish_rolling_early" )
+  end
+
+  local function cancel_rolling()
+    notify_subscribers( "cancel_rolling" )
+  end
+
+  ---@type RollController
   return {
     preview = preview,
     start = start,
@@ -262,7 +271,7 @@ function M.new( roll_tracker, master_looter )
     tick = tick,
     add = add,
     add_ignored = add_ignored,
-    cancel = cancel,
+    rolling_canceled = rolling_canceled,
     subscribe = subscribe,
     waiting_for_rolls = waiting_for_rolls,
     tie = tie,
@@ -281,6 +290,8 @@ function M.new( roll_tracker, master_looter )
     loot_award_popup_closed = loot_award_popup_closed,
     loot_list_item_selected = loot_list_item_selected,
     loot_list_item_deselected = loot_list_item_deselected,
+    finish_rolling_early = finish_rolling_early,
+    cancel_rolling = cancel_rolling
   }
 end
 

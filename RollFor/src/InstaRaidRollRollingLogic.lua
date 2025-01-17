@@ -66,12 +66,15 @@ function M.new( _, _, item, item_count, winner_tracker, roll_controller, candida
     end
   end
 
+  ---@type RollingStrategy
   return {
-    announce_rolling = start_rolling, -- This probably doesn't belong here either.
+    start_rolling = start_rolling, -- This probably doesn't belong here either.
     on_roll = function() end,
     is_rolling = function() return false end,
     show_sorted_rolls = show_sorted_rolls,
-    get_rolling_strategy = function() return m.Types.RollingStrategy.InstaRaidRoll end
+    get_rolling_strategy = function() return m.Types.RollingStrategy.InstaRaidRoll end,
+    stop_accepting_rolls = m.noop(),
+    cancel_rolling = m.noop()
   }
 end
 

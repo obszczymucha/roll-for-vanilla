@@ -18,6 +18,7 @@ function M.new( module_name, max_size )
   local head = 0
   local count = 0
   local debug_enabled = false
+  local console_enabled = false
 
   local function add( message )
     head = head + 1
@@ -34,6 +35,10 @@ function M.new( module_name, max_size )
 
     if debug_enabled then
       pp( message, m.colors.grey, module_name )
+
+      if console_enabled then
+        print( string.format( "[%s]: %s", module_name, message ) )
+      end
     end
   end
 
@@ -59,13 +64,15 @@ function M.new( module_name, max_size )
     pp( string.format( "Debug %s.", debug_enabled and m.msg.enabled or m.msg.disabled, m.colors.grey, module_name ), m.colors.grey, module_name )
   end
 
-  local function enable()
+  local function enable( console )
     debug_enabled = true
+    console_enabled = console
     print_debug_status()
   end
 
   local function disable()
     debug_enabled = false
+    console_enabled = false
     print_debug_status()
   end
 
@@ -79,7 +86,8 @@ function M.new( module_name, max_size )
     show = show,
     enable = enable,
     disable = disable,
-    toggle = toggle
+    toggle = toggle,
+    is_enabled = function() return debug_enabled end
   }
 end
 

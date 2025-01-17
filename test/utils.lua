@@ -240,6 +240,8 @@ function M.mock_wow_api()
     { r = 1, g = 1, b = 1, a = 1, hex = "kenny" }
   }
   M.modules().api.FONT_COLOR_CODE_CLOSE = "|r"
+
+  return M.modules().api
 end
 
 function M.highlight( word )
@@ -723,15 +725,12 @@ function M.repeating_tick( times )
   end
 end
 
-function M.mock_libraries()
-  m_tick_fn = nil
-  m_repeating_tick_fn = nil
-  M.mock_wow_api()
-  M.mock_library( "AceConsole-3.0" )
-  M.mock_library( "AceEvent-3.0", { RegisterMessage = function() end } )
-  M.mock_library( "AceTimer-3.0", {
+function M.mock_ace_timer()
+  ---@type AceTimer
+  return {
     ScheduleTimer = function( _, f )
       m_tick_fn = f
+      return 1337
     end,
     ScheduleRepeatingTimer = function( _, f )
       m_repeating_tick_fn = f
@@ -741,16 +740,14 @@ function M.mock_libraries()
       if timer_id == 1 then m_tick_fn = nil end
       if timer_id == 2 then m_repeating_tick_fn = nil end
     end
-  } )
-  M.mock_library( "AceComm-3.0", { RegisterComm = function() end, SendCommMessage = function() end } )
-  M.mock_library( "AceDB-3.0", {
-    New = function( _, _ )
-      return {
-        global = {},
-        char = {}
-      }
-    end
-  } )
+  }
+end
+
+function M.mock_libraries()
+  m_tick_fn = nil
+  m_repeating_tick_fn = nil
+  M.mock_wow_api()
+  M.mock_library( "AceTimer-3.0", M.mock_ace_timer() )
 end
 
 function M.load_real_stuff( req )
@@ -767,9 +764,10 @@ function M.load_real_stuff( req )
   r( "src/api/LootFacade" )
   r( "src/api/EventFrame" )
   r( "src/WowApi" )
+  r( "src/PlayerInfo" )
+  r( "src/Chat" )
   r( "src/Config" )
   r( "src/ItemUtils" )
-  r( "src/MasterLooter" )
   r( "src/RollingLogicUtils" )
   r( "src/DroppedLoot" )
   r( "src/DroppedLootAnnounce" )

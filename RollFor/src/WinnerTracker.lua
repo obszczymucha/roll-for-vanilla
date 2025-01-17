@@ -20,7 +20,6 @@ local EventType = {
 ---@field clear fun()
 
 ---@param db table
----@return WinnerTracker
 function M.new( db )
   local callbacks = {
     [ EventType.RollingStarted ] = {},
@@ -90,6 +89,7 @@ function M.new( db )
     m.clear_table( db.winners )
   end
 
+  ---@type WinnerTracker
   return {
     start_rolling = start_rolling,
     track = track,
