@@ -19,11 +19,11 @@ local getn = table.getn
 ---@field get_rolling_strategy fun(): RollingStrategyType -- TODO: rename to get_type()
 
 ---@class RollingStrategyFactory
----@field normal_roll fun( item: Item, item_count: number, message: string?, seconds: number, on_rolling_finished: RollingFinishedCallback ): RollingStrategy
----@field softres_roll fun( item: Item, item_count: number, message: string?, seconds: number, on_rolling_finished: RollingFinishedCallback, on_softres_rolls_available: SoftresRollsAvailableCallback ): RollingStrategy
----@field raid_roll fun( item: Item, item_count: number ): RollingStrategy
----@field insta_raid_roll fun( item: Item, item_count: number ): RollingStrategy
----@field tie_roll fun( players: RollingPlayer[], item: Item, item_count: number, on_rolling_finished: RollingFinishedCallback, roll_type: RollType ): RollingStrategy
+---@field normal_roll fun( item: Item, item_count: number, message: string?, seconds: number, on_rolling_finished: RollingFinishedCallback, roll_controller_facade: RollControllerFacade ): RollingStrategy
+---@field softres_roll fun( item: Item, item_count: number, message: string?, seconds: number, on_rolling_finished: RollingFinishedCallback, on_softres_rolls_available: SoftresRollsAvailableCallback, roll_controller_facade: RollControllerFacade ): RollingStrategy
+---@field raid_roll fun( item: Item, item_count: number, roll_controller_facade: RollControllerFacade ): RollingStrategy
+---@field insta_raid_roll fun( item: Item, item_count: number, roll_controller_facade: RollControllerFacade ): RollingStrategy
+---@field tie_roll fun( players: RollingPlayer[], item: Item, item_count: number, on_rolling_finished: RollingFinishedCallback, roll_type: RollType, roll_controller_facade: RollControllerFacade ): RollingStrategy
 
 ---@param group_roster GroupRoster
 ---@param loot_list SoftResLootList
@@ -31,7 +31,6 @@ local getn = table.getn
 ---@param chat Chat
 ---@param ace_timer AceTimer
 ---@param winner_tracker WinnerTracker
----@param roll_controller RollController
 ---@param config Config
 ---@param softres GroupedSoftRes
 ---@param player_info PlayerInfo
@@ -42,7 +41,6 @@ function M.new(
     chat,
     ace_timer,
     winner_tracker,
-    roll_controller,
     config,
     softres,
     player_info
@@ -52,7 +50,8 @@ function M.new(
   ---@param message string?
   ---@param seconds number
   ---@param on_rolling_finished RollingFinishedCallback
-  local function normal_roll( item, item_count, message, seconds, on_rolling_finished )
+  ---@param roll_controller_facade RollControllerFacade
+  local function normal_roll( item, item_count, message, seconds, on_rolling_finished, roll_controller_facade )
     local players = group_roster.get_all_players_in_my_group()
     local rollers = m.map( players, function( player )
       return make_rolling_player( player.name, player.class, player.online, 1 )
@@ -68,7 +67,7 @@ function M.new(
       seconds,
       on_rolling_finished,
       config,
-      roll_controller
+      roll_controller_facade
     )
   end
 
@@ -78,12 +77,21 @@ function M.new(
   ---@param seconds number
   ---@param on_rolling_finished RollingFinishedCallback
   ---@param on_softres_rolls_available SoftresRollsAvailableCallback
-  local function softres_roll( item, item_count, message, seconds, on_rolling_finished, on_softres_rolls_available )
+  ---@param roll_controller_facade RollControllerFacade
+  local function softres_roll(
+      item,
+      item_count,
+      message,
+      seconds,
+      on_rolling_finished,
+      on_softres_rolls_available,
+      roll_controller_facade
+  )
     ---@type RollingPlayer[]
     local softressing_players = softres.get( item.id )
 
     if getn( softressing_players ) == 0 then
-      return normal_roll( item, item_count or 1, message, seconds, on_rolling_finished )
+      return normal_roll( item, item_count or 1, message, seconds, on_rolling_finished, roll_controller_facade )
     end
 
     return m.SoftResRollingLogic.new(
@@ -95,17 +103,18 @@ function M.new(
       seconds,
       on_rolling_finished,
       on_softres_rolls_available,
-      roll_controller,
       config,
       winner_tracker,
-      master_loot_candidates
+      master_loot_candidates,
+      roll_controller_facade
     )
   end
 
   local function raid_roll( f )
     ---@param item Item
     ---@param item_count number
-    return function( item, item_count )
+    ---@param roll_controller_facade RollControllerFacade
+    return function( item, item_count, roll_controller_facade )
       local slot = loot_list.get_slot( item.id )
       local candidates = slot and master_loot_candidates.get() or group_roster.get_all_players_in_my_group()
       ---@type ItemCandidate[]|Player[]
@@ -116,11 +125,11 @@ function M.new(
         return
       end
 
-      return f( chat.announce, ace_timer, item, item_count or 1, winner_tracker, roll_controller, online_candidates, player_info )
+      return f( chat.announce, ace_timer, item, item_count or 1, winner_tracker, roll_controller_facade, online_candidates, player_info )
     end
   end
 
-  local function tie_roll( players, item, item_count, on_rolling_finished, roll_type )
+  local function tie_roll( players, item, item_count, on_rolling_finished, roll_type, roll_controller_facade )
     local rollers = m.map( players,
       ---@param player RollingPlayer
       function( player )
@@ -136,7 +145,7 @@ function M.new(
       on_rolling_finished,
       roll_type,
       config,
-      roll_controller
+      roll_controller_facade
     )
   end
 

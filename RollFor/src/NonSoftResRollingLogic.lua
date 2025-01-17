@@ -10,7 +10,6 @@ local merge = m.merge
 local take = m.take
 local rlu = m.RollingLogicUtils
 local RollType = m.Types.RollType
-local RollingStrategy = m.Types.RollingStrategy
 
 ---@type MakeRollFn
 local make_roll = m.Types.make_roll
@@ -36,8 +35,19 @@ end
 ---@param seconds number
 ---@param on_rolling_finished RollingFinishedCallback
 ---@param config Config
----@param roll_controller RollController
-function M.new( announce, ace_timer, players, item, item_count, info, seconds, on_rolling_finished, config, roll_controller )
+---@param controller RollControllerFacade
+function M.new(
+    announce,
+    ace_timer,
+    players,
+    item,
+    item_count,
+    info,
+    seconds,
+    on_rolling_finished,
+    config,
+    controller
+)
   ---@type RollingPlayer[], Roll[]
   local mainspec_rollers, mainspec_rolls = players, {}
   ---@type RollingPlayer[], Roll[]
@@ -163,14 +173,14 @@ function M.new( announce, ace_timer, players, item, item_count, info, seconds, o
 
     if player.rolls == 0 then
       pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
-      roll_controller.add_ignored( player_name, player.class, roll_type, roll, "Rolled too many times." )
+      controller.roll_was_ignored( player_name, player.class, roll_type, roll, "Rolled too many times." )
       return
     end
 
     player.rolls = player.rolls - 1
     local t = ms_roll and mainspec_rolls or os_roll and offspec_rolls or tmog_rolls
     table.insert( t, make_roll( player, roll_type, roll ) )
-    roll_controller.add( player.name, player.class, roll_type, roll )
+    controller.roll_was_accepted( player.name, player.class, roll_type, roll )
 
     if have_all_rolls_been_exhausted() then find_winner() end
   end
@@ -187,14 +197,12 @@ function M.new( announce, ace_timer, players, item, item_count, info, seconds, o
       return
     end
 
-    roll_controller.tick( seconds_left )
+    controller.tick( seconds_left )
   end
 
   local function accept_rolls()
     rolling = true
     timer = ace_timer.ScheduleRepeatingTimer( M, on_timer, 1.7 )
-    roll_controller.start( RollingStrategy.NormalRoll, item, item_count, info, seconds )
-    roll_controller.show()
   end
 
   local function start_rolling()

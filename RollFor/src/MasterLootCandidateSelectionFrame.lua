@@ -287,7 +287,7 @@ function M.new( winner_tracker, roll_controller, config )
   end )
 
   roll_controller.subscribe( "show_master_loot_confirmation", hide )
-  roll_controller.subscribe( "start", hide )
+  roll_controller.subscribe( "rolling_started", hide )
 
   return {
     restore_loot_buttons = restore_loot_buttons,

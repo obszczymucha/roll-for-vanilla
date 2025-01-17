@@ -21,9 +21,17 @@ local getn = table.getn
 ---@param item Item|DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
 ---@param item_count number
 ---@param winner_tracker WinnerTracker
----@param roll_controller RollController
+---@param controller RollControllerFacade
 ---@param candidates ItemCandidate[]|Player[]
-function M.new( _, _, item, item_count, winner_tracker, roll_controller, candidates )
+function M.new(
+    _,
+    _,
+    item,
+    item_count,
+    winner_tracker,
+    controller,
+    candidates
+)
   local m_winners = {}
 
   local function clear_winners()
@@ -33,8 +41,6 @@ function M.new( _, _, item, item_count, winner_tracker, roll_controller, candida
 
   local function start_rolling()
     clear_winners()
-
-    roll_controller.start( strategy, item, item_count )
 
     for _ = 1, item_count do
       local roll = m.lua.math.random( 1, getn( candidates ) )
@@ -51,8 +57,8 @@ function M.new( _, _, item, item_count, winner_tracker, roll_controller, candida
         end
       end )
 
-    roll_controller.winners_found( item, item_count, winners, strategy )
-    roll_controller.finish()
+    controller.winners_found( item, item_count, winners, strategy )
+    controller.finish()
   end
 
   local function show_sorted_rolls()

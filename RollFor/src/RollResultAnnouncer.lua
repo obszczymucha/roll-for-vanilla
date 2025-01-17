@@ -69,10 +69,11 @@ function M.new( chat, roll_controller, roll_tracker, config )
     return result
   end
 
+  ---@param data WinnersFoundData
   local function on_winners_found( data )
     if not data then return end
 
-    local item, winners, strategy = data.item, data.winners, data.rolling_strategy
+    local item, item_count, winners, strategy = data.item, data.item_count, data.winners, data.rolling_strategy
     local winner_count = getn( winners )
 
     if winner_count == 0 then
@@ -84,6 +85,13 @@ function M.new( chat, roll_controller, roll_tracker, config )
         local suffix = strategy == RS.RaidRoll and "" or " via insta raid-roll"
         chat.announce( string.format( "%s wins %s%s.", winner.name, item.link, suffix ) )
       end
+
+      return
+    end
+
+    if strategy == RS.SoftRes and winner_count == item_count then
+      local ressed_by = m.prettify_table( m.map( winners, function( winner ) return winner.name end ) )
+      chat.announce( string.format( "%s soft-ressed %s.", ressed_by, item.link ), true )
 
       return
     end

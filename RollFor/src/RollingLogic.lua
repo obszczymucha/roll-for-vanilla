@@ -28,10 +28,10 @@ local RS = m.Types.RollingStrategy
 ---@param chat Chat
 ---@param ace_timer AceTimer
 ---@param roll_controller RollController
----@param rolling_strategy_factory RollingStrategyFactory
+---@param strategy_factory RollingStrategyFactory
 ---@param master_loot_candidates MasterLootCandidates
 ---@param winner_tracker WinnerTracker
-function M.new( chat, ace_timer, roll_controller, rolling_strategy_factory, master_loot_candidates, winner_tracker, config )
+function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_candidates, winner_tracker, config )
   ---@type RollingStrategy | nil
   local m_rolling_strategy
 
@@ -98,6 +98,15 @@ function M.new( chat, ace_timer, roll_controller, rolling_strategy_factory, mast
     return winning_rolls, tied_rolls
   end
 
+  ---@type RollControllerFacade
+  local facade = {
+    roll_was_ignored = roll_controller.add_ignored,
+    roll_was_accepted = roll_controller.add,
+    tick = roll_controller.tick,
+    winners_found = roll_controller.winners_found,
+    finish = roll_controller.finish
+  }
+
   ---@param item Item
   ---@param item_count number
   ---@param rolls Roll[]
@@ -131,7 +140,7 @@ function M.new( chat, ace_timer, roll_controller, rolling_strategy_factory, mast
 
     roll_controller.tie( players, item, count, roll_type, roll_value, rerolling, getn( winning_rolls ) == 0 or false )
 
-    local strategy = rolling_strategy_factory.tie_roll( players, item, count, on_rolling_finished, roll_type )
+    local strategy = strategy_factory.tie_roll( players, item, count, on_rolling_finished, roll_type, facade )
     if not strategy then return end
 
     ace_timer.ScheduleTimer( M,
@@ -157,7 +166,7 @@ function M.new( chat, ace_timer, roll_controller, rolling_strategy_factory, mast
         -- At some point item_count gets to 0.
         print( item_count )
         m_rolling_strategy = nil
-        local strategy = rolling_strategy_factory.raid_roll( item, item_count )
+        local strategy = strategy_factory.raid_roll( item, item_count, facade )
 
         if strategy then
           roll( strategy )
@@ -205,13 +214,13 @@ function M.new( chat, ace_timer, roll_controller, rolling_strategy_factory, mast
   end
 
   local function cancel_rolling()
-    print("yes")
+    print( "yes" )
     if not m_rolling_strategy then return end
-    print("yes2")
+    print( "yes2" )
     m_rolling_strategy.cancel_rolling()
-    print("yes3")
+    print( "yes3" )
     roll_controller.rolling_canceled()
-    print("yes4")
+    print( "yes4" )
   end
 
   ---@param player_name string
@@ -233,8 +242,56 @@ function M.new( chat, ace_timer, roll_controller, rolling_strategy_factory, mast
     if m_rolling_strategy then m_rolling_strategy.show_sorted_rolls( limit ) end
   end
 
+  ---@param data RollControllerStartData
+  local function start( data )
+    local function make_strategy()
+      local seconds = data.seconds or config.default_rolling_time_seconds()
+
+      if data.strategy_type == RS.SoftResRoll then
+        return strategy_factory.softres_roll(
+          data.item,
+          data.item_count,
+          data.message,
+          seconds,
+          on_rolling_finished,
+          on_softres_rolls_available,
+          facade
+        )
+      elseif data.strategy_type == RS.NormalRoll then
+        return strategy_factory.normal_roll(
+          data.item,
+          data.item_count,
+          data.message,
+          seconds,
+          on_rolling_finished,
+          facade
+        )
+      elseif data.strategy_type == RS.RaidRoll then
+        return strategy_factory.raid_roll( data.item, data.item_count, facade )
+      elseif data.strategy_type == RS.InstaRaidRoll then
+        if not config.insta_raid_roll() then
+          info( string.format( "Insta raid-roll is %s.", m.msg.disabled ) )
+          return
+        end
+
+        return strategy_factory.insta_raid_roll( data.item, data.item_count, facade )
+      end
+    end
+
+    local strategy = make_strategy()
+    if not strategy then return end
+
+    winner_tracker.start_rolling( data.item.link )
+    roll( strategy )
+
+    if not is_rolling() then return end
+
+    roll_controller.rolling_started( data.item )
+  end
+
   roll_controller.subscribe( "finish_rolling_early", finish_rolling_early )
   roll_controller.subscribe( "cancel_rolling", cancel_rolling )
+  roll_controller.subscribe( "start", start )
 
   ---@type RollingLogic
   return {

@@ -81,35 +81,17 @@ end
 
 ---@param item Item
 local function raid_roll_item( item, count )
-  local strategy = M.rolling_strategy_factory.raid_roll( item, count )
-  if not strategy then return end
-
-  M.rolling_logic.roll( strategy )
-  M.winner_tracker.start_rolling( item.link ) -- TODO: Remove from here and subscribe to an event.
+  M.roll_controller.start( RS.RaidRoll, item, count )
 end
 
 ---@param item Item
 local function insta_raid_roll_item( item, count )
-  local strategy = M.rolling_strategy_factory.insta_raid_roll( item, count )
-  if not strategy then return end
-
-  M.winner_tracker.start_rolling( item.link )
-  M.rolling_logic.roll( strategy )
+  M.roll_controller.start( RS.InstaRaidRoll, item, count )
 end
 
 local function roll_item( item, item_count )
   local count = item_count or M.loot_list.count( item.id )
-  local strategy = M.rolling_strategy_factory.softres_roll(
-    item,
-    count,
-    nil,
-    M.config.default_rolling_time_seconds(),
-    M.rolling_logic.on_rolling_finished,
-    M.rolling_logic.on_softres_rolls_available
-  )
-
-  M.rolling_logic.roll( strategy )
-  M.winner_tracker.start_rolling( item.link ) -- TODO: remove from here and subsctibe to an event.
+  M.roll_controller.start( RS.SoftResRoll, item, count )
 end
 
 local function create_components()
@@ -209,7 +191,7 @@ local function create_components()
   M.roll_tracker = m.RollTracker.new()
 
   ---@type RollController
-  M.roll_controller = m.RollController.new( M.roll_tracker, M.player_info )
+  M.roll_controller = m.RollController.new( M.roll_tracker, M.player_info, M.rolling_strategy_factory, M.config, M.rolling_logic, M.winner_tracker )
   M.master_loot_frame = m.MasterLootCandidateSelectionFrame.new( M.winner_tracker, M.roll_controller, M.config )
 
   ---@type MasterLootCandidates
@@ -323,7 +305,6 @@ local function create_components()
     M.chat,
     M.ace_timer,
     M.winner_tracker,
-    M.roll_controller,
     M.config,
     M.softres,
     M.player_info
@@ -374,43 +355,14 @@ local function announce_hr( item )
   M.chat.announce( string.format( "%s is hard-ressed.", item ), true )
 end
 
-local function make_strategy( strategy_type, item, count, message, seconds )
-  if strategy_type == RS.SoftResRoll then
-    return M.rolling_strategy_factory.softres_roll(
-      item,
-      count,
-      message,
-      seconds,
-      M.rolling_logic.on_rolling_finished,
-      M.rolling_logic.on_softres_rolls_available
-    )
-  elseif strategy_type == RS.NormalRoll then
-    return M.rolling_strategy_factory.normal_roll(
-      item,
-      count,
-      message,
-      seconds,
-      M.rolling_logic.on_rolling_finished
-    )
-  elseif strategy_type == RS.RaidRoll then
-    return M.rolling_strategy_factory.raid_roll( item, count )
-  elseif strategy_type == RS.InstaRaidRoll then
-    if not M.config.insta_raid_roll() then
-      info( string.format( "Insta raid-roll is %s.", m.msg.disabled ) )
-      return
-    end
-
-    return M.rolling_strategy_factory.insta_raid_roll( item, count )
-  end
-end
-
 local function on_roll_command( roll_slash_command )
   return function( args )
     if M.rolling_logic.is_rolling() then
-      if not args or args == "" then
-        M.roll_controller.show()
-        return
-      end
+      -- TODO: Maybe bring it back.
+      -- if not args or args == "" then
+      --   M.roll_controller.show()
+      --   return
+      -- end
 
       info( "Rolling is in progress." )
       return
@@ -471,11 +423,7 @@ local function on_roll_command( roll_slash_command )
       return
     end
 
-    local rolling_strategy = make_strategy( strategy_type, item, count, message, seconds )
-    if not rolling_strategy then return end
-
-    M.winner_tracker.start_rolling( item.link )
-    M.rolling_logic.roll( rolling_strategy )
+    M.roll_controller.start( strategy_type, item, count, message, seconds )
   end
 end
 

@@ -22,10 +22,19 @@ local getn = table.getn
 ---@param item Item
 ---@param item_count number
 ---@param winner_tracker WinnerTracker
----@param roll_controller RollController
+---@param controller RollControllerFacade
 ---@param candidates ItemCandidate[]|Player[]
 ---@param player_info PlayerInfo
-function M.new( announce, ace_timer, item, item_count, winner_tracker, roll_controller, candidates, player_info )
+function M.new(
+    announce,
+    ace_timer,
+    item,
+    item_count,
+    winner_tracker,
+    controller,
+    candidates,
+    player_info
+)
   local m_rolling = false
   local m_winners = {}
 
@@ -62,8 +71,6 @@ function M.new( announce, ace_timer, item, item_count, winner_tracker, roll_cont
     m_rolling = true
     clear_winners()
 
-    roll_controller.start( strategy, item, item_count )
-    roll_controller.show()
     announce( string.format( "Raid rolling %s%s...", item_count and item_count > 1 and string.format( "%sx", item_count ) or "", item.link ) )
 
     print_players( candidates )
@@ -91,8 +98,8 @@ function M.new( announce, ace_timer, item, item_count, winner_tracker, roll_cont
         end
       end )
 
-    roll_controller.winners_found( item, item_count, winners, strategy )
-    roll_controller.finish()
+    controller.winners_found( item, item_count, winners, strategy )
+    controller.finish()
     m_rolling = false
   end
 

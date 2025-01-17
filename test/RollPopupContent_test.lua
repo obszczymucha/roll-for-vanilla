@@ -10,6 +10,9 @@ require( "src/Module" )
 local ItemUtils = require( "src/ItemUtils" )
 require( "src/Types" )
 require( "src/SoftResDataTransformer" )
+require( "src/RollingLogicUtils" )
+require( "src/SoftResRollingLogic" )
+require( "src/NonSoftResRollingLogic" )
 require( "src/RaidRollRollingLogic" )
 require( "src/InstaRaidRollRollingLogic" )
 local softres_decorator = require( "src/SoftResPresentPlayersDecorator" )
@@ -52,7 +55,8 @@ local function mock_group_roster( ... )
 
   return {
     find_player = find_player,
-    is_player_in_my_group = function( player_name ) return find_player( player_name ) and true or false end
+    is_player_in_my_group = function( player_name ) return find_player( player_name ) and true or false end,
+    get_all_players_in_my_group = function() return players end
   }
 end
 
@@ -65,7 +69,12 @@ local function mock_config( configuration )
     raid_roll_again = function() return c and c.raid_roll_again end,
     rolling_popup_lock = function() return c and c.rolling_popup_lock end,
     subscribe = function() end,
-    rolling_popup = function() return true end
+    rolling_popup = function() return true end,
+    ms_roll_threshold = function() return 100 end,
+    os_roll_threshold = function() return 99 end,
+    tmog_roll_threshold = function() return 98 end,
+    tmog_rolling_enabled = function() return true end,
+    insta_raid_roll = function() return true end
   }
 end
 
@@ -92,7 +101,7 @@ end
 ---@param group_roster GroupRoster
 ---@param data table?
 ---@return GroupedSoftRes
-local function new_softres( group_roster, data )
+local function softres( group_roster, data )
   local raw_softres = softres_mod.new()
   local result = softres_decorator.new( group_roster, raw_softres )
 
@@ -112,10 +121,10 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   local player_info = require( "mocks/PlayerInfo" ).new( "PrincessKenny", "Warrior", true, true )
   deps[ "PlayerInfo" ] = player_info
 
-  local chat = require( "src/Chat" ).new( api, player_info )
+  local chat = require( "mocks/Chat" ).new()
   deps[ "Chat" ] = chat
 
-  local group_roster = deps[ "GroupRoster" ] or require( "src/GroupRoster" ).new( api, player_info )
+  local group_roster = deps[ "GroupRoster" ] or mock_group_roster( p( "PrincessKenny", C.Warrior ) )
   deps[ "GroupRoster" ] = group_roster
 
   local loot_list = require( "mocks/LootList" ).new()
@@ -138,7 +147,7 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
     player_info
   )
 
-  local softres = deps[ "SoftRes" ] or new_softres( group_roster )
+  local softres_dep = deps[ "SoftRes" ] or softres( group_roster )
 
   local strategy_factory = require( "src/RollingStrategyFactory" ).new(
     group_roster,
@@ -147,9 +156,8 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
     chat,
     ace_timer,
     winner_tracker,
-    roll_controller,
     config,
-    softres,
+    softres_dep,
     player_info
   )
   deps[ "RollingStrategyFactory" ] = strategy_factory
@@ -952,7 +960,7 @@ function SoftResrollPopupContentSpec:should_preview_rolls()
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local item_id = 123
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local softressing_players = softres( group_roster, data )
   local item = i( "Hearthstone", item_id, softressing_players )
   controller.preview( item, 1 )
 
@@ -975,7 +983,7 @@ function SoftResrollPopupContentSpec:should_preview_the_winner()
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ) )
   local item_id = 123
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local softressing_players = softres( group_roster, data )
   local item = i( "Hearthstone", item_id, softressing_players )
   controller.preview( item, 1 )
 
@@ -996,7 +1004,7 @@ function SoftResrollPopupContentSpec:should_preview_the_winners()
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p2.name, 123 ) )
   local item_id = 123
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local softressing_players = softres( group_roster, data )
   local item = i( "Hearthstone", item_id, softressing_players )
   controller.preview( item, 2 )
 
@@ -1018,7 +1026,7 @@ function SoftResrollPopupContentSpec:should_preview_the_winners_with_no_differen
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name ), sr( p2.name, 123 ) )
   local item_id = 123
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local softressing_players = softres( group_roster, data )
   local item = i( "Hearthstone", item_id, softressing_players )
   controller.preview( item, 2 )
 
@@ -1035,14 +1043,13 @@ end
 
 function SoftResrollPopupContentSpec:should_return_initial_softres_content()
   -- Given
-  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local item_id, seconds_left = 123, 7
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
   local item = i( "Hearthstone", item_id )
-  controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
+  controller.start( RS.SoftResRoll, item, 1, nil, seconds_left )
 
   -- Then
   eq( cleanse( popup.get() ),
@@ -1059,14 +1066,13 @@ end
 
 function SoftResrollPopupContentSpec:should_update_rolling_ends_message()
   -- Given
-  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local item_id, seconds_left = 123, 7
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
   local item = i( "Hearthstone", item_id )
-  controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
+  controller.start( RS.SoftResRoll, item, 1, nil, seconds_left )
   controller.tick( 5 )
 
   -- Then
@@ -1084,14 +1090,13 @@ end
 
 function SoftResrollPopupContentSpec:should_update_rolling_ends_message_for_one_second_left()
   -- Given
-  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local item_id, seconds_left = 123, 7
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
   local item = i( "Hearthstone", item_id )
-  controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
+  controller.start( RS.SoftResRoll, item, 1, nil, seconds_left )
   controller.tick( 1 )
 
   -- Then
@@ -1109,15 +1114,14 @@ end
 
 function SoftResrollPopupContentSpec:should_display_the_winner()
   -- Given
-  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local item_id, seconds_left = 123, 7
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
   local item = i( "Hearthstone", item_id )
   local strategy = RS.SoftResRoll
-  controller.start( strategy, item, 1, nil, seconds_left, softressing_players )
+  controller.start( strategy, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.winners_found( item, 1, { winner( "Psikutas", C.Warrior, item, false, RT.SoftRes, 69 ) }, strategy )
   controller.finish()
@@ -1136,15 +1140,14 @@ end
 
 function SoftResrollPopupContentSpec:should_display_the_winner_and_the_award_button()
   -- Given
-  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local item_id, seconds_left = 123, 7
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
   local item = i( "Hearthstone", item_id )
   local strategy = RS.SoftResRoll
-  controller.start( strategy, item, 1, nil, seconds_left, softressing_players )
+  controller.start( strategy, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.winners_found( item, 1, { winner( "Psikutas", C.Warrior, item, true, RT.SoftRes, 69 ) }, strategy )
   controller.finish()
@@ -1164,14 +1167,13 @@ end
 
 function SoftResrollPopupContentSpec:should_say_nobody_rolled()
   -- Given
-  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local item_id, seconds_left = 123, 7
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
   local item = i( "Hearthstone", item_id )
-  controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
+  controller.start( RS.SoftResRoll, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.finish()
 
@@ -1190,15 +1192,14 @@ end
 
 function SoftResrollPopupContentSpec:should_display_the_only_soft_resser()
   -- Given
-  local popup, controller = new()
   local p1 = p( "Psikutas", C.Warrior )
   local group_roster = mock_group_roster( p1 )
   local data = make_data( sr( p1.name, 123 ) )
   local item_id, seconds_left = 123, 7
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
   local item = i( "Hearthstone", item_id )
   local strategy = RS.SoftResRoll
-  controller.start( strategy, item, 1, nil, seconds_left, softressing_players )
+  controller.start( strategy, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.winners_found( item, 1, { winner( "Psikutas", C.Warrior, item, false, RT.SoftRes ) }, strategy )
   controller.finish()
@@ -1218,14 +1219,13 @@ end
 -- The view is dumb, the controller should enforce any constraints.
 function SoftResrollPopupContentSpec:should_display_the_rolls()
   -- Given
-  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local item_id, seconds_left = 123, 7
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
   local item = i( "Hearthstone", item_id )
-  controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
+  controller.start( RS.SoftResRoll, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.add( p1.name, p1.class, RT.SoftRes, 69 )
   controller.add( p2.name, p2.class, RT.SoftRes, 42 )
@@ -1246,14 +1246,13 @@ end
 
 function SoftResrollPopupContentSpec:should_say_waiting_for_remaining_rolls()
   -- Given
-  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local item_id, seconds_left = 123, 7
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
   local item = i( "Hearthstone", item_id )
-  controller.start( RS.SoftResRoll, item, 1, nil, seconds_left, softressing_players )
+  controller.start( RS.SoftResRoll, item, 1, nil, seconds_left )
   controller.tick( 1 )
   controller.waiting_for_rolls()
 
@@ -1272,15 +1271,14 @@ end
 
 function SoftResrollPopupContentSpec:should_display_the_winners()
   -- Given
-  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local item_id, seconds_left = 123, 7
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
   local item = i( "Hearthstone", item_id )
   local strategy = RS.SoftResRoll
-  controller.start( strategy, item, 2, nil, seconds_left, softressing_players )
+  controller.start( strategy, item, 2, nil, seconds_left )
   controller.tick( 1 )
   controller.winners_found( item, 2, {
     winner( "Psikutas", C.Warrior, item, false, RT.SoftRes ),
@@ -1301,19 +1299,18 @@ end
 
 function SoftResrollPopupContentSpec:should_display_the_winners_and_the_award_buttons()
   -- Given
-  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local item_id, seconds_left = 123, 7
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
   local item = i( "Hearthstone", item_id )
   local strategy = RS.SoftResRoll
   local winners = {
     winner( "Psikutas", C.Warrior, item, true, RT.SoftRes ),
     winner( "Obszczymucha", C.Druid, item, true, RT.SoftRes )
   }
-  controller.start( strategy, item, 2, nil, seconds_left, softressing_players )
+  controller.start( strategy, item, 2, nil, seconds_left )
   controller.tick( 1 )
   controller.winners_found( item, 2, winners, strategy )
   controller.finish()
@@ -1333,19 +1330,18 @@ end
 
 function SoftResrollPopupContentSpec:should_properly_hide_and_show_the_popup_with_content_unchanged_after_aborting_the_award()
   -- Given
-  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local item_id, seconds_left = 123, 7
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
   local item = i( "Hearthstone", item_id )
   local strategy = RS.SoftResRoll
   local winners = {
     winner( "Psikutas", C.Warrior, item, true, RT.SoftRes ),
     winner( "Obszczymucha", C.Druid, item, true, RT.SoftRes )
   }
-  controller.start( strategy, item, 2, nil, seconds_left, softressing_players )
+  controller.start( strategy, item, 2, nil, seconds_left )
   controller.tick( 1 )
   controller.winners_found( item, 2, winners, strategy )
   controller.finish()
@@ -1370,19 +1366,18 @@ end
 
 function SoftResrollPopupContentSpec:should_display_the_remaining_winner_after_awarding_one()
   -- Given
-  local popup, controller = new()
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( p1, p2 )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local item_id, seconds_left = 123, 7
-  local softressing_players = new_softres( group_roster, data ).get( item_id )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = softres( group_roster, data ) } )
   local item = i( "Hearthstone", item_id )
   local strategy = RS.SoftResRoll
   local winners = {
     winner( "Psikutas", C.Warrior, item, true, RT.SoftRes ),
     winner( "Obszczymucha", C.Druid, item, true, RT.SoftRes )
   }
-  controller.start( strategy, item, 2, nil, seconds_left, softressing_players )
+  controller.start( strategy, item, 2, nil, seconds_left )
   controller.tick( 1 )
   controller.winners_found( item, 2, winners, strategy )
   controller.finish()

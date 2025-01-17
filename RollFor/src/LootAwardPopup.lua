@@ -203,7 +203,7 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
     end
   end
 
-  roll_controller.subscribe( "start", hide )
+  roll_controller.subscribe( "rolling_started", hide )
   roll_controller.subscribe( "loot_awarded", hide )
   roll_controller.subscribe( "show_master_loot_confirmation", show )
   roll_controller.subscribe( "loot_closed", abort )

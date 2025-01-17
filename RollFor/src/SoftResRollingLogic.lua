@@ -86,10 +86,10 @@ end
 ---@param seconds number
 ---@param on_rolling_finished RollingFinishedCallback
 ---@param on_softres_rolls_available fun( rollers: RollingPlayer[] )
----@param roll_controller RollController
 ---@param config Config
 ---@param winner_tracker WinnerTracker
 ---@param master_loot_candidates MasterLootCandidates
+---@param controller RollControllerFacade
 function M.new(
     announce,
     ace_timer,
@@ -99,10 +99,10 @@ function M.new(
     seconds,
     on_rolling_finished,
     on_softres_rolls_available,
-    roll_controller,
     config,
     winner_tracker,
-    master_loot_candidates
+    master_loot_candidates,
+    controller
 )
   local rolls = {}
   local rolling = false
@@ -188,27 +188,27 @@ function M.new(
     if not player then
       -- TODO: move the messages to a separate module.
       pretty_print( string.format( "|cffff9f69%s|r did not SR %s. This roll (|cffff9f69%s|r) is ignored.", player_name, item.link, roll ) )
-      roll_controller.add_ignored( player_name, nil, roll_type, roll, "Did not soft-res." )
+      controller.roll_was_ignored( player_name, nil, roll_type, roll, "Did not soft-res." )
       return
     end
 
     if not ms_roll then
       -- TODO: move the messages to a separate module.
       pretty_print( string.format( "|cffff9f69%s|r did SR %s, but didn't roll MS. This roll (|cffff9f69%s|r) is ignored.", player_name, item.link, roll ) )
-      roll_controller.add_ignored( player_name, player.class, roll_type, roll, "Didn't roll MS." )
+      controller.roll_was_ignored( player_name, player.class, roll_type, roll, "Didn't roll MS." )
       return
     end
 
     if player.rolls == 0 then
       -- TODO: move the messages to a separate module.
       pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
-      roll_controller.add_ignored( player_name, player.class, roll_type, roll, "Rolled too many times." )
+      controller.roll_was_ignored( player_name, player.class, roll_type, roll, "Rolled too many times." )
       return
     end
 
     player.rolls = player.rolls - 1
     table.insert( rolls, make_roll( player, roll_type, roll ) )
-    roll_controller.add( player_name, player.class, roll_type, roll )
+    controller.roll_was_accepted( player_name, player.class, roll_type, roll )
 
     find_winner( State.AfterRoll )
   end
@@ -226,46 +226,41 @@ function M.new(
       return
     end
 
-    roll_controller.tick( seconds_left )
+    controller.tick( seconds_left )
   end
 
   local function accept_rolls()
     rolling = true
     timer = ace_timer.ScheduleRepeatingTimer( M, on_timer, 1.7 )
-    roll_controller.start( strategy, item, item_count, nil, seconds, players )
-    roll_controller.show()
+  end
+
+  local function format_name_with_rolls( player )
+    if player_count == item_count then return player.name end
+    local roll_count = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
+    return string.format( "%s%s", player.name, roll_count )
   end
 
   local function start_rolling()
-    local function format_name_with_rolls( player )
-      if player_count == item_count then return player.name end
-      local roll_count = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
-      return string.format( "%s%s", player.name, roll_count )
-    end
-
     local count_str = item_count > 1 and string.format( "%sx", item_count ) or ""
     local x_rolls_win = item_count > 1 and string.format( ". %d top rolls win.", item_count ) or ""
     local ressed_by = m.prettify_table( map( players, format_name_with_rolls ) )
 
-    if player_count == item_count then
-      announce( string.format( "%s soft-ressed %s.", ressed_by, item.link ), true )
-      roll_controller.start( strategy, item, item_count, roll_type, nil, players )
-      roll_controller.show() -- TODO: is this still necessary?
-
-      local winners = m.map( players,
-        ---@param player RollingPlayer
-        function( player )
-          local winner = master_loot_candidates.transform_to_winner( player, item, roll_type, nil )
-          winner_tracker.track( winner.name, item.link, roll_type, nil, strategy ) -- TODO: remove from here and subscribe to the event
-          return winner
-        end )
-
-      roll_controller.winners_found( item, item_count, winners, strategy )
-      roll_controller.finish()
-    else
+    if player_count ~= item_count then
       announce( string.format( "Roll for %s%s: (SR by %s)%s", count_str, item.link, ressed_by, x_rolls_win ), true )
       accept_rolls()
+      return
     end
+
+    local winners = m.map( players,
+      ---@param player RollingPlayer
+      function( player )
+        local winner = master_loot_candidates.transform_to_winner( player, item, roll_type, nil )
+        winner_tracker.track( winner.name, item.link, roll_type, nil, strategy ) -- TODO: remove from here and subscribe to the event
+        return winner
+      end )
+
+    controller.winners_found( item, item_count, winners, strategy )
+    controller.finish()
   end
 
   local function show_sorted_rolls( limit )
