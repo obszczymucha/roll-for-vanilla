@@ -125,9 +125,10 @@ M.PlayerClass = PlayerClass
 ---  name: string,
 ---  class: PlayerClass,
 ---  online: boolean ): Player
+
 ---@type MakePlayerFn
----@return Player
 function M.make_player( name, class, online )
+  ---@type Player
   return {
     name = name,
     class = class,

@@ -22,8 +22,8 @@ local getn = table.getn
 ---@param on_rolling_finished RollingFinishedCallback
 ---@param roll_type RollType
 ---@param config Config
----@param roll_controller RollController
-function M.new( announce, players, item, item_count, on_rolling_finished, roll_type, config, roll_controller )
+---@param controller RollControllerFacade
+function M.new( announce, players, item, item_count, on_rolling_finished, roll_type, config, controller )
   local rolls = {}
   local rolling = false
   local player_count = getn( players )
@@ -69,7 +69,7 @@ function M.new( announce, players, item, item_count, on_rolling_finished, roll_t
     local roll_count = getn( rolls )
 
     if roll_count == 0 then
-      roll_controller.finish()
+      controller.finish()
       -- on_rolling_finished( item, item_count, {}, true )
       return
     end
@@ -130,7 +130,7 @@ function M.new( announce, players, item, item_count, on_rolling_finished, roll_t
 
     if not player then
       pretty_print( string.format( "|cffff9f69%s|r is not allowed to re-roll. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
-      roll_controller.add_ignored( player_name, nil, roll_type, roll, "Not in GroupRoster." )
+      controller.roll_was_ignored( player_name, nil, roll_type, roll, "Not in GroupRoster." )
       return
     end
 
@@ -141,7 +141,7 @@ function M.new( announce, players, item, item_count, on_rolling_finished, roll_t
 
     player.rolls = player.rolls - 1
     table.insert( rolls, make_roll( player, roll_type, roll ) )
-    roll_controller.add( player_name, player.class, roll_type, roll )
+    controller.roll_was_accepted( player_name, player.class, roll_type, roll )
 
     if have_all_rolls_been_exhausted() then find_winner() end
   end

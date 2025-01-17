@@ -40,7 +40,6 @@ end
 
 local function dropped( ... )
   RollFor.LootList = nil
-  loot_list = fr( "mocks/LootList" )
 
   local items = m.map( { ... }, function( i )
     if not i.quality then i.quality = 4 end
@@ -48,7 +47,8 @@ local function dropped( ... )
     return i
   end )
 
-  loot_list.items = items
+  RollFor.LootList = fr( "mocks/LootList" )( items )
+  loot_list = RollFor.LootList
 end
 
 local mock_config = function( config )

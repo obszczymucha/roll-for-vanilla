@@ -30,14 +30,18 @@ local function get_dummy_candidates()
   }
 end
 
+---@class MasterLootCandidatesApi
+---@field GetMasterLootCandidate fun( index: number ): string
+
 ---@class MasterLootCandidates
 ---@field get fun(): ItemCandidate[]
 ---@field find fun( player_name: string ): ItemCandidate?
 ---@field get_index fun( player_name: string ): number?
 ---@field transform_to_winner fun( player: RollingPlayer, item: Item|DroppedItem|SoftRessedDroppedItem|HardRessedDroppedItem, roll_type: RollType, winning_roll: number?, rerolling: boolean? ): Winner
 
+---@param api MasterLootCandidatesApi
 ---@param group_roster GroupRoster
-function M.new( group_roster )
+function M.new( api, group_roster )
   local function sort( candidates )
     table.sort( candidates, function( lhs, rhs )
       if lhs.class < rhs.class then
@@ -57,7 +61,7 @@ function M.new( group_roster )
     local players = group_roster.get_all_players_in_my_group()
 
     for i = 1, 40 do
-      local name = m.api.GetMasterLootCandidate( i )
+      local name = api.GetMasterLootCandidate( i )
 
       for _, p in ipairs( players ) do
         if name == p.name then
@@ -90,7 +94,7 @@ function M.new( group_roster )
 
   local function get_index( player_name )
     for i = 1, 40 do
-      local name = m.api.GetMasterLootCandidate( i )
+      local name = api.GetMasterLootCandidate( i )
       if name == player_name then return i end
     end
   end

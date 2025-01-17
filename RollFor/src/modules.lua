@@ -89,12 +89,20 @@ function M.err( message, module_name )
   M.pretty_print( message, M.colors.red, module_name )
 end
 
-function M.trace( message )
+function M.trace( message, object_to_dump )
   local stacktrace = debugstack or debug.traceback
 
-  if stacktrace then
-    error( message .. "\n" .. stacktrace(), 2 )
+  if not stacktrace then return end
+
+
+  if object_to_dump then
+    print( "\n" .. message .. ":")
+    M.pdump( object_to_dump )
+
+    return
   end
+
+  error( message .. "\n" .. stacktrace(), 2 )
 end
 
 function M.print_header( text, color_fn )

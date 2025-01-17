@@ -516,8 +516,7 @@ function M.new(
             local item = assert( data.item --[[@as DroppedItem|SoftRessedDroppedItem]] )
             roll_controller.show_master_loot_confirmation( winner, item, current_iteration.rolling_strategy )
           else
-            m.pdump( data.item )
-            m.trace( string.format( "Item was of %s type.", data and data.item and data.item.type or "nil" ) )
+            m.trace( string.format( "Item was of %s type.", data and data.item and data.item.type or "nil" ), data )
           end
 
           return

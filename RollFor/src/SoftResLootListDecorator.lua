@@ -17,7 +17,7 @@ local make_softres_dropped_item = m.ItemUtils.make_softres_dropped_item
 local make_hardres_dropped_item = m.ItemUtils.make_hardres_dropped_item
 
 ---@class SoftResLootList
----@field get_items fun(): (SoftRessedDroppedItem|HardRessedDroppedItem)[]
+---@field get_items fun(): (DroppedItem|SoftRessedDroppedItem|HardRessedDroppedItem)[]
 ---@field get_source_guid fun(): string
 ---@field get_slot fun( item_id: number ): number?
 ---@field is_looting fun(): boolean

@@ -29,7 +29,6 @@ end
 
 local function dropped( ... )
   RollFor.LootList = nil
-  local loot_list = fr( "mocks/LootList" )
 
   local items = m.map( { ... }, function( i )
     if not i.quality then i.quality = 4 end
@@ -37,7 +36,7 @@ local function dropped( ... )
     return i
   end )
 
-  loot_list.items = items
+  RollFor.LootList = fr( "mocks/LootList" )( items )
 end
 
 DroppedLootAnnounceIntegrationSpec = {}
