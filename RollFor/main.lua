@@ -122,7 +122,7 @@ local function create_components()
 
   M.version_broadcast = m.VersionBroadcast.new( db( "version_broadcast" ), M.player_info, version.str )
   M.awarded_loot = m.AwardedLoot.new( db( "awarded_loot" ) )
-  M.group_roster = m.GroupRoster.new( M.api, M.player_info )
+  M.group_roster = m.GroupRoster.new( M.api(), M.player_info )
   M.softres_db = db( "softres" )
   M.unfiltered_softres = m.SoftRes.new( M.softres_db )
   M.name_matcher = m.NameManualMatcher.new(

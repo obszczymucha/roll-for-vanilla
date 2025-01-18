@@ -22,12 +22,15 @@ local link = "item_link_with_icon"
 
 ---@param name string
 ---@param class PlayerClass
+---@return Player
 local function p( name, class ) return make_player( name, class, true ) end
 
----@param name string
----@param class PlayerClass
+---@param player Player
 ---@param rolls number?
-local function rp( name, class, rolls ) return make_rolling_player( name, class, true, rolls or 1 ) end
+---@return RollingPlayer
+local function rp( player, rolls )
+  return make_rolling_player( player.name, player.class, player.online, rolls or 1 )
+end
 
 local mock_group_roster = require( "mocks/GroupRoster" ).new
 
@@ -198,7 +201,7 @@ end
 
 ---@param name string
 ---@param id number?
----@param sr_players string[]?
+---@param sr_players RollingPlayer[]?
 ---@param hr boolean?
 ---@return DroppedItem|SoftRessedDroppedItem|HardRessedDroppedItem
 local function i( name, id, sr_players, hr )
@@ -922,10 +925,8 @@ function SoftResrollPopupContentSpec:should_preview_rolls()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( { p1, p2 } )
-  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local soft_res = softres( group_roster, data )
-  local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = soft_res } )
-  local item = i( "Hearthstone" )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster } )
+  local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
   controller.preview( item, 1 )
 
   -- Then
@@ -940,37 +941,30 @@ function SoftResrollPopupContentSpec:should_preview_rolls()
     } )
 end
 
---
--- function SoftResrollPopupContentSpec:should_preview_the_winner()
---   -- Given
---   local popup, controller = new()
---   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
---   local group_roster = mock_group_roster( { p1, p2 } )
---   local data = make_data( sr( p1.name, 123 ) )
---   local item_id = 123
---   local softressing_players = softres( group_roster, data )
---   local item = i( "Hearthstone", item_id, softressing_players )
---   controller.preview( item, 1 )
---
---   -- Then
---   eq( cleanse( popup.get() ),
---     {
---       { type = link, link = item.link,                          count = 1 },
---       { type = "text",                value = "Psikutas soft-ressed this item.", padding = 11 },
---       { type = "button",              label = "Close",                           width = 70 },
---       { type = "button",              label = "Award...",                        width = 90 }
---     } )
--- end
---
+function SoftResrollPopupContentSpec:should_preview_the_winner()
+  -- Given
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
+  local group_roster = mock_group_roster( { p1, p2 } )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster } )
+  local item = i( "Hearthstone", 123, { rp( p1, 1 ) } )
+  controller.preview( item, 1 )
+
+  -- Then
+  eq( cleanse( popup.get() ),
+    {
+      { type = link,     link = item.link,                          count = 1 },
+      { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
+      { type = "button", label = "Close",                           width = 70 },
+      { type = "button", label = "Award...",                        width = 90 }
+    } )
+end
+
 -- function SoftResrollPopupContentSpec:should_preview_the_winners()
 --   -- Given
---   local popup, controller = new()
 --   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
 --   local group_roster = mock_group_roster( { p1, p2 } )
---   local data = make_data( sr( p1.name, 123 ), sr( p2.name, 123 ) )
---   local item_id = 123
---   local softressing_players = softres( group_roster, data )
---   local item = i( "Hearthstone", item_id, softressing_players )
+--   local popup, controller = new( { [ "GroupRoster" ] = group_roster } )
+--   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
 --   controller.preview( item, 2 )
 --
 --   -- Then
@@ -983,7 +977,7 @@ end
 --       { type = "button",              label = "Award...",                            width = 90 }
 --     } )
 -- end
---
+
 -- function SoftResrollPopupContentSpec:should_preview_the_winners_with_no_difference_if_one_has_many_rolls()
 --   -- Given
 --   local popup, controller = new()
