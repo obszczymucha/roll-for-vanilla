@@ -646,6 +646,14 @@ function M.force_require( name )
   return require( name )
 end
 
+function M.multi_require_src( ... )
+  local modules = { ... }
+
+  for _, module in ipairs( modules ) do
+    require( string.format( "src/%s", module ) )
+  end
+end
+
 function M.mock_loot_frame()
   M.mock_object( "LootFrame", {
     GetFrameLevel = function() return 10 end,
@@ -1179,5 +1187,11 @@ function M.mock_value( v1, v2, v3, v4, v5, v6, v7, v8, v9 )
     return values[ invocation_count ]
   end
 end
+
+function M.info( message )
+  print( "\n" .. message )
+end
+
+function M.getn() return table.getn end
 
 return M

@@ -49,9 +49,9 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
   end
 
   ---@param strategy RollingStrategy
-  ---@param strategy_type RollingStrategyType
-  ---@param item Item
-  ---@param item_count number
+  ---@param strategy_type RollingStrategyType?
+  ---@param item Item?
+  ---@param item_count number?
   ---@param message string?
   ---@param seconds number?
   local function roll( strategy, strategy_type, item, item_count, message, seconds )
@@ -61,7 +61,11 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     end
 
     m_rolling_strategy = strategy
-    roll_controller.rolling_started( strategy_type, item, item_count, message, seconds )
+
+    if strategy_type and item and item_count then
+      roll_controller.rolling_started( strategy_type, item, item_count, message, seconds )
+    end
+
     m_rolling_strategy.start_rolling()
   end
 
@@ -175,7 +179,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
         local strategy = strategy_factory.raid_roll( item, item_count, facade )
 
         if strategy then
-          roll( strategy, item )
+          roll( strategy, RS.RaidRoll, item, item_count )
         end
       elseif m_rolling_strategy and not m_rolling_strategy.is_rolling() then
         info( string.format( "Rolling for %s has finished.", item.link ) )
@@ -284,7 +288,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     if not strategy then return end
 
     winner_tracker.start_rolling( data.item.link )
-    roll( strategy, data.item )
+    roll( strategy, data.strategy_type, data.item, data.item_count, data.message, data.seconds )
   end
 
   roll_controller.subscribe( "finish_rolling_early", finish_rolling_early )

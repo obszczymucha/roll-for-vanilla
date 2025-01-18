@@ -10,7 +10,7 @@ local pp = m.pretty_print
 ---@class DebugBuffer
 ---@field add fun( message: string )
 ---@field show fun()
----@field enable fun()
+---@field enable fun( console: boolean )
 ---@field disable fun()
 ---@field toggle fun()
 function M.new( module_name, max_size )

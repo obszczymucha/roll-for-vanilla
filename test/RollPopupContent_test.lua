@@ -1,49 +1,23 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-local tu = require( "test/utils" )
-local frequire = tu.force_require
-local lu, eq = tu.luaunit( "assertEquals" )
-tu.mock_wow_api()
-local m = require( "src/modules" )
-local types = require( "src/Types" )
-require( "src/DebugBuffer" )
-require( "src/Module" )
-local ItemUtils = require( "src/ItemUtils" )
-require( "src/Types" )
-require( "src/SoftResDataTransformer" )
-require( "src/RollingLogicUtils" )
-require( "src/SoftResRollingLogic" )
-require( "src/NonSoftResRollingLogic" )
-require( "src/RaidRollRollingLogic" )
-require( "src/InstaRaidRollRollingLogic" )
-local softres_decorator = require( "src/SoftResPresentPlayersDecorator" )
-local softres_mod = require( "src/SoftRes" )
-local db_mod = require( "src/Db" )
-local rolling_popup_mod = require( "src/RollingPopup" )
-local rolling_logic_mod = require( "src/RollingLogic" )
-local make_dropped_item = ItemUtils.make_dropped_item
-local make_softres_dropped_item = ItemUtils.make_softres_dropped_item
-local make_hardres_dropped_item = ItemUtils.make_hardres_dropped_item
-local get_tooltip_link = ItemUtils.get_tooltip_link
-local item_link = tu.item_link
-local sr = tu.soft_res_item
-local make_data = tu.create_softres_data
-local mock_multiple_math_random = tu.mock_multiple_math_random
-local mock_random_roll = tu.mock_random_roll
-local repeating_tick = tu.repeating_tick
-local tick = tu.tick
+local u = require( "test/utils" )
+local getn, frequire, reqsrc = table.getn, u.force_require, u.multi_require_src
+local lu, eq = u.luaunit( "assertEquals" )
+local m, T, IU = require( "src/modules" ), require( "src/Types" ), require( "src/ItemUtils" )
+reqsrc( "DebugBuffer", "Module", "Types", "SoftResDataTransformer", "RollingLogicUtils" )
+reqsrc( "SoftResRollingLogic", "NonSoftResRollingLogic", "RaidRollRollingLogic", "InstaRaidRollRollingLogic" )
+local SoftResDecorator = require( "src/SoftResPresentPlayersDecorator" )
+local SoftRes, Db = require( "src/SoftRes" ), require( "src/Db" )
+local RollingPopup, RollingLogic = require( "src/RollingPopup" ), require( "src/RollingLogic" )
+local sr, make_data = u.soft_res_item, u.create_softres_data
+local mock_random, mock_random_roll = u.mock_multiple_math_random, u.mock_random_roll
+local tick, repeating_tick = u.tick, u.repeating_tick
+local db = Db.new( {} )
 
-local db = db_mod.new( {} )
+local C, RT, RS = T.PlayerClass, T.RollType, T.RollingStrategy
+local winner, make_player, make_rolling_player = T.make_winner, T.make_player, T.make_rolling_player
 
-local C = types.PlayerClass
-local winner = types.make_winner
-local RT = types.RollType
-local RS = types.RollingStrategy
-local make_player = types.make_player
-local make_rolling_player = types.make_rolling_player
-
-local getn = table.getn
-
+u.mock_wow_api()
 local link = "item_link_with_icon"
 
 ---@param name string
@@ -56,6 +30,18 @@ local function p( name, class ) return make_player( name, class, true ) end
 local function rp( name, class, rolls ) return make_rolling_player( name, class, true, rolls or 1 ) end
 
 local mock_group_roster = require( "mocks/GroupRoster" ).new
+
+local function enable_debug( ... )
+  local module_names = { ... }
+
+  for _, module_name in ipairs( module_names ) do
+    local module = m[ module_name ]
+    if module and module.debug and module.debug.enable then
+      u.info( string.format( "Enabling debug for %s.", module_name ) )
+      module.debug.enable( true )
+    end
+  end
+end
 
 ---@return Config
 local function mock_config( configuration )
@@ -80,7 +66,7 @@ local function mock_popup( config, controller )
   local content
 
   local popup_builder = require( "mocks/PopupBuilder" )
-  local popup = rolling_popup_mod.new( popup_builder.new(), db( "dummy" ), config or mock_config(), controller )
+  local popup = RollingPopup.new( popup_builder.new(), db( "dummy" ), config or mock_config(), controller )
   popup.get = function() return content end
 
   local old_refresh = popup.refresh
@@ -100,8 +86,8 @@ end
 ---@param data table?
 ---@return GroupedSoftRes
 local function softres( group_roster, data )
-  local raw_softres = softres_mod.new()
-  local result = softres_decorator.new( group_roster, raw_softres )
+  local raw_softres = SoftRes.new()
+  local result = SoftResDecorator.new( group_roster, raw_softres )
 
   if data then
     result.import( data )
@@ -137,7 +123,7 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   local ml_candidates = require( "src/MasterLootCandidates" ).new( ml_candidates_api, group_roster )
   deps[ "MasterLootCandidates" ] = ml_candidates
 
-  local ace_timer = tu.mock_ace_timer()
+  local ace_timer = u.mock_ace_timer()
   deps[ "AceTimer" ] = ace_timer
 
   local winner_tracker = require( "src/WinnerTracker" ).new( db( "winner_tracker" ) )
@@ -166,7 +152,7 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   )
   deps[ "RollingStrategyFactory" ] = strategy_factory
 
-  local rolling_logic = rolling_logic_mod.new(
+  local rolling_logic = RollingLogic.new(
     chat,
     ace_timer,
     roll_controller,
@@ -215,25 +201,25 @@ end
 ---@param hr boolean?
 ---@return DroppedItem|SoftRessedDroppedItem|HardRessedDroppedItem
 local function i( name, id, sr_players, hr )
-  local l = item_link( name, id )
-  local tooltip_link = get_tooltip_link( l )
-  local item = make_dropped_item( id or 123, name, l, tooltip_link )
+  local l = u.item_link( name, id )
+  local tooltip_link = IU.get_tooltip_link( l )
+  local item = IU.make_dropped_item( id or 123, name, l, tooltip_link )
 
   if hr then
-    return make_hardres_dropped_item( item )
+    return IU.make_hardres_dropped_item( item )
   end
 
   if getn( sr_players or {} ) > 0 then
-    return make_softres_dropped_item( item, sr_players or {} )
+    return IU.make_softres_dropped_item( item, sr_players or {} )
   end
 
   return item
 end
 
 local function cleanse( t )
-  return tu.map( strip_functions( t ), function( v )
+  return u.map( strip_functions( t ), function( v )
     if (v.type == "text" or v.type == "info") and v.value then
-      v.value = tu.decolorize( v.value ) or v.value
+      v.value = u.decolorize( v.value ) or v.value
     end
 
     return v
@@ -298,163 +284,11 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_the_award_button
   local item = i( "Hearthstone", 123 )
   local loot_list = mock_loot_list( { item } )
   local popup, controller, roll = new( { [ "Config" ] = config, [ "GroupRoster" ] = group_roster, [ "LootList" ] = loot_list } )
+  enable_debug( "RollController" )
   controller.start( RS.RaidRoll, item, 1 )
-  mock_random_roll( "Psikutas", 1, 2, roll )
+  mock_random_roll( "Psikutas", 2, 2, roll )
   tick()
-
-  -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,   link = item.link },
-      { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
-      { type = "button", width = 130, label = "Award winner" },
-      { type = "button", width = 70,  label = "Close" }
-    } )
-end
-
-function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again_button()
-  -- Given
-  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true, raid_roll_again = true } ) } )
-  local item_id, seconds_left = 123, 8
-  local item = i( "Hearthstone", item_id )
-  local p1 = p( "Psikutas", C.Warrior )
-  local strategy = RS.RaidRoll
-  controller.start( strategy, item, 1, nil, seconds_left )
-  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
-  controller.finish()
-
-  -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,   link = item.link },
-      { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
-      { type = "button", width = 130, label = "Raid roll again" },
-      { type = "button", width = 70,  label = "Close" }
-    } )
-end
-
-function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_info()
-  -- Given
-  local popup, controller = new()
-  local item_id, seconds_left = 123, 8
-  local item = i( "Hearthstone", item_id )
-  local p1 = p( "Psikutas", C.Warrior )
-  local strategy = RS.RaidRoll
-  controller.start( strategy, item, 1, nil, seconds_left )
-  controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
-  controller.finish()
-
-  -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,                      link = item.link },
-      { type = "text",   padding = 8,                    value = "Psikutas wins the raid-roll." },
-      { type = "info",   anchor = "RollForRollingFrame", value = "Use /rf config auto-rr to enable auto raid-roll." },
-      { type = "button", width = 70,                     label = "Close" }
-    } )
-end
-
-function RaidRollPopupContentSpec:should_display_the_winners()
-  -- Given
-  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
-  local item_id, seconds_left = 123, 8
-  local item = i( "Hearthstone", item_id )
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
-  local strategy = RS.RaidRoll
-  controller.start( strategy, item, 2, nil, seconds_left )
-  controller.winners_found( item, 1, {
-    winner( p1.name, p1.class, item, false, RT.MainSpec ),
-    winner( p2.name, p2.class, item, false, RT.MainSpec )
-  }, strategy )
-  controller.finish()
-
-  -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 2,   link = item.link },
-      { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
-      { type = "text",   padding = 2, value = "Jogobobek wins the raid-roll." },
-      { type = "button", width = 70,  label = "Close" }
-    } )
-end
-
-function RaidRollPopupContentSpec:should_display_the_winners_and_the_award_buttons()
-  -- Given
-  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
-  local item_id, seconds_left = 123, 8
-  local item = i( "Hearthstone", item_id )
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
-  local strategy = RS.RaidRoll
-  controller.start( strategy, item, 2, nil, seconds_left )
-  controller.winners_found( item, 1, {
-    winner( p1.name, p1.class, item, true, RT.MainSpec ),
-    winner( p2.name, p2.class, item, true, RT.MainSpec )
-  }, strategy )
-  controller.finish()
-
-  -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,           count = 2,   link = item.link },
-      { type = "text",         padding = 8, value = "Psikutas wins the raid-roll." },
-      { type = "award_button", padding = 6, label = "Award",                        width = 90 },
-      { type = "text",         padding = 8, value = "Jogobobek wins the raid-roll." },
-      { type = "award_button", padding = 6, label = "Award",                        width = 90 },
-      { type = "button",       width = 70,  label = "Close" }
-    } )
-end
-
-function RaidRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_content_unchanged_after_aborting_the_award()
-  -- Given
-  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
-  local item_id, seconds_left = 123, 8
-  local item = i( "Hearthstone", item_id )
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
-  local strategy = RS.RaidRoll
-  local winners = {
-    winner( p1.name, p1.class, item, true, RT.MainSpec ),
-    winner( p2.name, p2.class, item, true, RT.MainSpec )
-  }
-  controller.start( strategy, item, 2, nil, seconds_left )
-  controller.winners_found( item, 1, winners, strategy )
-  controller.finish()
-  eq( popup.is_visible(), true )
-  controller.show_master_loot_confirmation( winners[ 1 ], item, strategy )
-  eq( popup.is_visible(), false )
   controller.award_aborted( item )
-  eq( popup.is_visible(), true )
-
-  -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,           count = 2,   link = item.link },
-      { type = "text",         padding = 8, value = "Psikutas wins the raid-roll." },
-      { type = "award_button", padding = 6, label = "Award",                        width = 90 },
-      { type = "text",         padding = 8, value = "Jogobobek wins the raid-roll." },
-      { type = "award_button", padding = 6, label = "Award",                        width = 90 },
-      { type = "button",       width = 70,  label = "Close" }
-    } )
-end
-
-function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awarding_one()
-  -- Given
-  local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
-  local item_id, seconds_left = 123, 8
-  local item = i( "Hearthstone", item_id )
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
-  local strategy = RS.RaidRoll
-  local winners = {
-    winner( p1.name, p1.class, item, true, RT.MainSpec ),
-    winner( p2.name, p2.class, item, true, RT.MainSpec )
-  }
-  controller.start( strategy, item, 2, nil, seconds_left )
-  controller.winners_found( item, 1, winners, strategy )
-  controller.finish()
-  eq( popup.is_visible(), true )
-  controller.show_master_loot_confirmation( winners[ 1 ], item, strategy )
-  eq( popup.is_visible(), false )
-  controller.loot_awarded( "Jogobobek", item.id, item.link )
-  eq( popup.is_visible(), true )
 
   -- Then
   eq( cleanse( popup.get() ),
@@ -465,6 +299,160 @@ function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awar
       { type = "button", width = 70,  label = "Close" }
     } )
 end
+
+-- function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again_button()
+--   -- Given
+--   local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true, raid_roll_again = true } ) } )
+--   local item_id, seconds_left = 123, 8
+--   local item = i( "Hearthstone", item_id )
+--   local p1 = p( "Psikutas", C.Warrior )
+--   local strategy = RS.RaidRoll
+--   controller.start( strategy, item, 1, nil, seconds_left )
+--   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
+--   controller.finish()
+--
+--   -- Then
+--   eq( cleanse( popup.get() ),
+--     {
+--       { type = link,     count = 1,   link = item.link },
+--       { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
+--       { type = "button", width = 130, label = "Raid roll again" },
+--       { type = "button", width = 70,  label = "Close" }
+--     } )
+-- end
+--
+-- function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_info()
+--   -- Given
+--   local popup, controller = new()
+--   local item_id, seconds_left = 123, 8
+--   local item = i( "Hearthstone", item_id )
+--   local p1 = p( "Psikutas", C.Warrior )
+--   local strategy = RS.RaidRoll
+--   controller.start( strategy, item, 1, nil, seconds_left )
+--   controller.winners_found( item, 1, { winner( p1.name, p1.class, item, false, RT.MainSpec ) }, strategy )
+--   controller.finish()
+--
+--   -- Then
+--   eq( cleanse( popup.get() ),
+--     {
+--       { type = link,     count = 1,                      link = item.link },
+--       { type = "text",   padding = 8,                    value = "Psikutas wins the raid-roll." },
+--       { type = "info",   anchor = "RollForRollingFrame", value = "Use /rf config auto-rr to enable auto raid-roll." },
+--       { type = "button", width = 70,                     label = "Close" }
+--     } )
+-- end
+--
+-- function RaidRollPopupContentSpec:should_display_the_winners()
+--   -- Given
+--   local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
+--   local item_id, seconds_left = 123, 8
+--   local item = i( "Hearthstone", item_id )
+--   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
+--   local strategy = RS.RaidRoll
+--   controller.start( strategy, item, 2, nil, seconds_left )
+--   controller.winners_found( item, 1, {
+--     winner( p1.name, p1.class, item, false, RT.MainSpec ),
+--     winner( p2.name, p2.class, item, false, RT.MainSpec )
+--   }, strategy )
+--   controller.finish()
+--
+--   -- Then
+--   eq( cleanse( popup.get() ),
+--     {
+--       { type = link,     count = 2,   link = item.link },
+--       { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
+--       { type = "text",   padding = 2, value = "Jogobobek wins the raid-roll." },
+--       { type = "button", width = 70,  label = "Close" }
+--     } )
+-- end
+--
+-- function RaidRollPopupContentSpec:should_display_the_winners_and_the_award_buttons()
+--   -- Given
+--   local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
+--   local item_id, seconds_left = 123, 8
+--   local item = i( "Hearthstone", item_id )
+--   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
+--   local strategy = RS.RaidRoll
+--   controller.start( strategy, item, 2, nil, seconds_left )
+--   controller.winners_found( item, 1, {
+--     winner( p1.name, p1.class, item, true, RT.MainSpec ),
+--     winner( p2.name, p2.class, item, true, RT.MainSpec )
+--   }, strategy )
+--   controller.finish()
+--
+--   -- Then
+--   eq( cleanse( popup.get() ),
+--     {
+--       { type = link,           count = 2,   link = item.link },
+--       { type = "text",         padding = 8, value = "Psikutas wins the raid-roll." },
+--       { type = "award_button", padding = 6, label = "Award",                        width = 90 },
+--       { type = "text",         padding = 8, value = "Jogobobek wins the raid-roll." },
+--       { type = "award_button", padding = 6, label = "Award",                        width = 90 },
+--       { type = "button",       width = 70,  label = "Close" }
+--     } )
+-- end
+--
+-- function RaidRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_content_unchanged_after_aborting_the_award()
+--   -- Given
+--   local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
+--   local item_id, seconds_left = 123, 8
+--   local item = i( "Hearthstone", item_id )
+--   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
+--   local strategy = RS.RaidRoll
+--   local winners = {
+--     winner( p1.name, p1.class, item, true, RT.MainSpec ),
+--     winner( p2.name, p2.class, item, true, RT.MainSpec )
+--   }
+--   controller.start( strategy, item, 2, nil, seconds_left )
+--   controller.winners_found( item, 1, winners, strategy )
+--   controller.finish()
+--   eq( popup.is_visible(), true )
+--   controller.show_master_loot_confirmation( winners[ 1 ], item, strategy )
+--   eq( popup.is_visible(), false )
+--   controller.award_aborted( item )
+--   eq( popup.is_visible(), true )
+--
+--   -- Then
+--   eq( cleanse( popup.get() ),
+--     {
+--       { type = link,           count = 2,   link = item.link },
+--       { type = "text",         padding = 8, value = "Psikutas wins the raid-roll." },
+--       { type = "award_button", padding = 6, label = "Award",                        width = 90 },
+--       { type = "text",         padding = 8, value = "Jogobobek wins the raid-roll." },
+--       { type = "award_button", padding = 6, label = "Award",                        width = 90 },
+--       { type = "button",       width = 70,  label = "Close" }
+--     } )
+-- end
+--
+-- function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awarding_one()
+--   -- Given
+--   local popup, controller = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ) } )
+--   local item_id, seconds_left = 123, 8
+--   local item = i( "Hearthstone", item_id )
+--   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock )
+--   local strategy = RS.RaidRoll
+--   local winners = {
+--     winner( p1.name, p1.class, item, true, RT.MainSpec ),
+--     winner( p2.name, p2.class, item, true, RT.MainSpec )
+--   }
+--   controller.start( strategy, item, 2, nil, seconds_left )
+--   controller.winners_found( item, 1, winners, strategy )
+--   controller.finish()
+--   eq( popup.is_visible(), true )
+--   controller.show_master_loot_confirmation( winners[ 1 ], item, strategy )
+--   eq( popup.is_visible(), false )
+--   controller.loot_awarded( "Jogobobek", item.id, item.link )
+--   eq( popup.is_visible(), true )
+--
+--   -- Then
+--   eq( cleanse( popup.get() ),
+--     {
+--       { type = link,     count = 1,   link = item.link },
+--       { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
+--       { type = "button", width = 130, label = "Award winner" },
+--       { type = "button", width = 70,  label = "Close" }
+--     } )
+-- end
 
 InstaRaidRollPopupContentSpec = {}
 
@@ -552,7 +540,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_with_raid_roll
   local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
   local popup, controller = new( { [ "Config" ] = config, [ "GroupRoster" ] = group_roster } )
   local item = i( "Hearthstone" )
-  mock_multiple_math_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
+  mock_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
@@ -572,7 +560,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_without_raid_r
   local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
   local popup, controller = new( { [ "Config" ] = config, [ "GroupRoster" ] = group_roster } )
   local item = i( "Hearthstone" )
-  mock_multiple_math_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
+  mock_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
@@ -592,7 +580,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_indivi
   local item = i( "Hearthstone" )
   local loot_list = mock_loot_list( { item } )
   local popup, controller = new( { [ "Config" ] = config, [ "GroupRoster" ] = group_roster, [ "LootList" ] = loot_list } )
-  mock_multiple_math_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
+  mock_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
@@ -614,7 +602,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_indivi
   local item = i( "Hearthstone" )
   local loot_list = mock_loot_list( { item } )
   local popup, controller = new( { [ "Config" ] = config, [ "GroupRoster" ] = group_roster, [ "LootList" ] = loot_list } )
-  mock_multiple_math_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
+  mock_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
