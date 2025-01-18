@@ -236,12 +236,11 @@ function RaidRollPopupContentSpec:should_return_initial_content()
   controller.start( RS.RaidRoll, item, 1 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,         link = item.link,          count = 1 },
-      { type = "text",       value = "Raid rolling...", padding = 8 },
-      { type = "empty_line", height = 5 },
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,         link = item.link,          count = 1 },
+    { type = "text",       value = "Raid rolling...", padding = 8 },
+    { type = "empty_line", height = 5 },
+  } )
 end
 
 function RaidRollPopupContentSpec:should_return_initial_content_with_multiple_items_to_roll()
@@ -251,12 +250,11 @@ function RaidRollPopupContentSpec:should_return_initial_content_with_multiple_it
   controller.start( RS.RaidRoll, item, 2 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,         link = item.link,          count = 2 },
-      { type = "text",       value = "Raid rolling...", padding = 8 },
-      { type = "empty_line", height = 5 },
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,         link = item.link,          count = 2 },
+    { type = "text",       value = "Raid rolling...", padding = 8 },
+    { type = "empty_line", height = 5 },
+  } )
 end
 
 function RaidRollPopupContentSpec:should_display_the_winner()
@@ -270,12 +268,11 @@ function RaidRollPopupContentSpec:should_display_the_winner()
   tick()
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,   link = item.link },
-      { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
-      { type = "button", width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 1,   link = item.link },
+    { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
+    { type = "button", width = 70,  label = "Close" }
+  } )
 end
 
 function RaidRollPopupContentSpec:should_display_the_winner_and_the_award_button()
@@ -292,13 +289,12 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_the_award_button
   controller.award_aborted( item )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,   link = item.link },
-      { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
-      { type = "button", width = 130, label = "Award winner" },
-      { type = "button", width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 1,   link = item.link },
+    { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
+    { type = "button", width = 130, label = "Award winner" },
+    { type = "button", width = 70,  label = "Close" }
+  } )
 end
 
 function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again_button()
@@ -314,14 +310,13 @@ function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again
   controller.award_aborted( item )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,   link = item.link },
-      { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
-      { type = "button", width = 130, label = "Award winner" },
-      { type = "button", width = 130, label = "Raid roll again" },
-      { type = "button", width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 1,   link = item.link },
+    { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
+    { type = "button", width = 130, label = "Award winner" },
+    { type = "button", width = 130, label = "Raid roll again" },
+    { type = "button", width = 70,  label = "Close" }
+  } )
 end
 
 function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_info()
@@ -337,14 +332,13 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_i
   controller.award_aborted( item )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,                      link = item.link },
-      { type = "text",   padding = 8,                    value = "Psikutas wins the raid-roll." },
-      { type = "info",   anchor = "RollForRollingFrame", value = "Use /rf config auto-rr to enable auto raid-roll." },
-      { type = "button", width = 130,                    label = "Award winner" },
-      { type = "button", width = 70,                     label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 1,                      link = item.link },
+    { type = "text",   padding = 8,                    value = "Psikutas wins the raid-roll." },
+    { type = "info",   anchor = "RollForRollingFrame", value = "Use /rf config auto-rr to enable auto raid-roll." },
+    { type = "button", width = 130,                    label = "Award winner" },
+    { type = "button", width = 70,                     label = "Close" }
+  } )
 end
 
 function RaidRollPopupContentSpec:should_display_the_winners()
@@ -358,13 +352,12 @@ function RaidRollPopupContentSpec:should_display_the_winners()
   tick()
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 2,   link = item.link },
-      { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
-      { type = "text",   padding = 2, value = "Jogobobek wins the raid-roll." },
-      { type = "button", width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 2,   link = item.link },
+    { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
+    { type = "text",   padding = 2, value = "Jogobobek wins the raid-roll." },
+    { type = "button", width = 70,  label = "Close" }
+  } )
 end
 
 function RaidRollPopupContentSpec:should_display_the_winners_and_the_individual_award_buttons()
@@ -379,15 +372,14 @@ function RaidRollPopupContentSpec:should_display_the_winners_and_the_individual_
   tick()
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,           count = 2,   link = item.link },
-      { type = "text",         padding = 8, value = "Jogobobek wins the raid-roll." },
-      { type = "award_button", padding = 6, label = "Award",                        width = 90 },
-      { type = "text",         padding = 8, value = "Psikutas wins the raid-roll." },
-      { type = "award_button", padding = 6, label = "Award",                        width = 90 },
-      { type = "button",       width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,           count = 2,   link = item.link },
+    { type = "text",         padding = 8, value = "Jogobobek wins the raid-roll." },
+    { type = "award_button", padding = 6, label = "Award",                        width = 90 },
+    { type = "text",         padding = 8, value = "Psikutas wins the raid-roll." },
+    { type = "award_button", padding = 6, label = "Award",                        width = 90 },
+    { type = "button",       width = 70,  label = "Close" }
+  } )
 end
 
 function RaidRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_content_unchanged_after_aborting_the_award()
@@ -412,13 +404,12 @@ function RaidRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_c
   eq( popup.is_visible(), true )
 
   -- And
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,   link = item.link },
-      { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
-      { type = "button", width = 130, label = "Award winner" },
-      { type = "button", width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 1,   link = item.link },
+    { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
+    { type = "button", width = 130, label = "Award winner" },
+    { type = "button", width = 70,  label = "Close" }
+  } )
 end
 
 function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awarding_one()
@@ -433,15 +424,14 @@ function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awar
   tick()
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,           count = 2,   link = item.link },
-      { type = "text",         padding = 8, value = "Jogobobek wins the raid-roll." },
-      { type = "award_button", padding = 6, label = "Award",                        width = 90 },
-      { type = "text",         padding = 8, value = "Psikutas wins the raid-roll." },
-      { type = "award_button", padding = 6, label = "Award",                        width = 90 },
-      { type = "button",       width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,           count = 2,   link = item.link },
+    { type = "text",         padding = 8, value = "Jogobobek wins the raid-roll." },
+    { type = "award_button", padding = 6, label = "Award",                        width = 90 },
+    { type = "text",         padding = 8, value = "Psikutas wins the raid-roll." },
+    { type = "award_button", padding = 6, label = "Award",                        width = 90 },
+    { type = "button",       width = 70,  label = "Close" }
+  } )
 
   -- eq( popup.is_visible(), true )
   -- controller.show_master_loot_confirmation( winners[ 1 ], item, strategy )
@@ -450,13 +440,12 @@ function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awar
   eq( popup.is_visible(), true )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,   link = item.link },
-      { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
-      { type = "button", width = 130, label = "Award winner" },
-      { type = "button", width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 1,   link = item.link },
+    { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
+    { type = "button", width = 130, label = "Award winner" },
+    { type = "button", width = 70,  label = "Close" }
+  } )
 end
 
 InstaRaidRollPopupContentSpec = {}
@@ -469,12 +458,11 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner()
   controller.start( RS.InstaRaidRoll, item, 1 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,   link = item.link },
-      { type = "text",   padding = 8, value = "Psikutas wins the insta raid-roll." },
-      { type = "button", width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 1,   link = item.link },
+    { type = "text",   padding = 8, value = "Psikutas wins the insta raid-roll." },
+    { type = "button", width = 70,  label = "Close" }
+  } )
 end
 
 function InstaRaidRollPopupContentSpec:should_display_the_winner_and_the_award_button()
@@ -487,13 +475,12 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_and_the_award_b
   controller.award_aborted( item )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,   link = item.link },
-      { type = "text",   padding = 8, value = "Psikutas wins the insta raid-roll." },
-      { type = "button", width = 130, label = "Award winner" },
-      { type = "button", width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 1,   link = item.link },
+    { type = "text",   padding = 8, value = "Psikutas wins the insta raid-roll." },
+    { type = "button", width = 130, label = "Award winner" },
+    { type = "button", width = 70,  label = "Close" }
+  } )
 end
 
 function InstaRaidRollPopupContentSpec:should_display_the_winner_with_award_and_raid_roll_again_buttons_if_the_award_was_aborted()
@@ -508,14 +495,13 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_with_award_and_
   controller.award_aborted( item )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,   link = item.link },
-      { type = "text",   padding = 8, value = "Psikutas wins the insta raid-roll." },
-      { type = "button", width = 130, label = "Award winner" },
-      { type = "button", width = 130, label = "Raid roll again" },
-      { type = "button", width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 1,   link = item.link },
+    { type = "text",   padding = 8, value = "Psikutas wins the insta raid-roll." },
+    { type = "button", width = 130, label = "Award winner" },
+    { type = "button", width = 130, label = "Raid roll again" },
+    { type = "button", width = 70,  label = "Close" }
+  } )
 end
 
 function InstaRaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again_button_if_the_award_was_aborted()
@@ -528,13 +514,12 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_
   controller.award_aborted( item )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,   link = item.link },
-      { type = "text",   padding = 8, value = "Psikutas wins the insta raid-roll." },
-      { type = "button", width = 130, label = "Raid roll again" },
-      { type = "button", width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 1,   link = item.link },
+    { type = "text",   padding = 8, value = "Psikutas wins the insta raid-roll." },
+    { type = "button", width = 130, label = "Raid roll again" },
+    { type = "button", width = 70,  label = "Close" }
+  } )
 end
 
 function InstaRaidRollPopupContentSpec:should_display_the_winners_with_raid_roll_again_button()
@@ -547,14 +532,13 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_with_raid_roll
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 2,   link = item.link },
-      { type = "text",   padding = 8, value = "Jogobobek wins the insta raid-roll." },
-      { type = "text",   padding = 2, value = "Psikutas wins the insta raid-roll." },
-      { type = "button", width = 130, label = "Raid roll again" },
-      { type = "button", width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 2,   link = item.link },
+    { type = "text",   padding = 8, value = "Jogobobek wins the insta raid-roll." },
+    { type = "text",   padding = 2, value = "Psikutas wins the insta raid-roll." },
+    { type = "button", width = 130, label = "Raid roll again" },
+    { type = "button", width = 70,  label = "Close" }
+  } )
 end
 
 function InstaRaidRollPopupContentSpec:should_display_the_winners_without_raid_roll_again_button()
@@ -567,13 +551,12 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_without_raid_r
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 2,   link = item.link },
-      { type = "text",   padding = 8, value = "Jogobobek wins the insta raid-roll." },
-      { type = "text",   padding = 2, value = "Psikutas wins the insta raid-roll." },
-      { type = "button", width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 2,   link = item.link },
+    { type = "text",   padding = 8, value = "Jogobobek wins the insta raid-roll." },
+    { type = "text",   padding = 2, value = "Psikutas wins the insta raid-roll." },
+    { type = "button", width = 70,  label = "Close" }
+  } )
 end
 
 function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_individual_award_buttons_without_raid_roll_again_button()
@@ -587,15 +570,14 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_indivi
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,           count = 2,   link = item.link },
-      { type = "text",         padding = 8, value = "Psikutas wins the insta raid-roll." },
-      { type = "award_button", padding = 6, label = "Award",                              width = 90 },
-      { type = "text",         padding = 8, value = "Jogobobek wins the insta raid-roll." },
-      { type = "award_button", padding = 6, label = "Award",                              width = 90 },
-      { type = "button",       width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,           count = 2,   link = item.link },
+    { type = "text",         padding = 8, value = "Psikutas wins the insta raid-roll." },
+    { type = "award_button", padding = 6, label = "Award",                              width = 90 },
+    { type = "text",         padding = 8, value = "Jogobobek wins the insta raid-roll." },
+    { type = "award_button", padding = 6, label = "Award",                              width = 90 },
+    { type = "button",       width = 70,  label = "Close" }
+  } )
 end
 
 function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_individual_award_buttons_with_raid_roll_again_button()
@@ -609,16 +591,15 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_indivi
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,           count = 2,   link = item.link },
-      { type = "text",         padding = 8, value = "Psikutas wins the insta raid-roll." },
-      { type = "award_button", padding = 6, label = "Award",                              width = 90 },
-      { type = "text",         padding = 8, value = "Jogobobek wins the insta raid-roll." },
-      { type = "award_button", padding = 6, label = "Award",                              width = 90 },
-      { type = "button",       width = 130, label = "Raid roll again" },
-      { type = "button",       width = 70,  label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,           count = 2,   link = item.link },
+    { type = "text",         padding = 8, value = "Psikutas wins the insta raid-roll." },
+    { type = "award_button", padding = 6, label = "Award",                              width = 90 },
+    { type = "text",         padding = 8, value = "Jogobobek wins the insta raid-roll." },
+    { type = "award_button", padding = 6, label = "Award",                              width = 90 },
+    { type = "button",       width = 130, label = "Raid roll again" },
+    { type = "button",       width = 70,  label = "Close" }
+  } )
 end
 
 NormalRollPopupContentSpec = {}
@@ -630,13 +611,12 @@ function NormalRollPopupContentSpec:should_return_initial_content()
   controller.start( RS.NormalRoll, item, 1, nil, 8 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,    link = item.link },
-      { type = "text",   padding = 11, value = "Rolling ends in 8 seconds." },
-      { type = "button", width = 100,  label = "Finish early" },
-      { type = "button", width = 100,  label = "Cancel" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 1,    link = item.link },
+    { type = "text",   padding = 11, value = "Rolling ends in 8 seconds." },
+    { type = "button", width = 100,  label = "Finish early" },
+    { type = "button", width = 100,  label = "Cancel" }
+  } )
 end
 
 function NormalRollPopupContentSpec:should_return_initial_content_and_auto_raid_roll_message()
@@ -646,14 +626,13 @@ function NormalRollPopupContentSpec:should_return_initial_content_and_auto_raid_
   controller.start( RS.NormalRoll, item, 1, nil, 8 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     link = item.link,                     count = 1 },
-      { type = "text",   value = "Rolling ends in 8 seconds.", padding = 11 },
-      { type = "text",   value = "Auto raid-roll is enabled." },
-      { type = "button", label = "Finish early",               width = 100 },
-      { type = "button", label = "Cancel",                     width = 100 }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     link = item.link,                     count = 1 },
+    { type = "text",   value = "Rolling ends in 8 seconds.", padding = 11 },
+    { type = "text",   value = "Auto raid-roll is enabled." },
+    { type = "button", label = "Finish early",               width = 100 },
+    { type = "button", label = "Cancel",                     width = 100 }
+  } )
 end
 
 function NormalRollPopupContentSpec:should_update_rolling_ends_message()
@@ -664,13 +643,12 @@ function NormalRollPopupContentSpec:should_update_rolling_ends_message()
   controller.tick( 5 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,    link = item.link },
-      { type = "text",   padding = 11, value = "Rolling ends in 5 seconds." },
-      { type = "button", width = 100,  label = "Finish early" },
-      { type = "button", width = 100,  label = "Cancel" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 1,    link = item.link },
+    { type = "text",   padding = 11, value = "Rolling ends in 5 seconds." },
+    { type = "button", width = 100,  label = "Finish early" },
+    { type = "button", width = 100,  label = "Cancel" }
+  } )
 end
 
 function NormalRollPopupContentSpec:should_display_cancel_message()
@@ -682,12 +660,11 @@ function NormalRollPopupContentSpec:should_display_cancel_message()
   controller.cancel_rolling()
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,    link = item.link },
-      { type = "text",   padding = 11, value = "Rolling has been canceled." },
-      { type = "button", width = 70,   label = "Close" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 1,    link = item.link },
+    { type = "text",   padding = 11, value = "Rolling has been canceled." },
+    { type = "button", width = 70,   label = "Close" }
+  } )
 end
 
 function NormalRollPopupContentSpec:should_update_rolling_ends_message_for_one_second_left()
@@ -698,13 +675,12 @@ function NormalRollPopupContentSpec:should_update_rolling_ends_message_for_one_s
   controller.tick( 1 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     count = 1,    link = item.link },
-      { type = "text",   padding = 11, value = "Rolling ends in 1 second." },
-      { type = "button", width = 100,  label = "Finish early" },
-      { type = "button", width = 100,  label = "Cancel" }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 1,    link = item.link },
+    { type = "text",   padding = 11, value = "Rolling ends in 1 second." },
+    { type = "button", width = 100,  label = "Finish early" },
+    { type = "button", width = 100,  label = "Cancel" }
+  } )
 end
 
 function NormalRollPopupContentSpec:should_display_the_winners()
@@ -719,15 +695,14 @@ function NormalRollPopupContentSpec:should_display_the_winners()
   roll( p2.name, 42, 1, 100 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     link = item.link,                                      count = 1 },
-      { type = "roll",   roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
-      { type = "roll",   roll_type = RT.MainSpec,                               player_name = p2.name, player_class = p2.class, roll = 42 },
-      { type = "text",   value = "Psikutas wins the main-spec roll with a 69.", padding = 11 },
-      { type = "button", label = "Raid roll",                                   width = 90 },
-      { type = "button", label = "Close",                                       width = 70 }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     link = item.link,                                      count = 1 },
+    { type = "roll",   roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
+    { type = "roll",   roll_type = RT.MainSpec,                               player_name = p2.name, player_class = p2.class, roll = 42 },
+    { type = "text",   value = "Psikutas wins the main-spec roll with a 69.", padding = 11 },
+    { type = "button", label = "Raid roll",                                   width = 90 },
+    { type = "button", label = "Close",                                       width = 70 }
+  } )
 end
 
 function NormalRollPopupContentSpec:should_display_the_winners_and_the_individual_award_buttons()
@@ -741,18 +716,17 @@ function NormalRollPopupContentSpec:should_display_the_winners_and_the_individua
   roll( p2.name, 42, 1, 100 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,           link = item.link,                                       count = 2 },
-      { type = "roll",         roll_type = RT.MainSpec,                                player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
-      { type = "roll",         roll_type = RT.MainSpec,                                player_name = p2.name, player_class = p2.class, roll = 42 },
-      { type = "text",         value = "Psikutas wins the main-spec roll with a 69.",  padding = 11 },
-      { type = "award_button", label = "Award",                                        padding = 6,           width = 90 },
-      { type = "text",         value = "Ohhaimark wins the main-spec roll with a 42.", padding = 8 },
-      { type = "award_button", label = "Award",                                        padding = 6,           width = 90 },
-      { type = "button",       label = "Raid roll",                                    width = 90 },
-      { type = "button",       label = "Close",                                        width = 70 }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,           link = item.link,                                       count = 2 },
+    { type = "roll",         roll_type = RT.MainSpec,                                player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
+    { type = "roll",         roll_type = RT.MainSpec,                                player_name = p2.name, player_class = p2.class, roll = 42 },
+    { type = "text",         value = "Psikutas wins the main-spec roll with a 69.",  padding = 11 },
+    { type = "award_button", label = "Award",                                        padding = 6,           width = 90 },
+    { type = "text",         value = "Ohhaimark wins the main-spec roll with a 42.", padding = 8 },
+    { type = "award_button", label = "Award",                                        padding = 6,           width = 90 },
+    { type = "button",       label = "Raid roll",                                    width = 90 },
+    { type = "button",       label = "Close",                                        width = 70 }
+  } )
 end
 
 function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_8()
@@ -766,16 +740,15 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   roll( p2.name, 7, 1, 100 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     link = item.link,                                      count = 1 },
-      { type = "roll",   roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 8, padding = 11 },
-      { type = "roll",   roll_type = RT.MainSpec,                               player_name = p2.name, player_class = p2.class, roll = 7 },
-      { type = "text",   value = "Psikutas wins the main-spec roll with an 8.", padding = 11 },
-      { type = "button", label = "Award winner",                                width = 130 },
-      { type = "button", label = "Raid roll",                                   width = 90 },
-      { type = "button", label = "Close",                                       width = 70 }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     link = item.link,                                      count = 1 },
+    { type = "roll",   roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 8, padding = 11 },
+    { type = "roll",   roll_type = RT.MainSpec,                               player_name = p2.name, player_class = p2.class, roll = 7 },
+    { type = "text",   value = "Psikutas wins the main-spec roll with an 8.", padding = 11 },
+    { type = "button", label = "Award winner",                                width = 130 },
+    { type = "button", label = "Raid roll",                                   width = 90 },
+    { type = "button", label = "Close",                                       width = 70 }
+  } )
 end
 
 function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_11()
@@ -789,16 +762,15 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   roll( p2.name, 11, 1, 100 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     link = item.link,                                        count = 1 },
-      { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p2.name, player_class = p2.class, roll = 11, padding = 11 },
-      { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p1.name, player_class = p1.class, roll = 8 },
-      { type = "text",   value = "Ohhaimark wins the main-spec roll with an 11.", padding = 11 },
-      { type = "button", label = "Award winner",                                  width = 130 },
-      { type = "button", label = "Raid roll",                                     width = 90 },
-      { type = "button", label = "Close",                                         width = 70 }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     link = item.link,                                        count = 1 },
+    { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p2.name, player_class = p2.class, roll = 11, padding = 11 },
+    { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p1.name, player_class = p1.class, roll = 8 },
+    { type = "text",   value = "Ohhaimark wins the main-spec roll with an 11.", padding = 11 },
+    { type = "button", label = "Award winner",                                  width = 130 },
+    { type = "button", label = "Raid roll",                                     width = 90 },
+    { type = "button", label = "Close",                                         width = 70 }
+  } )
 end
 
 function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_18()
@@ -812,16 +784,15 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   roll( p2.name, 18, 1, 100 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     link = item.link,                                        count = 1 },
-      { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p2.name, player_class = p2.class, roll = 18, padding = 11 },
-      { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p1.name, player_class = p1.class, roll = 8 },
-      { type = "text",   value = "Ohhaimark wins the main-spec roll with an 18.", padding = 11 },
-      { type = "button", label = "Award winner",                                  width = 130 },
-      { type = "button", label = "Raid roll",                                     width = 90 },
-      { type = "button", label = "Close",                                         width = 70 }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     link = item.link,                                        count = 1 },
+    { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p2.name, player_class = p2.class, roll = 18, padding = 11 },
+    { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p1.name, player_class = p1.class, roll = 8 },
+    { type = "text",   value = "Ohhaimark wins the main-spec roll with an 18.", padding = 11 },
+    { type = "button", label = "Award winner",                                  width = 130 },
+    { type = "button", label = "Raid roll",                                     width = 90 },
+    { type = "button", label = "Close",                                         width = 70 }
+  } )
 end
 
 function NormalRollPopupContentSpec:should_sort_the_rolls()
@@ -839,20 +810,19 @@ function NormalRollPopupContentSpec:should_sort_the_rolls()
   roll( p3.name, 13, 1, 100 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     link = item.link,                                          count = 1 },
-      { type = "roll",   roll_type = RT.MainSpec,                                   player_name = p2.name, player_class = p2.class, roll = 45, padding = 11 },
-      { type = "roll",   roll_type = RT.MainSpec,                                   player_name = p1.name, player_class = p1.class, roll = 42 },
-      { type = "roll",   roll_type = RT.MainSpec,                                   player_name = p3.name, player_class = p3.class, roll = 13 },
-      { type = "roll",   roll_type = RT.OffSpec,                                    player_name = p1.name, player_class = p1.class, roll = 68 },
-      { type = "roll",   roll_type = RT.Transmog,                                   player_name = p3.name, player_class = p3.class, roll = 69 },
-      { type = "roll",   roll_type = RT.Transmog,                                   player_name = p1.name, player_class = p1.class, roll = 69 },
-      { type = "text",   value = "Obszczymucha wins the main-spec roll with a 45.", padding = 11 },
-      { type = "button", label = "Award winner",                                    width = 130 },
-      { type = "button", label = "Raid roll",                                       width = 90 },
-      { type = "button", label = "Close",                                           width = 70 }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     link = item.link,                                          count = 1 },
+    { type = "roll",   roll_type = RT.MainSpec,                                   player_name = p2.name, player_class = p2.class, roll = 45, padding = 11 },
+    { type = "roll",   roll_type = RT.MainSpec,                                   player_name = p1.name, player_class = p1.class, roll = 42 },
+    { type = "roll",   roll_type = RT.MainSpec,                                   player_name = p3.name, player_class = p3.class, roll = 13 },
+    { type = "roll",   roll_type = RT.OffSpec,                                    player_name = p1.name, player_class = p1.class, roll = 68 },
+    { type = "roll",   roll_type = RT.Transmog,                                   player_name = p3.name, player_class = p3.class, roll = 69 },
+    { type = "roll",   roll_type = RT.Transmog,                                   player_name = p1.name, player_class = p1.class, roll = 69 },
+    { type = "text",   value = "Obszczymucha wins the main-spec roll with a 45.", padding = 11 },
+    { type = "button", label = "Award winner",                                    width = 130 },
+    { type = "button", label = "Raid roll",                                       width = 90 },
+    { type = "button", label = "Close",                                           width = 70 }
+  } )
 end
 
 function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
@@ -867,16 +837,15 @@ function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
   repeating_tick( 8 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     link = item.link,                                     count = 1 },
-      { type = "roll",   roll_type = RT.OffSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
-      { type = "roll",   roll_type = RT.OffSpec,                               player_name = p2.name, player_class = p2.class, roll = 42 },
-      { type = "text",   value = "Psikutas wins the off-spec roll with a 69.", padding = 11 },
-      { type = "button", label = "Award winner",                               width = 130 },
-      { type = "button", label = "Raid roll",                                  width = 90 },
-      { type = "button", label = "Close",                                      width = 70 }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     link = item.link,                                     count = 1 },
+    { type = "roll",   roll_type = RT.OffSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
+    { type = "roll",   roll_type = RT.OffSpec,                               player_name = p2.name, player_class = p2.class, roll = 42 },
+    { type = "text",   value = "Psikutas wins the off-spec roll with a 69.", padding = 11 },
+    { type = "button", label = "Award winner",                               width = 130 },
+    { type = "button", label = "Raid roll",                                  width = 90 },
+    { type = "button", label = "Close",                                      width = 70 }
+  } )
 end
 
 function NormalRollPopupContentSpec:should_display_the_transmog_winner()
@@ -891,16 +860,15 @@ function NormalRollPopupContentSpec:should_display_the_transmog_winner()
   repeating_tick( 8 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     link = item.link,                                     count = 1 },
-      { type = "roll",   roll_type = RT.Transmog,                              player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
-      { type = "roll",   roll_type = RT.Transmog,                              player_name = p2.name, player_class = p2.class, roll = 42 },
-      { type = "text",   value = "Psikutas wins the transmog roll with a 69.", padding = 11 },
-      { type = "button", label = "Award winner",                               width = 130 },
-      { type = "button", label = "Raid roll",                                  width = 90 },
-      { type = "button", label = "Close",                                      width = 70 }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     link = item.link,                                     count = 1 },
+    { type = "roll",   roll_type = RT.Transmog,                              player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
+    { type = "roll",   roll_type = RT.Transmog,                              player_name = p2.name, player_class = p2.class, roll = 42 },
+    { type = "text",   value = "Psikutas wins the transmog roll with a 69.", padding = 11 },
+    { type = "button", label = "Award winner",                               width = 130 },
+    { type = "button", label = "Raid roll",                                  width = 90 },
+    { type = "button", label = "Close",                                      width = 70 }
+  } )
 end
 
 function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_if_enabled()
@@ -912,14 +880,13 @@ function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_i
   controller.start( RS.NormalRoll, item, 1, nil, 8 )
 
   -- Then
-  eq( cleanse( popup.get() ),
-    {
-      { type = link,     link = item.link,                     count = 1 },
-      { type = "text",   value = "Rolling ends in 8 seconds.", padding = 11 },
-      { type = "text",   value = "Auto raid-roll is enabled." },
-      { type = "button", label = "Finish early",               width = 100 },
-      { type = "button", label = "Cancel",                     width = 100 }
-    } )
+  eq( cleanse( popup.get() ), {
+    { type = link,     link = item.link,                     count = 1 },
+    { type = "text",   value = "Rolling ends in 8 seconds.", padding = 11 },
+    { type = "text",   value = "Auto raid-roll is enabled." },
+    { type = "button", label = "Finish early",               width = 100 },
+    { type = "button", label = "Cancel",                     width = 100 }
+  } )
 
   -- When
   controller.finish_rolling_early()
@@ -927,11 +894,14 @@ function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_i
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = link,     link = item.link,                               count = 1 },
-      { type = "text",   value = "Rolling has finished. No one rolled.", padding = 11 },
-      { type = "button", label = "Raid roll",                            width = 90 },
-      { type = "button", label = "Close",                                width = 70 }
+      { type = link, link = item.link,   count = 1 },
+      { padding = 8, type = "text",      value = "Raid rolling..." },
+      { height = 5,  type = "empty_line" }
     } )
+
+  -- And then
+  mock_random_roll( "Psikutas", 1, 2, roll )
+  tick() -- To trigger the auto raid roll.
 
   -- Then
   mock_random_roll( "Psikutas", 1, 2, roll )
@@ -940,40 +910,36 @@ function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_i
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = link,     link = item.link,                               count = 1 },
-      { type = "text",   value = "Rolling has finished. No one rolled.", padding = 11 },
-      { type = "button", label = "Raid roll",                            width = 90 },
-      { type = "button", label = "Close",                                width = 70 }
+      { type = link,     link = item.link,                       count = 1 },
+      { type = "text",   value = "Psikutas wins the raid-roll.", padding = 8 },
+      { type = "button", label = "Close",                        width = 70 }
     } )
 end
 
---
---
---
--- SoftResrollPopupContentSpec = {}
---
--- function SoftResrollPopupContentSpec:should_preview_rolls()
---   -- Given
---   local popup, controller = new()
---   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
---   local group_roster = mock_group_roster( { p1, p2 } )
---   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
---   local item_id = 123
---   local softressing_players = softres( group_roster, data )
---   local item = i( "Hearthstone", item_id, softressing_players )
---   controller.preview( item, 1 )
---
---   -- Then
---   eq( cleanse( popup.get() ),
---     {
---       { type = link, link = item.link,             count = 1 },
---       { type = "roll",                player_name = "Obszczymucha", player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
---       { type = "roll",                player_name = "Psikutas",     player_class = C.Warrior, roll_type = RT.SoftRes },
---       { type = "roll",                player_name = "Psikutas",     player_class = C.Warrior, roll_type = RT.SoftRes },
---       { type = "button",              label = "Roll",               width = 70 },
---       { type = "button",              label = "Award...",           width = 90 }
---     } )
--- end
+SoftResrollPopupContentSpec = {}
+
+function SoftResrollPopupContentSpec:should_preview_rolls()
+  -- Given
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
+  local group_roster = mock_group_roster( { p1, p2 } )
+  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+  local soft_res = softres( group_roster, data )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster, [ "SoftRes" ] = soft_res } )
+  local item = i( "Hearthstone" )
+  controller.preview( item, 1 )
+
+  -- Then
+  eq( cleanse( popup.get() ),
+    {
+      { type = link,     link = item.link,             count = 1 },
+      { type = "roll",   player_name = "Obszczymucha", player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
+      { type = "roll",   player_name = "Psikutas",     player_class = C.Warrior, roll_type = RT.SoftRes },
+      { type = "roll",   player_name = "Psikutas",     player_class = C.Warrior, roll_type = RT.SoftRes },
+      { type = "button", label = "Roll",               width = 70 },
+      { type = "button", label = "Award...",           width = 90 }
+    } )
+end
+
 --
 -- function SoftResrollPopupContentSpec:should_preview_the_winner()
 --   -- Given
