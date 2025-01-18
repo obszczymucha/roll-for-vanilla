@@ -439,7 +439,7 @@ end
 
 function M.mock_random_roll( player_name, roll, upper_bound, f )
   M.mock( "RandomRoll", function()
-    if f then f( player_name, roll, 1, upper_bound ) else M.roll( player_name, roll, 1, upper_bound ) end
+    if f and type( f ) == "function" then f( player_name, roll, 1, upper_bound ) else M.roll( player_name, roll, 1, upper_bound ) end
   end )
   M.mock( "GetMasterLootCandidate", function() return {} end )
 end
@@ -450,7 +450,14 @@ function M.mock_multiple_random_roll( values )
   M.mock( "RandomRoll", function()
     invocation_count = invocation_count + 1
     local value = values[ invocation_count ]
-    M.roll( value[ 1 ], value[ 2 ], value[ 3 ] )
+
+    local f = value[ 4 ]
+
+    if f and type( f ) == "function" then
+      f( value[ 1 ], value[ 2 ], 1, value[ 3 ] )
+    else
+      M.roll( value[ 1 ], value[ 2 ], value[ 3 ] )
+    end
   end )
 
   M.mock( "GetMasterLootCandidate", function() return {} end )
@@ -1192,6 +1199,6 @@ function M.info( message )
   print( "\n" .. message )
 end
 
-function M.getn() return table.getn end
+M.getn = table.getn
 
 return M
