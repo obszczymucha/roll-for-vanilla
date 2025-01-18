@@ -903,49 +903,50 @@ function NormalRollPopupContentSpec:should_display_the_transmog_winner()
     } )
 end
 
--- function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_if_enabled()
---   -- Given
---   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
---   local group_roster = mock_group_roster( { p1, p2 } )
---   local popup, controller, roll = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ), [ "GroupRoster" ] = group_roster } )
---   local item = i( "Hearthstone" )
---   controller.start( RS.NormalRoll, item, 1, nil, 8 )
---
---   -- Then
---   eq( cleanse( popup.get() ),
---     {
---       { type = link,     link = item.link,                     count = 1 },
---       { type = "text",   value = "Rolling ends in 8 seconds.", padding = 11 },
---       { type = "text",   value = "Auto raid-roll is enabled." },
---       { type = "button", label = "Finish early",               width = 100 },
---       { type = "button", label = "Cancel",                     width = 100 }
---     } )
---
---   -- When
---   controller.finish_rolling_early()
---
---   -- Then
---   eq( cleanse( popup.get() ),
---     {
---       { type = link,     link = item.link,                               count = 1 },
---       { type = "text",   value = "Rolling has finished. No one rolled.", padding = 11 },
---       { type = "button", label = "Raid roll",                            width = 90 },
---       { type = "button", label = "Close",                                width = 70 }
---     } )
---
---   -- Then
---   mock_random_roll( "Psikutas", 1, 2, roll )
---   tick() -- To trigger the auto raid roll.
---
---   -- Then
---   eq( cleanse( popup.get() ),
---     {
---       { type = link,     link = item.link,                               count = 1 },
---       { type = "text",   value = "Rolling has finished. No one rolled.", padding = 11 },
---       { type = "button", label = "Raid roll",                            width = 90 },
---       { type = "button", label = "Close",                                width = 70 }
---     } )
--- end
+function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_if_enabled()
+  -- Given
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
+  local group_roster = mock_group_roster( { p1, p2 } )
+  local popup, controller, roll = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ), [ "GroupRoster" ] = group_roster } )
+  local item = i( "Hearthstone" )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
+
+  -- Then
+  eq( cleanse( popup.get() ),
+    {
+      { type = link,     link = item.link,                     count = 1 },
+      { type = "text",   value = "Rolling ends in 8 seconds.", padding = 11 },
+      { type = "text",   value = "Auto raid-roll is enabled." },
+      { type = "button", label = "Finish early",               width = 100 },
+      { type = "button", label = "Cancel",                     width = 100 }
+    } )
+
+  -- When
+  controller.finish_rolling_early()
+
+  -- Then
+  eq( cleanse( popup.get() ),
+    {
+      { type = link,     link = item.link,                               count = 1 },
+      { type = "text",   value = "Rolling has finished. No one rolled.", padding = 11 },
+      { type = "button", label = "Raid roll",                            width = 90 },
+      { type = "button", label = "Close",                                width = 70 }
+    } )
+
+  -- Then
+  mock_random_roll( "Psikutas", 1, 2, roll )
+  tick() -- To trigger the auto raid roll.
+
+  -- Then
+  eq( cleanse( popup.get() ),
+    {
+      { type = link,     link = item.link,                               count = 1 },
+      { type = "text",   value = "Rolling has finished. No one rolled.", padding = 11 },
+      { type = "button", label = "Raid roll",                            width = 90 },
+      { type = "button", label = "Close",                                width = 70 }
+    } )
+end
+
 --
 --
 --
