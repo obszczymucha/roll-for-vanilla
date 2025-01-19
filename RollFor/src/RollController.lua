@@ -18,7 +18,7 @@ local PT = m.Types.PlayerType
 ---@field finish fun()
 
 ---@class RollController
----@field preview fun( item: DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem, count: number )
+---@field preview fun( item: MasterLootDistributableItem, count: number )
 ---@field start fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, seconds: number?)
 ---@field winners_found fun( item: Item, item_count: number, winners: Winner[], strategy: RollingStrategyType )
 ---@field finish fun()
@@ -70,7 +70,7 @@ function M.new( roll_tracker, player_info )
     return c
   end
 
-  ---@param item DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
+  ---@param item MasterLootDistributableItem
   ---@param count number
   local function preview( item, count )
     roll_tracker.preview( item, count )
@@ -226,11 +226,11 @@ function M.new( roll_tracker, player_info )
 
   ---@class ShowMasterLootConfirmationData
   ---@field player ItemCandidate|Winner
-  ---@field item DroppedItem|SoftRessedDroppedItem
+  ---@field item MasterLootDistributableItem
   ---@field rolling_strategy RollingStrategyType
 
   ---@param player ItemCandidate|Winner
-  ---@param item DroppedItem|SoftRessedDroppedItem
+  ---@param item MasterLootDistributableItem
   ---@param strategy RollingStrategyType
   local function show_master_loot_confirmation( player, item, strategy )
     if player.type == PT.Winner and not player.is_on_master_loot_candidate_list then return end

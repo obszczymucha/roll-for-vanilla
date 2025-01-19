@@ -1,4 +1,4 @@
----@param items (DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem)[]
+---@param items (MasterLootDistributableItem)[]
 return function( items )
   local M = {}
 

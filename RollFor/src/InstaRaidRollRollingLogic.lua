@@ -18,7 +18,7 @@ local getn = table.getn
 
 -- TODO: Lots of similarity with RaidRollRollingLogic. Perhaps refactor.
 
----@param item Item|DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
+---@param item Item|MasterLootDistributableItem
 ---@param item_count number
 ---@param winner_tracker WinnerTracker
 ---@param controller RollControllerFacade

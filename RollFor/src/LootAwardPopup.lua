@@ -72,6 +72,8 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
     data_for_error = nil
   end
 
+  ---@param item MasterLootDistributableItem
+  ---@param player ItemCandidate|Winner
   local function make_content( item, player, rolling_strategy, error )
     local content                 = { { type = "item_link_with_icon", link = item.link, texture = item.texture } }
     local data, current_iteration = roll_tracker.get()

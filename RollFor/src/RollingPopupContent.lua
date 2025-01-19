@@ -257,7 +257,7 @@ function M.new(
 
   ---@param result table
   ---@param winners Winner[]
-  ---@param item Item|DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
+  ---@param item Item|MasterLootDistributableItem
   ---@param strategy RollingStrategyType
   local function add_bottom_award_winner_button( result, winners, item, strategy )
     if getn( winners ) ~= 1 then return end
@@ -305,7 +305,7 @@ function M.new(
 
   ---@param result table
   ---@param winners Winner[]
-  ---@param item Item|DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
+  ---@param item Item|MasterLootDistributableItem
   ---@param strategy RollingStrategyType
   local function softres_winners_content( result, winners, item, strategy )
     local last_award_button_visible = false

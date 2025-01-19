@@ -37,7 +37,7 @@ end
 ---@field get fun(): ItemCandidate[]
 ---@field find fun( player_name: string ): ItemCandidate?
 ---@field get_index fun( player_name: string ): number?
----@field transform_to_winner fun( player: RollingPlayer, item: Item|DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem, roll_type: RollType, winning_roll: number?, rerolling: boolean? ): Winner
+---@field transform_to_winner fun( player: RollingPlayer, item: Item|MasterLootDistributableItem, roll_type: RollType, winning_roll: number?, rerolling: boolean? ): Winner
 
 ---@param api MasterLootCandidatesApi
 ---@param group_roster GroupRoster
@@ -68,7 +68,7 @@ function M.new( api, group_roster )
   end
 
   ---@param player RollingPlayer
-  ---@param item Item|DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
+  ---@param item Item|MasterLootDistributableItem
   ---@param roll_type RollType
   ---@param winning_roll number?
   ---@param rerolling boolean?

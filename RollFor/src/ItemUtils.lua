@@ -69,17 +69,19 @@ M.LootType = LootType
 ---@field quantity number
 ---@field type "DroppedItem"
 
+---@class HardRessedDroppedItem : DroppedItem
+---@field type "HardRessedDroppedItem"
+
 ---@class SoftRessedDroppedItem : DroppedItem
 ---@field sr_players RollingPlayer[]
 ---@field type "SoftRessedDroppedItem"
-
----@class HardRessedDroppedItem : DroppedItem
----@field type "HardRessedDroppedItem"
 
 ---@class Coin
 ---@field texture string
 ---@field amount_text string
 ---@field type "Coin"
+
+---@alias MasterLootDistributableItem DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
 
 ---@alias MakeItemFn fun(
 ---  id: number,

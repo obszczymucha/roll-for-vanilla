@@ -39,14 +39,14 @@ local getn = table.getn
 ---@field winners RollingPlayer[]?
 
 ---@alias RollTrackerData {
----  item: Item|DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem,
+---  item: Item|MasterLootDistributableItem,
 ---  item_count: number,
 ---  status: RollStatus,
 ---  iterations: RollIteration[],
 ---  winners: Winner[] }
 
 ---@class RollTracker
----@field preview fun( item: DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem, count: number )
+---@field preview fun( item: MasterLootDistributableItem, count: number )
 ---@field start fun( rolling_strategy: RollingStrategyType, item: Item|DroppedItem|SoftRessedDroppedItem, count: number, info: string?, seconds: number?, required_rolling_players: RollingPlayer[]? )
 ---@field waiting_for_rolls fun()
 ---@field add_winners fun( winners: Winner[] )
@@ -134,7 +134,7 @@ function M.new()
     sort( iteration.rolls )
   end
 
-  ---@param item DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
+  ---@param item MasterLootDistributableItem
   ---@param count number
   local function preview( item, count )
     M.debug.add( "preview" )
