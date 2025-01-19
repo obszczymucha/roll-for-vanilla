@@ -224,6 +224,11 @@ function M.new( roll_tracker, player_info )
     end
   end
 
+  ---@class ShowMasterLootConfirmationData
+  ---@field player ItemCandidate|Winner
+  ---@field item DroppedItem|SoftRessedDroppedItem
+  ---@field rolling_strategy RollingStrategyType
+
   ---@param player ItemCandidate|Winner
   ---@param item DroppedItem|SoftRessedDroppedItem
   ---@param strategy RollingStrategyType

@@ -19,8 +19,17 @@ local button_defaults = {
   scale = 0.76
 }
 
+---@param popup_builder table
+---@param roll_controller RollController
+---@param confirm_award fun( player: Winner, item: Item )
+---@param RollingPopupContent table
+---@param db table
+---@param center_point table
+---@param master_loot_candidates MasterLootCandidates
+---@param roll_tracker RollTracker
 function M.new( popup_builder, roll_controller, confirm_award, RollingPopupContent, db, center_point, master_loot_candidates, roll_tracker )
   local popup
+  ---@type ShowMasterLootConfirmationData?
   local data_for_error
   local top_padding = 14
 
@@ -71,6 +80,7 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
         data.item and data.winners[ 1 ].name == player.name and
         data.item.link == item.link and data.winners[ 1 ]
 
+    ---@type 
     local winning_player          = winner or player
 
     if rolling_strategy == RS.RaidRoll or not rolling_strategy and current_iteration and current_iteration.rolling_strategy == RS.RaidRoll and winner then
@@ -123,6 +133,8 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
     return content
   end
 
+  ---@param data ShowMasterLootConfirmationData
+  ---@param error LootAwardError
   local function show( data, error )
     data_for_error = data
 
@@ -211,11 +223,6 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
   roll_controller.subscribe( "player_has_full_bags", player_has_full_bags )
   roll_controller.subscribe( "player_not_found", player_not_found )
   roll_controller.subscribe( "cant_assign_item_to_that_player", cant_assign_item_to_that_player )
-
-  return {
-    show = show,
-    hide = hide,
-  }
 end
 
 m.LootAwardPopup = M

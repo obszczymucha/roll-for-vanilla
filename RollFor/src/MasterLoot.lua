@@ -30,6 +30,7 @@ local getn = table.getn
 ---@param player_info PlayerInfo
 ---@return MasterLoot
 function M.new( master_loot_candidates, loot_award_callback, master_loot_frame, loot_list, player_info )
+  ---@type { player: ItemCandidate|Winner, item: Item, slot: number }
   local m_confirmed = nil
   local m_slot_cache = {}
 
@@ -68,7 +69,7 @@ function M.new( master_loot_candidates, loot_award_callback, master_loot_frame, 
       return
     end
 
-    m_confirmed = { item = item, slot = slot, player = player }
+    m_confirmed = { item = item,  player = player }
     m_slot_cache[ slot ] = item
 
     local index = master_loot_candidates.get_index( player.name )
@@ -124,6 +125,9 @@ function M.new( master_loot_candidates, loot_award_callback, master_loot_frame, 
     local is_looting = loot_list.is_looting()
     if m_confirmed and is_looting then return end
 
+    if m_confirmed then
+      if m_confirmed.player.
+    end
     loot_award_callback.on_loot_awarded( player_name, item_id, item_link )
     reset_confirmation()
   end
