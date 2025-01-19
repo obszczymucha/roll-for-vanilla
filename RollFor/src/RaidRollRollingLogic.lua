@@ -124,7 +124,7 @@ function M.new(
     on_roll = on_roll,
     is_rolling = is_rolling,
     show_sorted_rolls = show_sorted_rolls,
-    get_rolling_strategy = function() return m.Types.RollingStrategy.RaidRoll end,
+    get_type = function() return m.Types.RollingStrategy.RaidRoll end,
     cancel_rolling = m.noop(),
     stop_accepting_rolls = m.noop()
   }

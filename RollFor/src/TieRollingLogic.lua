@@ -186,7 +186,7 @@ function M.new( announce, players, item, item_count, on_rolling_finished, roll_t
     stop_accepting_rolls = stop_accepting_rolls,
     cancel_rolling = cancel_rolling,
     is_rolling = is_rolling,
-    get_rolling_strategy = function() return m.Types.RollingStrategy.TieRoll end
+    get_type = function() return m.Types.RollingStrategy.TieRoll end
   }
 end
 

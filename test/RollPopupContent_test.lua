@@ -1283,12 +1283,13 @@ function TieRollPopupContentSpec:should_display_tied_rolls()
   -- Then
   eq( cleanse( popup.get() ),
     {
-      { type = link,   link = item.link,                count = 1 },
-      { type = "roll", player_name = "Ohhaimark",       player_class = C.Priest,  roll_type = RT.MainSpec, roll = 69,   padding = 11 },
-      { type = "roll", player_name = "Psikutas",        player_class = C.Warrior, roll_type = RT.MainSpec, roll = 69 },
-      { type = "text", value = "There was a tie (69):", padding = 11 },
-      { type = "roll", player_name = "Ohhaimark",       player_class = C.Priest,  roll_type = RT.MainSpec, padding = 11 },
-      { type = "roll", player_name = "Psikutas",        player_class = C.Warrior, roll_type = RT.MainSpec }
+      { type = link,         link = item.link,                count = 1 },
+      { type = "roll",       player_name = "Ohhaimark",       player_class = C.Priest,  roll_type = RT.MainSpec, roll = 69,   padding = 11 },
+      { type = "roll",       player_name = "Psikutas",        player_class = C.Warrior, roll_type = RT.MainSpec, roll = 69 },
+      { type = "text",       value = "There was a tie (69):", padding = 11 },
+      { type = "roll",       player_name = "Ohhaimark",       player_class = C.Priest,  roll_type = RT.MainSpec, padding = 11 },
+      { type = "roll",       player_name = "Psikutas",        player_class = C.Warrior, roll_type = RT.MainSpec },
+      { type = "empty_line", height = 5 }
     } )
 end
 

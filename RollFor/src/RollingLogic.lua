@@ -49,13 +49,12 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
   end
 
   ---@param strategy RollingStrategy
-  ---@param strategy_type RollingStrategyType?
   ---@param item Item?
   ---@param item_count number?
   ---@param message string?
   ---@param seconds number?
   ---@param rolling_players RollingPlayer[]?
-  local function roll( strategy, strategy_type, item, item_count, message, seconds, rolling_players )
+  local function roll( strategy, item, item_count, message, seconds, rolling_players )
     if m_rolling_strategy and m_rolling_strategy.is_rolling() then
       m.err( "Rolling is already in progress." )
       return
@@ -63,8 +62,8 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
 
     m_rolling_strategy = strategy
 
-    if strategy_type and item and item_count then
-      roll_controller.rolling_started( strategy_type, item, item_count, message, seconds, rolling_players )
+    if item and item_count then
+      roll_controller.rolling_started( strategy.get_type(), item, item_count, message, seconds, rolling_players )
     end
 
     m_rolling_strategy.start_rolling()
@@ -173,7 +172,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     if winning_roll_count == 0 then
       roll_controller.finish()
 
-      if not rerolling and config.auto_raid_roll() and m_rolling_strategy and m_rolling_strategy.get_rolling_strategy() ~= RS.SoftResRoll then
+      if not rerolling and config.auto_raid_roll() and m_rolling_strategy and m_rolling_strategy.get_type() ~= RS.SoftResRoll then
         -- At some point item_count gets to 0.
         if item_count == 0 then
           m.trace( "Item count is 0." )
@@ -183,7 +182,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
         local strategy = strategy_factory.raid_roll( item, item_count, facade )
 
         if strategy then
-          roll( strategy, RS.RaidRoll, item, item_count )
+          roll( strategy, item, item_count )
         end
       elseif m_rolling_strategy and not m_rolling_strategy.is_rolling() then
         info( string.format( "Rolling for %s has finished.", item.link ) )
@@ -198,7 +197,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     end
 
     local function handle_winners()
-      local strategy = m_rolling_strategy and m_rolling_strategy.get_rolling_strategy()
+      local strategy = m_rolling_strategy and m_rolling_strategy.get_type()
 
       if not strategy then
         m.err( "Rolling strategy is missing." )
@@ -294,7 +293,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     if not strategy then return end
 
     winner_tracker.start_rolling( data.item.link )
-    roll( strategy, data.strategy_type, data.item, data.item_count, data.message, data.seconds, rolling_players )
+    roll( strategy, data.item, data.item_count, data.message, data.seconds, rolling_players )
   end
 
   roll_controller.subscribe( "finish_rolling_early", finish_rolling_early )

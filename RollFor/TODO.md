@@ -8,3 +8,9 @@
 6. Verify tie rolls visually.
 7. Add a safety mechanism not to reset awarded loot if the SR list is re-imported.
 8. Fix auto-master loot enabling it in Durotar.
+
+
+Not great:
+RollTracker tracks rolls in parallel to each logic.
+This might result in inconsistencies, because we have the logic in different spots.
+

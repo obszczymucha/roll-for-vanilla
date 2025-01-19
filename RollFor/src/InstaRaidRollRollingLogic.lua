@@ -78,7 +78,7 @@ function M.new(
     on_roll = function() end,
     is_rolling = function() return false end,
     show_sorted_rolls = show_sorted_rolls,
-    get_rolling_strategy = function() return m.Types.RollingStrategy.InstaRaidRoll end,
+    get_type = function() return m.Types.RollingStrategy.InstaRaidRoll end,
     stop_accepting_rolls = m.noop(),
     cancel_rolling = m.noop()
   }

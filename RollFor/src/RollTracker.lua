@@ -83,6 +83,8 @@ function M.new()
   end
 
   local function update_roll( rolls, data )
+    M.debug.add( "update_roll" )
+
     for _, line in ipairs( rolls ) do
       if line.player_name == data.player_name and not line.roll then
         line.roll = data.roll
@@ -117,11 +119,12 @@ function M.new()
 
   local function add( player_name, player_class, roll_type, roll )
     M.debug.add( "add" )
-
     if current_iteration == 0 then return end
 
+    M.debug.add( "add2" )
     local data = { player_name = player_name, player_class = player_class, roll_type = roll_type, roll = roll }
     local iteration = iterations[ current_iteration ]
+    m.pdump(iteration)
 
     if roll and (iteration.rolling_strategy == RS.SoftResRoll or iteration.rolling_strategy == RS.TieRoll) then
       update_roll( iteration.rolls, data )
@@ -129,6 +132,7 @@ function M.new()
       table.insert( iteration.rolls, data )
     end
 
+    m.pdump( iteration.rolls )
     sort( iteration.rolls )
   end
 
@@ -269,6 +273,7 @@ function M.new()
   end
 
   local function clear()
+    M.debug.add( "clear" )
     clear_iterations()
     clear_winners()
     current_iteration = 0

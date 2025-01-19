@@ -295,7 +295,7 @@ function M.new(
     stop_accepting_rolls = stop_accepting_rolls,
     cancel_rolling = cancel_rolling,
     is_rolling = is_rolling,
-    get_rolling_strategy = function() return strategy end
+    get_type = function() return strategy end
   }
 end
 

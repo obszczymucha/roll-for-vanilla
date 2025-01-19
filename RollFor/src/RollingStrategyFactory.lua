@@ -16,7 +16,7 @@ local getn = table.getn
 ---@field stop_accepting_rolls fun( manual_stop: boolean )
 ---@field cancel_rolling fun()
 ---@field is_rolling fun(): boolean
----@field get_rolling_strategy fun(): RollingStrategyType -- TODO: rename to get_type()
+---@field get_type fun(): RollingStrategyType -- TODO: rename to get_type()
 
 ---@class RollingStrategyFactory
 ---@field normal_roll fun( item: Item, item_count: number, message: string?, seconds: number, on_rolling_finished: RollingFinishedCallback, roll_controller_facade: RollControllerFacade ): RollingStrategy
