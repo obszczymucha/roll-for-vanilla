@@ -171,7 +171,6 @@ function M.new(
   ---@param rolls RollData[]
   local function rolls_content( result, rolls )
     M.debug.add( "rolls_content" )
-    m.pdump( rolls )
 
     for i = 1, getn( rolls ) do
       local roll = rolls[ i ]

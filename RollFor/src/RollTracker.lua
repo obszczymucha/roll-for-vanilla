@@ -124,7 +124,6 @@ function M.new()
     M.debug.add( "add2" )
     local data = { player_name = player_name, player_class = player_class, roll_type = roll_type, roll = roll }
     local iteration = iterations[ current_iteration ]
-    m.pdump(iteration)
 
     if roll and (iteration.rolling_strategy == RS.SoftResRoll or iteration.rolling_strategy == RS.TieRoll) then
       update_roll( iteration.rolls, data )
@@ -132,7 +131,6 @@ function M.new()
       table.insert( iteration.rolls, data )
     end
 
-    m.pdump( iteration.rolls )
     sort( iteration.rolls )
   end
 
