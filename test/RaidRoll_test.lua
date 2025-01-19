@@ -103,8 +103,8 @@ function RaidRollSpec:should_raid_roll_the_item_in_party_chat()
   -- Then
   assert_messages(
     p( "Raid rolling [Hearthstone]..." ),
-    p( "[1]:Psikutas, [2]:Obszczymucha" ),
-    p( "Obszczymucha wins [Hearthstone]." )
+    p( "[1]:Obszczymucha, [2]:Psikutas" ),
+    p( "Psikutas wins [Hearthstone]." )
   )
 end
 
@@ -121,9 +121,9 @@ function RaidRollSpec:should_raid_roll_two_items_in_party_chat()
   -- Then
   assert_messages(
     p( "Raid rolling 2x[Hearthstone]..." ),
-    p( "[1]:Psikutas, [2]:Obszczymucha" ),
-    p( "Obszczymucha wins [Hearthstone]." ),
-    p( "Psikutas wins [Hearthstone]." )
+    p( "[1]:Obszczymucha, [2]:Psikutas" ),
+    p( "Psikutas wins [Hearthstone]." ),
+    p( "Obszczymucha wins [Hearthstone]." )
   )
 end
 
@@ -157,9 +157,9 @@ function RaidRollSpec:should_not_raid_roll_again_if_raid_rolling_is_in_progress(
   -- Then
   assert_messages(
     p( "Raid rolling [Hearthstone]..." ),
-    p( "[1]:Psikutas, [2]:Obszczymucha" ),
+    p( "[1]:Obszczymucha, [2]:Psikutas" ),
     c( "RollFor: Rolling is in progress." ),
-    p( "Psikutas wins [Hearthstone]." )
+    p( "Obszczymucha wins [Hearthstone]." )
   )
 end
 
@@ -177,8 +177,8 @@ function RaidRollSpec:should_ignore_other_players_rolls()
   -- Then
   assert_messages(
     p( "Raid rolling [Hearthstone]..." ),
-    p( "[1]:Psikutas, [2]:Obszczymucha" ),
-    p( "Psikutas wins [Hearthstone]." )
+    p( "[1]:Obszczymucha, [2]:Psikutas" ),
+    p( "Obszczymucha wins [Hearthstone]." )
   )
 end
 
@@ -196,8 +196,8 @@ function RaidRollSpec:should_ignore_my_own_hacky_rolls()
   -- Then
   assert_messages(
     p( "Raid rolling [Hearthstone]..." ),
-    p( "[1]:Psikutas, [2]:Obszczymucha" ),
-    p( "Obszczymucha wins [Hearthstone]." )
+    p( "[1]:Obszczymucha, [2]:Psikutas" ),
+    p( "Psikutas wins [Hearthstone]." )
   )
 end
 
@@ -214,8 +214,8 @@ function RaidRollSpec:should_raid_roll_the_item_in_raid_chat()
   -- Then
   assert_messages(
     r( "Raid rolling [Hearthstone]..." ),
-    r( "[1]:Psikutas, [2]:Obszczymucha" ),
-    r( "Obszczymucha wins [Hearthstone]." )
+    r( "[1]:Obszczymucha, [2]:Psikutas" ),
+    r( "Psikutas wins [Hearthstone]." )
   )
 end
 
@@ -232,8 +232,8 @@ function RaidRollSpec:should_raid_roll_the_item_in_raid_chat_even_as_a_leader()
   -- Then
   assert_messages(
     r( "Raid rolling [Hearthstone]..." ),
-    r( "[1]:Psikutas, [2]:Obszczymucha" ),
-    r( "Obszczymucha wins [Hearthstone]." )
+    r( "[1]:Obszczymucha, [2]:Psikutas" ),
+    r( "Psikutas wins [Hearthstone]." )
   )
 end
 
@@ -252,9 +252,9 @@ function RaidRollSpec:should_show_the_winner_with_ssr_command()
   -- Then
   assert_messages(
     p( "Raid rolling [Hearthstone]..." ),
-    p( "[1]:Psikutas, [2]:Obszczymucha" ),
-    p( "Obszczymucha wins [Hearthstone]." ),
-    c( "RollFor [RaidRoll]: Obszczymucha won [Hearthstone]." )
+    p( "[1]:Obszczymucha, [2]:Psikutas" ),
+    p( "Psikutas wins [Hearthstone]." ),
+    c( "RollFor [RaidRoll]: Psikutas won [Hearthstone]." )
   )
 end
 

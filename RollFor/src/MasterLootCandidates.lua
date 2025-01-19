@@ -42,18 +42,6 @@ end
 ---@param api MasterLootCandidatesApi
 ---@param group_roster GroupRoster
 function M.new( api, group_roster )
-  local function sort( candidates )
-    table.sort( candidates, function( lhs, rhs )
-      if lhs.class < rhs.class then
-        return true
-      elseif lhs.class > rhs.class then
-        return false
-      end
-
-      return lhs.name < rhs.name
-    end )
-  end
-
   local function get()
     if not group_roster then return get_dummy_candidates() end
 
@@ -69,8 +57,6 @@ function M.new( api, group_roster )
         end
       end
     end
-
-    sort( result )
 
     return result
   end

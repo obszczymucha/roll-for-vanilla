@@ -9,13 +9,13 @@ local M = {}
 local make_player = m.Types.make_player
 
 ---@class GroupRosterApi
----@field IsInGroup fun(): number?
 ---@field IsInParty fun(): number?
 ---@field IsInRaid fun(): number?
----@field UnitClass fun( unit: string ): string?
----@field GetRaidRosterInfo fun( index: number ): string?, string, number, number, PlayerClass, string, string
+---@field IsInGroup fun(): number?
 ---@field UnitName fun( unit: string ): string?
+---@field UnitClass fun( unit: string ): string?
 ---@field UnitIsConnected fun( unit: string ): number?
+---@field GetRaidRosterInfo fun( index: number ): string?, string, number, number, PlayerClass, string, string
 
 ---@class GroupRoster
 ---@field get_all_players_in_my_group fun( f: (fun( player: Player ): boolean)? ): Player[]
@@ -28,6 +28,18 @@ local make_player = m.Types.make_player
 ---@param api GroupRosterApi
 ---@param player_info PlayerInfo
 function M.new( api, player_info )
+  local function sort( candidates )
+    table.sort( candidates, function( lhs, rhs )
+      if lhs.class < rhs.class then
+        return true
+      elseif lhs.class > rhs.class then
+        return false
+      end
+
+      return lhs.name < rhs.name
+    end )
+  end
+
   local function get_all_players_in_my_group( f )
     local result = {}
 
@@ -46,6 +58,7 @@ function M.new( api, player_info )
         if name and (not f or f( player )) then table.insert( result, player ) end
       end
 
+      sort( result )
       return result
     end
 
@@ -59,6 +72,7 @@ function M.new( api, player_info )
       if player and (not f or f( player )) then table.insert( result, player ) end
     end
 
+    sort( result )
     return result
   end
 

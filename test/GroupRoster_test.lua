@@ -78,7 +78,7 @@ function GetAllPlayersInMyGroupSpec:should_return_my_name_if_not_in_group()
   eq( result, { { class = "Warrior", name = "Psikutas" } } )
 end
 
-function GetAllPlayersInMyGroupSpec:should_return_all_players_in_party()
+function GetAllPlayersInMyGroupSpec:should_return_all_players_in_party_sorted()
   -- Given
   local api = mock_api( party( "Psikutas", "Obszczymucha" ) )
   local mod = gr.new( api(), mock_player_info() )
@@ -88,12 +88,12 @@ function GetAllPlayersInMyGroupSpec:should_return_all_players_in_party()
 
   -- Then
   eq( result, {
-    { class = "Warrior", name = "Psikutas",     online = true, type = "Player" },
-    { class = "Warrior", name = "Obszczymucha", online = true, type = "Player" }
+    { class = "Warrior", name = "Obszczymucha", online = true, type = "Player" },
+    { class = "Warrior", name = "Psikutas",     online = true, type = "Player" }
   } )
 end
 
-function GetAllPlayersInMyGroupSpec:should_return_all_players_in_raid()
+function GetAllPlayersInMyGroupSpec:should_return_all_players_in_raid_sorted()
   -- Given
   local api = mock_api( raid( "Psikutas", "Obszczymucha" ) )
   local mod = gr.new( api(), mock_player_info() )
@@ -103,8 +103,8 @@ function GetAllPlayersInMyGroupSpec:should_return_all_players_in_raid()
 
   -- Then
   eq( result, {
-    { class = "Warrior", name = "Psikutas",     online = true },
-    { class = "Warrior", name = "Obszczymucha", online = true }
+    { class = "Warrior", name = "Obszczymucha", online = true },
+    { class = "Warrior", name = "Psikutas",     online = true }
   } )
 end
 

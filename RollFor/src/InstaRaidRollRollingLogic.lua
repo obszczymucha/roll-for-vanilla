@@ -44,6 +44,8 @@ function M.new(
 
     for _ = 1, item_count do
       local roll = m.lua.math.random( 1, getn( candidates ) )
+      m.trace( "Chuj", roll )
+      m.trace( "Chuj2", candidates )
       table.insert( m_winners, candidates[ roll ] )
     end
 

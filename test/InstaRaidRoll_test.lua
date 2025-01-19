@@ -156,7 +156,7 @@ function InstaRaidRollSpec:should_raid_roll_the_item_in_party_chat()
 
   -- Then
   assert_messages(
-    p( "Obszczymucha wins [Hearthstone] via insta raid-roll." )
+    p( "Psikutas wins [Hearthstone] via insta raid-roll." )
   )
 end
 
@@ -172,8 +172,8 @@ function InstaRaidRollSpec:should_raid_roll_two_items_in_party_chat()
 
   -- Then
   assert_messages(
-    p( "Obszczymucha wins [Hearthstone] via insta raid-roll." ),
-    p( "Psikutas wins [Hearthstone] via insta raid-roll." )
+    p( "Psikutas wins [Hearthstone] via insta raid-roll." ),
+    p( "Obszczymucha wins [Hearthstone] via insta raid-roll." )
   )
 end
 
@@ -189,7 +189,7 @@ function InstaRaidRollSpec:should_raid_roll_the_item_in_party_chat_2()
 
   -- Then
   assert_messages(
-    p( "Psikutas wins [Hearthstone] via insta raid-roll." )
+    p( "Obszczymucha wins [Hearthstone] via insta raid-roll." )
   )
 end
 
@@ -224,7 +224,7 @@ function InstaRaidRollSpec:should_ignore_other_players_rolls()
 
   -- Then
   assert_messages(
-    p( "Psikutas wins [Hearthstone] via insta raid-roll." )
+    p( "Obszczymucha wins [Hearthstone] via insta raid-roll." )
   )
 end
 
@@ -240,7 +240,7 @@ function InstaRaidRollSpec:should_raid_roll_the_item_in_raid_chat()
 
   -- Then
   assert_messages(
-    r( "Psikutas wins [Hearthstone] via insta raid-roll." )
+    r( "Obszczymucha wins [Hearthstone] via insta raid-roll." )
   )
 end
 
@@ -257,7 +257,7 @@ function InstaRaidRollSpec:should_raid_roll_the_item_in_raid_chat_even_as_a_lead
 
   -- Then
   assert_messages(
-    r( "Psikutas wins [Hearthstone] via insta raid-roll." )
+    r( "Obszczymucha wins [Hearthstone] via insta raid-roll." )
   )
 end
 
@@ -274,8 +274,8 @@ function InstaRaidRollSpec:should_show_the_winner_with_ssr_command()
 
   -- Then
   assert_messages(
-    p( "Psikutas wins [Hearthstone] via insta raid-roll." ),
-    c( "RollFor [InstaRaidRoll]: Psikutas won [Hearthstone]." )
+    p( "Obszczymucha wins [Hearthstone] via insta raid-roll." ),
+    c( "RollFor [InstaRaidRoll]: Obszczymucha won [Hearthstone]." )
   )
 end
 
