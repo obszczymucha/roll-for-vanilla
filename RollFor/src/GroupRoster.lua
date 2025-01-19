@@ -8,6 +8,15 @@ local M = {}
 ---@type MakePlayerFn
 local make_player = m.Types.make_player
 
+---@class GroupRosterApi
+---@field IsInGroup fun(): number?
+---@field IsInParty fun(): number?
+---@field IsInRaid fun(): number?
+---@field UnitClass fun( unit: string ): string?
+---@field GetRaidRosterInfo fun( index: number ): string?, string, number, number, PlayerClass, string, string
+---@field UnitName fun( unit: string ): string?
+---@field UnitIsConnected fun( unit: string ): number?
+
 ---@class GroupRoster
 ---@field get_all_players_in_my_group fun( f: (fun( player: Player ): boolean)? ): Player[]
 ---@field is_player_in_my_group fun( player_name: string ): boolean
@@ -16,7 +25,7 @@ local make_player = m.Types.make_player
 ---@field am_i_in_raid fun(): boolean
 ---@field find_player fun( player_name: string ): Player?
 
----@param api table
+---@param api GroupRosterApi
 ---@param player_info PlayerInfo
 function M.new( api, player_info )
   local function get_all_players_in_my_group( f )
@@ -26,6 +35,7 @@ function M.new( api, player_info )
       local name = player_info.get_name()
       local class = api.UnitClass( "player" )
       table.insert( result, { name = name, class = class } )
+
       return result
     end
 
@@ -35,15 +45,18 @@ function M.new( api, player_info )
         local player = { name = name, class = class, online = location ~= "Offline" and true or false }
         if name and (not f or f( player )) then table.insert( result, player ) end
       end
-    else
-      local party = { "player", "party1", "party2", "party3", "party4" }
-      for _, v in ipairs( party ) do
-        local name = api.UnitName( v )
-        local class = api.UnitClass( v )
-        local online = api.UnitIsConnected( v ) and true or false
-        local player = make_player( name, class, online )
-        if name and (not f or f( player )) and class then table.insert( result, player ) end
-      end
+
+      return result
+    end
+
+    local party = { "player", "party1", "party2", "party3", "party4" }
+
+    for _, v in ipairs( party ) do
+      local name = api.UnitName( v )
+      local class = api.UnitClass( v )
+      local online = api.UnitIsConnected( v ) and true or false
+      local player = name and class and make_player( name, class, online )
+      if player and (not f or f( player )) then table.insert( result, player ) end
     end
 
     return result

@@ -959,24 +959,24 @@ function SoftResrollPopupContentSpec:should_preview_the_winner()
     } )
 end
 
--- function SoftResrollPopupContentSpec:should_preview_the_winners()
---   -- Given
---   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
---   local group_roster = mock_group_roster( { p1, p2 } )
---   local popup, controller = new( { [ "GroupRoster" ] = group_roster } )
---   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
---   controller.preview( item, 2 )
---
---   -- Then
---   eq( cleanse( popup.get() ),
---     {
---       { type = link, link = item.link,                              count = 2 },
---       { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 11 },
---       { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 4 },
---       { type = "button",              label = "Close",                               width = 70 },
---       { type = "button",              label = "Award...",                            width = 90 }
---     } )
--- end
+function SoftResrollPopupContentSpec:should_preview_the_winners()
+  -- Given
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
+  local group_roster = mock_group_roster( { p1, p2 } )
+  local popup, controller = new( { [ "GroupRoster" ] = group_roster } )
+  local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+  controller.preview( item, 2 )
+
+  -- Then
+  eq( cleanse( popup.get() ),
+    {
+      { type = link, link = item.link,                              count = 2 },
+      { type = "text",                value = "Obszczymucha soft-ressed this item.", padding = 11 },
+      { type = "text",                value = "Psikutas soft-ressed this item.",     padding = 4 },
+      { type = "button",              label = "Close",                               width = 70 },
+      { type = "button",              label = "Award...",                            width = 90 }
+    } )
+end
 
 -- function SoftResrollPopupContentSpec:should_preview_the_winners_with_no_difference_if_one_has_many_rolls()
 --   -- Given
