@@ -91,7 +91,7 @@ end
 
 local function roll_item( item, item_count )
   local count = item_count or M.loot_list.count( item.id )
-  M.roll_controller.start( RS.SoftResRoll, item, count )
+  M.roll_controller.start( RS.SoftResRoll, item, count, nil, M.config.default_rolling_time_seconds() )
 end
 
 local function create_components()

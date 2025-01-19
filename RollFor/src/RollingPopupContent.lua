@@ -20,7 +20,7 @@ local grey = m.colors.grey
 local r = m.roll_type_color
 local hl = m.colors.hl
 
-local M = {}
+local M = m.Module.new( "RollingPopupContent" )
 
 local top_padding = 11
 
@@ -62,6 +62,7 @@ end
 ---@param strategy RollingStrategyType
 ---@param on_award_click function
 function M.raid_roll_winners_content( winners, item, strategy, on_award_click )
+  M.debug.add( "raid_roll_winners_content" )
   local result = {}
   local last_award_button_visible = false
   local winner_count = getn( winners )
@@ -85,6 +86,7 @@ end
 ---@param strategy RollingStrategyType
 ---@param on_award_click function
 function M.insta_raid_roll_winners_content( winners, item, strategy, on_award_click )
+  M.debug.add( "insta_raid_roll_winners_content" )
   local result = {}
   local last_award_button_visible = false
   local winner_count = getn( winners )
@@ -105,6 +107,7 @@ end
 
 ---@param winner Winner
 function M.sr_content( winner, padding )
+  M.debug.add( "sr_content" )
   local player = c( winner.name, winner.class )
   local soft_ressed = r( RT.MainSpec, "soft-ressed" )
   return { type = "text", value = string.format( "%s %s this item.", player, soft_ressed ), padding = padding or top_padding }
@@ -115,6 +118,7 @@ end
 ---@param strategy RollingStrategyType
 ---@param on_award_click fun( player: ItemCandidate, item: Item, strategy: RollingStrategyType )
 function M.roll_winner_content( winners, item, strategy, on_award_click )
+  M.debug.add( "roll_winner_content" )
   local result = {}
   local last_award_button_visible = false
   local winner_count = getn( winners )
@@ -166,6 +170,8 @@ function M.new(
   ---@param result table
   ---@param rolls RollData[]
   local function rolls_content( result, rolls )
+    M.debug.add( "rolls_content" )
+
     for i = 1, getn( rolls ) do
       local roll = rolls[ i ]
 
@@ -257,6 +263,8 @@ function M.new(
     if getn( winners ) ~= 1 then return end
     if item.type ~= LT.DroppedItem and item.type ~= LT.SoftRessedDroppedItem then return end
 
+    M.debug.add( "add_bottom_award_winner_button" )
+
     local dropped_item = assert( item --[[@as DroppedItem|SoftRessedDroppedItem]] )
     local winner = winners[ 1 ]
     if not winner.is_on_master_loot_candidate_list then return end
@@ -272,14 +280,18 @@ function M.new(
   end
 
   local function select_player_button( item )
+    M.debug.add( "select_player_button" )
     return { type = "button", label = "Award...", width = 90, on_click = function() select_player( item ) end }
   end
 
+  ---@param data RollTrackerData
   local function roll_button( data )
-    return { type = "button", label = "Roll", width = 70, on_click = function() roll_item( data.item ) end }
+    M.debug.add( "roll_button" )
+    return { type = "button", label = "Roll", width = 70, on_click = function() roll_item( data.item, data.item_count ) end }
   end
 
   local function close_button()
+    M.debug.add( "close_button" )
     return { type = "button", label = "Close", width = 70, on_click = function() popup:hide() end }
   end
 
@@ -365,14 +377,18 @@ function M.new(
   end
 
   local function finish_rolling_early_button()
+    M.debug.add( "finish_rolling_early_button" )
     return { type = "button", label = "Finish early", width = 100, on_click = roll_controller.finish_rolling_early }
   end
 
   local function cancel_rolling_button()
+    M.debug.add( "cancel_rolling_button" )
     return { type = "button", label = "Cancel", width = 100, on_click = roll_controller.cancel_rolling }
   end
 
   local function seconds_left_content( result, data, roll_count )
+    M.debug.add( "seconds_left_content" )
+
     local seconds = data.status.seconds_left
     table.insert( result,
       { type = "text", value = string.format( "Rolling ends in %s second%s.", seconds, seconds == 1 and "" or "s" ), padding = top_padding } )
@@ -383,6 +399,65 @@ function M.new(
 
     table.insert( result, finish_rolling_early_button() )
     table.insert( result, cancel_rolling_button() )
+    return result
+  end
+
+  ---@param result table
+  ---@param data RollTrackerData
+  local function preview_no_roll_content( result, data )
+    M.debug.add( "preview_no_roll_content" )
+
+    if data.item_count and data.item_count > 1 then
+      table.insert( result, { type = "text", value = string.format( "%s top rolls win.", hl( data.item_count ) ), padding = top_padding } )
+    end
+
+    table.insert( result, roll_button( data ) )
+    table.insert( result, { type = "button", label = "Insta RR", width = 80, on_click = function() insta_raid_roll( data.item, data.item_count ) end } )
+    table.insert( result, select_player_button( data.item ) )
+
+    return result
+  end
+
+  ---@param result table
+  ---@param data RollTrackerData
+  local function preview_with_rolls_content( result, data )
+    table.insert( result, roll_button( data ) )
+    table.insert( result, select_player_button( data.item ) )
+
+    return result
+  end
+
+  local function rolling_canceled_content( result )
+    M.debug.add( "rolling_canceled_content" )
+    table.insert( result, { type = "text", value = "Rolling has been canceled.", padding = top_padding } )
+    table.insert( result, close_button() )
+
+    return result
+  end
+
+  local function no_one_rolled_content( result, data )
+    M.debug.add( "no_one_rolled_content" )
+    table.insert( result, { type = "text", value = "Rolling has finished. No one rolled.", padding = top_padding } )
+    table.insert( result, { type = "button", label = "Raid roll", width = 90, on_click = function() raid_roll( data.item ) end } )
+    table.insert( result, close_button() )
+
+    return result
+  end
+
+  local function waiting_for_remaining_rolls_content( result )
+    M.debug.add( "waiting_for_remaining_rolls_content" )
+    table.insert( result, { type = "text", value = "Waiting for remaining rolls...", padding = top_padding } )
+    table.insert( result, finish_rolling_early_button() )
+    table.insert( result, cancel_rolling_button() )
+
+    return result
+  end
+
+  local function hard_ressed_item_content( result, data )
+    M.debug.add( "hard_ressed_item_content" )
+    table.insert( result, { type = "text", value = string.format( "This item is %s.", red( "hard-ressed" ) ), padding = top_padding } )
+    table.insert( result, select_player_button( data.item ) )
+    -- table.insert( result, free_roll_button( data ) )
     return result
   end
 
@@ -403,33 +478,23 @@ function M.new(
 
     make_roll_content( result, data.iterations )
 
-    if preview and roll_count == 0 then
-      if data.item_count and data.item_count > 1 then
-        table.insert( result, { type = "text", value = string.format( "%s top rolls win.", hl( data.item_count ) ), padding = top_padding } )
-      end
+    if preview and roll_count == 0 then return preview_no_roll_content( result, data ) end
+    if preview then return preview_with_rolls_content( result, data ) end
 
-      table.insert( result, roll_button( data ) )
-      table.insert( result, { type = "button", label = "Insta RR", width = 80, on_click = function() insta_raid_roll( data.item, data.item_count ) end } )
-      table.insert( result, select_player_button( data.item ) )
-
+    if data.status.type == S.TieFound then
+      M.debug.add( "tie_found" )
       return result
     end
-
-    if preview then
-      table.insert( result, roll_button( data ) )
-      table.insert( result, select_player_button( data.item ) )
-      return result
-    end
-
-    if data.status.type == S.TieFound then return result end
 
     if data.status.type == S.InProgress and current_iteration.rolling_strategy == RS.RaidRoll then
+      M.debug.add( "raid_rolling" )
       table.insert( result, { type = "text", value = "Raid rolling...", padding = 8 } )
       table.insert( result, { type = "empty_line", height = 5 } )
       return result
     end
 
     if data.status.type == S.InProgress and current_iteration.rolling_strategy == RS.InstaRaidRoll then
+      M.debug.add( "insta_raid_rolling" )
       table.insert( result, { type = "text", value = "Insta raid rolling...", padding = 8 } )
       return result
     end
@@ -439,14 +504,11 @@ function M.new(
     end
 
     if insta_raid_roll_winners( data, current_iteration ) then
-      insta_raid_roll_content( result, data, strategy )
+      return insta_raid_roll_content( result, data, strategy )
     end
 
     if data.status.type == S.Canceled then
-      table.insert( result, { type = "text", value = "Rolling has been canceled.", padding = top_padding } )
-      table.insert( result, close_button() )
-
-      return result
+      return rolling_canceled_content( result )
     end
 
     if data.status.type == S.InProgress and data.status.seconds_left then
@@ -470,26 +532,18 @@ function M.new(
     end
 
     if data.status.type == S.Finished and (not data.winners or getn( data.winners ) == 0) then
-      table.insert( result, { type = "text", value = "Rolling has finished. No one rolled.", padding = top_padding } )
-      table.insert( result, { type = "button", label = "Raid roll", width = 90, on_click = function() raid_roll( data.item ) end } )
-      table.insert( result, close_button() )
-      return result
+      return no_one_rolled_content( result, data )
     end
 
     if data.status.type == S.Waiting then
-      table.insert( result, { type = "text", value = "Waiting for remaining rolls...", padding = top_padding } )
-      table.insert( result, finish_rolling_early_button() )
-      table.insert( result, cancel_rolling_button() )
-      return result
+      return waiting_for_remaining_rolls_content( result )
     end
 
     if data.item.type == LT.HardRessedItem or data.item.type == LT.HardRessedDroppedItem then
-      table.insert( result, { type = "text", value = string.format( "This item is %s.", red( "hard-ressed" ) ), padding = top_padding } )
-      table.insert( result, select_player_button( data.item ) )
-      -- table.insert( result, free_roll_button( data ) )
-      return result
+      return hard_ressed_item_content( result, data )
     end
 
+    M.debug.add( "Uncaught content." )
     return result
   end
 

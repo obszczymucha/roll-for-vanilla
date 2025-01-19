@@ -175,7 +175,10 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
 
       if not rerolling and config.auto_raid_roll() and m_rolling_strategy and m_rolling_strategy.get_rolling_strategy() ~= RS.SoftResRoll then
         -- At some point item_count gets to 0.
-        print( item_count )
+        if item_count == 0 then
+          m.trace( "Item count is 0." )
+        end
+
         m_rolling_strategy = nil
         local strategy = strategy_factory.raid_roll( item, item_count, facade )
 

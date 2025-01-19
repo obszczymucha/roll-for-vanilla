@@ -3,7 +3,8 @@ local m = RollFor
 
 if m.NonSoftResRollingLogic then return end
 
-local M = {}
+local M = m.Module.new( "NonSoftResRollingLogic" )
+
 local count_elements = m.count_elements
 local pretty_print = m.pretty_print
 local merge = m.merge
