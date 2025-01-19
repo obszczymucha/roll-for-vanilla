@@ -39,7 +39,7 @@ local getn = table.getn
 ---@field winners RollingPlayer[]?
 
 ---@alias RollTrackerData {
----  item: Item|DroppedItem|SoftRessedDroppedItem|HardRessedDroppedItem,
+---  item: Item|DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem,
 ---  item_count: number,
 ---  status: RollStatus,
 ---  iterations: RollIteration[],

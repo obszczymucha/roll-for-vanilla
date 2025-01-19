@@ -1,4 +1,4 @@
----@param items (DroppedItem|SoftRessedDroppedItem|HardRessedDroppedItem)[]
+---@param items (DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem)[]
 return function( items )
   local M = {}
 

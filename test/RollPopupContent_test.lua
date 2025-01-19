@@ -100,7 +100,7 @@ local function softres( group_roster, data )
   return result
 end
 
----@param items (DroppedItem|SoftRessedDroppedItem|HardRessedDroppedItem)[]?
+---@param items (DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem)[]?
 local function mock_loot_list( items )
   return frequire( "mocks/LootList" )( items or {} ).new()
 end
@@ -210,7 +210,7 @@ end
 ---@param id number?
 ---@param sr_players RollingPlayer[]?
 ---@param hr boolean?
----@return DroppedItem|SoftRessedDroppedItem|HardRessedDroppedItem
+---@return DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem
 local function i( name, id, sr_players, hr )
   local l = u.item_link( name, id )
   local tooltip_link = IU.get_tooltip_link( l )
