@@ -45,7 +45,7 @@ local PT = m.Types.PlayerType
 ---@field loot_list_item_deselected fun()
 ---@field finish_rolling_early fun()
 ---@field cancel_rolling fun()
----@field rolling_started fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, seconds: number?)
+---@field rolling_started fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, seconds: number?, rolling_players: RollingPlayer[]? )
 
 ---@param roll_tracker RollTracker
 ---@param player_info PlayerInfo
@@ -142,8 +142,9 @@ function M.new( roll_tracker, player_info )
   ---@param item_count number
   ---@param message string?
   ---@param seconds number?
-  local function rolling_started( strategy_type, item, item_count, message, seconds )
-    roll_tracker.start( strategy_type, item, item_count, message, seconds )
+  ---@param rolling_players RollingPlayer[]?
+  local function rolling_started( strategy_type, item, item_count, message, seconds, rolling_players )
+    roll_tracker.start( strategy_type, item, item_count, message, seconds, rolling_players )
 
     local _, _, quality = m.api.GetItemInfo( string.format( "item:%s:0:0:0", item.id ) )
     local color = get_color( quality )

@@ -202,6 +202,12 @@ end
 ---@param sr_players RollingPlayer[]
 ---@return SoftRessedDroppedItem
 function M.make_softres_dropped_item( item, sr_players )
+  ---@param a RollingPlayer
+  ---@param b RollingPlayer
+  local function sort( a, b ) return a.name < b.name end
+  local players = sr_players or {}
+  table.sort( players, sort )
+
   return {
     id = item.id,
     name = item.name,
@@ -210,7 +216,7 @@ function M.make_softres_dropped_item( item, sr_players )
     quality = item.quality,
     quantity = item.quantity,
     texture = item.texture,
-    sr_players = sr_players,
+    sr_players = players,
     type = LootType.SoftRessedDroppedItem
   }
 end
