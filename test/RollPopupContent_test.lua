@@ -5,7 +5,7 @@ local getn, frequire, reqsrc = u.getn, u.force_require, u.multi_require_src
 local lu, eq = u.luaunit( "assertEquals" )
 local m, T, IU = require( "src/modules" ), require( "src/Types" ), require( "src/ItemUtils" )
 reqsrc( "DebugBuffer", "Module", "Types", "SoftResDataTransformer", "RollingLogicUtils" )
-reqsrc( "SoftResRollingLogic", "NonSoftResRollingLogic", "RaidRollRollingLogic", "InstaRaidRollRollingLogic" )
+reqsrc( "TieRollingLogic", "SoftResRollingLogic", "NonSoftResRollingLogic", "RaidRollRollingLogic", "InstaRaidRollRollingLogic" )
 local SoftResDecorator = require( "src/SoftResPresentPlayersDecorator" )
 local SoftRes, Db = require( "src/SoftRes" ), require( "src/Db" )
 local RollingPopup, RollingLogic = require( "src/RollingPopup" ), require( "src/RollingLogic" )
@@ -694,7 +694,7 @@ end
 
 function NormalRollPopupContentSpec:should_display_the_winners()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "PsikutasOhhaimark", C.Priest )
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
   local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
   local group_roster = mock_group_roster( { p1, p2 } )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
@@ -1267,59 +1267,56 @@ function SoftResrollPopupContentSpec:should_display_the_remaining_winner_after_a
     } )
 end
 
---
--- TieRollPopupContentSpec = {}
---
--- function TieRollPopupContentSpec:should_display_tied_rolls()
---   -- Given
---   local popup, controller = new()
---   local item_id, seconds_left = 123, 8
---   local item = i( "Hearthstone", item_id )
---   local p1, p2 = rp( "Psikutas", C.Warrior ), rp( "Obszczymucha", C.Druid )
---   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
---   controller.add( p1.name, p1.class, RT.MainSpec, 69 )
---   controller.tick( 1 )
---   controller.add( p2.name, p2.class, RT.MainSpec, 69 )
---   controller.tie( { p1, p2 }, item, 1, RT.MainSpec, 69 )
---
---   -- Then
---   eq( cleanse( popup.get() ),
---     {
---       { type = link, link = item.link,                count = 1 },
---       { type = "roll",                player_name = "Obszczymucha",    player_class = C.Druid,   roll_type = RT.MainSpec, roll = 69,   padding = 11 },
---       { type = "roll",                player_name = "Psikutas",        player_class = C.Warrior, roll_type = RT.MainSpec, roll = 69 },
---       { type = "text",                value = "There was a tie (69):", padding = 11 },
---       { type = "roll",                player_name = "Obszczymucha",    player_class = C.Druid,   roll_type = RT.MainSpec, padding = 11 },
---       { type = "roll",                player_name = "Psikutas",        player_class = C.Warrior, roll_type = RT.MainSpec }
---     } )
--- end
---
--- function TieRollPopupContentSpec:should_display_tied_rolls_with_waiting_message()
---   -- Given
---   local popup, controller = new()
---   local item_id, seconds_left = 123, 8
---   local item = i( "Hearthstone", item_id )
---   local p1, p2 = rp( "Psikutas", C.Warrior ), rp( "Obszczymucha", C.Druid )
---   controller.start( RS.NormalRoll, item, 1, nil, seconds_left )
---   controller.add( p1.name, p1.class, RT.MainSpec, 69 )
---   controller.tick( 1 )
---   controller.add( p2.name, p2.class, RT.MainSpec, 69 )
---   controller.tie( { p1, p2 }, item, 1, RT.MainSpec, 69 )
---   controller.tie_start()
---
---   -- Then
---   eq( cleanse( popup.get() ),
---     {
---       { type = link, link = item.link,                         count = 1 },
---       { type = "roll",                player_name = "Obszczymucha",             player_class = C.Druid,   roll_type = RT.MainSpec, roll = 69,   padding = 11 },
---       { type = "roll",                player_name = "Psikutas",                 player_class = C.Warrior, roll_type = RT.MainSpec, roll = 69 },
---       { type = "text",                value = "There was a tie (69):",          padding = 11 },
---       { type = "roll",                player_name = "Obszczymucha",             player_class = C.Druid,   roll_type = RT.MainSpec, padding = 11 },
---       { type = "roll",                player_name = "Psikutas",                 player_class = C.Warrior, roll_type = RT.MainSpec },
---       { type = "text",                value = "Waiting for remaining rolls...", padding = 11 },
---       { type = "button",              label = "Finish early",                   width = 100 },
---       { type = "button",              label = "Cancel",                         width = 100 }
---     } )
--- end
---
+TieRollPopupContentSpec = {}
+
+function TieRollPopupContentSpec:should_display_tied_rolls()
+  -- Given
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
+  local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
+  local group_roster = mock_group_roster( { p1, p2 } )
+  local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
+  local item = i( "Hearthstone" )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
+  roll( p1.name, 69, 1, 100 )
+  roll( p2.name, 69, 1, 100 )
+
+  -- Then
+  eq( cleanse( popup.get() ),
+    {
+      { type = link,   link = item.link,                count = 1 },
+      { type = "roll", player_name = "Ohhaimark",       player_class = C.Priest,  roll_type = RT.MainSpec, roll = 69,   padding = 11 },
+      { type = "roll", player_name = "Psikutas",        player_class = C.Warrior, roll_type = RT.MainSpec, roll = 69 },
+      { type = "text", value = "There was a tie (69):", padding = 11 },
+      { type = "roll", player_name = "Ohhaimark",       player_class = C.Priest,  roll_type = RT.MainSpec, padding = 11 },
+      { type = "roll", player_name = "Psikutas",        player_class = C.Warrior, roll_type = RT.MainSpec }
+    } )
+end
+
+function TieRollPopupContentSpec:should_display_tied_rolls_with_waiting_message()
+  -- Given
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
+  local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
+  local group_roster = mock_group_roster( { p1, p2 } )
+  local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
+  local item = i( "Hearthstone" )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
+  roll( p1.name, 69, 1, 100 )
+  roll( p2.name, 69, 1, 100 )
+  tick()
+
+  -- Then
+  eq( cleanse( popup.get() ),
+    {
+      { type = link,     link = item.link,                         count = 1 },
+      { type = "roll",   player_name = "Ohhaimark",                player_class = C.Priest,  roll_type = RT.MainSpec, roll = 69,   padding = 11 },
+      { type = "roll",   player_name = "Psikutas",                 player_class = C.Warrior, roll_type = RT.MainSpec, roll = 69 },
+      { type = "text",   value = "There was a tie (69):",          padding = 11 },
+      { type = "roll",   player_name = "Ohhaimark",                player_class = C.Priest,  roll_type = RT.MainSpec, padding = 11 },
+      { type = "roll",   player_name = "Psikutas",                 player_class = C.Warrior, roll_type = RT.MainSpec },
+      { type = "text",   value = "Waiting for remaining rolls...", padding = 11 },
+      { type = "button", label = "Finish early",                   width = 100 },
+      { type = "button", label = "Cancel",                         width = 100 }
+    } )
+end
+
 os.exit( lu.LuaUnit.run() )
