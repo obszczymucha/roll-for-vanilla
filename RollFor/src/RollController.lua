@@ -202,6 +202,11 @@ function M.new( roll_tracker, player_info )
     end
   end
 
+  ---@class LootAwardedData
+  ---@field player_name string
+  ---@field item_id number
+  ---@field item_link string
+
   ---@param player_name string
   ---@param item_id number
   ---@param item_link string

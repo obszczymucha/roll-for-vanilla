@@ -8,13 +8,24 @@ local M = {}
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
+---@class AwardedLoot
+---@field award fun( player_name: string, item_id: number )
+---@field unaward fun( player_name: string, item_id: number )
+---@field has_item_been_awarded fun( player_name: string, item_id: number ): boolean
+---@field clear fun()
+
 function M.new( db )
   db.awarded_items = db.awarded_items or {}
 
+  ---@param player_name string
+  ---@param item_id number
   local function award( player_name, item_id )
     table.insert( db.awarded_items, { player_name = player_name, item_id = item_id } )
   end
 
+  ---@param player_name string
+  ---@param item_id number
+  ---@return boolean
   local function has_item_been_awarded( player_name, item_id )
     for _, item in pairs( db.awarded_items ) do
       if item.player_name == player_name and item.item_id == item_id then return true end
@@ -27,6 +38,8 @@ function M.new( db )
     m.clear_table( db.awarded_items )
   end
 
+  ---@param player_name string
+  ---@param item_id number
   local function unaward( player_name, item_id )
     for i = getn( db.awarded_items ), 1, -1 do
       local awarded_item = db.awarded_items[ i ]
@@ -38,6 +51,7 @@ function M.new( db )
     end
   end
 
+  ---@type AwardedLoot
   return {
     award = award,
     unaward = unaward,

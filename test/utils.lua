@@ -496,6 +496,8 @@ function M.mock_table_function( name, values )
   end
 end
 
+---@param name string
+---@param id number?
 function M.item_link( name, id )
   return string.format( "|cff9d9d9d|Hitem:%s::::::::20:257::::::|h[%s]|h|r", id or "3299", name )
 end
@@ -806,6 +808,7 @@ function M.load_real_stuff( req )
   r( "src/NameMatchReport" )
   r( "src/EventHandler" )
   r( "src/VersionBroadcast" )
+  r( "src/LootAwardCallback" )
   r( "src/MasterLoot" )
   r( "src/SoftResCheck" )
   r( "src/NonSoftResRollingLogic" )
@@ -933,7 +936,7 @@ end
 
 function M.award( player, item_name, item_id )
   local rf = M.load_roll_for()
-  rf.on_loot_awarded( player, item_id, M.item_link( item_name, item_id ) )
+  rf.loot_award_callback.on_loot_awarded( player, item_id, M.item_link( item_name, item_id ) )
 end
 
 function M.load_libstub()

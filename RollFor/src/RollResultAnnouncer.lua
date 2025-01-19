@@ -189,11 +189,17 @@ function M.new( chat, roll_controller, roll_tracker, config )
     end
   end
 
+  ---@param data LootAwardedData
+  local function on_loot_awarded( data )
+    info( string.format( "%s received %s.", hl( data.player_name ), data.item_link ) )
+  end
+
   roll_controller.subscribe( "finish", on_finish )
   roll_controller.subscribe( "winners_found", on_winners_found )
   roll_controller.subscribe( "tie", on_tie )
   roll_controller.subscribe( "tie_start", on_tie_start )
   roll_controller.subscribe( "tick", on_tick )
+  roll_controller.subscribe( "loot_awarded", on_loot_awarded )
 end
 
 m.RollResultAnnouncer = M

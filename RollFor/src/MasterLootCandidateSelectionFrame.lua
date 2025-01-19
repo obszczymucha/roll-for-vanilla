@@ -239,9 +239,8 @@ function M.new( winner_tracker, roll_controller, config )
     end
   end
 
-  local function mark_winner( winner_name, item_link )
-    if item_link ~= m.api.LootFrame.selectedItemLink then return end
-
+  ---@param winner_name string
+  local function mark_winner( winner_name )
     for i = 1, 40 do
       local button = m_buttons[ i ]
 
@@ -252,6 +251,7 @@ function M.new( winner_tracker, roll_controller, config )
     end
   end
 
+  ---@param item_link ItemLink
   local function show( item_link )
     if not m_frame then return end
 
@@ -259,7 +259,7 @@ function M.new( winner_tracker, roll_controller, config )
     m_frame:Show()
 
     for _, winner in ipairs( winner_tracker.find_winners( item_link ) ) do
-      mark_winner( winner.winner_name, item_link )
+      mark_winner( winner.winner_name )
     end
   end
 

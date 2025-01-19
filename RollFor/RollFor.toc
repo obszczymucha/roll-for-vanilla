@@ -82,4 +82,5 @@ src\ArgsParser.lua
 src\RollResultAnnouncer.lua
 src\Chat.lua
 src\PlayerInfo.lua
+src\LootAwardCallback.lua
 main.lua

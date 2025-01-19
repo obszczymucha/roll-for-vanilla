@@ -197,10 +197,13 @@ local function create_components()
   ---@type MasterLootCandidates
   M.master_loot_candidates = m.MasterLootCandidates.new( M.api(), M.group_roster ) -- remove group_roster for testing (dummy candidates)
 
+  ---@type LootAwardCallback
+  M.loot_award_callback = m.LootAwardCallback.new( M.awarded_loot, M.roll_controller, M.winner_tracker )
+
   ---@type MasterLoot
   M.master_loot = m.MasterLoot.new(
     M.master_loot_candidates,
-    M.on_loot_awarded,
+    M.loot_award_callback,
     M.master_loot_frame,
     M.loot_list,
     M.player_info
@@ -700,16 +703,6 @@ local function on_party_message( message, player )
   for name, roll in string.gmatch( message, "(%a+) rolls os (%d+)" ) do
     on_roll( name, tonumber( roll ), 1, 99 )
   end
-end
-
----@param player_name string
----@param item_id number
----@param item_link string
-function M.on_loot_awarded( player_name, item_id, item_link )
-  M.awarded_loot.award( player_name, item_id )
-  M.roll_controller.loot_awarded( player_name, item_id, item_link )
-  info( string.format( "%s received %s.", hl( player_name ), item_link ) ) -- TODO: Remove from here and subscribe to an event.
-  M.winner_tracker.untrack( player_name, item_link )
 end
 
 function M.unaward_item( player_name, item_id, item_link )

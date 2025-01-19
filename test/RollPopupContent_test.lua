@@ -142,6 +142,12 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
     player_info
   )
 
+  local master_loot_frame = require( "src/MasterLootCandidateSelectionFrame" ).new( winner_tracker, roll_controller, config )
+  local awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ) )
+  local loot_award_callback = require( "src/LootAwardCallback" ).new( awarded_loot, roll_controller, winner_tracker )
+  local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, master_loot_frame, loot_list, player_info )
+  deps[ "MasterLoot" ] = master_loot
+
   local softres_dep = deps[ "SoftResData" ] and softres( group_roster, deps[ "SoftResData" ] ) or softres( group_roster )
 
   local strategy_factory = require( "src/RollingStrategyFactory" ).new(
@@ -920,6 +926,34 @@ function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_i
     { type = link,     link = item.link,                        count = 1 },
     { type = "text",   value = "Ohhaimark wins the raid-roll.", padding = 8 },
     { type = "button", label = "Close",                         width = 70 }
+  } )
+end
+
+function NormalRollPopupContentSpec:should_not_close_the_popup_if_someone_loots_another_item_while_rolling()
+  -- Given
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
+  local group_roster = mock_group_roster( { p1, p2 } )
+  local popup, controller, _, deps = new( { [ "GroupRosterApi" ] = group_roster } )
+  local master_loot = deps[ "MasterLoot" ]
+  local item = i( "Hearthstone" )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
+  repeating_tick( 3 )
+
+  -- Then
+  eq( popup.is_visible(), true )
+
+  -- And
+  master_loot.on_loot_received( "Obszczymucha", 69, u.item_link( "Some item", 69 ) )
+
+  -- Then
+  eq( popup.is_visible(), true )
+
+  -- Then
+  eq( cleanse( popup.get() ), {
+    { type = link,     count = 1,    link = item.link },
+    { type = "text",   padding = 11, value = "Rolling ends in 5 seconds." },
+    { type = "button", width = 100,  label = "Finish early" },
+    { type = "button", width = 100,  label = "Cancel" }
   } )
 end
 

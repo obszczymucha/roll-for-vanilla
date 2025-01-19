@@ -24,12 +24,12 @@ local getn = table.getn
 ---@field on_loot_received fun( player_name: string, item_id: number, item_link: string )
 
 ---@param master_loot_candidates MasterLootCandidates
----@param on_loot_awarded fun( player_name: string, item_id: number, item_link: string )
+---@param loot_award_callback LootAwardCallback
 ---@param master_loot_frame MasterLootCandidateSelectionFrame
 ---@param loot_list LootList
 ---@param player_info PlayerInfo
 ---@return MasterLoot
-function M.new( master_loot_candidates, on_loot_awarded, master_loot_frame, loot_list, player_info )
+function M.new( master_loot_candidates, loot_award_callback, master_loot_frame, loot_list, player_info )
   local m_confirmed = nil
   local m_slot_cache = {}
 
@@ -50,7 +50,7 @@ function M.new( master_loot_candidates, on_loot_awarded, master_loot_frame, loot
     local cached_item = m_slot_cache[ slot ]
 
     if cached_item.id == m_confirmed.item.id then
-      on_loot_awarded( m_confirmed.player.name, m_confirmed.item.id, m_confirmed.item.link )
+      loot_award_callback.on_loot_awarded( m_confirmed.player.name, m_confirmed.item.id, m_confirmed.item.link )
       reset_confirmation()
     end
 
@@ -124,7 +124,7 @@ function M.new( master_loot_candidates, on_loot_awarded, master_loot_frame, loot
     local is_looting = loot_list.is_looting()
     if m_confirmed and is_looting then return end
 
-    on_loot_awarded( player_name, item_id, item_link )
+    loot_award_callback.on_loot_awarded( player_name, item_id, item_link )
     reset_confirmation()
   end
 
