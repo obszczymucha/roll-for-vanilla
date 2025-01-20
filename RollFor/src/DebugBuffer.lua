@@ -34,10 +34,10 @@ function M.new( module_name, max_size )
     end
 
     if debug_enabled then
-      pp( message, m.colors.grey, module_name )
-
       if console_enabled then
         print( string.format( "[%s]: %s", module_name, message ) )
+      else
+        pp( message, m.colors.grey, module_name )
       end
     end
   end
@@ -61,7 +61,11 @@ function M.new( module_name, max_size )
   end
 
   local function print_debug_status()
-    pp( string.format( "Debug %s.", debug_enabled and m.msg.enabled or m.msg.disabled, m.colors.grey, module_name ), m.colors.grey, module_name )
+    if console_enabled then
+      print( string.format( "\n[%s]: Debug %s.", module_name, debug_enabled and "enabled" or "disabled" ) )
+    else
+      pp( string.format( "Debug %s.", debug_enabled and m.msg.enabled or m.msg.disabled, m.colors.grey, module_name ), m.colors.grey, module_name )
+    end
   end
 
   local function enable( console )

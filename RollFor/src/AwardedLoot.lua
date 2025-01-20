@@ -3,7 +3,7 @@ local m = RollFor
 
 if m.AwardedLoot then return end
 
-local M = {}
+local M = m.Module.new( "AwardedLoot" )
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
@@ -20,6 +20,7 @@ function M.new( db )
   ---@param player_name string
   ---@param item_id number
   local function award( player_name, item_id )
+    M.debug.add( "award" )
     table.insert( db.awarded_items, { player_name = player_name, item_id = item_id } )
   end
 
@@ -35,12 +36,14 @@ function M.new( db )
   end
 
   local function clear()
+    M.debug.add( "clear" )
     m.clear_table( db.awarded_items )
   end
 
   ---@param player_name string
   ---@param item_id number
   local function unaward( player_name, item_id )
+    M.debug.add( "unaward" )
     for i = getn( db.awarded_items ), 1, -1 do
       local awarded_item = db.awarded_items[ i ]
 

@@ -5,7 +5,7 @@ local lu, eq = utils.luaunit( "assertEquals" )
 local m = require( "src/modules" )
 require( "src/DebugBuffer" )
 require( "src/Module" )
-require( "src/api/EventFrame" )
+require( "src/EventFrame" )
 
 EventFrameSpec = {}
 

@@ -145,7 +145,7 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   local master_loot_frame = require( "src/MasterLootCandidateSelectionFrame" ).new( winner_tracker, roll_controller, config )
   local awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ) )
   local loot_award_callback = require( "src/LootAwardCallback" ).new( awarded_loot, roll_controller, winner_tracker )
-  local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, master_loot_frame, loot_list, player_info )
+  local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, master_loot_frame, loot_list )
   deps[ "MasterLoot" ] = master_loot
 
   local softres_dep = deps[ "SoftResData" ] and softres( group_roster, deps[ "SoftResData" ] ) or softres( group_roster )
@@ -867,6 +867,29 @@ function NormalRollPopupContentSpec:should_display_the_transmog_winner()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
   local group_roster = mock_group_roster( { p1, p2 } )
+  local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster } )
+  local item = i( "Hearthstone" )
+  controller.start( RS.NormalRoll, item, 1, nil, 8 )
+  roll( p2.name, 42, 1, 98 )
+  roll( p1.name, 69, 1, 98 )
+  repeating_tick( 8 )
+
+  -- Then
+  eq( cleanse( popup.get() ), {
+    { type = link,     link = item.link,                                     count = 1 },
+    { type = "roll",   roll_type = RT.Transmog,                              player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
+    { type = "roll",   roll_type = RT.Transmog,                              player_name = p2.name, player_class = p2.class, roll = 42 },
+    { type = "text",   value = "Psikutas wins the transmog roll with a 69.", padding = 11 },
+    { type = "button", label = "Award winner",                               width = 130 },
+    { type = "button", label = "Raid roll",                                  width = 90 },
+    { type = "button", label = "Close",                                      width = 70 }
+  } )
+end
+
+function NormalRollPopupContentSpec:should_display_the_transmog_winner2()
+  -- Given
+  local p1, p2, p3 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest ), p( "Obszczymucha", C.Druid )
+  local group_roster = mock_group_roster( { p1, p2, p3 } )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone" )
   controller.start( RS.NormalRoll, item, 1, nil, 8 )

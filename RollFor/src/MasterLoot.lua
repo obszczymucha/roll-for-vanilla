@@ -18,23 +18,22 @@ local getn = table.getn
 ---@field on_recipient_inventory_full fun()
 ---@field on_player_is_too_far fun()
 ---@field on_unknown_error_message fun( message: string )
----@field on_confirm fun( player: ItemCandidate|Winner, item: DroppedItem )
+---@field on_confirm fun( player: ItemCandidate|Winner, item: DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem )
 ---@field show_loot_candidates_frame fun( item: DroppedItem, strategy: RollingStrategyType )
 ---@field on_loot_slot_cleared fun( slot: number )
 ---@field on_loot_received fun( player_name: string, item_id: number, item_link: string )
 
 ---@param master_loot_candidates MasterLootCandidates
 ---@param loot_award_callback LootAwardCallback
----@param master_loot_frame MasterLootCandidateSelectionFrame
+---@param player_selection_frame MasterLootCandidateSelectionFrame
 ---@param loot_list LootList
----@param player_info PlayerInfo
----@return MasterLoot
-function M.new( master_loot_candidates, loot_award_callback, master_loot_frame, loot_list, player_info )
-  ---@type { player: ItemCandidate|Winner, item: Item }
+function M.new( master_loot_candidates, loot_award_callback, player_selection_frame, loot_list )
+  ---@type { player: ItemCandidate|Winner, item: Item }?
   local m_confirmed = nil
   local m_slot_cache = {}
 
   local function reset_confirmation()
+    M.debug.add( "reset_confirmation" )
     m_confirmed = nil
   end
 
@@ -46,6 +45,7 @@ function M.new( master_loot_candidates, loot_award_callback, master_loot_frame, 
   -- LOOT_OPENED -> LOOT_SLOT_CLEARED -> LOOT_CLOSED -> CHAT_MSG_LOOT.
   -- It's safer and simpler to just rely on LOOT_ events.
   local function on_loot_slot_cleared( slot )
+    M.debug.add( string.format( "on_loot_slot_cleared(%s)", slot or nil ) )
     if not m_slot_cache[ slot ] or not m_confirmed then return end
 
     local cached_item = m_slot_cache[ slot ]
@@ -61,6 +61,7 @@ function M.new( master_loot_candidates, loot_award_callback, master_loot_frame, 
   ---@param player ItemCandidate|Winner
   ---@param item Item
   local function on_confirm( player, item )
+    M.debug.add( string.format( "on_confirm(%s [%s], %s)", player and player.name or "nil", player and player.type or "nil", item and item.id or "nil" ) )
     local slot = loot_list.get_slot( item.id )
     if not slot then return end
 
@@ -80,14 +81,14 @@ function M.new( master_loot_candidates, loot_award_callback, master_loot_frame, 
     end
 
     m.api.GiveMasterLoot( slot, index )
-    master_loot_frame.hide()
+    player_selection_frame.hide()
   end
 
   ---@param item DroppedItem
   ---@param strategy RollingStrategyType
   local function show_loot_candidates_frame( item, strategy )
-    master_loot_frame.create()
-    master_loot_frame.hide()
+    player_selection_frame.create()
+    player_selection_frame.hide()
 
     local candidates = master_loot_candidates.get()
 
@@ -97,34 +98,34 @@ function M.new( master_loot_candidates, loot_award_callback, master_loot_frame, 
       return
     end
 
-    master_loot_frame.create_candidate_frames( candidates, item, strategy )
-    master_loot_frame.show( item.link )
+    player_selection_frame.create_candidate_frames( candidates, item, strategy )
+    player_selection_frame.show( item.link )
   end
 
   local function on_loot_opened()
+    M.debug.add( "on_loot_opened" )
     clear_table( m_slot_cache )
-
-    if not player_info.is_master_looter() then
-      return
-    end
-
     reset_confirmation()
   end
 
   local function on_loot_closed()
+    M.debug.add( "on_loot_closed" )
     -- Do not clear items when the loot window is closed.
     -- It's possible that the item was master looted and the master looter moved the character quickly,
     -- which in turn closed the loot window. This can trigger LOOT_CLOSED and we don't want to clear
     -- the items in that case. When the loot is closed the LOOT_SLOT_CLEARED doesn't fire for us, so
     -- we need to additionally check the CHAT_MSG_LOOT below.
     -- clear_table( m_slot_cache )
-    master_loot_frame.hide()
+    player_selection_frame.hide()
   end
 
   local function on_loot_received( player_name, item_id, item_link )
+    M.debug.add( string.format( "on_loot_received(%s, %s, %s)", player_name or "nil", item_id or "nil", item_link or "nil" ) )
     local is_looting = loot_list.is_looting()
     if m_confirmed and is_looting then return end
     if not m_confirmed then return end
+
+    -- This isn't tested, because it's hard to reproduce. Not sure if it can happen. Let's keep it here to be safe.
     if m_confirmed.item.id ~= item_id then return end
 
     loot_award_callback.on_loot_awarded( player_name, item_id, item_link )
@@ -155,6 +156,7 @@ function M.new( master_loot_candidates, loot_award_callback, master_loot_frame, 
     end
   end
 
+  ---@type MasterLoot
   return {
     on_loot_opened = on_loot_opened,
     on_loot_closed = on_loot_closed,

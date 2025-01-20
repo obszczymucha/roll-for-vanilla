@@ -1,7 +1,7 @@
 RollFor = RollFor or {}
 local m = RollFor
 
-local RealLootFacade = require( "src/api/LootFacade" )
+local RealLootFacade = require( "src/LootFacade" )
 
 local M = {}
 local mock = m.Interface.mock

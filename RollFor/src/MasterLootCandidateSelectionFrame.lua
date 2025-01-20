@@ -17,14 +17,6 @@ local mod = math.mod
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
-local OldLootFrame_OnEvent = LootFrame_OnEvent
-
-function LootFrame_OnEvent( event )
-  if event ~= "OPEN_MASTER_LOOT_LIST" then
-    OldLootFrame_OnEvent( event )
-  end
-end
-
 local function highlight( frame )
   frame:SetBackdropColor( frame.color.r, frame.color.g, frame.color.b, 0.3 )
 end
@@ -35,15 +27,6 @@ end
 
 local function press( frame )
   frame:SetBackdropColor( frame.color.r, frame.color.g, frame.color.b, 0.7 )
-end
-
-local function restore_loot_buttons()
-  for i = 1, m.api.LOOTFRAME_NUMBUTTONS do
-    local name = "LootButton" .. i
-    local button = _G[ name ]
-
-    if button.OriginalOnClick then button:SetScript( "OnClick", button.OriginalOnClick ) end
-  end
 end
 
 local function create_main_frame()
@@ -151,7 +134,6 @@ local function create_button( parent, index, rows )
 end
 
 ---@class MasterLootCandidateSelectionFrame
----@field restore_loot_buttons fun()
 ---@field create fun()
 ---@field create_candidate_frames fun( candidates: ItemCandidate[], item: DroppedItem, strategy: RollingStrategyType )
 ---@field show fun( item_link: ItemLink )
@@ -290,7 +272,6 @@ function M.new( winner_tracker, roll_controller, config )
   roll_controller.subscribe( "rolling_started", hide )
 
   return {
-    restore_loot_buttons = restore_loot_buttons,
     create = create,
     create_candidate_frames = create_candidate_frames,
     show = show,

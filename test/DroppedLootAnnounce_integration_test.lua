@@ -529,7 +529,7 @@ end
 utils.mock_libraries()
 utils.load_real_stuff( function( module_name )
   if module_name == "src/LootList" then require( "mocks/LootList" ) end
-  if module_name == "src/api/LootFacade" then
+  if module_name == "src/LootFacade" then
     ---@diagnostic disable-next-line: different-requires
     loot_event_facade = require( "mocks/LootFacade" )
     return loot_event_facade

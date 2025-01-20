@@ -7,8 +7,8 @@ local interface = require( "src/Interface" )
 local mock = interface.mock
 require( "src/DebugBuffer" )
 require( "src/Module" )
-require( "src/api/EventFrame" )
-require( "src/api/LootFacade" )
+require( "src/EventFrame" )
+require( "src/LootFacade" )
 local WowApi = require( "src/WowApi" )
 local LootQuality = utils.LootQuality
 

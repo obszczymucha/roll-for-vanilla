@@ -205,8 +205,7 @@ local function create_components()
     M.master_loot_candidates,
     M.loot_award_callback,
     M.master_loot_frame,
-    M.loot_list,
-    M.player_info
+    M.loot_list
   )
 
   M.softres_gui = m.SoftResGui.new( M.api, M.import_encoded_softres_data, M.softres_check, M.softres, clear_data, M.dropped_loot_announce.reset )

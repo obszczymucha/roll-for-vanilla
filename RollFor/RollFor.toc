@@ -20,8 +20,8 @@ src\Interface.lua
 src\WowApi.lua
 src\Config.lua
 src\ItemUtils.lua
-src\api\EventFrame.lua
-src\api\LootFacade.lua
+src\EventFrame.lua
+src\LootFacade.lua
 src\RollingLogicUtils.lua
 src\DroppedLoot.lua
 src\DroppedLootAnnounce.lua

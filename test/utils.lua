@@ -772,6 +772,31 @@ function M.mock_libraries()
   M.mock_library( "AceTimer-3.0", M.mock_ace_timer() )
 end
 
+---@alias ModuleRegistryEntry { module_name: string, variable_name: string, mock: boolean? }
+---@alias ModuleRegistry ModuleRegistryEntry[]
+
+---@param module_registry ModuleRegistry
+---@param target_table table
+function M.load_real_stuff_and_inject( module_registry, target_table )
+  local wrapper = require( "mocks/ModuleWrapper" )
+
+  M.load_real_stuff( function( module_name )
+    for _, entry in ipairs( module_registry ) do
+      local location = string.format( "src/%s", entry.module_name )
+
+      if module_name == location then
+        local module = entry.mock and require( string.format( "mocks/%s", entry.module_name ) ) or require( module_name )
+        local result = wrapper.new( module, function( instance ) target_table[ entry.variable_name ] = instance end )
+        RollFor[ entry.module_name ] = result
+        target_table[ entry.module_name ] = module
+        return result
+      end
+    end
+
+    return require( module_name )
+  end )
+end
+
 function M.load_real_stuff( req )
   local r = req or require
 
@@ -783,8 +808,8 @@ function M.load_real_stuff( req )
   r( "src/Db" )
   r( "src/Types" )
   r( "src/Interface" )
-  r( "src/api/LootFacade" )
-  r( "src/api/EventFrame" )
+  r( "src/LootFacade" )
+  r( "src/EventFrame" )
   r( "src/WowApi" )
   r( "src/PlayerInfo" )
   r( "src/Chat" )
