@@ -261,11 +261,11 @@ function M.new(
   ---@param strategy RollingStrategyType
   local function add_bottom_award_winner_button( result, winners, item, strategy )
     if getn( winners ) ~= 1 then return end
-    if item.type ~= LT.DroppedItem and item.type ~= LT.SoftRessedDroppedItem then return end
+    if item.type ~= LT.DroppedItem and item.type ~= LT.HardRessedDroppedItem and item.type ~= LT.SoftRessedDroppedItem then return end
 
     M.debug.add( "add_bottom_award_winner_button" )
 
-    local dropped_item = assert( item --[[@as DroppedItem|SoftRessedDroppedItem]] )
+    local dropped_item = assert( item --[[@as MasterLootDistributableItem]] )
     local winner = winners[ 1 ]
     if not winner.is_on_master_loot_candidate_list then return end
 
@@ -506,7 +506,13 @@ function M.new(
     local preview = data.status.type == S.Preview
 
     if softres_winners_with_no_rolls( data, current_iteration ) then
-      return softres_winners_content( result, preview and data.status.winners or data.winners, data.item, strategy )
+      if preview then
+        local winners = data.status.winners
+        return softres_winners_content( result, winners, data.item, strategy )
+      else
+        local winners = data.winners
+        return softres_winners_content( result, winners, data.item, strategy )
+      end
     end
 
     make_roll_content( result, data.iterations )
