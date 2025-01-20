@@ -221,7 +221,7 @@ local function create_components()
   M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, db( "auto_loot" ), M.config )
   M.new_group_event = m.NewGroupEvent.new()
   M.auto_group_loot = m.AutoGroupLoot.new( M.loot_list, M.config, m.BossList.zones, M.player_info )
-  M.auto_master_loot = m.AutoMasterLoot.new( M.config, m.BossList.zones )
+  M.auto_master_loot = m.AutoMasterLoot.new( M.config, m.BossList.zones, M.player_info )
   M.softres_roll_gui_data = m.SoftResRollGuiData.new( M.softres, M.group_roster )
   M.tie_roll_gui_data = m.TieRollGuiData.new( M.group_roster )
 
