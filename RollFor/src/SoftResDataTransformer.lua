@@ -7,7 +7,28 @@ local M = {}
 
 local make_roller = m.Types.make_roller
 
----@alias RaidResData table -- TODO: document this
+---@class RaidResData
+---@field metadata RaidResMetadata
+---@field hardreserves RaidResHardRessedItem[]
+---@field softreserves RaidResSoftResEntry[]
+
+---@class RaidResMetadata
+---@field id string -- The id from the url.
+---@field instance number -- Internal RaidRes' id.
+---@field instances string[] -- Instance names.
+---@field origin "raidres"
+
+---@class RaidResHardRessedItem
+---@field id number
+---@field quality ItemQuality
+
+---@class RaidResSoftResEntry
+---@field name string -- Player name.
+---@field items RaidResSoftRessedItem[]
+
+---@class RaidResSoftRessedItem
+---@field id number
+---@field quality ItemQuality
 
 ---@class SoftRessedItem
 ---@field rollers Roller[]
@@ -17,13 +38,6 @@ local make_roller = m.Types.make_roller
 
 ---@alias SoftResData table<ItemId, SoftRessedItem>
 
--- The input is a data from softres.it/raidres.fly.dev format.
--- The output is a map of item_ids.
--- If the item is soft ressed the map contains a list of players
--- including their player_name and the number of rolls.
--- The item data can be enriched with item link and name.
--- The player data can then be enriched with player_class or
--- any additional information needed to process rolls.
 ---@param data RaidResData
 ---@return SoftResData
 function M.transform( data )
