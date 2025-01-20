@@ -1023,26 +1023,26 @@ function SoftResrollPopupContentSpec:should_preview_the_winner()
   } )
 end
 
--- function SoftResrollPopupContentSpec:should_preview_the_winner_with_award_button()
---   -- Given
---   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
---   local group_roster = mock_group_roster( { p1, p2 } )
---   local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new( group_roster )
---   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
---   enable_debug( "RollingPopupContent" )
---   local item = i( "Hearthstone", 123, { rp( p1, 1 ) } )
---   controller.preview( item, 1 )
---
---   -- Then
---   eq( cleanse( popup.get() ), {
---     { type = link,     link = item.link,                          count = 1 },
---     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
---     { type = "button", label = "Award winner",                    width = 130 },
---     { type = "button", label = "Close",                           width = 70 },
---     { type = "button", label = "Award...",                        width = 90 }
---   } )
--- end
---
+function SoftResrollPopupContentSpec:should_preview_the_winner_with_award_button()
+  -- Given
+  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
+  local group_roster = mock_group_roster( { p1, p2 } )
+  local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new( group_roster )
+  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
+  enable_debug( "RollingPopupContent" )
+  local item = i( "Hearthstone", 123, { rp( p1, 1 ) } )
+  controller.preview( item, 1 )
+
+  -- Then
+  eq( cleanse( popup.get() ), {
+    { type = link,     link = item.link,                          count = 1 },
+    { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
+    { type = "button", label = "Award winner",                    width = 130 },
+    { type = "button", label = "Close",                           width = 70 },
+    { type = "button", label = "Award...",                        width = 90 }
+  } )
+end
+
 function SoftResrollPopupContentSpec:should_preview_the_winners()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
