@@ -267,6 +267,7 @@ function M.new()
 
   local function rolling_canceled()
     M.debug.add( "rolling_canceled" )
+    if not status then return end
     status.type = S.Canceled
   end
 

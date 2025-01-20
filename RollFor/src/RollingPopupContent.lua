@@ -153,7 +153,7 @@ end
 ---@param loot_list SoftResLootList
 ---@param config Config
 ---@param raid_roll function
----@param roll_item function
+---@param roll_item fun( item: Item, item_count: number )
 ---@param insta_raid_roll function
 ---@param select_player function
 function M.new(
@@ -287,7 +287,18 @@ function M.new(
   ---@param data RollTrackerData
   local function roll_button( data )
     M.debug.add( "roll_button" )
-    return { type = "button", label = "Roll", width = 70, on_click = function() roll_item( data.item, data.item_count ) end }
+    return {
+      type = "button",
+      label = "Roll",
+      width = 70,
+      on_click = function()
+        if not data.item_count then
+          m.trace( "Item count is nil.", data )
+        end
+
+        roll_item( data.item, data.item_count )
+      end
+    }
   end
 
   local function close_button()
@@ -350,7 +361,18 @@ function M.new(
     add_bottom_award_winner_button( result, data.winners, data.item, strategy )
 
     if config.raid_roll_again() then
-      table.insert( result, { type = "button", label = "Raid roll again", width = 130, on_click = function() raid_roll( data.item, data.item_count ) end } )
+      table.insert( result, {
+        type = "button",
+        label = "Raid roll again",
+        width = 130,
+        on_click = function()
+          if not data.item_count then
+            m.trace( "Item count is nil.", data )
+          end
+
+          raid_roll( data.item, data.item_count )
+        end
+      } )
     end
 
     table.insert( result, close_button() )
@@ -368,7 +390,18 @@ function M.new(
     add_bottom_award_winner_button( result, data.winners, data.item, strategy )
 
     if config.raid_roll_again() then
-      table.insert( result, { type = "button", label = "Raid roll again", width = 130, on_click = function() insta_raid_roll( data.item, data.item_count ) end } )
+      table.insert( result, {
+        type = "button",
+        label = "Raid roll again",
+        width = 130,
+        on_click = function()
+          if not data.item_count then
+            m.trace( "Item count is nil.", data )
+          end
+
+          insta_raid_roll( data.item, data.item_count )
+        end
+      } )
     end
 
     table.insert( result, close_button() )

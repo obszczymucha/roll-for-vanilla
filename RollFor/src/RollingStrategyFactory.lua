@@ -52,6 +52,7 @@ function M.new(
   ---@param on_rolling_finished RollingFinishedCallback
   ---@param roll_controller_facade RollControllerFacade
   local function normal_roll( item, item_count, message, seconds, on_rolling_finished, roll_controller_facade )
+    print( string.format( "RSF: %s", item_count ) )
     local players = group_roster.get_all_players_in_my_group()
     local rollers = m.map( players, function( player )
       return make_rolling_player( player.name, player.class, player.online, 1 )
@@ -62,7 +63,7 @@ function M.new(
       ace_timer,
       rollers,
       item,
-      item_count or 1,
+      item_count,
       message,
       seconds,
       on_rolling_finished,
@@ -99,7 +100,7 @@ function M.new(
       ace_timer,
       softressing_players,
       item,
-      item_count or 1,
+      item_count,
       seconds,
       on_rolling_finished,
       on_softres_rolls_available,

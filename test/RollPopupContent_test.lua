@@ -886,26 +886,31 @@ function NormalRollPopupContentSpec:should_display_the_transmog_winner()
   } )
 end
 
-function NormalRollPopupContentSpec:should_display_the_transmog_winner2()
+function NormalRollPopupContentSpec:should_replicate_the_single_player_tie_roll_bug()
   -- Given
-  local p1, p2, p3 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2, p3 } )
+  local p1, p2, p3, p4 = p( "Marovingiann", C.Mage ), p( "Zuljane", C.Shaman ), p( "Vossl", C.Warlock ), p( "Ynghildre", C.Paladin )
+  local group_roster = mock_group_roster( { p1, p2, p3, p4 } )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone" )
+  controller.preview( item, 1 )
   controller.start( RS.NormalRoll, item, 1, nil, 8 )
-  roll( p2.name, 42, 1, 98 )
-  roll( p1.name, 69, 1, 98 )
+  roll( p1.name, 25, 1, 100 )
+  roll( p2.name, 35, 1, 99 )
+  roll( p3.name, 100, 1, 100 )
+  roll( p4.name, 63, 1, 98 )
   repeating_tick( 8 )
 
   -- Then
   eq( cleanse( popup.get() ), {
-    { type = link,     link = item.link,                                     count = 1 },
-    { type = "roll",   roll_type = RT.Transmog,                              player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
-    { type = "roll",   roll_type = RT.Transmog,                              player_name = p2.name, player_class = p2.class, roll = 42 },
-    { type = "text",   value = "Psikutas wins the transmog roll with a 69.", padding = 11 },
-    { type = "button", label = "Award winner",                               width = 130 },
-    { type = "button", label = "Raid roll",                                  width = 90 },
-    { type = "button", label = "Close",                                      width = 70 }
+    { type = link,     link = item.link,                                    count = 1 },
+    { type = "roll",   roll_type = RT.MainSpec,                             player_name = p3.name, player_class = p3.class, roll = 100, padding = 11 },
+    { type = "roll",   roll_type = RT.MainSpec,                             player_name = p1.name, player_class = p1.class, roll = 25 },
+    { type = "roll",   roll_type = RT.OffSpec,                              player_name = p2.name, player_class = p2.class, roll = 35 },
+    { type = "roll",   roll_type = RT.Transmog,                             player_name = p4.name, player_class = p4.class, roll = 63 },
+    { type = "text",   value = "Vossl wins the main-spec roll with a 100.", padding = 11 },
+    { type = "button", label = "Award winner",                              width = 130 },
+    { type = "button", label = "Raid roll",                                 width = 90 },
+    { type = "button", label = "Close",                                     width = 70 }
   } )
 end
 
@@ -1018,6 +1023,26 @@ function SoftResrollPopupContentSpec:should_preview_the_winner()
   } )
 end
 
+-- function SoftResrollPopupContentSpec:should_preview_the_winner_with_award_button()
+--   -- Given
+--   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
+--   local group_roster = mock_group_roster( { p1, p2 } )
+--   local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new( group_roster )
+--   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
+--   enable_debug( "RollingPopupContent" )
+--   local item = i( "Hearthstone", 123, { rp( p1, 1 ) } )
+--   controller.preview( item, 1 )
+--
+--   -- Then
+--   eq( cleanse( popup.get() ), {
+--     { type = link,     link = item.link,                          count = 1 },
+--     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
+--     { type = "button", label = "Award winner",                    width = 130 },
+--     { type = "button", label = "Close",                           width = 70 },
+--     { type = "button", label = "Award...",                        width = 90 }
+--   } )
+-- end
+--
 function SoftResrollPopupContentSpec:should_preview_the_winners()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )

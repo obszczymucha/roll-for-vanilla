@@ -80,18 +80,21 @@ local function select_player( item, strategy )
 end
 
 ---@param item Item
-local function raid_roll_item( item, count )
-  M.roll_controller.start( RS.RaidRoll, item, count )
+---@param item_count number
+local function raid_roll_item( item, item_count )
+  M.roll_controller.start( RS.RaidRoll, item, item_count )
 end
 
 ---@param item Item
-local function insta_raid_roll_item( item, count )
-  M.roll_controller.start( RS.InstaRaidRoll, item, count )
+---@param item_count number
+local function insta_raid_roll_item( item, item_count )
+  M.roll_controller.start( RS.InstaRaidRoll, item, item_count )
 end
 
+---@param item Item
+---@param item_count number
 local function roll_item( item, item_count )
-  local count = item_count or M.loot_list.count( item.id )
-  M.roll_controller.start( RS.SoftResRoll, item, count, nil, M.config.default_rolling_time_seconds() )
+  M.roll_controller.start( RS.SoftResRoll, item, item_count, nil, M.config.default_rolling_time_seconds() )
 end
 
 local function create_components()

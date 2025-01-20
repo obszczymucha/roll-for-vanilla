@@ -123,7 +123,7 @@ function M.new( loot_facade, item_utils, dummy_items_fn )
   local function count( item_id )
     local result = 0
 
-    for _, item in ipairs( items ) do
+    for _, item in pairs( items ) do
       if item.id == item_id then
         result = result + 1
       end

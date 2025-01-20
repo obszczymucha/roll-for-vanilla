@@ -218,4 +218,33 @@ function LootListSpec.should_sort_the_items_by_quality_and_then_name()
   eq( result[ 3 ].quality, LootQuality.Rare )
 end
 
+function LootListSpec.should_count_items_properly_if_one_gets_removed()
+  local loot_facade = LootFacade.new()
+  loot_facade.get_item_count = mock_value( 3 )
+  loot_facade.is_coin = mock_value( false, false )
+  local links = { item_link( "Small item", 111 ), item_link( "Big item", 222 ), item_link( "Average item", 333 ) }
+  loot_facade.get_link = mock_values( links )
+  loot_facade.get_info = mock_value(
+    { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Rare },
+    { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Epic },
+    { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Rare }
+  )
+  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, new_softres() )
+
+  -- When
+  LootFacade.notify( "LootOpened" )
+
+  -- Then
+  eq( loot_list.count( 111 ), 1 )
+  eq( loot_list.count( 222 ), 1 )
+  eq( loot_list.count( 333 ), 1 )
+
+  -- When
+  LootFacade.notify( "LootSlotCleared", 1 )
+  eq( loot_list.count( 111 ), 0 )
+  eq( loot_list.count( 222 ), 1 )
+  eq( loot_list.count( 333 ), 1 )
+end
+
 os.exit( lu.LuaUnit.run() )
