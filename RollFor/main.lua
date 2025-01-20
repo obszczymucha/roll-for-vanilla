@@ -51,7 +51,7 @@ local function trade_complete_callback( recipient, items_given, items_received )
       local item_name = item_id and M.dropped_loot.get_dropped_item_name( item_id )
 
       if item_id and item_name then
-        M.on_loot_awarded( recipient, item_id, item.link )
+        M.loot_award_callback.on_loot_awarded( recipient, item_id, item.link )
       end
     end
   end
