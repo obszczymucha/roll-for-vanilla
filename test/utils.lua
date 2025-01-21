@@ -682,6 +682,7 @@ function M.player( name, config )
   m_target = nil
   M.mock_unit_name()
   M.mock( "IsInGroup", false )
+  M.mock( "GetMasterLootCandidate", nil )
   M.mock_loot_frame()
   local rf = M.load_roll_for()
   M.fire_event( "PLAYER_ENTERING_WORLD" )

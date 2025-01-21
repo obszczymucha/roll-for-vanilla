@@ -49,7 +49,8 @@ local PT = m.Types.PlayerType
 
 ---@param roll_tracker RollTracker
 ---@param player_info PlayerInfo
-function M.new( roll_tracker, player_info )
+---@param ml_candidates MasterLootCandidates
+function M.new( roll_tracker, player_info, ml_candidates )
   local callbacks = {}
 
   local function notify_subscribers( event_type, data )
@@ -73,7 +74,8 @@ function M.new( roll_tracker, player_info )
   ---@param item MasterLootDistributableItem
   ---@param count number
   local function preview( item, count )
-    roll_tracker.preview( item, count )
+    local candidates = ml_candidates.get()
+    roll_tracker.preview( item, count, candidates )
     local color = get_color( item.quality )
 
     notify_subscribers( "border_color", { color = color } )
@@ -117,7 +119,8 @@ function M.new( roll_tracker, player_info )
   end
 
   local function finish()
-    roll_tracker.finish()
+    local candidates = ml_candidates.get()
+    roll_tracker.finish( candidates )
     notify_subscribers( "finish" )
   end
 

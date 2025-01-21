@@ -18,7 +18,7 @@ local getn = table.getn
 ---@field on_recipient_inventory_full fun()
 ---@field on_player_is_too_far fun()
 ---@field on_unknown_error_message fun( message: string )
----@field on_confirm fun( player: ItemCandidate|Winner, item: DroppedItem|HardRessedDroppedItem|SoftRessedDroppedItem )
+---@field on_confirm fun( player: ItemCandidate|Winner, item: MasterLootDistributableItem )
 ---@field show_loot_candidates_frame fun( item: DroppedItem, strategy: RollingStrategyType )
 ---@field on_loot_slot_cleared fun( slot: number )
 ---@field on_loot_received fun( player_name: string, item_id: number, item_link: string )
@@ -59,7 +59,7 @@ function M.new( master_loot_candidates, loot_award_callback, player_selection_fr
   end
 
   ---@param player ItemCandidate|Winner
-  ---@param item Item
+  ---@param item MasterLootDistributableItem
   local function on_confirm( player, item )
     M.debug.add( string.format( "on_confirm(%s [%s], %s)", player and player.name or "nil", player and player.type or "nil", item and item.id or "nil" ) )
     local slot = loot_list.get_slot( item.id )

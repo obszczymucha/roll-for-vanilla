@@ -21,13 +21,12 @@ local button_defaults = {
 
 ---@param popup_builder table
 ---@param roll_controller RollController
----@param confirm_award fun( player: Winner, item: Item )
+---@param confirm_award fun( player: ItemCandidate|Winner, item: Item )
 ---@param RollingPopupContent table
 ---@param db table
 ---@param center_point table
----@param master_loot_candidates MasterLootCandidates
 ---@param roll_tracker RollTracker
-function M.new( popup_builder, roll_controller, confirm_award, RollingPopupContent, db, center_point, master_loot_candidates, roll_tracker )
+function M.new( popup_builder, roll_controller, confirm_award, RollingPopupContent, db, center_point, roll_tracker )
   local popup
   ---@type ShowMasterLootConfirmationData?
   local data_for_error
@@ -82,7 +81,7 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
         data.item and data.winners[ 1 ].name == player.name and
         data.item.link == item.link and data.winners[ 1 ]
 
-    ---@type 
+    ---@type
     local winning_player          = winner or player
 
     if rolling_strategy == RS.RaidRoll or not rolling_strategy and current_iteration and current_iteration.rolling_strategy == RS.RaidRoll and winner then
@@ -97,7 +96,7 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
         function( w ) table.insert( content, w ) end )
     end
 
-    table.insert( content, { type = "text", value = "Would you like to award this item?" } )
+    table.insert( content, { type = "text", value = string.format( "Would you like to award this item to %s?", c( player.name, player.class ) ) } )
 
     if error then
       local name = c( winning_player.name, winning_player.class )
@@ -116,11 +115,6 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
       label = "Yes",
       width = 80,
       on_click = function()
-        if not winning_player.value then
-          local p = master_loot_candidates.find( winning_player.name )
-          winning_player.value = p and p.value
-        end
-
         if confirm_award then confirm_award( winning_player, item ) end
       end
     } )

@@ -33,24 +33,27 @@ local getn = table.getn
 ---@field ignored_rolls RollData[]?
 ---@field tied_roll number?
 
+-- The status data is different for each type. TODO: split this.
 ---@class RollStatus
 ---@field type RollingStatus
 ---@field seconds_left number?
 ---@field winners RollingPlayer[]?
+---@field ml_candidates ItemCandidate[]?
 
 ---@alias RollTrackerData {
 ---  item: Item|MasterLootDistributableItem,
 ---  item_count: number,
 ---  status: RollStatus,
 ---  iterations: RollIteration[],
----  winners: Winner[] }
+---  winners: Winner[],
+---  ml_candidates: ItemCandidate[] }
 
 ---@class RollTracker
----@field preview fun( item: MasterLootDistributableItem, count: number )
+---@field preview fun( item: MasterLootDistributableItem, count: number, ml_candidates: ItemCandidate[] )
 ---@field start fun( rolling_strategy: RollingStrategyType, item: Item|DroppedItem|SoftRessedDroppedItem, count: number, info: string?, seconds: number?, required_rolling_players: RollingPlayer[]? )
 ---@field waiting_for_rolls fun()
 ---@field add_winners fun( winners: Winner[] )
----@field finish fun()
+---@field finish fun( ml_candidates: ItemCandidate[] )
 ---@field rolling_canceled fun()
 ---@field tie fun( required_rolling_players: RollingPlayer[], roll_type: RollType, roll: number )
 ---@field tie_start fun()
@@ -67,19 +70,14 @@ function M.new()
   local item_on_roll_count = 0
   local iterations = {}
   local current_iteration = 0
+  local master_loot_candidates = {}
 
   ---@type Winner[]
   local winners = {}
 
-  local function clear_iterations()
-    clear_table( iterations )
-    iterations.n = 0
-  end
-
-  local function clear_winners()
-    clear_table( winners )
-    ---@diagnostic disable-next-line: inject-field
-    winners.n = 0
+  local function lua50_clear_table( t )
+    clear_table( t )
+    t.n = 0
   end
 
   local function update_roll( rolls, data )
@@ -136,17 +134,21 @@ function M.new()
 
   ---@param item MasterLootDistributableItem
   ---@param count number
-  local function preview( item, count )
+  ---@param ml_candidates ItemCandidate[]
+  local function preview( item, count, ml_candidates )
     M.debug.add( "preview" )
-    clear_iterations()
-    clear_winners()
+    lua50_clear_table( iterations )
+    lua50_clear_table( winners )
+    lua50_clear_table( master_loot_candidates )
     current_iteration = 1
     status = { type = S.Preview }
     item_on_roll = item
     item_on_roll_count = count
 
+    local ressed_item = (item.type == LT.SoftRessedDroppedItem or item.type == LT.HardRessedDroppedItem)
+
     table.insert( iterations, {
-      rolling_strategy = item.type == LT.SoftRessedDroppedItem and RS.SoftResRoll or RS.NormalRoll,
+      rolling_strategy = ressed_item and RS.SoftResRoll or RS.NormalRoll,
       rolls = {}
     } )
 
@@ -161,6 +163,10 @@ function M.new()
         end
       end
     end
+
+    if ressed_item then
+      status.ml_candidates = ml_candidates
+    end
   end
 
 
@@ -172,8 +178,9 @@ function M.new()
   ---@param required_rolling_players RollingPlayer[]?
   local function start( rolling_strategy, item, count, info, seconds, required_rolling_players )
     M.debug.add( "start" )
-    clear_iterations()
-    clear_winners()
+    lua50_clear_table( iterations )
+    lua50_clear_table( winners )
+    lua50_clear_table( master_loot_candidates )
     current_iteration = 1
     status = { type = S.InProgress, seconds_left = seconds }
 
@@ -202,9 +209,20 @@ function M.new()
     end
   end
 
-  local function finish()
+  ---@param ml_candidates ItemCandidate[]
+  local function update_ml_candidates( ml_candidates )
+    lua50_clear_table( master_loot_candidates )
+
+    for _, ml_candidate in ipairs( ml_candidates ) do
+      table.insert( master_loot_candidates, ml_candidate )
+    end
+  end
+
+  ---@param ml_candidates ItemCandidate[]
+  local function finish( ml_candidates )
     M.debug.add( "finish" )
     status = { type = S.Finished }
+    update_ml_candidates( ml_candidates )
   end
 
   --- @param players RollingPlayer[]
@@ -248,7 +266,8 @@ function M.new()
       item_count = item_on_roll_count,
       status = status,
       iterations = iterations,
-      winners = winners
+      winners = winners,
+      ml_candidates = master_loot_candidates
     }, current_iteration > 0 and iterations[ current_iteration ] or nil
   end
 
@@ -273,8 +292,9 @@ function M.new()
 
   local function clear()
     M.debug.add( "clear" )
-    clear_iterations()
-    clear_winners()
+    lua50_clear_table( iterations )
+    lua50_clear_table( winners )
+    lua50_clear_table( master_loot_candidates )
     current_iteration = 0
     status = nil
     item_on_roll = nil

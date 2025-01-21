@@ -52,7 +52,6 @@ function M.new(
   ---@param on_rolling_finished RollingFinishedCallback
   ---@param roll_controller_facade RollControllerFacade
   local function normal_roll( item, item_count, message, seconds, on_rolling_finished, roll_controller_facade )
-    print( string.format( "RSF: %s", item_count ) )
     local players = group_roster.get_all_players_in_my_group()
     local rollers = m.map( players, function( player )
       return make_rolling_player( player.name, player.class, player.online, 1 )

@@ -5,7 +5,6 @@ if m.MasterLootCandidateSelectionFrame then return end
 
 local M = {}
 
-local _G = getfenv()
 local icon_width = 16
 local button_width = 85 + icon_width
 local button_height = 16

@@ -139,7 +139,8 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
 
   local roll_controller = require( "src/RollController" ).new(
     roll_tracker,
-    player_info
+    player_info,
+    ml_candidates
   )
 
   local master_loot_frame = require( "src/MasterLootCandidateSelectionFrame" ).new( winner_tracker, roll_controller, config )
@@ -279,9 +280,10 @@ function RaidRollPopupContentSpec:should_display_the_winner()
 
   -- Then
   eq( cleanse( popup.get() ), {
-    { type = link,     count = 1,   link = item.link },
-    { type = "text",   padding = 8, value = "Jogobobek wins the raid-roll." },
-    { type = "button", width = 70,  label = "Close" }
+    { type = link,     count = 1,              link = item.link },
+    { type = "text",   padding = 8,            value = "Jogobobek wins the raid-roll." },
+    { type = "button", label = "Award winner", width = 130 },
+    { type = "button", width = 70,             label = "Close" }
   } )
 end
 
@@ -470,9 +472,10 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner()
 
   -- Then
   eq( cleanse( popup.get() ), {
-    { type = link,     count = 1,   link = item.link },
-    { type = "text",   padding = 8, value = "Obszczymucha wins the insta raid-roll." },
-    { type = "button", width = 70,  label = "Close" }
+    { type = link,     count = 1,              link = item.link },
+    { type = "text",   padding = 8,            value = "Obszczymucha wins the insta raid-roll." },
+    { type = "button", label = "Award winner", width = 130 },
+    { type = "button", width = 70,             label = "Close" }
   } )
 end
 
@@ -530,10 +533,11 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_
 
   -- Then
   eq( cleanse( popup.get() ), {
-    { type = link,     count = 1,   link = item.link },
-    { type = "text",   padding = 8, value = "Obszczymucha wins the insta raid-roll." },
-    { type = "button", width = 130, label = "Raid roll again" },
-    { type = "button", width = 70,  label = "Close" }
+    { type = link,     count = 1,              link = item.link },
+    { type = "text",   padding = 8,            value = "Obszczymucha wins the insta raid-roll." },
+    { type = "button", label = "Award winner", width = 130 },
+    { type = "button", width = 130,            label = "Raid roll again" },
+    { type = "button", width = 70,             label = "Close" }
   } )
 end
 
@@ -953,6 +957,7 @@ function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_i
   eq( cleanse( popup.get() ), {
     { type = link,     link = item.link,                        count = 1 },
     { type = "text",   value = "Ohhaimark wins the raid-roll.", padding = 8 },
+    { type = "button", label = "Award winner",                  width = 130 },
     { type = "button", label = "Close",                         width = 70 }
   } )
 end
@@ -1018,6 +1023,7 @@ function SoftResrollPopupContentSpec:should_preview_the_winner()
   eq( cleanse( popup.get() ), {
     { type = link,     link = item.link,                          count = 1 },
     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
+    { type = "button", label = "Award winner",                    width = 130 },
     { type = "button", label = "Close",                           width = 70 },
     { type = "button", label = "Award...",                        width = 90 }
   } )
@@ -1027,8 +1033,7 @@ function SoftResrollPopupContentSpec:should_preview_the_winner_with_award_button
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( { p1, p2 } )
-  local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new( group_roster )
-  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
+  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster } )
   enable_debug( "RollingPopupContent" )
   local item = i( "Hearthstone", 123, { rp( p1, 1 ) } )
   controller.preview( item, 1 )

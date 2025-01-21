@@ -257,9 +257,10 @@ function M.new(
 
   ---@param result table
   ---@param winners Winner[]
+  ---@param ml_candidates ItemCandidate[]
   ---@param item Item|MasterLootDistributableItem
   ---@param strategy RollingStrategyType
-  local function add_bottom_award_winner_button( result, winners, item, strategy )
+  local function add_bottom_award_winner_button( result, winners, ml_candidates, item, strategy )
     if getn( winners ) ~= 1 then return end
     if item.type ~= LT.DroppedItem and item.type ~= LT.HardRessedDroppedItem and item.type ~= LT.SoftRessedDroppedItem then return end
 
@@ -267,7 +268,8 @@ function M.new(
 
     local dropped_item = assert( item --[[@as MasterLootDistributableItem]] )
     local winner = winners[ 1 ]
-    if not winner.is_on_master_loot_candidate_list then return end
+    m.pdump( ml_candidates )
+    if not m.table_contains_value( ml_candidates, winner.name, function( candidate ) return type( candidate ) == "table" and candidate.name end ) then return end
 
     table.insert( result, {
       type = "button",
@@ -316,9 +318,10 @@ function M.new(
 
   ---@param result table
   ---@param winners Winner[]
+  ---@param ml_candidates ItemCandidate[]
   ---@param item Item|MasterLootDistributableItem
   ---@param strategy RollingStrategyType
-  local function softres_winners_content( result, winners, item, strategy )
+  local function softres_winners_content( result, winners, ml_candidates, item, strategy )
     local last_award_button_visible = false
     local winner_count = getn( winners )
 
@@ -337,7 +340,7 @@ function M.new(
     end
 
     if winner_count == 1 then
-      add_bottom_award_winner_button( result, winners, item, strategy )
+      add_bottom_award_winner_button( result, winners, ml_candidates, item, strategy )
     end
 
     table.insert( result, close_button() )
@@ -358,7 +361,7 @@ function M.new(
         { type = "info", value = string.format( "Use %s to enable auto raid-roll.", blue( "/rf config auto-rr" ) ), anchor = "RollForRollingFrame" } )
     end
 
-    add_bottom_award_winner_button( result, data.winners, data.item, strategy )
+    add_bottom_award_winner_button( result, data.winners, data.ml_candidates, data.item, strategy )
 
     if config.raid_roll_again() then
       table.insert( result, {
@@ -387,7 +390,7 @@ function M.new(
     m.map( M.insta_raid_roll_winners_content( data.winners, data.item, strategy, roll_controller.show_master_loot_confirmation ),
       function( winner ) table.insert( result, winner ) end )
 
-    add_bottom_award_winner_button( result, data.winners, data.item, strategy )
+    add_bottom_award_winner_button( result, data.winners, data.ml_candidates, data.item, strategy )
 
     if config.raid_roll_again() then
       table.insert( result, {
@@ -508,10 +511,10 @@ function M.new(
     if softres_winners_with_no_rolls( data, current_iteration ) then
       if preview then
         local winners = data.status.winners
-        return softres_winners_content( result, winners, data.item, strategy )
+        return softres_winners_content( result, winners, data.status.ml_candidates, data.item, strategy )
       else
         local winners = data.winners
-        return softres_winners_content( result, winners, data.item, strategy )
+        return softres_winners_content( result, winners, data.ml_candidates, data.item, strategy )
       end
     end
 
@@ -560,7 +563,7 @@ function M.new(
         M.roll_winner_content( data.winners, data.item, current_iteration and current_iteration.rolling_strategy, roll_controller.show_master_loot_confirmation ),
         function( winner ) table.insert( result, winner ) end )
 
-      add_bottom_award_winner_button( result, data.winners, data.item, strategy )
+      add_bottom_award_winner_button( result, data.winners, data.ml_candidates, data.item, strategy )
 
       if not softres_roll( current_iteration ) then
         table.insert( result, { type = "button", label = "Raid roll", width = 90, on_click = function() raid_roll( data.item ) end } )

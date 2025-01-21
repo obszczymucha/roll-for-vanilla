@@ -61,7 +61,7 @@ local function trade_complete_callback( recipient, items_given, items_received )
     if item then
       local item_id = M.item_utils.get_item_id( item.link )
 
-      if M.awarded_loot.has_item_been_awarded( recipient, item_id ) then
+      if item_id and M.awarded_loot.has_item_been_awarded( recipient, item_id ) then
         M.unaward_item( recipient, item_id, item.link )
       end
     end
@@ -123,11 +123,22 @@ local function create_components()
   ---@type ItemUtils
   M.item_utils = m.ItemUtils
 
+  -- TODO: Add type.
   M.version_broadcast = m.VersionBroadcast.new( db( "version_broadcast" ), M.player_info, version.str )
+
+  ---@type AwardedLoot
   M.awarded_loot = m.AwardedLoot.new( db( "awarded_loot" ) )
+
+  ---@type GroupRoster
   M.group_roster = m.GroupRoster.new( M.api(), M.player_info )
+
+  -- TODO: Add type.
   M.softres_db = db( "softres" )
+
+  -- TODO: Add type.
   M.unfiltered_softres = m.SoftRes.new( M.softres_db )
+
+  -- TODO: Add type.
   M.name_matcher = m.NameManualMatcher.new(
     db( "name_matcher" ), M.api,
     M.absent_softres( M.unfiltered_softres ),
@@ -155,6 +166,7 @@ local function create_components()
   ---@type LootFacade
   M.loot_facade = m.LootFacade.new( m.EventFrame.new( m.api ), m.api )
 
+  -- TODO: Add type.
   ---@diagnostic disable-next-line: unused-local, unused-function
   local function get_dummy_items()
     ---@diagnostic disable-next-line: unused-function
@@ -183,22 +195,26 @@ local function create_components()
     return result
   end
 
+  ---@type LootList
   M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils ) --, get_dummy_items )
 
   ---@type SoftResLootList
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
 
+  -- TODO: Add type.
   M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.loot_list, M.chat, M.dropped_loot, M.softres, M.winner_tracker, M.player_info )
 
   ---@type RollTracker
   M.roll_tracker = m.RollTracker.new()
 
-  ---@type RollController
-  M.roll_controller = m.RollController.new( M.roll_tracker, M.player_info, M.rolling_strategy_factory, M.config, M.rolling_logic, M.winner_tracker )
-  M.master_loot_frame = m.MasterLootCandidateSelectionFrame.new( M.winner_tracker, M.roll_controller, M.config )
-
   ---@type MasterLootCandidates
   M.master_loot_candidates = m.MasterLootCandidates.new( M.api(), M.group_roster ) -- remove group_roster for testing (dummy candidates)
+
+  ---@type RollController
+  M.roll_controller = m.RollController.new( M.roll_tracker, M.player_info, M.master_loot_candidates )
+
+  ---@type MasterLootCandidateSelectionFrame
+  M.master_loot_frame = m.MasterLootCandidateSelectionFrame.new( M.winner_tracker, M.roll_controller, M.config )
 
   ---@type LootAwardCallback
   M.loot_award_callback = m.LootAwardCallback.new( M.awarded_loot, M.roll_controller, M.winner_tracker )
@@ -211,28 +227,51 @@ local function create_components()
     M.loot_list
   )
 
+  -- TODO: Add type.
   M.softres_gui = m.SoftResGui.new( M.api, M.import_encoded_softres_data, M.softres_check, M.softres, clear_data, M.dropped_loot_announce.reset )
 
+  -- TODO: Add type.
   M.trade_tracker = m.TradeTracker.new(
     M.ace_timer,
     trade_complete_callback
   )
 
+  -- TODO: Add type.
   M.usage_printer = m.UsagePrinter.new( M.config )
+
+  -- TODO: Add type.
   M.minimap_button = m.MinimapButton.new( M.api, db( "minimap_button" ), M.softres_gui.toggle, M.softres_check, M.config )
+
+  -- TODO: Add type.
   M.master_loot_warning = m.MasterLootWarning.new( M.api, M.config, m.BossList.zones, M.player_info )
+
+  -- TODO: Add type.
   M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, db( "auto_loot" ), M.config )
+
+  -- TODO: Add type.
   M.new_group_event = m.NewGroupEvent.new()
+
+  -- TODO: Add type.
   M.auto_group_loot = m.AutoGroupLoot.new( M.loot_list, M.config, m.BossList.zones, M.player_info )
+
+  -- TODO: Add type.
   M.auto_master_loot = m.AutoMasterLoot.new( M.config, m.BossList.zones, M.player_info )
+
+  -- TODO: Add type.
   M.softres_roll_gui_data = m.SoftResRollGuiData.new( M.softres, M.group_roster )
+
+  -- TODO: Add type.
   M.tie_roll_gui_data = m.TieRollGuiData.new( M.group_roster )
 
   local rolling_popup_db = db( "rolling_popup" )
 
   ---@type LootAutoProcess
   M.loot_auto_process = m.LootAutoProcess.new( M.config, M.roll_tracker, M.loot_list, M.roll_controller, M.player_info )
+
+  -- TODO: Add type.
   M.rolling_popup = m.RollingPopup.new( m.PopupBuilder.new( m.FrameBuilder ), rolling_popup_db, M.config, M.roll_controller )
+
+  -- TODO: Add type.
   M.rolling_popup_content = m.RollingPopupContent.new(
     M.rolling_popup,
     M.roll_controller,
@@ -245,6 +284,7 @@ local function create_components()
     select_player
   )
 
+  -- TODO: Add type.
   M.loot_award_popup = m.LootAwardPopup.new(
     m.PopupBuilder.new( m.FrameBuilder ),
     M.roll_controller,
@@ -252,12 +292,58 @@ local function create_components()
     m.RollingPopupContent,
     rolling_popup_db,
     m.RollingPopup.center_point,
-    M.master_loot_candidates,
     M.roll_tracker
   )
 
+  -- TODO: Add type.
   M.welcome_popup = m.WelcomePopup.new( m.FrameBuilder, M.ace_timer, db( "welcome_popup" ) )
 
+  ---@type LootFrame
+  M.loot_frame = m.LootFrame.new(
+    m.FrameBuilder,
+    M.loot_list,
+    db( "loot_frame" ),
+    M.roll_controller,
+    M.roll_tracker,
+    M.config,
+    M.player_info
+  )
+
+  -- TODO: Add type.
+  M.roll_for_ad = m.RollForAd.new( M.player_info )
+
+  ---@type RollingStrategyFactory
+  M.rolling_strategy_factory = m.RollingStrategyFactory.new(
+    M.group_roster,
+    M.loot_list,
+    M.master_loot_candidates,
+    M.chat,
+    M.ace_timer,
+    M.winner_tracker,
+    M.config,
+    M.softres,
+    M.player_info
+  )
+
+  ---@type RollingLogic
+  M.rolling_logic = m.RollingLogic.new(
+    M.chat,
+    M.ace_timer,
+    M.roll_controller,
+    M.rolling_strategy_factory,
+    M.master_loot_candidates,
+    M.winner_tracker,
+    M.config
+  )
+
+  ---@type ArgsParser
+  M.args_parser = m.ArgsParser.new( m.ItemUtils, M.config )
+
+  -- TODO: Add type.
+  M.roll_result_announcer = m.RollResultAnnouncer.new( M.chat, M.roll_controller, M.roll_tracker, M.config )
+end
+
+local function subscribe_for_component_events()
   M.config.subscribe( "show_ml_warning", function( enabled )
     if enabled then
       M.master_loot_warning.on_player_target_changed()
@@ -288,47 +374,6 @@ local function create_components()
     M.auto_group_loot.on_loot_slot_cleared()
     M.loot_frame.update()
   end )
-
-  ---@type LootFrame
-  M.loot_frame = m.LootFrame.new(
-    m.FrameBuilder,
-    M.loot_list,
-    db( "loot_frame" ),
-    M.roll_controller,
-    M.roll_tracker,
-    M.config,
-    M.player_info
-  )
-
-  M.roll_for_ad = m.RollForAd.new( M.player_info )
-
-  ---@type RollingStrategyFactory
-  M.rolling_strategy_factory = m.RollingStrategyFactory.new(
-    M.group_roster,
-    M.loot_list,
-    M.master_loot_candidates,
-    M.chat,
-    M.ace_timer,
-    M.winner_tracker,
-    M.config,
-    M.softres,
-    M.player_info
-  )
-
-  ---@type RollingLogic
-  M.rolling_logic = m.RollingLogic.new(
-    M.chat,
-    M.ace_timer,
-    M.roll_controller,
-    M.rolling_strategy_factory,
-    M.master_loot_candidates,
-    M.winner_tracker,
-    M.config
-  )
-
-  ---@type ArgsParser
-  M.args_parser = m.ArgsParser.new( m.ItemUtils, M.config )
-  M.roll_result_announcer = m.RollResultAnnouncer.new( M.chat, M.roll_controller, M.roll_tracker, M.config )
 end
 
 function M.import_softres_data( softres_data )
@@ -679,6 +724,7 @@ end
 function M.on_first_enter_world()
   setup_storage()
   create_components()
+  subscribe_for_component_events()
   setup_slash_commands()
 
   info( string.format( "Loaded (%s).", hl( string.format( "v%s", version.str ) ) ) )
