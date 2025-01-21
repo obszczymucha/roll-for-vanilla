@@ -156,6 +156,7 @@ function M.new()
       ---@type RollingPlayer[]
       local candidates = item.sr_players
       status.winners = candidates
+      status.ml_candidates = ml_candidates
 
       for _, player in ipairs( candidates or {} ) do
         for _ = 1, player.rolls or 1 do
