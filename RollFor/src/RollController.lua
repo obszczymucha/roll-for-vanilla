@@ -228,9 +228,12 @@ function M.new( roll_tracker, player_info, ml_candidates )
   end
 
   ---@class ShowMasterLootConfirmationData
-  ---@field player ItemCandidate|Winner
   ---@field item MasterLootDistributableItem
+  ---@field winners Winner[]
+  ---@field player ItemCandidate
   ---@field rolling_strategy RollingStrategyType
+  ---@field confirm_fn fun()
+  ---@field abort_fn fun()
 
   ---@param player ItemCandidate|Winner
   ---@param item MasterLootDistributableItem

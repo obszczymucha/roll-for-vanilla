@@ -773,7 +773,7 @@ function M.mock_libraries()
   M.mock_library( "AceTimer-3.0", M.mock_ace_timer() )
 end
 
----@alias ModuleRegistryEntry { module_name: string, variable_name: string, mock: boolean? }
+---@alias ModuleRegistryEntry { module_name: string, variable_name: string, mock: (string|function)? }
 ---@alias ModuleRegistry ModuleRegistryEntry[]
 
 ---@param module_registry ModuleRegistry
@@ -786,8 +786,15 @@ function M.load_real_stuff_and_inject( module_registry, target_table )
       local location = string.format( "src/%s", entry.module_name )
 
       if module_name == location then
-        local module = entry.mock and require( string.format( "mocks/%s", entry.module_name ) ) or require( module_name )
-        local result = wrapper.new( module, function( instance ) target_table[ entry.variable_name ] = instance end )
+        local module = entry.mock and type( entry.mock ) == "string" and require( entry.mock --[[@as string]] ) or
+            entry.mock and type( entry.mock ) == "function" and entry.mock() or
+            require( module_name )
+
+        if type(module) == "function" then
+          error(module_name)
+        end
+
+        local result = wrapper.new( module, function( instance ) if entry.variable_name then target_table[ entry.variable_name ] = instance end end )
         RollFor[ entry.module_name ] = result
         target_table[ entry.module_name ] = module
         return result

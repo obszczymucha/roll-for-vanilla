@@ -18,7 +18,7 @@ local C = t.PlayerClass
 local module_registry = {
   { module_name = "MasterLoot",  variable_name = "master_loot" },
   { module_name = "AwardedLoot", variable_name = "awarded_loot" },
-  { module_name = "LootFacade",  variable_name = "loot_facade", mock = true }
+  { module_name = "LootFacade",  variable_name = "loot_facade", mock = "mocks/LootFacade" }
 }
 
 -- The modules will be injected here using the above module_registry.

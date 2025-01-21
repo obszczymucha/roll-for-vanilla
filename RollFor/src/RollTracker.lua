@@ -145,7 +145,7 @@ function M.new()
     item_on_roll = item
     item_on_roll_count = count
 
-    local ressed_item = (item.type == LT.SoftRessedDroppedItem or item.type == LT.HardRessedDroppedItem)
+    local ressed_item = item.type == LT.SoftRessedDroppedItem or item.type == LT.HardRessedDroppedItem
 
     table.insert( iterations, {
       rolling_strategy = ressed_item and RS.SoftResRoll or RS.NormalRoll,
@@ -156,7 +156,6 @@ function M.new()
       ---@type RollingPlayer[]
       local candidates = item.sr_players
       status.winners = candidates
-      status.ml_candidates = ml_candidates
 
       for _, player in ipairs( candidates or {} ) do
         for _ = 1, player.rolls or 1 do

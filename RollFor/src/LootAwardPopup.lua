@@ -81,7 +81,7 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
         data.item and data.winners[ 1 ].name == player.name and
         data.item.link == item.link and data.winners[ 1 ]
 
-    ---@type
+    -- TODO: type this
     local winning_player          = winner or player
 
     if rolling_strategy == RS.RaidRoll or not rolling_strategy and current_iteration and current_iteration.rolling_strategy == RS.RaidRoll and winner then

@@ -31,11 +31,11 @@ local run_command = u.run_command
 local targetting_enemy = u.targetting_enemy
 local LootQuality = u.LootQuality
 
-local loot_event_facade
+local loot_facade
 local loot_list
 
 local function loot()
-  loot_event_facade.notify( "LootOpened" )
+  loot_facade.notify( "LootOpened" )
 end
 
 local function dropped( ... )
@@ -403,8 +403,8 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   u.mock( "GiveMasterLoot", function() end )
   local candidate = m.Types.make_item_candidate( "Obszczymucha", "Warrior", true )
   rf.master_loot.on_confirm( candidate, dropped_item )
-  loot_event_facade.notify( "LootSlotCleared", 1 )
-  confirm_master_looting( loot_event_facade, candidate, link )
+  loot_facade.notify( "LootSlotCleared", 1 )
+  confirm_master_looting( loot_facade, candidate, link )
   roll_for( "Hearthstone", 1, 123 )
   roll( "Ponpon", 1 )
   repeating_tick( 8 )
@@ -477,8 +477,8 @@ function SoftResIntegrationSpec:should_not_allow_a_sr_winner_to_roll_again_if_th
   u.mock( "GiveMasterLoot", function() end )
   local candidate = m.Types.make_item_candidate( "Trololoo", "Warlock", true )
   rf.master_loot.on_confirm( candidate, dropped_item )
-  loot_event_facade.notify( "LootSlotCleared", 1 )
-  loot_event_facade.notify( "LootClosed" )
+  loot_facade.notify( "LootSlotCleared", 1 )
+  loot_facade.notify( "LootClosed" )
 
   -- And then another idol drops.
   -- Bomanz 94, Eliza 81, Eliza 66, Trololoo - passed
@@ -534,8 +534,8 @@ function SoftResIntegrationSpec:should_not_allow_a_double_sr_winner_to_roll_agai
   u.mock( "GiveMasterLoot", function() end )
   local candidate = m.Types.make_item_candidate( "Elizalee", "Paladin", true )
   rf.master_loot.on_confirm( candidate, dropped_item )
-  loot_event_facade.notify( "LootSlotCleared", 1 )
-  loot_event_facade.notify( "LootClosed" )
+  loot_facade.notify( "LootSlotCleared", 1 )
+  loot_facade.notify( "LootClosed" )
 
   -- And then another idol drops.
   loot_list.source_guid = "Bloodlord Mandokir"
@@ -609,11 +609,10 @@ u.mock_libraries()
 u.load_real_stuff( function( module_name )
   if module_name == "src/LootAwardPopup" then return require( "mocks/LootAwardPopupMock" ) end
   if module_name == "src/Config" then return mock_config() end
-  if module_name == "src/LootList" then require( "mocks/LootList" ) end
   if module_name == "src/LootFacade" then
     ---@diagnostic disable-next-line: different-requires
-    loot_event_facade = require( "mocks/LootFacade" )
-    return loot_event_facade
+    loot_facade = require( "mocks/LootFacade" )
+    return loot_facade
   end
 
   return require( module_name )
