@@ -545,6 +545,7 @@ function M.new(
 
     if not data or not data.status or not data.item then return end
 
+    -- TODO: This entire logic needs to sit in the controller.
     local slot = loot_list.get_slot( data.item.id )
 
     if slot and data.status.type == S.Finished and current_iteration and (current_iteration.rolling_strategy == RS.RaidRoll or current_iteration.rolling_strategy == RS.InstaRaidRoll) then
