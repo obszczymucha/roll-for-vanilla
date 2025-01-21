@@ -402,7 +402,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
   roll_for( "Hearthstone", 1, 123 )
   u.mock( "GiveMasterLoot", function() end )
   local candidate = m.Types.make_item_candidate( "Obszczymucha", "Warrior", true )
-  rf.master_loot.on_confirm( candidate, dropped_item )
+  rf.roll_controller.award_confirmed( candidate, dropped_item )
   loot_facade.notify( "LootSlotCleared", 1 )
   confirm_master_looting( loot_facade, candidate, link )
   roll_for( "Hearthstone", 1, 123 )
@@ -476,7 +476,7 @@ function SoftResIntegrationSpec:should_not_allow_a_sr_winner_to_roll_again_if_th
   run_command( "FR" )
   u.mock( "GiveMasterLoot", function() end )
   local candidate = m.Types.make_item_candidate( "Trololoo", "Warlock", true )
-  rf.master_loot.on_confirm( candidate, dropped_item )
+  rf.roll_controller.award_confirmed( candidate, dropped_item )
   loot_facade.notify( "LootSlotCleared", 1 )
   loot_facade.notify( "LootClosed" )
 
@@ -533,7 +533,7 @@ function SoftResIntegrationSpec:should_not_allow_a_double_sr_winner_to_roll_agai
   run_command( "FR" )
   u.mock( "GiveMasterLoot", function() end )
   local candidate = m.Types.make_item_candidate( "Elizalee", "Paladin", true )
-  rf.master_loot.on_confirm( candidate, dropped_item )
+  rf.roll_controller.award_confirmed( candidate, dropped_item )
   loot_facade.notify( "LootSlotCleared", 1 )
   loot_facade.notify( "LootClosed" )
 

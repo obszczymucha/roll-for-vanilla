@@ -18,7 +18,6 @@ local getn = table.getn
 ---@field on_recipient_inventory_full fun()
 ---@field on_player_is_too_far fun()
 ---@field on_unknown_error_message fun( message: string )
----@field on_confirm fun( player: ItemCandidate|Winner, item: MasterLootDistributableItem )
 ---@field show_loot_candidates_frame fun( item: DroppedItem, strategy: RollingStrategyType )
 ---@field on_loot_slot_cleared fun( slot: number )
 ---@field on_loot_received fun( player_name: string, item_id: number, item_link: string )
@@ -27,7 +26,8 @@ local getn = table.getn
 ---@param loot_award_callback LootAwardCallback
 ---@param player_selection_frame MasterLootCandidateSelectionFrame
 ---@param loot_list LootList
-function M.new( master_loot_candidates, loot_award_callback, player_selection_frame, loot_list )
+---@param roll_controller RollController
+function M.new( master_loot_candidates, loot_award_callback, player_selection_frame, loot_list, roll_controller )
   ---@type { player: ItemCandidate|Winner, item: Item }?
   local m_confirmed = nil
   local m_slot_cache = {}
@@ -58,9 +58,11 @@ function M.new( master_loot_candidates, loot_award_callback, player_selection_fr
     m_slot_cache[ slot ] = nil
   end
 
-  ---@param player ItemCandidate|Winner
-  ---@param item MasterLootDistributableItem
-  local function on_confirm( player, item )
+  ---@param data LootConfirmedData
+  local function on_confirm(data)
+    local player = data.player
+    local item = data.item
+
     M.debug.add( string.format( "on_confirm(%s [%s], %s)", player and player.name or "nil", player and player.type or "nil", item and item.id or "nil" ) )
     local slot = loot_list.get_slot( item.id )
     if not slot then return end
@@ -156,6 +158,8 @@ function M.new( master_loot_candidates, loot_award_callback, player_selection_fr
     end
   end
 
+  roll_controller.subscribe( "award_confirmed", on_confirm )
+
   ---@type MasterLoot
   return {
     on_loot_opened = on_loot_opened,
@@ -163,7 +167,6 @@ function M.new( master_loot_candidates, loot_award_callback, player_selection_fr
     on_recipient_inventory_full = on_recipient_inventory_full,
     on_player_is_too_far = on_player_is_too_far,
     on_unknown_error_message = on_unknown_error_message,
-    on_confirm = on_confirm,
     show_loot_candidates_frame = show_loot_candidates_frame,
     on_loot_slot_cleared = on_loot_slot_cleared,
     on_loot_received = on_loot_received

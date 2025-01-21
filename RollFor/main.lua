@@ -224,7 +224,8 @@ local function create_components()
     M.master_loot_candidates,
     M.loot_award_callback,
     M.master_loot_frame,
-    M.loot_list
+    M.loot_list,
+    M.roll_controller
   )
 
   -- TODO: Add type.
@@ -288,11 +289,8 @@ local function create_components()
   M.loot_award_popup = m.LootAwardPopup.new(
     m.PopupBuilder.new( m.FrameBuilder ),
     M.roll_controller,
-    M.master_loot.on_confirm,
-    m.RollingPopupContent,
     rolling_popup_db,
-    m.RollingPopup.center_point,
-    M.roll_tracker
+    m.RollingPopup.center_point
   )
 
   -- TODO: Add type.

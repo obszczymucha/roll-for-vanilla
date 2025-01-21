@@ -7,9 +7,6 @@ local M = m.Module.new( "RollController" )
 local S = m.Types.RollingStatus
 local getn = table.getn
 
----@type PT
-local PT = m.Types.PlayerType
-
 ---@class RollControllerFacade
 ---@field roll_was_ignored fun( player_name: string, player_class: string?, roll_type: RollType, roll: number, reason: string )
 ---@field roll_was_accepted fun( player_name: string, player_class: string, roll_type: RollType, roll: number )
@@ -32,7 +29,7 @@ local PT = m.Types.PlayerType
 ---@field waiting_for_rolls fun()
 ---@field award_aborted fun( item: Item )
 ---@field loot_awarded fun( player_name: string, item_id: number, item_link: string )
----@field show_master_loot_confirmation fun( player: ItemCandidate|Winner, item: DroppedItem|SoftRessedDroppedItem, rolling_strategy: RollingStrategyType )
+---@field show_master_loot_confirmation fun( player: ItemCandidate|Winner, item: MasterLootDistributableItem, rolling_strategy: RollingStrategyType )
 ---@field loot_opened fun()
 ---@field loot_closed fun()
 ---@field player_already_has_unique_item fun()
@@ -46,6 +43,7 @@ local PT = m.Types.PlayerType
 ---@field finish_rolling_early fun()
 ---@field cancel_rolling fun()
 ---@field rolling_started fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, seconds: number?, rolling_players: RollingPlayer[]? )
+---@field award_confirmed fun( player: ItemCandidate|Winner, item: MasterLootDistributableItem )
 
 ---@param roll_tracker RollTracker
 ---@param player_info PlayerInfo
@@ -227,21 +225,48 @@ function M.new( roll_tracker, player_info, ml_candidates )
     end
   end
 
+  ---@class LootConfirmedData
+  ---@field player ItemCandidate|Winner
+  ---@field item MasterLootDistributableItem
+
+  ---@param player ItemCandidate|Winner
+  ---@param item MasterLootDistributableItem
+  local function award_confirmed( player, item )
+    notify_subscribers( "award_confirmed", { player = player, item = item } )
+  end
+
   ---@class ShowMasterLootConfirmationData
   ---@field item MasterLootDistributableItem
   ---@field winners Winner[]
-  ---@field player ItemCandidate
-  ---@field rolling_strategy RollingStrategyType
+  ---@field receiver ItemCandidate
+  ---@field strategy_type RollingStrategyType
   ---@field confirm_fn fun()
   ---@field abort_fn fun()
 
   ---@param player ItemCandidate|Winner
   ---@param item MasterLootDistributableItem
-  ---@param strategy RollingStrategyType
-  local function show_master_loot_confirmation( player, item, strategy )
-    if player.type == PT.Winner and not player.is_on_master_loot_candidate_list then return end
+  ---@param strategy_type RollingStrategyType
+  local function show_master_loot_confirmation( player, item, strategy_type )
+    local candidate = ml_candidates.find( player.name )
+
+    if not candidate then
+      M.debug.add( "Candidate not found: %s", player.name )
+      return
+    end
+
+    local winners = roll_tracker.get().winners
+
     notify_subscribers( "rolling_popup_hide" )
-    notify_subscribers( "show_master_loot_confirmation", { player = player, item = item, rolling_strategy = strategy } )
+    notify_subscribers( "show_master_loot_confirmation",
+      ---@type ShowMasterLootConfirmationData
+      {
+        item = item,
+        winners = winners,
+        receiver = candidate,
+        strategy_type = strategy_type,
+        confirm_fn = function() award_confirmed( candidate, item ) end,
+        abort_fn = function() award_aborted( item ) end
+      } )
   end
 
   local function loot_opened()
@@ -333,7 +358,8 @@ function M.new( roll_tracker, player_info, ml_candidates )
     loot_list_item_deselected = loot_list_item_deselected,
     finish_rolling_early = finish_rolling_early,
     cancel_rolling = cancel_rolling,
-    rolling_started = rolling_started
+    rolling_started = rolling_started,
+    award_confirmed = award_confirmed
   }
 end
 

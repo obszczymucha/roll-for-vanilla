@@ -146,7 +146,7 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   local master_loot_frame = require( "src/MasterLootCandidateSelectionFrame" ).new( winner_tracker, roll_controller, config )
   local awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ) )
   local loot_award_callback = require( "src/LootAwardCallback" ).new( awarded_loot, roll_controller, winner_tracker )
-  local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, master_loot_frame, loot_list )
+  local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, master_loot_frame, loot_list, roll_controller )
   deps[ "MasterLoot" ] = master_loot
 
   local softres_dep = deps[ "SoftResData" ] and softres( group_roster, deps[ "SoftResData" ] ) or softres( group_roster )
@@ -365,10 +365,12 @@ function RaidRollPopupContentSpec:should_display_the_winners()
 
   -- Then
   eq( cleanse( popup.get() ), {
-    { type = link,     count = 2,   link = item.link },
-    { type = "text",   padding = 8, value = "Jogobobek wins the raid-roll." },
-    { type = "text",   padding = 2, value = "Psikutas wins the raid-roll." },
-    { type = "button", width = 70,  label = "Close" }
+    { type = link,           count = 2,   link = item.link },
+    { type = "text",         padding = 8, value = "Jogobobek wins the raid-roll." },
+    { type = "award_button", padding = 6, label = "Award",                        width = 90 },
+    { type = "text",         padding = 8, value = "Psikutas wins the raid-roll." },
+    { type = "award_button", padding = 6, label = "Award",                        width = 90 },
+    { type = "button",       width = 70,  label = "Close" }
   } )
 end
 
@@ -552,11 +554,13 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_with_raid_roll
 
   -- Then
   eq( cleanse( popup.get() ), {
-    { type = link,     count = 2,   link = item.link },
-    { type = "text",   padding = 8, value = "Psikutas wins the insta raid-roll." },
-    { type = "text",   padding = 2, value = "Jogobobek wins the insta raid-roll." },
-    { type = "button", width = 130, label = "Raid roll again" },
-    { type = "button", width = 70,  label = "Close" }
+    { type = link,           count = 2,   link = item.link },
+    { type = "text",         padding = 8, value = "Psikutas wins the insta raid-roll." },
+    { type = "award_button", padding = 6, label = "Award",                              width = 90 },
+    { type = "text",         padding = 8, value = "Jogobobek wins the insta raid-roll." },
+    { type = "award_button", padding = 6, label = "Award",                              width = 90 },
+    { type = "button",       width = 130, label = "Raid roll again" },
+    { type = "button",       width = 70,  label = "Close" }
   } )
 end
 
@@ -571,10 +575,12 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_without_raid_r
 
   -- Then
   eq( cleanse( popup.get() ), {
-    { type = link,     count = 2,   link = item.link },
-    { type = "text",   padding = 8, value = "Psikutas wins the insta raid-roll." },
-    { type = "text",   padding = 2, value = "Jogobobek wins the insta raid-roll." },
-    { type = "button", width = 70,  label = "Close" }
+    { type = link,           count = 2,   link = item.link },
+    { type = "text",         padding = 8, value = "Psikutas wins the insta raid-roll." },
+    { type = "award_button", padding = 6, label = "Award",                              width = 90 },
+    { type = "text",         padding = 8, value = "Jogobobek wins the insta raid-roll." },
+    { type = "award_button", padding = 6, label = "Award",                              width = 90 },
+    { type = "button",       width = 70,  label = "Close" }
   } )
 end
 
@@ -1058,11 +1064,13 @@ function SoftResrollPopupContentSpec:should_preview_the_winners()
 
   -- Then
   eq( cleanse( popup.get() ), {
-    { type = link,     link = item.link,                              count = 2 },
-    { type = "text",   value = "Obszczymucha soft-ressed this item.", padding = 11 },
-    { type = "text",   value = "Psikutas soft-ressed this item.",     padding = 4 },
-    { type = "button", label = "Close",                               width = 70 },
-    { type = "button", label = "Award...",                            width = 90 }
+    { type = link,           link = item.link,                              count = 2 },
+    { type = "text",         value = "Obszczymucha soft-ressed this item.", padding = 11 },
+    { type = "award_button", label = "Award",                               padding = 6, width = 90 },
+    { type = "text",         value = "Psikutas soft-ressed this item.",     padding = 8 },
+    { type = "award_button", label = "Award",                               padding = 6, width = 90 },
+    { type = "button",       label = "Close",                               width = 70 },
+    { type = "button",       label = "Award...",                            width = 90 }
   } )
 end
 

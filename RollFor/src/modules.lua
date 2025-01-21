@@ -551,4 +551,18 @@ end
 
 function M.noop() end
 
+---@param number number
+function M.article( number )
+  local str = tostring( number )
+
+  local first_digit = tonumber( string.sub( str, 1, 1 ) )
+  local first_two = tonumber( string.sub( str, 1, 2 ) )
+
+  if first_digit == 8 or first_two == 11 or first_two == 18 then
+    return "an"
+  end
+
+  return "a"
+end
+
 return M

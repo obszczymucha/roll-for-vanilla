@@ -16,7 +16,7 @@ local C = t.PlayerClass
 
 ---@type ModuleRegistry
 local module_registry = {
-  { module_name = "MasterLoot",  variable_name = "master_loot" },
+  { module_name = "RollController",  variable_name = "roll_controller" },
   { module_name = "AwardedLoot", variable_name = "awarded_loot" },
   { module_name = "LootFacade",  variable_name = "loot_facade", mock = "mocks/LootFacade" }
 }
@@ -151,7 +151,7 @@ function MainspecRollsSpec:should_only_record_loot_that_we_are_awarding()
   u.mock( "GetLootMethod", "master" )
   player( "Psikutas" )
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
-  local master_loot = m.master_loot ---@type MasterLoot
+  local controller = m.roll_controller ---@type RollController
   local awarded_loot = m.awarded_loot ---@type AwardedLoot
 
   -- When
@@ -172,7 +172,7 @@ function MainspecRollsSpec:should_only_record_loot_that_we_are_awarding()
 
   -- And we confirm loot award and move, so the loot is closed.
   local candidate = make_item_candidate( "Psikutas", C.Warrior, true )
-  master_loot.on_confirm( candidate, item )
+  controller.award_confirmed( candidate, item )
   m.LootFacade.notify( "LootClosed" )
 
   -- And also, Psikutas receives another item.
