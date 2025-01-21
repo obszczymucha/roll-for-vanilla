@@ -40,7 +40,7 @@ local function create_main_frame()
     insets = { left = 0, right = 0, top = 0, bottom = 0 }
   } )
 
-  frame:SetBackdropColor( 0, 0, 0, 0.3 )
+  frame:SetBackdropColor( 0, 0, 0, 0.8 )
   frame:SetFrameStrata( "DIALOG" )
   frame:SetBackdropBorderColor( 0.851, 0.553, 0.341, 0.3 )
 
