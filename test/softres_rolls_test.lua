@@ -507,6 +507,61 @@ function SoftResIntegrationSpec:should_not_allow_a_sr_winner_to_roll_again_if_th
   )
 end
 
+function SoftResIntegrationSpec:should_not_allow_a_double_sr_winner_to_roll_again_if_the_same_item_drops()
+  -- Given
+  loot_list.source_guid = "Jin'do the Hexxer"
+  local dropped_item = item( "Primal Hakkari Idol", 22637 )
+  dropped( dropped_item )
+  local rf = clear_dropped_items_db()
+  rf.db.awarded_loot = {}
+  master_looter( "Jogobobek" )
+  is_in_raid( leader( "Jogobobek" ), "Trololoo", "Bomanz", "Elizalee" )
+  soft_res( sr( "Trololoo", 22637 ), sr( "Elizalee", 22637 ), sr( "Elizalee", 22637 ), sr( "Bomanz", 22637 ) )
+  mock_blizzard_loot_buttons()
+  modifier_keys_not_pressed()
+
+  -- When the first idol drops.
+  targetting_enemy( "Jin'do the Hexxer" )
+  loot()
+  roll_for( "Primal Hakkari Idol", 1, 22637 )
+  repeating_tick( 1 )
+  roll( "Trololoo", 35 )
+  roll( "Elizalee", 100 )
+  repeating_tick( 1 )
+  roll( "Elizalee", 27 )
+  repeating_tick( 6 )
+  run_command( "FR" )
+  u.mock( "GiveMasterLoot", function() end )
+  local candidate = m.Types.make_item_candidate( "Elizalee", "Paladin", true )
+  rf.master_loot.on_confirm( candidate, dropped_item )
+  loot_event_facade.notify( "LootSlotCleared", 1 )
+  loot_event_facade.notify( "LootClosed" )
+
+  -- And then another idol drops.
+  loot_list.source_guid = "Bloodlord Mandokir"
+  targetting_enemy( "Bloodlord Mandokir" )
+  loot()
+  roll_for( "Primal Hakkari Idol", 1, 22637 )
+  repeating_tick( 2 )
+  roll( "Bomanz", 94 )
+  roll( "Trololoo", 81 )
+
+  -- Then it should not count Elizalee in the list of SRers, because he already got one.
+  assert_messages(
+    r( "Jin'do the Hexxer dropped 1 item:", "1. [Primal Hakkari Idol] (SR by Bomanz, Elizalee [2 rolls] and Trololoo)" ),
+    rw( "Roll for [Primal Hakkari Idol]: (SR by Bomanz, Elizalee [2 rolls] and Trololoo)" ),
+    r( "Stopping rolls in 3", "2", "1" ),
+    r( "SR rolls remaining: Bomanz (1 roll)" ),
+    cr( "Elizalee rolled the highest (100) for [Primal Hakkari Idol] (SR)." ),
+    rolling_finished(),
+    c( "RollFor: Elizalee received [Primal Hakkari Idol]." ),
+    r( "Bloodlord Mandokir dropped 1 item:", "1. [Primal Hakkari Idol] (SR by Bomanz and Trololoo)" ),
+    rw( "Roll for [Primal Hakkari Idol]: (SR by Bomanz and Trololoo)" ),
+    cr( "Bomanz rolled the highest (94) for [Primal Hakkari Idol] (SR)." ),
+    rolling_finished()
+  )
+end
+
 function SoftResIntegrationSpec:should_only_process_rolls_from_players_who_soft_ressed_if_players_name_was_auto_matched_and_finish_automatically()
   -- Given
   player( "Psikutas" )
