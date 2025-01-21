@@ -11,6 +11,8 @@
 9. Fix the winner button for single-SR winners.
 10. Fix the insta raid roll "no one rolled" bug.
 11. Make sure to show/hide award buttons on lootopen/close.
+12. When rolling is finished and winner determined and we close the popup and reopen with the same item the data is cleared. Persist the data until awarded.
+13. When awarding the item via player selection and aborting, the rolling popup doesn't show back up, the item is still selected on the list.
 
 Not great:
 RollTracker tracks rolls in parallel to each logic.
