@@ -96,7 +96,7 @@ function M.new( popup_builder, roll_controller, confirm_award, RollingPopupConte
         function( w ) table.insert( content, w ) end )
     end
 
-    table.insert( content, { type = "text", value = string.format( "Award this item to %s?", c( player.name, player.class ) ) } )
+    table.insert( content, { type = "text", value = string.format( "Award this item to %s?", c( player.name, player.class ) ), padding = 16 } )
 
     if error then
       local name = c( winning_player.name, winning_player.class )
