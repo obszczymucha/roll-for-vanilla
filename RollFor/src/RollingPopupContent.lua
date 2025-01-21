@@ -268,7 +268,6 @@ function M.new(
 
     local dropped_item = assert( item --[[@as MasterLootDistributableItem]] )
     local winner = winners[ 1 ]
-    m.pdump( ml_candidates )
     if not m.table_contains_value( ml_candidates, winner.name, function( candidate ) return type( candidate ) == "table" and candidate.name end ) then return end
 
     table.insert( result, {
