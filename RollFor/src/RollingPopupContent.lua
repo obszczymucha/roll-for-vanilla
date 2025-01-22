@@ -166,7 +166,7 @@ function M.new(
 
     for _, button in ipairs( buttons ) do
       local label, width = get_props( button.type )
-      table.insert( content, { type = "button", label = label, width = width, callback = button.callback } )
+      table.insert( content, { type = "button", label = label, width = width, on_click = button.callback } )
     end
   end
 
@@ -270,14 +270,6 @@ function M.new(
   ---@param count number
   local function make_item( item, count ) -- TODO: deprecate this
     return { type = "item_link_with_icon", link = item and item.link, texture = item and item.texture, count = count }
-  end
-
-  ---@param link ItemLink
-  ---@param tooltip_link TooltipItemLink
-  ---@param texture ItemTexture
-  ---@param count number
-  local function make_item_new( link, tooltip_link, texture, count )
-    return { type = "item_link_with_icon", link = link, tooltip_link = tooltip_link, texture = texture, count = count }
   end
 
   ---@param data RollTrackerData
@@ -706,7 +698,13 @@ function M.new(
   ---@param content table
   ---@param data RollingPopupPreviewData
   local function add_item( content, data )
-    table.insert( content, make_item_new( data.item_link, data.item_tooltip_link, data.item_texture, data.item_count ) )
+    table.insert( content, {
+      type = "item_link_with_icon",
+      link = data.item_link,
+      tooltip_link = data.item_tooltip_link,
+      texture = data.item_texture,
+      count = data.item_count
+    } )
   end
 
   ---@param content table

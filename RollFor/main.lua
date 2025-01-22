@@ -471,7 +471,7 @@ local function on_roll_command( roll_slash_command )
       return
     end
 
-    M.roll_controller.start( strategy_type, item, count, message, seconds )
+    M.roll_controller.preview( item, count )
   end
 end
 

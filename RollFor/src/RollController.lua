@@ -18,7 +18,7 @@ local getn = table.getn
 ---@field finish fun()
 
 ---@class RollController
----@field preview fun( item: MasterLootDistributableItem, count: number )
+---@field preview fun( item: Item|MasterLootDistributableItem, count: number )
 ---@field start fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, seconds: number?)
 ---@field winners_found fun( item: Item, item_count: number, winners: Winner[], strategy: RollingStrategyType )
 ---@field finish fun()
@@ -153,6 +153,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
 
     if sr_count == 0 then
       table.insert( buttons, button( "Roll", function() start( RS.NormalRoll, item, item_count, nil, config.default_rolling_time_seconds() ) end ) )
+      table.insert( buttons, button( "Close", function() notify_subscribers( "rolling_popup_hide" ) end ) )
 
       ---@type RollingPopupPreviewData
       local data = {
@@ -227,7 +228,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     notify_subscribers( "ShowRollingPopupPreview", data )
   end
 
-  ---@param item MasterLootDistributableItem
+  ---@param item Item|MasterLootDistributableItem
   ---@param count number
   local function preview( item, count )
     local candidates = ml_candidates.get()
