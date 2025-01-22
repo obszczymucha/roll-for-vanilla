@@ -133,6 +133,11 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     notify_subscribers( "start", { strategy_type = strategy_type, item = item, item_count = item_count, message = message, seconds = seconds } )
   end
 
+  ---@param buttons RollingPopupButtonWithCallback[]
+  local function add_close_button( buttons )
+    table.insert( buttons, button( "Close", function() notify_subscribers( "rolling_popup_hide" ) end ) )
+  end
+
   ---@param item Item|MasterLootDistributableItem
   ---@param item_count number
   local function new_preview( item, item_count )
@@ -153,7 +158,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
 
     if sr_count == 0 then
       table.insert( buttons, button( "Roll", function() start( RS.NormalRoll, item, item_count, nil, config.default_rolling_time_seconds() ) end ) )
-      table.insert( buttons, button( "Close", function() notify_subscribers( "rolling_popup_hide" ) end ) )
+      add_close_button( buttons )
 
       ---@type RollingPopupPreviewData
       local data = {
@@ -173,6 +178,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
 
     if item_count == sr_count then
       local dropped_item = loot_list.get_by_id( item.id )
+      local candidate_count = getn( candidates )
 
       ---@type WinnerWithAwardCallback[]
       local winners = m.map( soft_ressers,
@@ -191,8 +197,11 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
         winners[ 1 ].award_callback = nil
       end
 
-      table.insert( buttons, button( "Close", function() end ) )
-      table.insert( buttons, button( "AwardOther", function() end ) )
+      add_close_button( buttons )
+
+      if dropped_item and candidate_count > 0 then
+        table.insert( buttons, button( "AwardOther", function() end ) )
+      end
 
       ---@type RollingPopupPreviewData
       local data = {
@@ -209,6 +218,8 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
       notify_subscribers( "ShowRollingPopupPreview", data )
       return
     end
+
+    add_close_button( buttons )
 
     ---@type RollingPopupPreviewData
     local data = {
