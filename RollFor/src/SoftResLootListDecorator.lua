@@ -16,15 +16,16 @@ local make_softres_dropped_item = m.ItemUtils.make_softres_dropped_item
 ---@type MakeHardRessedDroppedItemFn
 local make_hardres_dropped_item = m.ItemUtils.make_hardres_dropped_item
 
----@class SoftResLootList
+---@class SoftResLootList : LootList
 ---@field get_items fun(): (MasterLootDistributableItem)[]
 ---@field get_source_guid fun(): string
 ---@field get_slot fun( item_id: number ): number?
 ---@field is_looting fun(): boolean
 ---@field count fun( item_id: number ): number
+---@field get_by_id fun( item_id: number ): MasterLootDistributableItem?
 
 ---@param loot_list LootList
----@param softres GroupedSoftRes
+---@param softres GroupAwareSoftRes
 function M.new( loot_list, softres )
   local function sort( a, b )
     if a == nil then return false end
@@ -85,8 +86,17 @@ function M.new( loot_list, softres )
     return result
   end
 
+  ---@param item_id number
+  ---@return MasterLootDistributableItem?
+  local function get_by_id( item_id )
+    for _, item in ipairs( get_items() ) do
+      if item.id == item_id then return item end
+    end
+  end
+
   local decorator = m.clone( loot_list )
   decorator.get_items = get_items
+  decorator.get_by_id = get_by_id
 
   return decorator
 end

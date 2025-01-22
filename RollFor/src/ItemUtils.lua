@@ -55,6 +55,7 @@ M.LootType = LootType
 
 ---@alias ItemLink string
 ---@alias TooltipItemLink string
+---@alias ItemTexture string
 
 ---@class Item
 ---@field id number

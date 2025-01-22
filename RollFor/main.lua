@@ -114,10 +114,10 @@ local function create_components()
   ---@type Chat
   M.chat = m.Chat.new( M.api(), M.player_info )
 
-  ---@alias GroupedSoftResFn fun ( softres: SoftRes ): GroupedSoftRes
-  ---@type GroupedSoftResFn
+  ---@alias GroupAwareSoftResFn fun ( softres: SoftRes ): GroupAwareSoftRes
+  ---@type GroupAwareSoftResFn
   M.present_softres = function( softres ) return m.SoftResPresentPlayersDecorator.new( M.group_roster, softres ) end
-  ---@type GroupedSoftResFn
+  ---@type GroupAwareSoftResFn
   M.absent_softres = function( softres ) return m.SoftResAbsentPlayersDecorator.new( M.group_roster, softres ) end
 
   ---@type ItemUtils
@@ -152,7 +152,7 @@ local function create_components()
   ---@type SoftRes
   M.awarded_loot_softres = m.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
 
-  ---@type GroupedSoftRes
+  ---@type GroupAwareSoftRes
   M.softres = M.present_softres( M.awarded_loot_softres )
 
   ---@type DroppedLoot
@@ -211,7 +211,7 @@ local function create_components()
   M.master_loot_candidates = m.MasterLootCandidates.new( M.api(), M.group_roster ) -- remove group_roster for testing (dummy candidates)
 
   ---@type RollController
-  M.roll_controller = m.RollController.new( M.roll_tracker, M.player_info, M.master_loot_candidates )
+  M.roll_controller = m.RollController.new( M.roll_tracker, M.player_info, M.master_loot_candidates, M.softres, M.loot_list, M.config )
 
   ---@type MasterLootCandidateSelectionFrame
   M.master_loot_frame = m.MasterLootCandidateSelectionFrame.new( M.winner_tracker, M.roll_controller, M.config )

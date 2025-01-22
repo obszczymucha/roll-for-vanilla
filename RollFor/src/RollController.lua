@@ -6,6 +6,7 @@ if m.RollController then return end
 local info = m.pretty_print
 local M = m.Module.new( "RollController" )
 local S = m.Types.RollingStatus
+local RS = m.Types.RollingStrategy
 local LAE = m.Types.LootAwardError
 local getn = table.getn
 
@@ -50,7 +51,9 @@ local getn = table.getn
 ---@param roll_tracker RollTracker
 ---@param player_info PlayerInfo
 ---@param ml_candidates MasterLootCandidates
-function M.new( roll_tracker, player_info, ml_candidates )
+---@param softres GroupAwareSoftRes
+---@param loot_list SoftResLootList
+function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, config )
   local callbacks = {}
   local ml_confirmation_data = nil ---@type MasterLootConfirmationData?
 
@@ -70,6 +73,145 @@ function M.new( roll_tracker, player_info, ml_candidates )
     local c = { r = color.r * multiplier, g = color.g * multiplier, b = color.b * multiplier, a = alpha }
 
     return c
+  end
+
+  ---@class AwardConfirmedData
+  ---@field player ItemCandidate|Winner
+  ---@field item MasterLootDistributableItem
+
+  ---@param player ItemCandidate|Winner
+  ---@param item MasterLootDistributableItem
+  local function award_confirmed( player, item )
+    notify_subscribers( "award_confirmed", { player = player, item = item } )
+  end
+
+  ---@class WinnerWithAwardCallback
+  ---@field name string
+  ---@field class PlayerClass
+  ---@field award_callback fun()?
+
+  ---@class RollingPopupButtonWithCallback
+  ---@field type RollingPopupButtonType
+  ---@field callback fun()
+
+  ---@class RollingPopupPreviewData
+  ---@field item_link ItemLink
+  ---@field item_tooltip_link TooltipItemLink
+  ---@field item_texture ItemTexture
+  ---@field item_count number
+  ---@field winners WinnerWithAwardCallback[]
+  ---@field rolls RollData[]
+  ---@field strategy_type RollingStrategyType
+  ---@field buttons RollingPopupButtonWithCallback[]
+
+  ---@param type RollingPopupButtonType
+  ---@param callback fun()
+  local function button( type, callback )
+    return { type = type, callback = callback } ---@type RollingPopupButtonWithCallback
+  end
+
+  ---@class RollControllerStartData
+  ---@field strategy_type RollingStrategyType
+  ---@field item Item
+  ---@field item_count number
+  ---@field message string?
+  ---@field seconds number?
+
+  ---@param strategy_type RollingStrategyType
+  ---@param item Item
+  ---@param item_count number
+  ---@param message string?
+  ---@param seconds number?
+  local function start( strategy_type, item, item_count, message, seconds )
+    if ml_confirmation_data then
+      info( "Item award confirmation is in progress. Can't start rolling now." )
+      return
+    end
+
+    notify_subscribers( "start", { strategy_type = strategy_type, item = item, item_count = item_count, message = message, seconds = seconds } )
+  end
+
+  ---@param item Item|MasterLootDistributableItem
+  ---@param item_count number
+  local function new_preview( item, item_count )
+    if not item_count or item_count == 0 then
+      m.trace( string.format( "item_count: %s", item_count or "nil" ) )
+      return
+    end
+
+    local candidates = ml_candidates.get()
+    roll_tracker.preview( item, item_count, candidates )
+
+    local color = get_color( item.quality )
+    notify_subscribers( "border_color", { color = color } )
+
+    local soft_ressers = softres.get( item.id )
+    local sr_count = getn( soft_ressers )
+
+    local buttons = {}
+
+    if sr_count == 0 then
+      table.insert( buttons, button( "Roll", function() start( RS.NormalRoll, item, item_count, nil, config.default_rolling_time_seconds() ) end ) )
+
+      ---@type RollingPopupPreviewData
+      local data = {
+        item_link = item.link,
+        item_tooltip_link = item.tooltip_link,
+        item_texture = item.texture,
+        item_count = item_count,
+        winners = {},
+        rolls = {},
+        strategy_type = RS.NormalRoll,
+        buttons = buttons
+      }
+
+      notify_subscribers( "ShowRollingPopupPreview", data )
+      return
+    end
+
+    if item_count == sr_count then
+      ---@type WinnerWithAwardCallback[]
+      local winners = m.map( soft_ressers,
+        ---@param player RollingPlayer
+        function( player )
+          local candidate = ml_candidates.find( player.name )
+          local dropped_item = loot_list.get_by_id( item.id )
+          local award_callback = candidate and dropped_item and function() award_confirmed( candidate, dropped_item ) end
+
+          ---@type WinnerWithAwardCallback
+          return { name = player.name, class = player.class, award_callback = award_callback }
+        end
+      )
+
+      ---@type RollingPopupPreviewData
+      local data = {
+        item_link = item.link,
+        item_tooltip_link = item.tooltip_link,
+        item_texture = item.texture,
+        item_count = item_count,
+        winners = winners,
+        rolls = {},
+        strategy_type = RS.SoftResRoll,
+        buttons = {}
+      }
+
+      notify_subscribers( "ShowRollingPopupPreview", data )
+      return
+    end
+
+    ---@type RollingPopupPreviewData
+    local data = {
+      item_link = item.link,
+      item_tooltip_link = item.tooltip_link,
+      item_texture = item.texture,
+      item_count = item_count,
+      winners = {},
+      rolls = roll_tracker.create_roll_data( soft_ressers ),
+      strategy_type = RS.SoftResRoll,
+      buttons = {}
+    }
+
+    notify_subscribers( "ShowRollingPopupPreview", data )
   end
 
   ---@param item MasterLootDistributableItem
@@ -123,27 +265,6 @@ function M.new( roll_tracker, player_info, ml_candidates )
     local candidates = ml_candidates.get()
     roll_tracker.finish( candidates )
     notify_subscribers( "finish" )
-  end
-
-  ---@class RollControllerStartData
-  ---@field strategy_type RollingStrategyType
-  ---@field item Item
-  ---@field item_count number
-  ---@field message string?
-  ---@field seconds number?
-
-  ---@param strategy_type RollingStrategyType
-  ---@param item Item
-  ---@param item_count number
-  ---@param message string?
-  ---@param seconds number?
-  local function start( strategy_type, item, item_count, message, seconds )
-    if ml_confirmation_data then
-      info( "Item award confirmation is in progress. Can't start rolling now." )
-      return
-    end
-
-    notify_subscribers( "start", { strategy_type = strategy_type, item = item, item_count = item_count, message = message, seconds = seconds } )
   end
 
   ---@param strategy_type RollingStrategyType
@@ -236,16 +357,6 @@ function M.new( roll_tracker, player_info, ml_candidates )
     else
       notify_subscribers( "not_all_items_awarded" )
     end
-  end
-
-  ---@class AwardConfirmedData
-  ---@field player ItemCandidate|Winner
-  ---@field item MasterLootDistributableItem
-
-  ---@param player ItemCandidate|Winner
-  ---@param item MasterLootDistributableItem
-  local function award_confirmed( player, item )
-    notify_subscribers( "award_confirmed", { player = player, item = item } )
   end
 
   ---@class MasterLootConfirmationData
@@ -360,7 +471,7 @@ function M.new( roll_tracker, player_info, ml_candidates )
 
   ---@type RollController
   return {
-    preview = preview,
+    preview = new_preview,
     start = start,
     winners_found = winners_found,
     finish = finish,

@@ -27,14 +27,17 @@ local top_padding = 11
 
 ---@param on_click fun()
 local function award_winner_button( on_click )
-  return {
-    type = "award_button",
-    label = "Award",
-    width = 90,
-    on_click = on_click,
-    padding = 6
-  }
+  return { type = "award_button", label = "Award", width = 90, on_click = on_click, padding = 6 }
 end
+
+---@alias RollingPopupButtonType
+---| "Roll"
+---| "AwardWinner"
+---| "AwardOther"
+---| "RaidRoll"
+---| "InstaRaidRoll"
+---| "RaidRollAgain"
+---| "Close"
 
 ---@param result table
 ---@param winner Winner
@@ -45,12 +48,28 @@ local function add_raid_roll_winner( result, winner, padding )
   table.insert( result, { type = "text", value = string.format( "%s wins the %s.", player, blue( "raid-roll" ) ), padding = padding } )
 end
 
+---@param content table
+---@param player string
+---@param padding number
+local function add_raid_roll_winner_new( content, player, padding )
+  M.debug.add( "add_insta_raid_roll_winner" )
+  table.insert( content, { type = "text", value = string.format( "%s wins the %s.", player, blue( "raid-roll" ) ), padding = padding } )
+end
+
 ---@param result table
 ---@param winner Winner
 ---@param padding number
 local function add_insta_raid_roll_winner( result, winner, padding )
   M.debug.add( "add_insta_raid_roll_winner" )
   local player = c( winner.name, winner.class )
+  table.insert( result, { type = "text", value = string.format( "%s wins the %s.", player, blue( "insta raid-roll" ) ), padding = padding } )
+end
+
+---@param result table
+---@param player string
+---@param padding number
+local function add_insta_raid_roll_winner_new( result, player, padding )
+  M.debug.add( "add_insta_raid_roll_winner" )
   table.insert( result, { type = "text", value = string.format( "%s wins the %s.", player, blue( "insta raid-roll" ) ), padding = padding } )
 end
 
@@ -82,6 +101,26 @@ local function add_roll_winner( result, winner, strategy, padding )
   end
 end
 
+---@param content table
+---@param player string
+---@param roll_type RollType
+---@param winning_roll number?
+---@param padding number
+local function add_roll_winner_new( content, player, roll_type, winning_roll, strategy, padding )
+  M.debug.add( "add_roll_winner" )
+  local roll = winning_roll and blue( winning_roll )
+
+  if roll then
+    table.insert( content,
+      { type = "text", value = string.format( "%s wins the %s roll with %s %s.", player, r( roll_type ), article( winning_roll ), roll ), padding = padding } )
+  elseif strategy == RS.SoftResRoll then
+    local soft_ressed = r( RT.SoftRes, "soft-ressed" )
+    table.insert( content, { type = "text", value = string.format( "%s %s this item.", player, soft_ressed ), padding = padding or top_padding } )
+  else
+    table.insert( content, { type = "text", value = string.format( "%s %s win the roll.", player, red( "did not" ) ), padding = padding } )
+  end
+end
+
 ---@param popup table
 ---@param roll_controller RollController
 ---@param roll_tracker RollTracker
@@ -102,6 +141,35 @@ function M.new(
     insta_raid_roll,
     select_player
 )
+  ---@param content table
+  ---@param buttons RollingPopupButtonWithCallback[]
+  local function add_buttons( content, buttons )
+    local function get_props( type )
+      if type == "Roll" then
+        return "Roll", 70
+      elseif type == "Award" then
+        return "Award winner", 130
+      elseif type == "AwardOther" then
+        return "Award...", 130
+      elseif type == "RaidRoll" then
+        return "Raid roll", 90
+      elseif type == "InstaRaidRoll" then
+        return "Insta RR", 80
+      elseif type == "RaidRollAgain" then
+        return "Raid roll again", 130
+      elseif type == "Close" then
+        return "Close", 70
+      else
+        error( string.format( "Unsupported type: %s", type or "nil" ) )
+      end
+    end
+
+    for _, button in ipairs( buttons ) do
+      local label, width = get_props( button.type )
+      table.insert( content, { type = "button", label = label, width = width, callback = button.callback } )
+    end
+  end
+
   local function close_button()
     M.debug.add( "close_button" )
     return { type = "button", label = "Close", width = 70, on_click = function() popup:hide() end }
@@ -168,7 +236,7 @@ function M.new(
 
   ---@param result table
   ---@param rolls RollData[]
-  local function rolls_content( result, rolls )
+  local function add_rolls( result, rolls )
     M.debug.add( "rolls_content" )
 
     for i = 1, getn( rolls ) do
@@ -190,18 +258,26 @@ function M.new(
   local function make_roll_content( result, iterations )
     for _, iteration in ipairs( iterations ) do
       if iteration.rolling_strategy == RS.SoftResRoll or iteration.rolling_strategy == RS.NormalRoll then
-        rolls_content( result, iteration.rolls )
+        add_rolls( result, iteration.rolls )
       elseif iteration.rolling_strategy == RS.TieRoll then
         table.insert( result, { type = "text", value = string.format( "There was a tie (%s):", blue( iteration.tied_roll ) ), padding = top_padding } )
-        rolls_content( result, iteration.rolls )
+        add_rolls( result, iteration.rolls )
       end
     end
   end
 
   ---@param item Item
   ---@param count number
-  local function make_item( item, count )
+  local function make_item( item, count ) -- TODO: deprecate this
     return { type = "item_link_with_icon", link = item and item.link, texture = item and item.texture, count = count }
+  end
+
+  ---@param link ItemLink
+  ---@param tooltip_link TooltipItemLink
+  ---@param texture ItemTexture
+  ---@param count number
+  local function make_item_new( link, tooltip_link, texture, count )
+    return { type = "item_link_with_icon", link = link, tooltip_link = tooltip_link, texture = texture, count = count }
   end
 
   ---@param data RollTrackerData
@@ -260,7 +336,7 @@ function M.new(
   end
 
   ---@param data RollTrackerData
-  local function roll_button( data )
+  local function roll_button( data ) -- TODO: deprecate
     M.debug.add( "roll_button" )
     return {
       type = "button",
@@ -626,6 +702,46 @@ function M.new(
   roll_controller.subscribe( "not_all_items_awarded", award_aborted )
   roll_controller.subscribe( "loot_opened", loot_opened )
   roll_controller.subscribe( "loot_closed", loot_closed )
+
+  ---@param content table
+  ---@param data RollingPopupPreviewData
+  local function add_item( content, data )
+    table.insert( content, make_item_new( data.item_link, data.item_tooltip_link, data.item_texture, data.item_count ) )
+  end
+
+  ---@param content table
+  ---@param winners WinnerWithAwardCallback[]
+  ---@param strategy_type RollingStrategyType
+  local function add_winners( content, winners, strategy_type )
+    for _, winner in ipairs( winners ) do
+      local player = c( winner.name, winner.class )
+
+      if strategy_type == RS.RaidRoll then
+        add_raid_roll_winner_new( content, player, 8 )
+      elseif strategy_type == RS.InstaRaidRoll then
+        add_insta_raid_roll_winner_new( content, player, 8 )
+      else
+        add_roll_winner_new( content, player, strategy_type, 8 )
+      end
+
+      if winner.award_callback then table.insert( content, award_winner_button( winner.award_callback ) ) end
+    end
+  end
+
+  ---@param data RollingPopupPreviewData
+  local function show_preview( data )
+    local content = {}
+
+    add_item( content, data )
+    add_rolls( content, data.rolls )
+    add_winners( content, data.winners, data.strategy_type )
+    add_buttons( content, data.buttons )
+
+    popup:show()
+    popup:refresh( content )
+  end
+
+  roll_controller.subscribe( "ShowRollingPopupPreview", show_preview )
 end
 
 m.RollingPopupContent = M

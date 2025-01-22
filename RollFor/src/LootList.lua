@@ -10,7 +10,7 @@ local getn = table.getn
 ---@class LootList
 ---@field get_items fun(): DroppedItem[]
 ---@field get_source_guid fun(): string
----@field get_slot fun( item_id: number ): DroppedItem?
+---@field get_slot fun( item_id: number ): number?
 ---@field is_looting fun(): boolean
 ---@field count fun( item_id: number ): number
 

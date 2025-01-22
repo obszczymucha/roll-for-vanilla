@@ -71,7 +71,7 @@ local function mock_popup( config, controller )
 
   local popup_builder = require( "mocks/PopupBuilder" )
   local popup = RollingPopup.new( popup_builder.new(), db( "dummy" ), config or mock_config(), controller )
-  popup.get = function() return content end
+  popup.get = function() return content or {} end
 
   local old_refresh = popup.refresh
   popup.refresh = function( _, new_content )
@@ -88,8 +88,8 @@ end
 
 ---@param group_roster GroupRoster
 ---@param data table?
----@return GroupedSoftRes
-local function softres( group_roster, data )
+---@return GroupAwareSoftRes
+local function group_aware_softres( group_roster, data )
   local raw_softres = SoftRes.new()
   local result = SoftResDecorator.new( group_roster, raw_softres )
 
@@ -137,10 +137,15 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   local roll_tracker = require( "src/RollTracker" ).new()
   deps[ "RollTracker" ] = roll_tracker
 
+  local softres = deps[ "SoftResData" ] and group_aware_softres( group_roster, deps[ "SoftResData" ] ) or group_aware_softres( group_roster )
+
   local roll_controller = require( "src/RollController" ).new(
     roll_tracker,
     player_info,
-    ml_candidates
+    ml_candidates,
+    softres,
+    loot_list,
+    config
   )
 
   local master_loot_frame = require( "src/MasterLootCandidateSelectionFrame" ).new( winner_tracker, roll_controller, config )
@@ -148,8 +153,6 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   local loot_award_callback = require( "src/LootAwardCallback" ).new( awarded_loot, roll_controller, winner_tracker )
   local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, master_loot_frame, loot_list, roll_controller )
   deps[ "MasterLoot" ] = master_loot
-
-  local softres_dep = deps[ "SoftResData" ] and softres( group_roster, deps[ "SoftResData" ] ) or softres( group_roster )
 
   local strategy_factory = require( "src/RollingStrategyFactory" ).new(
     group_roster,
@@ -159,7 +162,7 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
     ace_timer,
     winner_tracker,
     config,
-    softres_dep,
+    softres,
     player_info
   )
   deps[ "RollingStrategyFactory" ] = strategy_factory
@@ -487,7 +490,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_and_the_award_b
   local item = i( "Hearthstone" )
   local loot_list = mock_loot_list( { item } )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list } )
-  enable_debug( "RollController" )
+  -- enable_debug( "RollController" )
   mock_random( { { 1, 2, 1 } } )
   controller.start( RS.InstaRaidRoll, item, 1 )
   controller.award_aborted( item )
@@ -1002,8 +1005,9 @@ function SoftResrollPopupContentSpec:should_preview_rolls()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( { p1, p2 } )
-  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster } )
-  local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
+  local item = i( "Hearthstone", 123 )
   controller.preview( item, 1 )
 
   -- Then
@@ -1040,7 +1044,7 @@ function SoftResrollPopupContentSpec:should_preview_the_winner_with_award_button
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( { p1, p2 } )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster } )
-  enable_debug( "RollingPopupContent" )
+  -- enable_debug( "RollingPopupContent" )
   local item = i( "Hearthstone", 123, { rp( p1, 1 ) } )
   controller.preview( item, 1 )
 

@@ -21,7 +21,7 @@ local mock_value, mock_values = utils.mock_value, utils.mock_values
 
 LootListSpec = {}
 
----@return GroupedSoftRes
+---@return GroupAwareSoftRes
 local new_softres = function()
   return {
     get = function() return {} end,

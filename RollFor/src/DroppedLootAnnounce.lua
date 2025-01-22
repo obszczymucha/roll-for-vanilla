@@ -250,7 +250,7 @@ end
 ---@param loot_list LootList
 ---@param chat Chat
 ---@param dropped_loot DroppedLoot
----@param softres GroupedSoftRes
+---@param softres GroupAwareSoftRes
 ---@param winner_tracker WinnerTracker
 ---@param player_info PlayerInfo
 function M.new( loot_list, chat, dropped_loot, softres, winner_tracker, player_info )

@@ -216,8 +216,8 @@ end
 ---@class Winner
 ---@field name string
 ---@field class string
----@field item Item -- Could be worth storing if we want to ever add a GUI for historical items. Dunno.
----@field is_on_master_loot_candidate_list boolean
+---@field item Item|MasterLootDistributableItem -- TODO: remove
+---@field is_on_master_loot_candidate_list boolean -- TODO: remove
 ---@field roll_type RollType
 ---@field winning_roll number?
 ---@field rerolling boolean?
@@ -226,7 +226,7 @@ end
 ---@alias MakeWinnerFn fun(
 ---  name: string,
 ---  class: PlayerClass,
----  item: Item,
+---  item: Item|MasterLootDistributableItem,
 ---  is_on_master_loot_candidate_list: boolean,
 ---  roll_type: RollType,
 ---  winning_roll: number?,
@@ -235,10 +235,10 @@ end
 ---@type MakeWinnerFn
 ---@param name string
 ---@param class PlayerClass
----@param item Item
----@param is_on_master_loot_candidate_list boolean,
----@param roll_type RollType,
----@param winning_roll number?,
+---@param item Item|MasterLootDistributableItem
+---@param is_on_master_loot_candidate_list boolean
+---@param roll_type RollType
+---@param winning_roll number?
 ---@param rerolling boolean?
 ---@return Winner
 function M.make_winner( name, class, item, is_on_master_loot_candidate_list, roll_type, winning_roll, rerolling )

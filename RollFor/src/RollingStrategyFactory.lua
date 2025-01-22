@@ -32,7 +32,7 @@ local getn = table.getn
 ---@param ace_timer AceTimer
 ---@param winner_tracker WinnerTracker
 ---@param config Config
----@param softres GroupedSoftRes
+---@param softres GroupAwareSoftRes
 ---@param player_info PlayerInfo
 function M.new(
     group_roster,

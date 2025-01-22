@@ -21,7 +21,7 @@ local clone = m.clone
 ---@field clear fun( report: boolean )
 ---@field persist fun()
 
----@class GroupedSoftRes
+---@class GroupAwareSoftRes
 ---@field get fun( item_id: ItemId ): RollingPlayer[]
 ---@field get_all_rollers fun(): RollingPlayer[]
 ---@field is_player_softressing fun( player_name: string, item_id: ItemId ): boolean
@@ -38,7 +38,7 @@ local clone = m.clone
 -- I also enrich the player data with class name.
 ---@param group_roster GroupRoster
 ---@param softres SoftRes
----@return GroupedSoftRes
+---@return GroupAwareSoftRes
 function M.new( group_roster, softres )
   local f = group_roster.is_player_in_my_group
   local enrich_class = function( p )

@@ -49,7 +49,7 @@ local getn = table.getn
 ---  ml_candidates: ItemCandidate[] }
 
 ---@class RollTracker
----@field preview fun( item: MasterLootDistributableItem, count: number, ml_candidates: ItemCandidate[] )
+---@field preview fun( item: Item|MasterLootDistributableItem, count: number, ml_candidates: ItemCandidate[] )
 ---@field start fun( rolling_strategy: RollingStrategyType, item: Item|DroppedItem|SoftRessedDroppedItem, count: number, info: string?, seconds: number?, required_rolling_players: RollingPlayer[]? )
 ---@field waiting_for_rolls fun()
 ---@field add_winners fun( winners: Winner[] )
@@ -63,6 +63,7 @@ local getn = table.getn
 ---@field tick fun( seconds_left: number )
 ---@field clear fun()
 ---@field loot_awarded fun( player_name: string, item_id: number )
+---@field create_roll_data fun( players: RollingPlayer[] ): RollData[]
 
 function M.new()
   local status
@@ -120,6 +121,7 @@ function M.new()
     if current_iteration == 0 then return end
 
     M.debug.add( "add2" )
+    ---@type RollData
     local data = { player_name = player_name, player_class = player_class, roll_type = roll_type, roll = roll }
     local iteration = iterations[ current_iteration ]
 
@@ -130,6 +132,21 @@ function M.new()
     end
 
     sort( iteration.rolls )
+  end
+
+  ---@param players RollingPlayer[]
+  local function create_roll_data( players )
+    local result = {}
+
+    for _, player in ipairs( players ) do
+      for _ = 1, player.rolls do
+        ---@type RollData
+        local data = { player_name = player.name, player_class = player.class, roll_type = RT.SoftRes }
+        table.insert( result, data )
+      end
+    end
+
+    return result
   end
 
   ---@param item MasterLootDistributableItem
@@ -341,7 +358,8 @@ function M.new()
     get = get,
     tick = tick,
     clear = clear,
-    loot_awarded = loot_awarded
+    loot_awarded = loot_awarded,
+    create_roll_data = create_roll_data
   }
 end
 
