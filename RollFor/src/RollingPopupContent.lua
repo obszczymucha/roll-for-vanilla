@@ -147,10 +147,10 @@ function M.new(
     local function get_props( type )
       if type == "Roll" then
         return "Roll", 70
-      elseif type == "Award" then
+      elseif type == "AwardWinner" then
         return "Award winner", 130
       elseif type == "AwardOther" then
-        return "Award...", 130
+        return "Award...", 90
       elseif type == "RaidRoll" then
         return "Raid roll", 90
       elseif type == "InstaRaidRoll" then
@@ -713,15 +713,16 @@ function M.new(
   ---@param winners WinnerWithAwardCallback[]
   ---@param strategy_type RollingStrategyType
   local function add_winners( content, winners, strategy_type )
-    for _, winner in ipairs( winners ) do
+    for i, winner in ipairs( winners ) do
       local player = c( winner.name, winner.class )
+      local padding = i == 1 and 11 or 8
 
       if strategy_type == RS.RaidRoll then
-        add_raid_roll_winner_new( content, player, 8 )
+        add_raid_roll_winner_new( content, player, padding )
       elseif strategy_type == RS.InstaRaidRoll then
-        add_insta_raid_roll_winner_new( content, player, 8 )
+        add_insta_raid_roll_winner_new( content, player, padding )
       else
-        add_roll_winner_new( content, player, strategy_type, 8 )
+        add_roll_winner_new( content, player, winner.roll_type, winner.roll, strategy_type, padding )
       end
 
       if winner.award_callback then table.insert( content, award_winner_button( winner.award_callback ) ) end

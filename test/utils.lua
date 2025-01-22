@@ -256,6 +256,10 @@ function M.parse_item_link( item_link )
   return string.gsub( item_link, "|c%x%x%x%x%x%x%x%x|Hitem:%d+.*|h(.*)|h|r", "%1" )
 end
 
+function M.parse_tooltip_item_link( item_link )
+  return string.gsub( item_link, "^item:(%d+):.*$", "%1" )
+end
+
 local function load_libstub()
   ---@diagnostic disable-next-line: lowercase-global
   strmatch = string.match

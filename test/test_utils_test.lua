@@ -28,6 +28,17 @@ function TestUtilsSpec:should_parse_item_link()
   lu.assertEquals( result, "[Hearthstone]" )
 end
 
+function TestUtilsSpec:should_parse_tooltip_item_link()
+  -- Given
+  local input = "item:123::::::::20:257::::::"
+
+  -- When
+  local result = utils.parse_tooltip_item_link( input )
+
+  -- Then
+  lu.assertEquals( result, "123" )
+end
+
 function TestUtilsSpec:should_flatten_a_table_into_another_table()
   -- Given
   local function f( a, b ) return function() return a, b end end

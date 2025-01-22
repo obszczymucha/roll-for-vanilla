@@ -88,6 +88,8 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
   ---@class WinnerWithAwardCallback
   ---@field name string
   ---@field class PlayerClass
+  ---@field roll_type RollType
+  ---@field roll number?
   ---@field award_callback fun()?
 
   ---@class RollingPopupButtonWithCallback
@@ -147,7 +149,6 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
 
     local soft_ressers = softres.get( item.id )
     local sr_count = getn( soft_ressers )
-
     local buttons = {}
 
     if sr_count == 0 then
@@ -170,18 +171,27 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     end
 
     if item_count == sr_count then
+      local dropped_item = loot_list.get_by_id( item.id )
+
       ---@type WinnerWithAwardCallback[]
       local winners = m.map( soft_ressers,
         ---@param player RollingPlayer
         function( player )
           local candidate = ml_candidates.find( player.name )
-          local dropped_item = loot_list.get_by_id( item.id )
           local award_callback = candidate and dropped_item and function() award_confirmed( candidate, dropped_item ) end
 
           ---@type WinnerWithAwardCallback
-          return { name = player.name, class = player.class, award_callback = award_callback }
+          return { name = player.name, class = player.class, roll_type = "SoftRes", award_callback = award_callback }
         end
       )
+
+      if getn( winners ) == 1 and winners[ 1 ].award_callback then
+        table.insert( buttons, button( "AwardWinner", winners[ 1 ].award_callback ) )
+        winners[ 1 ].award_callback = nil
+      end
+
+      table.insert( buttons, button( "Close", function() end ) )
+      table.insert( buttons, button( "AwardOther", function() end ) )
 
       ---@type RollingPopupPreviewData
       local data = {
@@ -192,7 +202,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
         winners = winners,
         rolls = {},
         strategy_type = RS.SoftResRoll,
-        buttons = {}
+        buttons = buttons
       }
 
       notify_subscribers( "ShowRollingPopupPreview", data )
@@ -208,7 +218,10 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
       winners = {},
       rolls = roll_tracker.create_roll_data( soft_ressers ),
       strategy_type = RS.SoftResRoll,
-      buttons = {}
+      buttons = {
+        button( "Roll", function() end ),
+        button( "AwardOther", function() end )
+      }
     }
 
     notify_subscribers( "ShowRollingPopupPreview", data )

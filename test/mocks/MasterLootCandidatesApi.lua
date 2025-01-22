@@ -6,9 +6,7 @@ function M.new( group_roster )
     local players = group_roster and group_roster.get_all_players_in_my_group() or {}
 
     for i, player in ipairs( players ) do
-      if i == index then
-        return player.name
-      end
+      if i == index then return player.name end
     end
   end
 

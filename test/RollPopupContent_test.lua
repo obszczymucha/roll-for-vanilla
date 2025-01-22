@@ -1005,35 +1005,42 @@ function SoftResrollPopupContentSpec:should_preview_rolls()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( { p1, p2 } )
-  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123 )
   controller.preview( item, 1 )
 
   -- Then
   eq( cleanse( popup.get() ), {
-    { type = link,     link = item.link,             count = 1 },
-    { type = "roll",   player_name = "Obszczymucha", player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
-    { type = "roll",   player_name = "Psikutas",     player_class = C.Warrior, roll_type = RT.SoftRes },
-    { type = "roll",   player_name = "Psikutas",     player_class = C.Warrior, roll_type = RT.SoftRes },
+    { type = link,     link = item.link,             tooltip_link = item.tooltip_link, count = 1 },
+    { type = "roll",   player_name = "Obszczymucha", player_class = C.Druid,           roll_type = RT.SoftRes, padding = 11 },
+    { type = "roll",   player_name = "Psikutas",     player_class = C.Warrior,         roll_type = RT.SoftRes },
+    { type = "roll",   player_name = "Psikutas",     player_class = C.Warrior,         roll_type = RT.SoftRes },
     { type = "button", label = "Roll",               width = 70 },
     { type = "button", label = "Award...",           width = 90 }
   } )
 end
 
-function SoftResrollPopupContentSpec:should_preview_the_winner()
+function SoftResrollPopupContentSpec:should_preview_the_winner_without_award_button_if_the_winner_is_not_a_candidate()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( { p1, p2 } )
-  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster } )
-  local item = i( "Hearthstone", 123, { rp( p1, 1 ) } )
+  local item = i( "Hearthstone", 123 )
+  local loot_list = mock_loot_list( { item } )
+  local data = make_data( sr( p1.name, 123 ) )
+  local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
+  local popup, controller = new( {
+    [ "GroupRosterApi" ] = group_roster,
+    [ "LootList" ] = loot_list,
+    [ "SoftResData" ] = data,
+    [ "MasterLootCandidatesApi" ] = ml_candidates_api
+  } )
   controller.preview( item, 1 )
 
   -- Then
   eq( cleanse( popup.get() ), {
-    { type = link,     link = item.link,                          count = 1 },
+    { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
-    { type = "button", label = "Award winner",                    width = 130 },
     { type = "button", label = "Close",                           width = 70 },
     { type = "button", label = "Award...",                        width = 90 }
   } )
@@ -1043,14 +1050,15 @@ function SoftResrollPopupContentSpec:should_preview_the_winner_with_award_button
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( { p1, p2 } )
-  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster } )
-  -- enable_debug( "RollingPopupContent" )
-  local item = i( "Hearthstone", 123, { rp( p1, 1 ) } )
+  local item = i( "Hearthstone", 123 )
+  local loot_list = mock_loot_list( { item } )
+  local data = make_data( sr( p1.name, 123 ) )
+  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list, [ "SoftResData" ] = data } )
   controller.preview( item, 1 )
 
   -- Then
   eq( cleanse( popup.get() ), {
-    { type = link,     link = item.link,                          count = 1 },
+    { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
     { type = "button", label = "Award winner",                    width = 130 },
     { type = "button", label = "Close",                           width = 70 },
@@ -1062,17 +1070,19 @@ function SoftResrollPopupContentSpec:should_preview_the_winners()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local group_roster = mock_group_roster( { p1, p2 } )
-  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster } )
-  local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+  local item = i( "Hearthstone", 123 )
+  local loot_list = mock_loot_list( { item } )
+  local data = make_data( sr( p1.name, 123 ), sr( p2.name, 123 ) )
+  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list, [ "SoftResData" ] = data } )
   controller.preview( item, 2 )
 
   -- Then
   eq( cleanse( popup.get() ), {
-    { type = link,           link = item.link,                              count = 2 },
+    { type = link,           link = item.link,                              tooltip_link = item.tooltip_link, count = 2 },
     { type = "text",         value = "Obszczymucha soft-ressed this item.", padding = 11 },
-    { type = "award_button", label = "Award",                               padding = 6, width = 90 },
+    { type = "award_button", label = "Award",                               padding = 6,                      width = 90 },
     { type = "text",         value = "Psikutas soft-ressed this item.",     padding = 8 },
-    { type = "award_button", label = "Award",                               padding = 6, width = 90 },
+    { type = "award_button", label = "Award",                               padding = 6,                      width = 90 },
     { type = "button",       label = "Close",                               width = 70 },
     { type = "button",       label = "Award...",                            width = 90 }
   } )
