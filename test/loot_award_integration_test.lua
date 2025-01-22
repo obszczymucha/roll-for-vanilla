@@ -106,9 +106,9 @@ function LootAwardIntegrationSpec:should_successfully_assign_an_item_to_the_only
   -- Then
   assert_messages(
     r( "1 item dropped:" ),
-    r( "1. [Hearthstone] (SR by Psikutas)" ),
-    r( "Remove calls to roll controller from the rolling popup and pass the callbacks instead." ),
-    r( "That was we'll be able to mock the popup and call the callbacks." )
+    r( "1. [Hearthstone] (SR by Psikutas)" )
+    -- r( "Remove calls to roll controller from the rolling popup and pass the callbacks instead." ),
+    -- r( "That was we'll be able to mock the popup and call the callbacks." )
   )
 end
 

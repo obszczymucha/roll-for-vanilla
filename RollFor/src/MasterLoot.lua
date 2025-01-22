@@ -58,7 +58,7 @@ function M.new( master_loot_candidates, loot_award_callback, player_selection_fr
     m_slot_cache[ slot ] = nil
   end
 
-  ---@param data LootConfirmedData
+  ---@param data AwardConfirmedData
   local function on_confirm(data)
     local player = data.player
     local item = data.item

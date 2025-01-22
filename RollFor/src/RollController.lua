@@ -3,8 +3,10 @@ local m = RollFor
 
 if m.RollController then return end
 
+local info = m.pretty_print
 local M = m.Module.new( "RollController" )
 local S = m.Types.RollingStatus
+local LAE = m.Types.LootAwardError
 local getn = table.getn
 
 ---@class RollControllerFacade
@@ -50,6 +52,7 @@ local getn = table.getn
 ---@param ml_candidates MasterLootCandidates
 function M.new( roll_tracker, player_info, ml_candidates )
   local callbacks = {}
+  local ml_confirmation_data = nil ---@type MasterLootConfirmationData?
 
   local function notify_subscribers( event_type, data )
     M.debug.add( event_type )
@@ -135,6 +138,11 @@ function M.new( roll_tracker, player_info, ml_candidates )
   ---@param message string?
   ---@param seconds number?
   local function start( strategy_type, item, item_count, message, seconds )
+    if ml_confirmation_data then
+      info( "Item award confirmation is in progress. Can't start rolling now." )
+      return
+    end
+
     notify_subscribers( "start", { strategy_type = strategy_type, item = item, item_count = item_count, message = message, seconds = seconds } )
   end
 
@@ -193,6 +201,11 @@ function M.new( roll_tracker, player_info, ml_candidates )
   end
 
   local function award_aborted( item )
+    if ml_confirmation_data then
+      notify_subscribers( "hide_master_loot_confirmation" )
+      ml_confirmation_data = nil
+    end
+
     notify_subscribers( "award_aborted", { item = item } )
 
     local data, current_iteration = roll_tracker.get()
@@ -225,7 +238,7 @@ function M.new( roll_tracker, player_info, ml_candidates )
     end
   end
 
-  ---@class LootConfirmedData
+  ---@class AwardConfirmedData
   ---@field player ItemCandidate|Winner
   ---@field item MasterLootDistributableItem
 
@@ -235,13 +248,14 @@ function M.new( roll_tracker, player_info, ml_candidates )
     notify_subscribers( "award_confirmed", { player = player, item = item } )
   end
 
-  ---@class ShowMasterLootConfirmationData
+  ---@class MasterLootConfirmationData
   ---@field item MasterLootDistributableItem
   ---@field winners Winner[]
   ---@field receiver ItemCandidate
   ---@field strategy_type RollingStrategyType
   ---@field confirm_fn fun()
   ---@field abort_fn fun()
+  ---@field error LootAwardError?
 
   ---@param player ItemCandidate|Winner
   ---@param item MasterLootDistributableItem
@@ -256,17 +270,17 @@ function M.new( roll_tracker, player_info, ml_candidates )
 
     local winners = roll_tracker.get().winners
 
+    ml_confirmation_data = {
+      item = item,
+      winners = winners,
+      receiver = candidate,
+      strategy_type = strategy_type,
+      confirm_fn = function() award_confirmed( candidate, item ) end,
+      abort_fn = function() award_aborted( item ) end
+    }
+
     notify_subscribers( "rolling_popup_hide" )
-    notify_subscribers( "show_master_loot_confirmation",
-      ---@type ShowMasterLootConfirmationData
-      {
-        item = item,
-        winners = winners,
-        receiver = candidate,
-        strategy_type = strategy_type,
-        confirm_fn = function() award_confirmed( candidate, item ) end,
-        abort_fn = function() award_aborted( item ) end
-      } )
+    notify_subscribers( "show_master_loot_confirmation", ml_confirmation_data )
   end
 
   local function loot_opened()
@@ -276,27 +290,42 @@ function M.new( roll_tracker, player_info, ml_candidates )
   local function loot_closed()
     notify_subscribers( "loot_closed" )
 
+    if ml_confirmation_data then
+      award_aborted( ml_confirmation_data.item )
+      ml_confirmation_data = nil
+      notify_subscribers( "hide_master_loot_confirmation" )
+      return
+    end
+
     local status = roll_tracker.get().status
 
     if status and status.type == S.Preview then
+      roll_tracker.clear()
       notify_subscribers( "rolling_popup_hide" )
     end
   end
 
+  ---@param error LootAwardError
+  local function update_loot_confirmation_with_error( error )
+    if not ml_confirmation_data then return end
+    ml_confirmation_data.error = error
+    notify_subscribers( "show_master_loot_confirmation", ml_confirmation_data )
+  end
+
   local function player_already_has_unique_item()
-    notify_subscribers( "player_already_has_unique_item" )
+    update_loot_confirmation_with_error( LAE.AlreadyOwnsUniqueItem )
   end
 
   local function player_has_full_bags()
-    notify_subscribers( "player_has_full_bags" )
+    update_loot_confirmation_with_error( LAE.FullBags )
   end
 
   local function player_not_found()
-    notify_subscribers( "player_not_found" )
+    update_loot_confirmation_with_error( LAE.PlayerNotFound )
   end
 
   local function cant_assign_item_to_that_player()
-    notify_subscribers( "cant_assign_item_to_that_player" )
+    update_loot_confirmation_with_error( LAE.CantAssignItemToThatPlayer )
   end
 
   local function rolling_popup_closed()

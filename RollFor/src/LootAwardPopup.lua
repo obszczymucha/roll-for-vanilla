@@ -30,8 +30,6 @@ local button_defaults = {
 ---@param center_point table
 function M.new( popup_builder, roll_controller, db, center_point )
   local popup
-  ---@type ShowMasterLootConfirmationData?
-  local data_for_error
   local top_padding = 14
 
   local function create_popup()
@@ -60,17 +58,6 @@ function M.new( popup_builder, roll_controller, db, center_point )
     local alpha = 0.6
 
     popup:border_color( color.r * multiplier, color.g * multiplier, color.b * multiplier, alpha )
-  end
-
-  local function abort()
-    if not popup then return end
-    if popup then popup:Hide() end
-
-    if data_for_error then
-      roll_controller.award_aborted( data_for_error.item )
-    end
-
-    data_for_error = nil
   end
 
   ---@param content table
@@ -130,7 +117,7 @@ function M.new( popup_builder, roll_controller, db, center_point )
   end
 
   ---@param content table
-  ---@param data ShowMasterLootConfirmationData
+  ---@param data MasterLootConfirmationData
   local function add_winners( content, data )
     if data.strategy_type == RS.RaidRoll then
       add_raid_roll_winners( content, data.winners )
@@ -141,9 +128,8 @@ function M.new( popup_builder, roll_controller, db, center_point )
     end
   end
 
-  ---@param data ShowMasterLootConfirmationData
-  ---@param error LootAwardError
-  local function make_content( data, error )
+  ---@param data MasterLootConfirmationData
+  local function make_content( data )
     local content = { { type = "item_link_with_icon", link = data.item.link, texture = data.item.texture } }
     local winner_count = getn( data.winners )
 
@@ -155,43 +141,29 @@ function M.new( popup_builder, roll_controller, db, center_point )
     -- TODO: check if receiver is a winner and add a warning if not.
     table.insert( content, { type = "text", value = string.format( "Award this item to %s?", name ), padding = 16 } )
 
-    if error then
-      local message = error == LAE.FullBags and string.format( "%s%s %s", name, red( possesive_case( data.receiver.name ) ), red( "bags are full." ) ) or
-          error == LAE.AlreadyOwnsUniqueItem and string.format( "%s %s", name, red( "already owns this unique item." ) ) or
-          error == LAE.PlayerNotFound and string.format( "%s %s", name, red( "cannot be found." ) ) or
-          error == LAE.CantAssignItemToThatPlayer and string.format( "%s %s.", red( "Can't assign this item to" ), name ) or nil
+    if data.error then
+      local message = data.error == LAE.FullBags and string.format( "%s%s %s", name, red( possesive_case( data.receiver.name ) ), red( "bags are full." ) ) or
+          data.error == LAE.AlreadyOwnsUniqueItem and string.format( "%s %s", name, red( "already owns this unique item." ) ) or
+          data.error == LAE.PlayerNotFound and string.format( "%s %s", name, red( "cannot be found." ) ) or
+          data.error == LAE.CantAssignItemToThatPlayer and string.format( "%s %s.", red( "Can't assign this item to" ), name ) or nil
 
       if message then
         table.insert( content, { type = "text", value = message, padding = 7 } )
       end
     end
 
-    table.insert( content, {
-      type = "button",
-      label = "Yes",
-      width = 80,
-      on_click = data.confirm_fn
-    } )
-
-    table.insert( content, {
-      type = "button",
-      label = "No",
-      width = 80,
-      on_click = abort
-    } )
+    table.insert( content, { type = "button", label = "Yes", width = 80, on_click = data.confirm_fn } )
+    table.insert( content, { type = "button", label = "No", width = 80, on_click = data.abort_fn } )
 
     return content
   end
 
-  ---@param data ShowMasterLootConfirmationData
-  ---@param error LootAwardError
-  local function show( data, error )
-    data_for_error = data
-
+  ---@param data MasterLootConfirmationData
+  local function show( data )
     if not popup then popup = create_popup() end
     popup:clear()
 
-    for _, v in ipairs( make_content( data, error ) ) do
+    for _, v in ipairs( make_content( data ) ) do
       popup.add_line( v.type, function( type, frame, lines )
         if type == "item_link_with_icon" then
           frame:SetItem( v, v.link and m.ItemUtils.get_tooltip_link( v.link ) )
@@ -237,42 +209,11 @@ function M.new( popup_builder, roll_controller, db, center_point )
   end
 
   local function hide()
-    data_for_error = nil
     if popup then popup:Hide() end
   end
 
-  local function player_already_has_unique_item()
-    if data_for_error and popup:IsVisible() then
-      show( data_for_error, LAE.AlreadyOwnsUniqueItem )
-    end
-  end
-
-  local function player_has_full_bags()
-    if data_for_error and popup:IsVisible() then
-      show( data_for_error, LAE.FullBags )
-    end
-  end
-
-  local function player_not_found()
-    if data_for_error and popup:IsVisible() then
-      show( data_for_error, LAE.PlayerNotFound )
-    end
-  end
-
-  local function cant_assign_item_to_that_player()
-    if data_for_error and popup:IsVisible() then
-      show( data_for_error, LAE.CantAssignItemToThatPlayer )
-    end
-  end
-
-  roll_controller.subscribe( "rolling_started", hide )
-  roll_controller.subscribe( "loot_awarded", hide )
   roll_controller.subscribe( "show_master_loot_confirmation", show )
-  roll_controller.subscribe( "loot_closed", abort )
-  roll_controller.subscribe( "player_already_has_unique_item", player_already_has_unique_item )
-  roll_controller.subscribe( "player_has_full_bags", player_has_full_bags )
-  roll_controller.subscribe( "player_not_found", player_not_found )
-  roll_controller.subscribe( "cant_assign_item_to_that_player", cant_assign_item_to_that_player )
+  roll_controller.subscribe( "hide_master_loot_confirmation", hide )
 end
 
 m.LootAwardPopup = M
