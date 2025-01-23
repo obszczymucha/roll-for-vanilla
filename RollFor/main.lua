@@ -94,7 +94,7 @@ end
 ---@param item Item
 ---@param item_count number
 local function roll_item( item, item_count )
-  M.roll_controller.start( RS.SoftResRoll, item, item_count, nil, M.config.default_rolling_time_seconds() )
+  M.roll_controller.start( RS.SoftResRoll, item, item_count, M.config.default_rolling_time_seconds() )
 end
 
 local function create_components()
@@ -471,7 +471,7 @@ local function on_roll_command( roll_slash_command )
       return
     end
 
-    M.roll_controller.start( strategy_type, item, count, message, seconds )
+    M.roll_controller.start( strategy_type, item, count, seconds, message )
   end
 end
 

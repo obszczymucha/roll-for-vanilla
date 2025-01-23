@@ -19,7 +19,7 @@ local getn = table.getn
 
 ---@class RollController
 ---@field preview fun( item: Item|MasterLootDistributableItem, count: number, seconds: number?, message: string? )
----@field start fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, seconds: number?)
+---@field start fun( rolling_strategy: RollingStrategyType, item: Item, count: number, seconds: number?, info: string? )
 ---@field winners_found fun( item: Item, item_count: number, winners: Winner[], strategy: RollingStrategyType )
 ---@field finish fun()
 ---@field tick fun( seconds_left: number )
@@ -122,9 +122,9 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
   ---@param strategy_type RollingStrategyType
   ---@param item Item
   ---@param item_count number
-  ---@param message string?
   ---@param seconds number?
-  local function start( strategy_type, item, item_count, message, seconds )
+  ---@param message string?
+  local function start( strategy_type, item, item_count, seconds, message )
     if ml_confirmation_data then
       info( "Item award confirmation is in progress. Can't start rolling now." )
       return
