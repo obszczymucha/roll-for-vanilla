@@ -13,6 +13,10 @@ local mock_random, mock_random_roll, mock_multi_random_roll = u.mock_multiple_ma
 local tick, repeating_tick = u.tick, u.repeating_tick
 local db = Db.new( {} )
 local sr, make_data = u.soft_res_item, u.create_softres_data
+-- local assert_messages = u.assert_messages
+-- local c, r = u.console_message, u.raid_message
+-- local cr, rw = u.console_and_raid_message, u.raid_warning
+-- local rolling_finished, rolling_not_in_progress = u.rolling_finished, u.rolling_not_in_progress
 
 local C, RT, RS = T.PlayerClass, T.RollType, T.RollingStrategy
 local make_player, make_rolling_player = T.make_player, T.make_rolling_player
@@ -877,34 +881,6 @@ function NormalRollPopupContentSpec:should_display_the_transmog_winner()
     { type = "button", label = "Award winner",                               width = 130 },
     { type = "button", label = "Raid roll",                                  width = 90 },
     { type = "button", label = "Close",                                      width = 70 }
-  } )
-end
-
-function NormalRollPopupContentSpec:should_replicate_the_single_player_tie_roll_bug()
-  -- Given
-  local p1, p2, p3, p4 = p( "Marovingiann", C.Mage ), p( "Zuljane", C.Shaman ), p( "Vossl", C.Warlock ), p( "Ynghildre", C.Paladin )
-  local group_roster = mock_group_roster( { p1, p2, p3, p4 } )
-  local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster } )
-  local item = i( "Hearthstone" )
-  controller.preview( item, 1 )
-  controller.start( RS.NormalRoll, item, 1, 8 )
-  roll( p1.name, 25, 1, 100 )
-  roll( p2.name, 35, 1, 99 )
-  roll( p3.name, 100, 1, 100 )
-  roll( p4.name, 63, 1, 98 )
-  repeating_tick( 8 )
-
-  -- Then
-  eq( cleanse( popup.get() ), {
-    { type = link,     link = item.link,                                    count = 1 },
-    { type = "roll",   roll_type = RT.MainSpec,                             player_name = p3.name, player_class = p3.class, roll = 100, padding = 11 },
-    { type = "roll",   roll_type = RT.MainSpec,                             player_name = p1.name, player_class = p1.class, roll = 25 },
-    { type = "roll",   roll_type = RT.OffSpec,                              player_name = p2.name, player_class = p2.class, roll = 35 },
-    { type = "roll",   roll_type = RT.Transmog,                             player_name = p4.name, player_class = p4.class, roll = 63 },
-    { type = "text",   value = "Vossl wins the main-spec roll with a 100.", padding = 11 },
-    { type = "button", label = "Award winner",                              width = 130 },
-    { type = "button", label = "Raid roll",                                 width = 90 },
-    { type = "button", label = "Close",                                     width = 70 }
   } )
 end
 

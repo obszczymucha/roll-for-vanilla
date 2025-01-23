@@ -234,7 +234,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
       rolls = roll_tracker.create_roll_data( soft_ressers ),
       strategy_type = RS.SoftResRoll,
       buttons = {
-        button( "Roll", function() end ),
+        button( "Roll", function() start( RS.SoftResRoll, item, item_count, config.default_rolling_time_seconds() ) end ),
         button( "AwardOther", function() end )
       }
     }
