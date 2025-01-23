@@ -607,7 +607,7 @@ end
 
 u.mock_libraries()
 u.load_real_stuff( function( module_name )
-  if module_name == "src/LootAwardPopup" then return require( "mocks/LootAwardPopupMock" ) end
+  if module_name == "src/LootAwardPopup" then return require( "mocks/LootAwardPopup" ) end
   if module_name == "src/Config" then return mock_config() end
   if module_name == "src/LootFacade" then
     ---@diagnostic disable-next-line: different-requires

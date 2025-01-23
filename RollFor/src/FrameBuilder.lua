@@ -14,8 +14,8 @@ M.interface = {
 ---@class Frame
 ---@field add_line fun( line_type: string, modify_fn: function, padding: number ): table
 ---@field clear fun()
----@field border_color fun( r: number, g: number, b: number, a: number )
----@field backdrop_color fun( r: number, g: number, b: number, a: number )
+---@field border_color fun( _, r: number, g: number, b: number, a: number )
+---@field backdrop_color fun( _, r: number, g: number, b: number, a: number )
 ---@field lock fun()
 ---@field unlock fun()
 ---@field position fun( self: Frame, point: table )
@@ -29,6 +29,7 @@ M.interface = {
 ---@field SetPoint fun( frame: Frame, point: string, relative_frame: Frame, relative_point: string, x: number, y: number )
 ---@field GetScale fun(): number
 ---@field GetWidth fun(): number
+---@field GetHeight fun(): number
 ---@field ClearAllPoints fun()
 ---@field IsVisible fun( self ): boolean
 
@@ -55,6 +56,9 @@ M.interface = {
 ---@field self_centered_anchor fun( self: FrameBuilder ): FrameBuilder
 ---@field scale fun( self: FrameBuilder, scale: number ): FrameBuilder
 ---@field build fun( self: FrameBuilder ): Frame
+
+---@class FrameBuilderFactory
+---@field new fun(): FrameBuilder
 
 ---@return FrameBuilder
 function M.new()

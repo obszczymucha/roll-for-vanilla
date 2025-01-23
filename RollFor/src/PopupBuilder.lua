@@ -8,6 +8,32 @@ local M = {}
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
+---@class Popup : Frame
+---@field resize fun( self: Popup, lines: table )
+
+---@class PopupBuilder
+---@field name fun( self: PopupBuilder, name: string ): PopupBuilder
+---@field height fun( self: PopupBuilder, height: number ): PopupBuilder
+---@field width fun( self: PopupBuilder, width: number ): PopupBuilder
+---@field point fun( self: PopupBuilder, p: table ): PopupBuilder
+---@field sound fun( self: PopupBuilder ): PopupBuilder
+---@field frame_level fun( self: PopupBuilder, frame_level: number ): PopupBuilder
+---@field backdrop_color fun( self: PopupBuilder, r: number, g: number, b: number, a: number ): PopupBuilder
+---@field bg_file fun( self: PopupBuilder, bg_file: string ): PopupBuilder
+---@field esc fun( self: PopupBuilder ): PopupBuilder
+---@field gui_elements fun( self: PopupBuilder, gui_elements: table ): PopupBuilder
+---@field frame_style fun( self: PopupBuilder, frame_style: string ): PopupBuilder
+---@field on_drag_stop fun( self: PopupBuilder, callback: function ): PopupBuilder
+---@field movable fun( self: PopupBuilder ): PopupBuilder
+---@field border_size fun( self: PopupBuilder, border_size: number ): PopupBuilder
+---@field on_show fun( self: PopupBuilder, on_show: function ): PopupBuilder
+---@field on_hide fun( self: PopupBuilder, on_hide: function ): PopupBuilder
+---@field border_color fun( self: PopupBuilder, r: number, g: number, b: number, a: number ): PopupBuilder
+---@field self_centered_anchor fun( self: PopupBuilder ): PopupBuilder
+---@field scale fun( self: PopupBuilder, scale: number ): PopupBuilder
+---@field build fun( self: PopupBuilder ): Popup
+
+---@param frame_builder FrameBuilderFactory
 function M.new( frame_builder )
   local button_padding = 10
   local bottom_margin = 30
@@ -96,7 +122,8 @@ function M.new( frame_builder )
   local build = decoratee.build
 
   decoratee.build = function()
-    local result = build()
+    ---@class Popup
+    local result = build( decoratee )
     result.resize = resize
 
     return result

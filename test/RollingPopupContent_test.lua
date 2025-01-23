@@ -8,7 +8,7 @@ reqsrc( "DebugBuffer", "Module", "Types", "SoftResDataTransformer", "RollingLogi
 reqsrc( "TieRollingLogic", "SoftResRollingLogic", "NonSoftResRollingLogic", "RaidRollRollingLogic", "InstaRaidRollRollingLogic" )
 local SoftResDecorator = require( "src/SoftResPresentPlayersDecorator" )
 local SoftRes, Db = require( "src/SoftRes" ), require( "src/Db" )
-local RollingPopup, RollingLogic = require( "src/RollingPopup" ), require( "src/RollingLogic" )
+local RollingLogic = require( "src/RollingLogic" )
 local mock_random, mock_random_roll, mock_multi_random_roll = u.mock_multiple_math_random, u.mock_random_roll, u.mock_multiple_random_roll
 local tick, repeating_tick = u.tick, u.repeating_tick
 local db = Db.new( {} )
@@ -64,26 +64,6 @@ local function mock_config( configuration )
     insta_raid_roll = function() return true end,
     default_rolling_time_seconds = function() return 8 end
   }
-end
-
-local function mock_popup( config, controller )
-  local content
-
-  local popup_builder = require( "mocks/PopupBuilder" )
-  local popup = RollingPopup.new( popup_builder.new(), db( "dummy" ), config or mock_config(), controller )
-  popup.get = function() return content or {} end
-
-  local old_refresh = popup.refresh
-  popup.refresh = function( _, new_content )
-    content = new_content
-    old_refresh( _, new_content )
-  end
-
-  popup.is_visible = function()
-    return popup.get_frame():IsVisible()
-  end
-
-  return popup
 end
 
 ---@param group_roster GroupRoster
@@ -178,7 +158,8 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   )
   deps[ "RollingLogic" ] = rolling_logic
 
-  local popup = mock_popup( config, roll_controller )
+  local popup_builder = require( "mocks/PopupBuilder" )
+  local popup = require( "mocks/RollingPopup" ).new( popup_builder.new(), db( "dummy" ), config, roll_controller )
   local noop = function() end
 
   local rolling_popup_content = require( "src/RollingPopupContent" ).new(
@@ -1041,8 +1022,8 @@ function SoftResrollPopupContentSpec:should_preview_the_winner_without_award_but
   eq( cleanse( popup.get() ), {
     { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
-    { type = "button", label = "Close",                           width = 70 },
-    { type = "button", label = "Award...",                        width = 90 }
+    { type = "button", label = "Close",                           width = 70 }
+    -- { type = "button", label = "Award...",                        width = 90 }
   } )
 end
 

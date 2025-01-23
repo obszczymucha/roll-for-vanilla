@@ -794,8 +794,8 @@ function M.load_real_stuff_and_inject( module_registry, target_table )
             entry.mock and type( entry.mock ) == "function" and entry.mock() or
             require( module_name )
 
-        if type(module) == "function" then
-          error(module_name)
+        if type( module ) == "function" then
+          error( module_name )
         end
 
         local result = wrapper.new( module, function( instance ) if entry.variable_name then target_table[ entry.variable_name ] = instance end end )

@@ -61,7 +61,7 @@ end
 
 ---@type ModuleRegistry
 local module_registry = {
-  { module_name = "LootAwardPopup", mock = "mocks/LootAwardPopupMock" },
+  { module_name = "LootAwardPopup", mock = "mocks/LootAwardPopup" },
   { module_name = "Config",         mock = mock_config },
   { module_name = "LootFacade",     variable_name = "loot_facade",    mock = "mocks/LootFacade" },
   { module_name = "RollController", variable_name = "roll_controller" },

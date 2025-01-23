@@ -14,11 +14,24 @@ local button_defaults = {
   scale = 0.76
 }
 
+---@class RollingPopup
+---@field show fun()
+---@field refresh fun( _, content: table )
+---@field hide fun()
+---@field border_color fun( _, r: number, g: number, b: number, a: number )
+---@field backdrop_color fun( _, r: number, g: number, b: number, a: number )
+---@field get_frame fun(): table
+
 local M = {}
 
 M.center_point = { point = "CENTER", relative_point = "CENTER", x = 0, y = 150 }
 
+---@param popup_builder PopupBuilder
+---@param db table
+---@param config Config
+---@param roll_controller RollController
 function M.new( popup_builder, db, config, roll_controller )
+  ---@type Popup?
   local popup
   db.point = db.point or M.center_point
 
@@ -40,6 +53,7 @@ function M.new( popup_builder, db, config, roll_controller )
     end
 
     local function on_drag_stop()
+      if not popup then return end
       local width, height = popup:GetWidth(), popup:GetHeight()
       local screen_width, screen_height = m.api.GetScreenWidth(), m.api.GetScreenHeight()
       local _, _, _, x, y = popup:get_anchor_point()
@@ -89,26 +103,28 @@ function M.new( popup_builder, db, config, roll_controller )
         end )
         :self_centered_anchor()
 
-    popup = builder:build()
+    local result = builder:build()
 
     if config.rolling_popup_lock() then
-      popup:lock()
+      result:lock()
     else
-      popup:unlock()
+      result:unlock()
     end
 
     config.subscribe( "rolling_popup_lock", function( enabled )
       if enabled then
-        popup:lock()
+        result:lock()
       else
-        popup:unlock()
+        result:unlock()
       end
     end )
 
     config.subscribe( "reset_rolling_popup", function()
       db.point = nil
-      if popup then popup:position( M.center_point ) end
+      if result then result:position( M.center_point ) end
     end )
+
+    return result
   end
 
   local function refresh( _, content )
@@ -196,7 +212,7 @@ function M.new( popup_builder, db, config, roll_controller )
     if not config.rolling_popup() then return end
 
     if not popup then
-      create_popup()
+      popup = create_popup()
     else
       popup:clear()
     end
@@ -210,7 +226,7 @@ function M.new( popup_builder, db, config, roll_controller )
 
   local function border_color( _, r, g, b, a )
     if not popup then
-      create_popup()
+      popup = create_popup()
     end
 
     popup:border_color( r, g, b, a )
@@ -218,12 +234,16 @@ function M.new( popup_builder, db, config, roll_controller )
 
   local function backdrop_color( _, r, g, b, a )
     if not popup then
-      create_popup()
+      popup = create_popup()
     end
 
     popup:backdrop_color( r, g, b, a )
   end
 
+  if not roll_controller.subscribe then
+    m.trace("CHUJ")
+    m.pdump(roll_controller)
+  end
   roll_controller.subscribe( "all_items_awarded", hide )
   roll_controller.subscribe( "rolling_popup_hide", hide )
 
@@ -235,6 +255,7 @@ function M.new( popup_builder, db, config, roll_controller )
     return popup
   end
 
+  ---@type RollingPopup
   return {
     show = show,
     refresh = refresh,

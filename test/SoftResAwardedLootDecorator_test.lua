@@ -67,7 +67,7 @@ utils.mock_libraries()
 utils.load_real_stuff( function( module_name )
   if module_name ~= "src/LootAwardPopup" then return require( module_name ) end
 
-  return require( "mocks/LootAwardPopupMock" )
+  return require( "mocks/LootAwardPopup" )
 end )
 
 os.exit( lu.LuaUnit.run() )

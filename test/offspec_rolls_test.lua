@@ -1,19 +1,20 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-local lu = require( "luaunit" )
-local utils = require( "test/utils" )
-local player = utils.player
-local leader = utils.raid_leader
-local is_in_raid = utils.is_in_raid
-local c = utils.console_message
-local r = utils.raid_message
-local cr = utils.console_and_raid_message
-local rw = utils.raid_warning
-local rolling_finished = utils.rolling_finished
-local roll_for = utils.roll_for
-local roll_os = utils.roll_os
-local assert_messages = utils.assert_messages
-local tick = utils.repeating_tick
+local u = require( "test/utils" )
+local lu = u.luaunit()
+local player, leader, is_in_raid = u.player, u.raid_leader, u.is_in_raid
+local c, r = u.console_message, u.raid_message
+local cr, rw = u.console_and_raid_message, u.raid_warning
+local rolling_finished = u.rolling_finished
+local roll_for, roll_os = u.roll_for, u.roll_os
+local tick, assert_messages = u.repeating_tick, u.assert_messages
+
+---@type ModuleRegistry
+local module_registry = {
+}
+
+-- The modules will be injected here using the above module_registry.
+local m = {}
 
 OffspecRollsSpec = {}
 
@@ -104,7 +105,7 @@ function OffspecRollsSpec:should_detect_and_ignore_double_rolls()
   )
 end
 
-utils.mock_libraries()
-utils.load_real_stuff()
+u.mock_libraries()
+u.load_real_stuff_and_inject( module_registry, m )
 
 os.exit( lu.LuaUnit.run() )

@@ -1,8 +1,7 @@
 local M = {}
 
----@return FrameBuilder
 function M.new()
-  ---@type FrameBuilder
+  ---@type PopupBuilder
   local builder = {
     name = function( self ) return self end,
     height = function( self ) return self end,
@@ -28,7 +27,7 @@ function M.new()
     on_show = function( self ) return self end,
     scale = function( self ) return self end,
     build = function()
-      ---@type Frame
+      ---@type Popup
       return {
         add_line = function() return {} end,
         clear = function() end,
@@ -47,8 +46,10 @@ function M.new()
         SetPoint = function() end,
         GetScale = function() return 1 end,
         GetWidth = function() return 1 end,
+        GetHeight = function() return 1 end,
         ClearAllPoints = function() end,
         IsVisible = function( self ) return self.visible end,
+        resize = function() end
       }
     end
   }

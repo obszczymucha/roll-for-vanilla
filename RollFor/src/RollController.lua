@@ -18,7 +18,7 @@ local getn = table.getn
 ---@field finish fun()
 
 ---@class RollController
----@field preview fun( item: Item|MasterLootDistributableItem, count: number )
+---@field preview fun( item: Item|MasterLootDistributableItem, count: number, seconds: number?, message: string? )
 ---@field start fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, seconds: number?)
 ---@field winners_found fun( item: Item, item_count: number, winners: Winner[], strategy: RollingStrategyType )
 ---@field finish fun()
@@ -140,7 +140,10 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
 
   ---@param item Item|MasterLootDistributableItem
   ---@param item_count number
-  local function new_preview( item, item_count )
+  ---@param seconds number?
+  ---@param message string?
+  ---@diagnostic disable-next-line: unused-local
+  local function new_preview( item, item_count, seconds, message )
     if not item_count or item_count == 0 then
       m.trace( string.format( "item_count: %s", item_count or "nil" ) )
       return
@@ -241,6 +244,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
 
   ---@param item Item|MasterLootDistributableItem
   ---@param count number
+  ---@diagnostic disable-next-line: unused-function, unused-local
   local function preview( item, count )
     local candidates = ml_candidates.get()
     roll_tracker.preview( item, count, candidates )
