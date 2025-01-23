@@ -1,6 +1,29 @@
 local M = {}
 
+local u = require( "test/utils" )
 local RollingPopup = require( "src/RollingPopup" )
+
+local function strip_functions( t )
+  for _, line in ipairs( t ) do
+    for k, v in pairs( line ) do
+      if type( v ) == "function" then
+        line[ k ] = nil
+      end
+    end
+  end
+
+  return t
+end
+
+local function cleanse( t )
+  return u.map( strip_functions( t ), function( v )
+    if (v.type == "text" or v.type == "info") and v.value then
+      v.value = u.decolorize( v.value ) or v.value
+    end
+
+    return v
+  end )
+end
 
 ---@class RollingPopupMock : RollingPopup
 ---@field get fun(): table
@@ -15,7 +38,7 @@ function M.new( popup_builder, db, config, controller )
 
   local popup = RollingPopup.new( popup_builder, db, config, controller )
   ---@diagnostic disable-next-line: inject-field
-  popup.get = function() return content or {} end
+  popup.get = function() return content and cleanse( content ) or {} end
 
   local old_refresh = popup.refresh
   popup.refresh = function( _, new_content )

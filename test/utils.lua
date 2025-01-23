@@ -69,8 +69,14 @@ function M.debugln( message )
   M.debug( message )
 end
 
+---@param message string
+---@param chat_type ChatType
+function M.chat_message( message, chat_type )
+  return { message = message, type = chat_type }
+end
+
 function M.party_message( message )
-  return { message = message, chat = "PARTY" }
+  return M.chat_message( message, "PARTY" )
 end
 
 function M.raid_message( ... )
@@ -79,7 +85,7 @@ function M.raid_message( ... )
   local result = {}
 
   for i = 1, #args do
-    table.insert( result, { message = args[ i ], chat = "RAID" } )
+    table.insert( result, M.chat_message( args[ i ], "RAID" ) )
   end
 
   ---@diagnostic disable-next-line: deprecated
@@ -87,11 +93,11 @@ function M.raid_message( ... )
 end
 
 function M.raid_warning( message )
-  return { message = message, chat = "RAID_WARNING" }
+  return M.chat_message( message, "RAID_WARNING" ) ---@type ChatMessage
 end
 
 function M.console_message( message )
-  return { message = message, chat = "CONSOLE" }
+  return M.chat_message( message, "CONSOLE" ) ---@type ChatMessage
 end
 
 function M.mock_wow_api()
@@ -321,15 +327,15 @@ end
 function M.mock_messages()
   m_messages = {}
 
-  M.modules().api.SendChatMessage = function( message, chat )
+  M.modules().api.SendChatMessage = function( message, chat_type )
     local parsed_message = M.parse_item_link( message )
-    table.insert( m_messages, { message = parsed_message, chat = chat } )
+    table.insert( m_messages, { message = parsed_message, type = chat_type } )
   end
 
   M.modules().api.DEFAULT_CHAT_FRAME = {
     AddMessage = function( _, message )
       local message_without_colors = M.parse_item_link( M.decolorize( message ) )
-      table.insert( m_messages, { message = message_without_colors, chat = "CONSOLE" } )
+      table.insert( m_messages, { message = message_without_colors, type = "CONSOLE" } )
     end
   }
 end
