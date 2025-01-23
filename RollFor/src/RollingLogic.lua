@@ -51,10 +51,10 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
   ---@param strategy RollingStrategy
   ---@param item Item?
   ---@param item_count number?
-  ---@param message string?
   ---@param seconds number?
+  ---@param message string?
   ---@param rolling_players RollingPlayer[]?
-  local function roll( strategy, item, item_count, message, seconds, rolling_players )
+  local function roll( strategy, item, item_count, seconds, message, rolling_players )
     if m_rolling_strategy and m_rolling_strategy.is_rolling() then
       m.err( "Rolling is already in progress." )
       return
@@ -63,7 +63,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     m_rolling_strategy = strategy
 
     if item and item_count then
-      roll_controller.rolling_started( strategy.get_type(), item, item_count, message, seconds, rolling_players )
+      roll_controller.rolling_started( strategy.get_type(), item, item_count, seconds, message, rolling_players )
     end
 
     m_rolling_strategy.start_rolling()
@@ -293,7 +293,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     if not strategy then return end
 
     winner_tracker.start_rolling( data.item.link )
-    roll( strategy, data.item, data.item_count, data.message, data.seconds, rolling_players )
+    roll( strategy, data.item, data.item_count, data.seconds, data.message, rolling_players )
   end
 
   roll_controller.subscribe( "finish_rolling_early", finish_rolling_early )

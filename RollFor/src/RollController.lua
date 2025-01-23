@@ -45,7 +45,7 @@ local getn = table.getn
 ---@field loot_list_item_deselected fun()
 ---@field finish_rolling_early fun()
 ---@field cancel_rolling fun()
----@field rolling_started fun( rolling_strategy: RollingStrategyType, item: Item, count: number, info: string?, seconds: number?, rolling_players: RollingPlayer[]? )
+---@field rolling_started fun( rolling_strategy: RollingStrategyType, item: Item, count: number, seconds: number?, message: string?, rolling_players: RollingPlayer[]? )
 ---@field award_confirmed fun( player: ItemCandidate|Winner, item: MasterLootDistributableItem )
 
 ---@param roll_tracker RollTracker
@@ -160,7 +160,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     local buttons = {}
 
     if sr_count == 0 then
-      table.insert( buttons, button( "Roll", function() start( RS.NormalRoll, item, item_count, nil, config.default_rolling_time_seconds() ) end ) )
+      table.insert( buttons, button( "Roll", function() start( RS.NormalRoll, item, item_count, config.default_rolling_time_seconds() ) end ) )
       add_close_button( buttons )
 
       ---@type RollingPopupPreviewData
@@ -299,11 +299,11 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
   ---@param strategy_type RollingStrategyType
   ---@param item Item
   ---@param item_count number
-  ---@param message string?
   ---@param seconds number?
+  ---@param message string?
   ---@param rolling_players RollingPlayer[]?
-  local function rolling_started( strategy_type, item, item_count, message, seconds, rolling_players )
-    roll_tracker.start( strategy_type, item, item_count, message, seconds, rolling_players )
+  local function rolling_started( strategy_type, item, item_count, seconds, message, rolling_players )
+    roll_tracker.start( strategy_type, item, item_count, seconds, message, rolling_players )
 
     local _, _, quality = m.api.GetItemInfo( string.format( "item:%s:0:0:0", item.id ) )
     local color = get_color( quality )

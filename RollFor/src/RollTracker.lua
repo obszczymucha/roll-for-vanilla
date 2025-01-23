@@ -28,7 +28,7 @@ local getn = table.getn
 
 ---@class RollIteration
 ---@field rolling_strategy RollingStrategyType
----@field info string
+---@field message string
 ---@field rolls RollData[]
 ---@field ignored_rolls RollData[]?
 ---@field tied_roll number?
@@ -50,7 +50,7 @@ local getn = table.getn
 
 ---@class RollTracker
 ---@field preview fun( item: Item|MasterLootDistributableItem, count: number, ml_candidates: ItemCandidate[] )
----@field start fun( rolling_strategy: RollingStrategyType, item: Item|DroppedItem|SoftRessedDroppedItem, count: number, info: string?, seconds: number?, required_rolling_players: RollingPlayer[]? )
+---@field start fun( rolling_strategy: RollingStrategyType, item: Item|DroppedItem|SoftRessedDroppedItem, count: number, seconds: number?, message: string?, required_rolling_players: RollingPlayer[]? )
 ---@field waiting_for_rolls fun()
 ---@field add_winners fun( winners: Winner[] )
 ---@field finish fun( ml_candidates: ItemCandidate[] )
@@ -190,10 +190,10 @@ function M.new()
   ---@param rolling_strategy RollingStrategyType
   ---@param item Item|DroppedItem|SoftRessedDroppedItem
   ---@param count number
-  ---@param info string
   ---@param seconds number
+  ---@param message string
   ---@param required_rolling_players RollingPlayer[]?
-  local function start( rolling_strategy, item, count, info, seconds, required_rolling_players )
+  local function start( rolling_strategy, item, count, seconds, message, required_rolling_players )
     M.debug.add( "start" )
     lua50_clear_table( iterations )
     lua50_clear_table( winners )
@@ -206,7 +206,7 @@ function M.new()
 
     table.insert( iterations, {
       rolling_strategy = rolling_strategy,
-      info = info,
+      message = message,
       rolls = {}
     } )
 
