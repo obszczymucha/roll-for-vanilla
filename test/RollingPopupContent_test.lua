@@ -9,7 +9,7 @@ reqsrc( "TieRollingLogic", "SoftResRollingLogic", "NonSoftResRollingLogic", "Rai
 local SoftResDecorator = require( "src/SoftResPresentPlayersDecorator" )
 local SoftRes, Db = require( "src/SoftRes" ), require( "src/Db" )
 local RollingLogic = require( "src/RollingLogic" )
-local mock_random, mock_random_roll, mock_multi_random_roll = u.mock_multiple_math_random, u.mock_random_roll, u.mock_multiple_random_roll
+local mock_random, random_roll, mock_multi_random_roll = u.mock_multiple_math_random, u.mock_random_roll, u.mock_multiple_random_roll
 local tick, repeating_tick = u.tick, u.repeating_tick
 local db = Db.new( {} )
 local sr, make_data = u.soft_res_item, u.create_softres_data
@@ -262,6 +262,8 @@ function RaidRollPopupContentSpec:should_return_initial_content()
   -- Given
   local item = i( "Hearthstone", 123 )
   local popup, controller = new()
+
+  -- When
   controller.start( RS.RaidRoll, item, 1 )
 
   -- Then
@@ -276,6 +278,8 @@ function RaidRollPopupContentSpec:should_return_initial_content_with_multiple_it
   -- Given
   local item = i( "Hearthstone", 123 )
   local popup, controller = new()
+
+  -- When
   controller.start( RS.RaidRoll, item, 2 )
 
   -- Then
@@ -293,8 +297,10 @@ function RaidRollPopupContentSpec:should_display_the_winner()
       :config( { auto_raid_roll = true } )
       :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
       :build()
+
+  -- When
   controller.start( RS.RaidRoll, item, 1 )
-  mock_random_roll( "Psikutas", 1, 2, roll )
+  random_roll( "Psikutas", 1, 2, roll )
   tick()
 
   -- Then
@@ -315,8 +321,10 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_the_award_button
       :loot_list( { item } )
       :build()
   -- enable_debug( "RollController" )
+
+  -- When
   controller.start( RS.RaidRoll, item, 1 )
-  mock_random_roll( "Psikutas", 2, 2, roll )
+  random_roll( "Psikutas", 2, 2, roll )
   tick()
   controller.award_aborted( item )
 
@@ -337,8 +345,10 @@ function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again
       :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
       :loot_list( { item } )
       :build()
+
+  -- When
   controller.start( RS.RaidRoll, item, 1 )
-  mock_random_roll( "Psikutas", 2, 2, roll )
+  random_roll( "Psikutas", 2, 2, roll )
   tick()
   controller.award_aborted( item )
 
@@ -360,8 +370,10 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_i
       :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
       :loot_list( { item } )
       :build()
+
+  -- When
   controller.start( RS.RaidRoll, item, 1 )
-  mock_random_roll( "Psikutas", 2, 2, roll )
+  random_roll( "Psikutas", 2, 2, roll )
   tick()
   controller.award_aborted( item )
 
@@ -382,6 +394,8 @@ function RaidRollPopupContentSpec:should_display_the_winners()
       :config( { auto_raid_roll = true } )
       :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
       :build()
+
+  -- When
   controller.start( RS.RaidRoll, item, 2 )
   mock_multi_random_roll( { { "Psikutas", 1, 2, roll }, { "Psikutas", 2, 2, roll } } )
   tick()
@@ -405,6 +419,8 @@ function RaidRollPopupContentSpec:should_display_the_winners_and_the_individual_
       :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
       :loot_list( { item } )
       :build()
+
+  -- When
   controller.start( RS.RaidRoll, item, 2 )
   mock_multi_random_roll( { { "Psikutas", 1, 2, roll }, { "Psikutas", 2, 2, roll } } )
   tick()
@@ -429,8 +445,10 @@ function RaidRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_c
       :loot_list( { item } )
       :build()
   -- enable_debug( "RollController" )
+
+  -- When
   controller.start( RS.RaidRoll, item, 1 )
-  mock_random_roll( "Psikutas", 2, 2, roll )
+  random_roll( "Psikutas", 2, 2, roll )
   tick()
 
   --- Then
@@ -459,6 +477,8 @@ function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awar
       :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
       :loot_list( { item } )
       :build()
+
+  -- When
   controller.start( RS.RaidRoll, item, 2 )
   mock_multi_random_roll( { { "Psikutas", 1, 2, roll }, { "Psikutas", 2, 2, roll } } )
   tick()
@@ -495,6 +515,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner()
   local item = i( "Hearthstone" )
   local popup, controller = New():roster( { p( "Psikutas" ), p( "Obszczymucha" ) } ):build()
   mock_random( { { 1, 2, 1 } } )
+
+  -- When
   controller.start( RS.InstaRaidRoll, item, 1 )
 
   -- Then
@@ -515,6 +537,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_and_the_award_b
       :build()
   -- enable_debug( "RollController" )
   mock_random( { { 1, 2, 1 } } )
+
+  -- When
   controller.start( RS.InstaRaidRoll, item, 1 )
   controller.award_aborted( item )
 
@@ -537,6 +561,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_with_award_and_
       :build()
   local strategy = RS.InstaRaidRoll
   mock_random( { { 1, 2, 1 } } )
+
+  -- When
   controller.start( strategy, item, 1 )
   controller.award_aborted( item )
 
@@ -558,6 +584,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_
       :roster( { p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid ) } )
       :build()
   mock_random( { { 1, 2, 1 } } )
+
+  -- When
   controller.start( RS.InstaRaidRoll, item, 1 )
   controller.award_aborted( item )
 
@@ -579,6 +607,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_with_raid_roll
       :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
       :build()
   mock_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
+
+  -- When
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
@@ -601,6 +631,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_without_raid_r
       :build()
   local item = i( "Hearthstone" )
   mock_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
+
+  -- When
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
@@ -623,6 +655,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_indivi
       :loot_list( { item } )
       :build()
   mock_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
+
+  -- When
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
@@ -645,6 +679,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_indivi
       :loot_list( { item } )
       :build()
   mock_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
+
+  -- When
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
@@ -669,6 +705,8 @@ function NormalRollPopupContentSpec:should_return_initial_content()
       :chat( chat )
       :roster( { p( "Psikutas" ), p( "Jogobobek" ) }, true )
       :build()
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
 
   -- Then
@@ -689,6 +727,8 @@ function NormalRollPopupContentSpec:should_return_initial_content_and_auto_raid_
   -- Given
   local item = i( "Hearthstone" )
   local popup, controller = New():config( mock_config( { auto_raid_roll = true } ) ):build()
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
 
   -- Then
@@ -705,6 +745,8 @@ function NormalRollPopupContentSpec:should_update_rolling_ends_message()
   -- Given
   local item = i( "Hearthstone" )
   local popup, controller = new()
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
   controller.tick( 5 )
 
@@ -721,6 +763,8 @@ function NormalRollPopupContentSpec:should_display_cancel_message()
   -- Given
   local item = i( "Hearthstone" )
   local popup, controller = new()
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
   controller.tick( 5 )
   controller.cancel_rolling()
@@ -737,6 +781,8 @@ function NormalRollPopupContentSpec:should_update_rolling_ends_message_for_one_s
   -- Given
   local item = i( "Hearthstone" )
   local popup, controller = new()
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
   controller.tick( 1 )
 
@@ -753,6 +799,8 @@ function NormalRollPopupContentSpec:should_display_the_winners()
   -- Given
   local item, p1, p2 = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
   local popup, controller, roll = New():roster( { p1, p2 } ):no_master_loot_candidates():build()
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
   roll( p1.name, 69, 1, 100 )
   roll( p2.name, 42, 1, 100 )
@@ -772,6 +820,8 @@ function NormalRollPopupContentSpec:should_display_the_winners_and_the_individua
   -- Given
   local item, p1, p2 = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
   local popup, controller, roll = New():roster( { p1, p2 } ):build()
+
+  -- When
   controller.start( RS.NormalRoll, item, 2, 8 )
   roll( p1.name, 69, 1, 100 )
   roll( p2.name, 42, 1, 100 )
@@ -794,6 +844,8 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   -- Given
   local item, p1, p2 = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
   local popup, controller, roll = New():roster( { p1, p2 } ):build()
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
   roll( p1.name, 8, 1, 100 )
   roll( p2.name, 7, 1, 100 )
@@ -814,6 +866,8 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   -- Given
   local item, p1, p2 = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
   local popup, controller, roll = New():roster( { p1, p2 } ):build()
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
   roll( p1.name, 8, 1, 100 )
   roll( p2.name, 11, 1, 100 )
@@ -834,6 +888,8 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   -- Given
   local item, p1, p2 = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
   local popup, controller, roll = New():roster( { p1, p2 } ):build()
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
   roll( p1.name, 8, 1, 100 )
   roll( p2.name, 18, 1, 100 )
@@ -854,6 +910,8 @@ function NormalRollPopupContentSpec:should_sort_the_rolls()
   -- Given
   local item, p1, p2, p3        = i( "Hearthstone" ), p( "Psikutas" ), p( "Obszczymucha" ), p( "Ponpon" )
   local popup, controller, roll = New():roster( { p1, p2, p3 } ):build()
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
   roll( p1.name, 69, 1, 98 )
   roll( p1.name, 68, 1, 99 )
@@ -882,6 +940,8 @@ function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
   -- Given
   local item, p1, p2            = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
   local popup, controller, roll = New():roster( { p1, p2 } ):build()
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
   roll( p2.name, 42, 1, 99 )
   roll( p1.name, 69, 1, 99 )
@@ -903,6 +963,8 @@ function NormalRollPopupContentSpec:should_display_the_transmog_winner()
   -- Given
   local item, p1, p2            = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
   local popup, controller, roll = New():roster( { p1, p2 } ):build()
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
   roll( p2.name, 42, 1, 98 )
   roll( p1.name, 69, 1, 98 )
@@ -924,6 +986,8 @@ function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_i
   -- Given
   local item, p1, p2            = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
   local popup, controller, roll = New():config( { auto_raid_roll = true } ):roster( { p1, p2 } ):build()
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
 
   -- Then
@@ -946,11 +1010,11 @@ function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_i
   } )
 
   -- And then
-  mock_random_roll( "Psikutas", 1, 2, roll )
+  random_roll( "Psikutas", 1, 2, roll )
   tick() -- To trigger the auto raid roll.
 
   -- Then
-  mock_random_roll( "Psikutas", 1, 2, roll )
+  random_roll( "Psikutas", 1, 2, roll )
   tick() -- To trigger the auto raid roll.
 
   -- Then
@@ -967,6 +1031,8 @@ function NormalRollPopupContentSpec:should_not_close_the_popup_if_someone_loots_
   local item, p1, p2               = i( "Hearthstone" ), p( "Psikutas" ), p( "Obszczymucha" )
   local popup, controller, _, deps = New():roster( { p1, p2 } ):build()
   local master_loot                = deps[ "MasterLoot" ]
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
   repeating_tick( 3 )
 
@@ -997,6 +1063,8 @@ function SoftResRollPopupContentSpec:should_preview_rolls()
       :roster( { p1, p2 } )
       :soft_res_data( make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 123 ) ) )
       :build()
+
+  -- When
   controller.preview( item, 1 )
 
   -- Then
@@ -1024,6 +1092,8 @@ function SoftResRollPopupContentSpec:should_preview_the_winner_without_award_but
     [ "SoftResData" ] = data,
     [ "MasterLootCandidatesApi" ] = ml_candidates_api
   } )
+
+  -- When
   controller.preview( item, 1 )
 
   -- Then
@@ -1043,6 +1113,8 @@ function SoftResRollPopupContentSpec:should_preview_the_winner_with_award_button
   local loot_list = mock_loot_list( { item } )
   local data = make_data( sr( p1.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list, [ "SoftResData" ] = data } )
+
+  -- When
   controller.preview( item, 1 )
 
   -- Then
@@ -1063,6 +1135,8 @@ function SoftResRollPopupContentSpec:should_preview_the_winners()
   local loot_list = mock_loot_list( { item } )
   local data = make_data( sr( p1.name, 123 ), sr( p2.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list, [ "SoftResData" ] = data } )
+
+  -- When
   controller.preview( item, 2 )
 
   -- Then
@@ -1084,6 +1158,8 @@ function SoftResRollPopupContentSpec:should_return_initial_softres_content()
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+
+  -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
 
   -- Then
@@ -1106,6 +1182,8 @@ function SoftResRollPopupContentSpec:should_update_rolling_ends_message()
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+
+  -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
   repeating_tick( 2 )
 
@@ -1129,6 +1207,8 @@ function SoftResRollPopupContentSpec:should_update_rolling_ends_message_for_one_
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+
+  -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
   repeating_tick( 6 )
 
@@ -1153,6 +1233,8 @@ function SoftResRollPopupContentSpec:should_display_the_winner_if_the_winner_sti
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+
+  -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
   roll( p2.name, 42, 1, 100 )
   roll( p1.name, 69, 1, 100 )
@@ -1177,6 +1259,8 @@ function SoftResRollPopupContentSpec:should_display_the_winner_if_the_winner_use
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+
+  -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
   roll( p1.name, 12, 1, 100 )
   roll( p2.name, 42, 1, 100 )
@@ -1201,6 +1285,8 @@ function SoftResRollPopupContentSpec:should_display_the_winner_and_the_award_but
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+
+  -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
   roll( p1.name, 12, 1, 100 )
   roll( p2.name, 42, 1, 100 )
@@ -1226,6 +1312,8 @@ function SoftResRollPopupContentSpec:should_display_the_only_soft_resser()
   local data = make_data( sr( p1.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123 )
+
+  -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
 
   -- Then
@@ -1246,6 +1334,8 @@ function SoftResRollPopupContentSpec:should_say_waiting_for_remaining_rolls()
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+
+  -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
   repeating_tick( 7 )
 
@@ -1270,6 +1360,8 @@ function SoftResRollPopupContentSpec:should_display_the_winners()
   local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+
+  -- When
   controller.start( RS.SoftResRoll, item, 2, 7 )
 
   -- Then
@@ -1290,6 +1382,8 @@ function SoftResRollPopupContentSpec:should_display_the_winners_and_the_award_bu
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+
+  -- When
   controller.start( RS.SoftResRoll, item, 2, 7 )
 
   -- Then
@@ -1314,6 +1408,8 @@ function SoftResRollPopupContentSpec:should_properly_hide_and_show_the_popup_wit
   local to_winner = deps[ "MasterLootCandidates" ].transform_to_winner
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
   local strategy = RS.SoftResRoll
+
+  -- When
   controller.start( strategy, item, 2, 7 )
 
   -- Then
@@ -1345,6 +1441,8 @@ function SoftResRollPopupContentSpec:should_display_the_remaining_winner_after_a
   local to_winner = deps[ "MasterLootCandidates" ].transform_to_winner
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
   local strategy = RS.SoftResRoll
+
+  -- When
   controller.start( strategy, item, 2, 7 )
 
   -- Then
@@ -1374,6 +1472,8 @@ function TieRollPopupContentSpec:should_display_tied_rolls()
   local group_roster = mock_roster( { p1, p2 } )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
   local item = i( "Hearthstone" )
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
   roll( p1.name, 69, 1, 100 )
   roll( p2.name, 69, 1, 100 )
@@ -1398,6 +1498,8 @@ function TieRollPopupContentSpec:should_display_tied_rolls_with_waiting_message(
   local group_roster = mock_roster( { p1, p2 } )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
   local item = i( "Hearthstone" )
+
+  -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
   roll( p1.name, 69, 1, 100 )
   roll( p2.name, 69, 1, 100 )
