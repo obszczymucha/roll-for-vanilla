@@ -10,19 +10,18 @@ local _, eq = u.luaunit( "assertEquals" )
 ---| "PARTY"
 ---| "RAID"
 ---| "RAID_WARNING"
----| "CONSOLE"
 
 ---@class ChatMessage
 ---@field message string
----@field type ChatType
+---@field type ChatType|"CONSOLE"
 
 function M.new()
   ---@type ChatMessage[]
   local messages = {}
 
-  local function announce( message, use_raid_warning )
+  local function send_chat_message( message, chat )
     local parsed_message = u.parse_item_link( message )
-    table.insert( messages, u.chat_message( parsed_message, use_raid_warning and "RAID_WARNING" or "RAID" ) )
+    table.insert( messages, u.chat_message( parsed_message, chat ) )
   end
 
   local function assert( ... )
@@ -32,9 +31,14 @@ function M.new()
     eq( messages, expected )
   end
 
-  ---@type Chat
+  local function default_chat_frame( _, message )
+    table.insert( u.chat_message( message, "CONSOLE" ) )
+  end
+
+  ---@type ChatApi
   return {
-    announce = announce,
+    SendChatMessage = send_chat_message,
+    DEFAULT_CHAT_FRAME = { AddMessage = default_chat_frame },
     assert = assert
   }
 end
