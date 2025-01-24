@@ -1088,18 +1088,13 @@ end
 
 function SoftResRollPopupContentSpec:should_preview_the_winner_without_award_button_if_the_winner_is_not_a_candidate()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_roster( { p1, p2 } )
-  local item = i( "Hearthstone", 123 )
-  local loot_list = mock_loot_list( { item } )
-  local data = make_data( sr( p1.name, 123 ) )
-  local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
-  local popup, controller = new( {
-    [ "GroupRosterApi" ] = group_roster,
-    [ "LootList" ] = loot_list,
-    [ "SoftResData" ] = data,
-    [ "MasterLootCandidatesApi" ] = ml_candidates_api
-  } )
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
+      :roster( p1, p2 )
+      :loot_list( item )
+      :soft_res_data( sr( p1.name, 123 ) )
+      :no_master_loot_candidates()
+      :build()
 
   -- When
   controller.preview( item, 1 )
@@ -1115,12 +1110,12 @@ end
 
 function SoftResRollPopupContentSpec:should_preview_the_winner_with_award_button()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_roster( { p1, p2 } )
-  local item = i( "Hearthstone", 123 )
-  local loot_list = mock_loot_list( { item } )
-  local data = make_data( sr( p1.name, 123 ) )
-  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list, [ "SoftResData" ] = data } )
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
+      :roster( p1, p2 )
+      :loot_list( item )
+      :soft_res_data( sr( p1.name, 123 ) )
+      :build()
 
   -- When
   controller.preview( item, 1 )
@@ -1137,12 +1132,12 @@ end
 
 function SoftResRollPopupContentSpec:should_preview_the_winners()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_roster( { p1, p2 } )
-  local item = i( "Hearthstone", 123 )
-  local loot_list = mock_loot_list( { item } )
-  local data = make_data( sr( p1.name, 123 ), sr( p2.name, 123 ) )
-  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list, [ "SoftResData" ] = data } )
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
+      :roster( p1, p2 )
+      :loot_list( item )
+      :soft_res_data( sr( p1.name, 123 ), sr( p2.name, 123 ) )
+      :build()
 
   -- When
   controller.preview( item, 2 )
@@ -1161,11 +1156,11 @@ end
 
 function SoftResRollPopupContentSpec:should_return_initial_softres_content()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_roster( { p1, p2 } )
-  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
-  local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+      :build()
 
   -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
@@ -1174,9 +1169,9 @@ function SoftResRollPopupContentSpec:should_return_initial_softres_content()
   eq( popup.content(),
     {
       { type = link,     link = item.link,                     count = 1 },
-      { type = "roll",   player_name = "Obszczymucha",         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
-      { type = "roll",   player_name = "Psikutas",             player_class = C.Warrior, roll_type = RT.SoftRes },
-      { type = "roll",   player_name = "Psikutas",             player_class = C.Warrior, roll_type = RT.SoftRes },
+      { type = "roll",   player_name = p2.name,                player_class = p2.class, roll_type = RT.SoftRes, padding = 11 },
+      { type = "roll",   player_name = p1.name,                player_class = p1.class, roll_type = RT.SoftRes },
+      { type = "roll",   player_name = p1.name,                player_class = p1.class, roll_type = RT.SoftRes },
       { type = "text",   value = "Rolling ends in 7 seconds.", padding = 11 },
       { type = "button", label = "Finish early",               width = 100 },
       { type = "button", label = "Cancel",                     width = 100 }
@@ -1185,11 +1180,11 @@ end
 
 function SoftResRollPopupContentSpec:should_update_rolling_ends_message()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_roster( { p1, p2 } )
-  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
-  local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+      :build()
 
   -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
@@ -1199,9 +1194,9 @@ function SoftResRollPopupContentSpec:should_update_rolling_ends_message()
   eq( popup.content(),
     {
       { type = link,     link = item.link,                     count = 1 },
-      { type = "roll",   player_name = "Obszczymucha",         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
-      { type = "roll",   player_name = "Psikutas",             player_class = C.Warrior, roll_type = RT.SoftRes },
-      { type = "roll",   player_name = "Psikutas",             player_class = C.Warrior, roll_type = RT.SoftRes },
+      { type = "roll",   player_name = p2.name,                player_class = p2.class, roll_type = RT.SoftRes, padding = 11 },
+      { type = "roll",   player_name = p1.name,                player_class = p1.class, roll_type = RT.SoftRes },
+      { type = "roll",   player_name = p1.name,                player_class = p1.class, roll_type = RT.SoftRes },
       { type = "text",   value = "Rolling ends in 5 seconds.", padding = 11 },
       { type = "button", label = "Finish early",               width = 100 },
       { type = "button", label = "Cancel",                     width = 100 }
@@ -1210,11 +1205,11 @@ end
 
 function SoftResRollPopupContentSpec:should_update_rolling_ends_message_for_one_second_left()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_roster( { p1, p2 } )
-  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
-  local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+      :build()
 
   -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
@@ -1224,9 +1219,9 @@ function SoftResRollPopupContentSpec:should_update_rolling_ends_message_for_one_
   eq( popup.content(),
     {
       { type = link,     link = item.link,                    count = 1 },
-      { type = "roll",   player_name = "Obszczymucha",        player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
-      { type = "roll",   player_name = "Psikutas",            player_class = C.Warrior, roll_type = RT.SoftRes },
-      { type = "roll",   player_name = "Psikutas",            player_class = C.Warrior, roll_type = RT.SoftRes },
+      { type = "roll",   player_name = p2.name,               player_class = p2.class, roll_type = RT.SoftRes, padding = 11 },
+      { type = "roll",   player_name = p1.name,               player_class = p1.class, roll_type = RT.SoftRes },
+      { type = "roll",   player_name = p1.name,               player_class = p1.class, roll_type = RT.SoftRes },
       { type = "text",   value = "Rolling ends in 1 second.", padding = 11 },
       { type = "button", label = "Finish early",              width = 100 },
       { type = "button", label = "Cancel",                    width = 100 }
@@ -1235,12 +1230,12 @@ end
 
 function SoftResRollPopupContentSpec:should_display_the_winner_if_the_winner_still_has_remaining_rolls()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
-  local group_roster = mock_roster( { p1, p2 } )
-  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
-  local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+  local item, p1, p2            = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller, roll = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+      :no_master_loot_candidates()
+      :build()
 
   -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
@@ -1251,9 +1246,9 @@ function SoftResRollPopupContentSpec:should_display_the_winner_if_the_winner_sti
   eq( popup.content(),
     {
       { type = link,     link = item.link,                                     count = 1 },
-      { type = "roll",   player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes, roll = 69, padding = 11 },
-      { type = "roll",   player_name = "Obszczymucha",                         player_class = C.Druid,   roll_type = RT.SoftRes, roll = 42 },
-      { type = "roll",   player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes },
+      { type = "roll",   player_name = p1.name,                                player_class = p1.class, roll_type = RT.SoftRes, roll = 69, padding = 11 },
+      { type = "roll",   player_name = p2.name,                                player_class = p2.class, roll_type = RT.SoftRes, roll = 42 },
+      { type = "roll",   player_name = p1.name,                                player_class = p1.class, roll_type = RT.SoftRes },
       { type = "text",   value = "Psikutas wins the soft-res roll with a 69.", padding = 11 },
       { type = "button", label = "Close",                                      width = 70 }
     } )
@@ -1261,12 +1256,12 @@ end
 
 function SoftResRollPopupContentSpec:should_display_the_winner_if_the_winner_used_up_all_their_rolls()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
-  local group_roster = mock_roster( { p1, p2 } )
-  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
-  local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+  local item, p1, p2            = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller, roll = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+      :no_master_loot_candidates()
+      :build()
 
   -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
@@ -1278,9 +1273,9 @@ function SoftResRollPopupContentSpec:should_display_the_winner_if_the_winner_use
   eq( popup.content(),
     {
       { type = link,     link = item.link,                                     count = 1 },
-      { type = "roll",   player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes, roll = 69, padding = 11 },
-      { type = "roll",   player_name = "Obszczymucha",                         player_class = C.Druid,   roll_type = RT.SoftRes, roll = 42 },
-      { type = "roll",   player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes, roll = 12 },
+      { type = "roll",   player_name = p1.name,                                player_class = p1.class, roll_type = RT.SoftRes, roll = 69, padding = 11 },
+      { type = "roll",   player_name = p2.name,                                player_class = p2.class, roll_type = RT.SoftRes, roll = 42 },
+      { type = "roll",   player_name = p1.name,                                player_class = p1.class, roll_type = RT.SoftRes, roll = 12 },
       { type = "text",   value = "Psikutas wins the soft-res roll with a 69.", padding = 11 },
       { type = "button", label = "Close",                                      width = 70 }
     } )
@@ -1288,11 +1283,11 @@ end
 
 function SoftResRollPopupContentSpec:should_display_the_winner_and_the_award_button()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_roster( { p1, p2 } )
-  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
-  local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+  local item, p1, p2            = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller, roll = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+      :build()
 
   -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
@@ -1304,9 +1299,9 @@ function SoftResRollPopupContentSpec:should_display_the_winner_and_the_award_but
   eq( popup.content(),
     {
       { type = link,     link = item.link,                                     count = 1 },
-      { type = "roll",   player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes, roll = 69, padding = 11 },
-      { type = "roll",   player_name = "Obszczymucha",                         player_class = C.Druid,   roll_type = RT.SoftRes, roll = 42 },
-      { type = "roll",   player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes, roll = 12 },
+      { type = "roll",   player_name = p1.name,                                player_class = p1.class, roll_type = RT.SoftRes, roll = 69, padding = 11 },
+      { type = "roll",   player_name = p2.name,                                player_class = p2.class, roll_type = RT.SoftRes, roll = 42 },
+      { type = "roll",   player_name = p1.name,                                player_class = p1.class, roll_type = RT.SoftRes, roll = 12 },
       { type = "text",   value = "Psikutas wins the soft-res roll with a 69.", padding = 11 },
       { type = "button", label = "Award winner",                               width = 130 },
       { type = "button", label = "Close",                                      width = 70 }
@@ -1315,11 +1310,11 @@ end
 
 function SoftResRollPopupContentSpec:should_display_the_only_soft_resser()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_roster( { p1, p2 } )
-  local data = make_data( sr( p1.name, 123 ) )
-  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
-  local item = i( "Hearthstone", 123 )
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ) )
+      :build()
 
   -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
@@ -1337,11 +1332,11 @@ end
 
 function SoftResRollPopupContentSpec:should_say_waiting_for_remaining_rolls()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_roster( { p1, p2 } )
-  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
-  local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+      :build()
 
   -- When
   controller.start( RS.SoftResRoll, item, 1, 7 )
@@ -1351,9 +1346,9 @@ function SoftResRollPopupContentSpec:should_say_waiting_for_remaining_rolls()
   eq( popup.content(),
     {
       { type = link,     link = item.link,                         count = 1 },
-      { type = "roll",   player_name = "Obszczymucha",             player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
-      { type = "roll",   player_name = "Psikutas",                 player_class = C.Warrior, roll_type = RT.SoftRes },
-      { type = "roll",   player_name = "Psikutas",                 player_class = C.Warrior, roll_type = RT.SoftRes },
+      { type = "roll",   player_name = p2.name,                    player_class = p2.class, roll_type = RT.SoftRes, padding = 11 },
+      { type = "roll",   player_name = p1.name,                    player_class = p1.class, roll_type = RT.SoftRes },
+      { type = "roll",   player_name = p1.name,                    player_class = p1.class, roll_type = RT.SoftRes },
       { type = "text",   value = "Waiting for remaining rolls...", padding = 11 },
       { type = "button", label = "Finish early",                   width = 100 },
       { type = "button", label = "Cancel",                         width = 100 }
@@ -1362,12 +1357,12 @@ end
 
 function SoftResRollPopupContentSpec:should_display_the_winners()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_roster( { p1, p2 } )
-  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
-  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
-  local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+      :no_master_loot_candidates()
+      :build()
 
   -- When
   controller.start( RS.SoftResRoll, item, 2, 7 )
@@ -1385,11 +1380,11 @@ end
 
 function SoftResRollPopupContentSpec:should_display_the_winners_and_the_award_buttons()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_roster( { p1, p2 } )
-  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
-  local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+      :build()
 
   -- When
   controller.start( RS.SoftResRoll, item, 2, 7 )
@@ -1409,13 +1404,13 @@ end
 
 function SoftResRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_content_unchanged_after_aborting_the_award()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_roster( { p1, p2 } )
-  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local popup, controller, _, deps = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
-  local to_winner = deps[ "MasterLootCandidates" ].transform_to_winner
-  local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
-  local strategy = RS.SoftResRoll
+  local strategy                   = RS.SoftResRoll
+  local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller, _, deps = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+      :build()
+  local to_winner                  = deps[ "MasterLootCandidates" ].transform_to_winner
 
   -- When
   controller.start( strategy, item, 2, 7 )
@@ -1442,13 +1437,13 @@ end
 
 function SoftResRollPopupContentSpec:should_display_the_remaining_winner_after_awarding_one()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_roster( { p1, p2 } )
-  local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
-  local popup, controller, _, deps = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
-  local to_winner = deps[ "MasterLootCandidates" ].transform_to_winner
-  local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
-  local strategy = RS.SoftResRoll
+  local strategy                   = RS.SoftResRoll
+  local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller, _, deps = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
+      :build()
+  local to_winner                  = deps[ "MasterLootCandidates" ].transform_to_winner
 
   -- When
   controller.start( strategy, item, 2, 7 )
@@ -1475,11 +1470,8 @@ TieRollPopupContentSpec = {}
 
 function TieRollPopupContentSpec:should_display_tied_rolls()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
-  local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
-  local group_roster = mock_roster( { p1, p2 } )
-  local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
-  local item = i( "Hearthstone" )
+  local item, p1, p2            = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
+  local popup, controller, roll = New():roster( p1, p2 ):build()
 
   -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -1490,22 +1482,19 @@ function TieRollPopupContentSpec:should_display_tied_rolls()
   eq( popup.content(),
     {
       { type = link,         link = item.link,                count = 1 },
-      { type = "roll",       player_name = "Ohhaimark",       player_class = C.Priest,  roll_type = RT.MainSpec, roll = 69,   padding = 11 },
-      { type = "roll",       player_name = "Psikutas",        player_class = C.Warrior, roll_type = RT.MainSpec, roll = 69 },
+      { type = "roll",       player_name = p2.name,           player_class = p2.class, roll_type = RT.MainSpec, roll = 69,   padding = 11 },
+      { type = "roll",       player_name = p1.name,           player_class = p1.class, roll_type = RT.MainSpec, roll = 69 },
       { type = "text",       value = "There was a tie (69):", padding = 11 },
-      { type = "roll",       player_name = "Ohhaimark",       player_class = C.Priest,  roll_type = RT.MainSpec, padding = 11 },
-      { type = "roll",       player_name = "Psikutas",        player_class = C.Warrior, roll_type = RT.MainSpec },
+      { type = "roll",       player_name = p2.name,           player_class = p2.class, roll_type = RT.MainSpec, padding = 11 },
+      { type = "roll",       player_name = p1.name,           player_class = p1.class, roll_type = RT.MainSpec },
       { type = "empty_line", height = 5 }
     } )
 end
 
 function TieRollPopupContentSpec:should_display_tied_rolls_with_waiting_message()
   -- Given
-  local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
-  local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
-  local group_roster = mock_roster( { p1, p2 } )
-  local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
-  local item = i( "Hearthstone" )
+  local item, p1, p2            = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
+  local popup, controller, roll = New():roster( p1, p2 ):build()
 
   -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -1517,11 +1506,11 @@ function TieRollPopupContentSpec:should_display_tied_rolls_with_waiting_message(
   eq( popup.content(),
     {
       { type = link,     link = item.link,                         count = 1 },
-      { type = "roll",   player_name = "Ohhaimark",                player_class = C.Priest,  roll_type = RT.MainSpec, roll = 69,   padding = 11 },
-      { type = "roll",   player_name = "Psikutas",                 player_class = C.Warrior, roll_type = RT.MainSpec, roll = 69 },
+      { type = "roll",   player_name = p2.name,                    player_class = p2.class, roll_type = RT.MainSpec, roll = 69,   padding = 11 },
+      { type = "roll",   player_name = p1.name,                    player_class = p1.class, roll_type = RT.MainSpec, roll = 69 },
       { type = "text",   value = "There was a tie (69):",          padding = 11 },
-      { type = "roll",   player_name = "Ohhaimark",                player_class = C.Priest,  roll_type = RT.MainSpec, padding = 11 },
-      { type = "roll",   player_name = "Psikutas",                 player_class = C.Warrior, roll_type = RT.MainSpec },
+      { type = "roll",   player_name = p2.name,                    player_class = p2.class, roll_type = RT.MainSpec, padding = 11 },
+      { type = "roll",   player_name = p1.name,                    player_class = p1.class, roll_type = RT.MainSpec },
       { type = "text",   value = "Waiting for remaining rolls...", padding = 11 },
       { type = "button", label = "Finish early",                   width = 100 },
       { type = "button", label = "Cancel",                         width = 100 }
