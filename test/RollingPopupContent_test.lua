@@ -269,7 +269,7 @@ RaidRollPopupContentSpec = {}
 function RaidRollPopupContentSpec:should_return_initial_content()
   -- Given
   local item = i( "Hearthstone", 123 )
-  local popup, controller = new()
+  local popup, controller = New():build()
 
   -- When
   controller.start( RS.RaidRoll, item, 1 )
@@ -285,7 +285,7 @@ end
 function RaidRollPopupContentSpec:should_return_initial_content_with_multiple_items_to_roll()
   -- Given
   local item = i( "Hearthstone", 123 )
-  local popup, controller = new()
+  local popup, controller = New():build()
 
   -- When
   controller.start( RS.RaidRoll, item, 2 )
@@ -752,7 +752,7 @@ end
 function NormalRollPopupContentSpec:should_update_rolling_ends_message()
   -- Given
   local item = i( "Hearthstone" )
-  local popup, controller = new()
+  local popup, controller = New():build()
 
   -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -770,7 +770,7 @@ end
 function NormalRollPopupContentSpec:should_display_cancel_message()
   -- Given
   local item = i( "Hearthstone" )
-  local popup, controller = new()
+  local popup, controller = New():build()
 
   -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -788,7 +788,7 @@ end
 function NormalRollPopupContentSpec:should_update_rolling_ends_message_for_one_second_left()
   -- Given
   local item = i( "Hearthstone" )
-  local popup, controller = new()
+  local popup, controller = New():build()
 
   -- When
   controller.start( RS.NormalRoll, item, 1, 8 )

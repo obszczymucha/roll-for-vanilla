@@ -79,6 +79,7 @@ function M.party_message( message )
   return M.chat_message( message, "PARTY" )
 end
 
+---@return ... ChatMessage[]
 function M.raid_message( ... )
   local args = { ... }
 
