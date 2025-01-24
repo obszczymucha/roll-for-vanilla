@@ -265,7 +265,7 @@ function RaidRollPopupContentSpec:should_return_initial_content()
   controller.start( RS.RaidRoll, item, 1 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,         link = item.link,          count = 1 },
     { type = "text",       value = "Raid rolling...", padding = 8 },
     { type = "empty_line", height = 5 },
@@ -279,7 +279,7 @@ function RaidRollPopupContentSpec:should_return_initial_content_with_multiple_it
   controller.start( RS.RaidRoll, item, 2 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,         link = item.link,          count = 2 },
     { type = "text",       value = "Raid rolling...", padding = 8 },
     { type = "empty_line", height = 5 },
@@ -298,7 +298,7 @@ function RaidRollPopupContentSpec:should_display_the_winner()
   tick()
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     count = 1,              link = item.link },
     { type = "text",   padding = 8,            value = "Jogobobek wins the raid-roll." },
     { type = "button", label = "Award winner", width = 130 },
@@ -321,7 +321,7 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_the_award_button
   controller.award_aborted( item )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     count = 1,   link = item.link },
     { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
     { type = "button", width = 130, label = "Award winner" },
@@ -343,7 +343,7 @@ function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again
   controller.award_aborted( item )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     count = 1,   link = item.link },
     { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
     { type = "button", width = 130, label = "Award winner" },
@@ -366,7 +366,7 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_i
   controller.award_aborted( item )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     count = 1,                      link = item.link },
     { type = "text",   padding = 8,                    value = "Psikutas wins the raid-roll." },
     { type = "info",   anchor = "RollForRollingFrame", value = "Use /rf config auto-rr to enable auto raid-roll." },
@@ -387,7 +387,7 @@ function RaidRollPopupContentSpec:should_display_the_winners()
   tick()
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,           count = 2,   link = item.link },
     { type = "text",         padding = 8, value = "Jogobobek wins the raid-roll." },
     { type = "award_button", padding = 6, label = "Award",                        width = 90 },
@@ -410,7 +410,7 @@ function RaidRollPopupContentSpec:should_display_the_winners_and_the_individual_
   tick()
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,           count = 2,   link = item.link },
     { type = "text",         padding = 8, value = "Jogobobek wins the raid-roll." },
     { type = "award_button", padding = 6, label = "Award",                        width = 90 },
@@ -443,7 +443,7 @@ function RaidRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_c
   eq( popup.is_visible(), true )
 
   -- And
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     count = 1,   link = item.link },
     { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
     { type = "button", width = 130, label = "Award winner" },
@@ -464,7 +464,7 @@ function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awar
   tick()
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,           count = 2,   link = item.link },
     { type = "text",         padding = 8, value = "Jogobobek wins the raid-roll." },
     { type = "award_button", padding = 6, label = "Award",                        width = 90 },
@@ -480,7 +480,7 @@ function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awar
   eq( popup.is_visible(), true )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     count = 1,   link = item.link },
     { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
     { type = "button", width = 130, label = "Award winner" },
@@ -498,7 +498,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner()
   controller.start( RS.InstaRaidRoll, item, 1 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     count = 1,              link = item.link },
     { type = "text",   padding = 8,            value = "Obszczymucha wins the insta raid-roll." },
     { type = "button", label = "Award winner", width = 130 },
@@ -519,7 +519,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_and_the_award_b
   controller.award_aborted( item )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     count = 1,   link = item.link },
     { type = "text",   padding = 8, value = "Obszczymucha wins the insta raid-roll." },
     { type = "button", width = 130, label = "Award winner" },
@@ -541,7 +541,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_with_award_and_
   controller.award_aborted( item )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     count = 1,   link = item.link },
     { type = "text",   padding = 8, value = "Obszczymucha wins the insta raid-roll." },
     { type = "button", width = 130, label = "Award winner" },
@@ -562,7 +562,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_
   controller.award_aborted( item )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     count = 1,              link = item.link },
     { type = "text",   padding = 8,            value = "Obszczymucha wins the insta raid-roll." },
     { type = "button", label = "Award winner", width = 130 },
@@ -582,7 +582,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_with_raid_roll
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,           count = 2,   link = item.link },
     { type = "text",         padding = 8, value = "Psikutas wins the insta raid-roll." },
     { type = "award_button", padding = 6, label = "Award",                              width = 90 },
@@ -604,7 +604,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_without_raid_r
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,           count = 2,   link = item.link },
     { type = "text",         padding = 8, value = "Psikutas wins the insta raid-roll." },
     { type = "award_button", padding = 6, label = "Award",                              width = 90 },
@@ -626,7 +626,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_indivi
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,           count = 2,   link = item.link },
     { type = "text",         padding = 8, value = "Psikutas wins the insta raid-roll." },
     { type = "award_button", padding = 6, label = "Award",                              width = 90 },
@@ -648,7 +648,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_indivi
   controller.start( RS.InstaRaidRoll, item, 2 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,           count = 2,   link = item.link },
     { type = "text",         padding = 8, value = "Psikutas wins the insta raid-roll." },
     { type = "award_button", padding = 6, label = "Award",                              width = 90 },
@@ -677,7 +677,7 @@ function NormalRollPopupContentSpec:should_return_initial_content()
   )
 
   -- And
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     count = 1,    link = item.link },
     { type = "text",   padding = 11, value = "Rolling ends in 8 seconds." },
     { type = "button", width = 100,  label = "Finish early" },
@@ -692,7 +692,7 @@ function NormalRollPopupContentSpec:should_return_initial_content_and_auto_raid_
   controller.start( RS.NormalRoll, item, 1, 8 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     link = item.link,                     count = 1 },
     { type = "text",   value = "Rolling ends in 8 seconds.", padding = 11 },
     { type = "text",   value = "Auto raid-roll is enabled." },
@@ -709,7 +709,7 @@ function NormalRollPopupContentSpec:should_update_rolling_ends_message()
   controller.tick( 5 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     count = 1,    link = item.link },
     { type = "text",   padding = 11, value = "Rolling ends in 5 seconds." },
     { type = "button", width = 100,  label = "Finish early" },
@@ -726,7 +726,7 @@ function NormalRollPopupContentSpec:should_display_cancel_message()
   controller.cancel_rolling()
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     count = 1,    link = item.link },
     { type = "text",   padding = 11, value = "Rolling has been canceled." },
     { type = "button", width = 70,   label = "Close" }
@@ -741,7 +741,7 @@ function NormalRollPopupContentSpec:should_update_rolling_ends_message_for_one_s
   controller.tick( 1 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     count = 1,    link = item.link },
     { type = "text",   padding = 11, value = "Rolling ends in 1 second." },
     { type = "button", width = 100,  label = "Finish early" },
@@ -758,7 +758,7 @@ function NormalRollPopupContentSpec:should_display_the_winners()
   roll( p2.name, 42, 1, 100 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     link = item.link,                                      count = 1 },
     { type = "roll",   roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
     { type = "roll",   roll_type = RT.MainSpec,                               player_name = p2.name, player_class = p2.class, roll = 42 },
@@ -777,7 +777,7 @@ function NormalRollPopupContentSpec:should_display_the_winners_and_the_individua
   roll( p2.name, 42, 1, 100 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,           link = item.link,                                       count = 2 },
     { type = "roll",         roll_type = RT.MainSpec,                                player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
     { type = "roll",         roll_type = RT.MainSpec,                                player_name = p2.name, player_class = p2.class, roll = 42 },
@@ -799,7 +799,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   roll( p2.name, 7, 1, 100 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     link = item.link,                                      count = 1 },
     { type = "roll",   roll_type = RT.MainSpec,                               player_name = p1.name, player_class = p1.class, roll = 8, padding = 11 },
     { type = "roll",   roll_type = RT.MainSpec,                               player_name = p2.name, player_class = p2.class, roll = 7 },
@@ -819,7 +819,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   roll( p2.name, 11, 1, 100 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     link = item.link,                                        count = 1 },
     { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p2.name, player_class = p2.class, roll = 11, padding = 11 },
     { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p1.name, player_class = p1.class, roll = 8 },
@@ -839,7 +839,7 @@ function NormalRollPopupContentSpec:should_display_the_winner_with_proper_articl
   roll( p2.name, 18, 1, 100 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     link = item.link,                                        count = 1 },
     { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p2.name, player_class = p2.class, roll = 18, padding = 11 },
     { type = "roll",   roll_type = RT.MainSpec,                                 player_name = p1.name, player_class = p1.class, roll = 8 },
@@ -863,7 +863,7 @@ function NormalRollPopupContentSpec:should_sort_the_rolls()
   roll( p3.name, 13, 1, 100 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     link = item.link,                                          count = 1 },
     { type = "roll",   roll_type = RT.MainSpec,                                   player_name = p2.name, player_class = p2.class, roll = 45, padding = 11 },
     { type = "roll",   roll_type = RT.MainSpec,                                   player_name = p1.name, player_class = p1.class, roll = 42 },
@@ -888,7 +888,7 @@ function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
   repeating_tick( 8 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     link = item.link,                                     count = 1 },
     { type = "roll",   roll_type = RT.OffSpec,                               player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
     { type = "roll",   roll_type = RT.OffSpec,                               player_name = p2.name, player_class = p2.class, roll = 42 },
@@ -909,7 +909,7 @@ function NormalRollPopupContentSpec:should_display_the_transmog_winner()
   repeating_tick( 8 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     link = item.link,                                     count = 1 },
     { type = "roll",   roll_type = RT.Transmog,                              player_name = p1.name, player_class = p1.class, roll = 69, padding = 11 },
     { type = "roll",   roll_type = RT.Transmog,                              player_name = p2.name, player_class = p2.class, roll = 42 },
@@ -927,7 +927,7 @@ function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_i
   controller.start( RS.NormalRoll, item, 1, 8 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     link = item.link,                     count = 1 },
     { type = "text",   value = "Rolling ends in 8 seconds.", padding = 11 },
     { type = "text",   value = "Auto raid-roll is enabled." },
@@ -939,7 +939,7 @@ function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_i
   controller.finish_rolling_early()
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link, link = item.link,   count = 1 },
     { padding = 8, type = "text",      value = "Raid rolling..." },
     { height = 5,  type = "empty_line" }
@@ -954,7 +954,7 @@ function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_i
   tick() -- To trigger the auto raid roll.
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     link = item.link,                        count = 1 },
     { type = "text",   value = "Ohhaimark wins the raid-roll.", padding = 8 },
     { type = "button", label = "Award winner",                  width = 130 },
@@ -980,7 +980,7 @@ function NormalRollPopupContentSpec:should_not_close_the_popup_if_someone_loots_
   eq( popup.is_visible(), true )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     count = 1,    link = item.link },
     { type = "text",   padding = 11, value = "Rolling ends in 5 seconds." },
     { type = "button", width = 100,  label = "Finish early" },
@@ -1000,7 +1000,7 @@ function SoftResRollPopupContentSpec:should_preview_rolls()
   controller.preview( item, 1 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     link = item.link,      tooltip_link = item.tooltip_link, count = 1 },
     { type = "roll",   player_name = p2.name, player_class = p2.class,          roll_type = RT.SoftRes, padding = 11 },
     { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
@@ -1027,7 +1027,7 @@ function SoftResRollPopupContentSpec:should_preview_the_winner_without_award_but
   controller.preview( item, 1 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
     { type = "button", label = "Close",                           width = 70 }
@@ -1046,7 +1046,7 @@ function SoftResRollPopupContentSpec:should_preview_the_winner_with_award_button
   controller.preview( item, 1 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
     { type = "button", label = "Award winner",                    width = 130 },
@@ -1066,7 +1066,7 @@ function SoftResRollPopupContentSpec:should_preview_the_winners()
   controller.preview( item, 2 )
 
   -- Then
-  eq( popup.get(), {
+  eq( popup.content(), {
     { type = link,           link = item.link,                              tooltip_link = item.tooltip_link, count = 2 },
     { type = "text",         value = "Obszczymucha soft-ressed this item.", padding = 11 },
     { type = "award_button", label = "Award",                               padding = 6,                      width = 90 },
@@ -1087,7 +1087,7 @@ function SoftResRollPopupContentSpec:should_return_initial_softres_content()
   controller.start( RS.SoftResRoll, item, 1, 7 )
 
   -- Then
-  eq( popup.get(),
+  eq( popup.content(),
     {
       { type = link,     link = item.link,                     count = 1 },
       { type = "roll",   player_name = "Obszczymucha",         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1110,7 +1110,7 @@ function SoftResRollPopupContentSpec:should_update_rolling_ends_message()
   repeating_tick( 2 )
 
   -- Then
-  eq( popup.get(),
+  eq( popup.content(),
     {
       { type = link,     link = item.link,                     count = 1 },
       { type = "roll",   player_name = "Obszczymucha",         player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1133,7 +1133,7 @@ function SoftResRollPopupContentSpec:should_update_rolling_ends_message_for_one_
   repeating_tick( 6 )
 
   -- Then
-  eq( popup.get(),
+  eq( popup.content(),
     {
       { type = link,     link = item.link,                    count = 1 },
       { type = "roll",   player_name = "Obszczymucha",        player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1158,7 +1158,7 @@ function SoftResRollPopupContentSpec:should_display_the_winner_if_the_winner_sti
   roll( p1.name, 69, 1, 100 )
 
   -- Then
-  eq( popup.get(),
+  eq( popup.content(),
     {
       { type = link,     link = item.link,                                     count = 1 },
       { type = "roll",   player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes, roll = 69, padding = 11 },
@@ -1183,7 +1183,7 @@ function SoftResRollPopupContentSpec:should_display_the_winner_if_the_winner_use
   roll( p1.name, 69, 1, 100 )
 
   -- Then
-  eq( popup.get(),
+  eq( popup.content(),
     {
       { type = link,     link = item.link,                                     count = 1 },
       { type = "roll",   player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes, roll = 69, padding = 11 },
@@ -1207,7 +1207,7 @@ function SoftResRollPopupContentSpec:should_display_the_winner_and_the_award_but
   roll( p1.name, 69, 1, 100 )
 
   -- Then
-  eq( popup.get(),
+  eq( popup.content(),
     {
       { type = link,     link = item.link,                                     count = 1 },
       { type = "roll",   player_name = "Psikutas",                             player_class = C.Warrior, roll_type = RT.SoftRes, roll = 69, padding = 11 },
@@ -1229,7 +1229,7 @@ function SoftResRollPopupContentSpec:should_display_the_only_soft_resser()
   controller.start( RS.SoftResRoll, item, 1, 7 )
 
   -- Then
-  eq( popup.get(),
+  eq( popup.content(),
     {
       { type = link,     link = item.link,                          count = 1 },
       { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
@@ -1250,7 +1250,7 @@ function SoftResRollPopupContentSpec:should_say_waiting_for_remaining_rolls()
   repeating_tick( 7 )
 
   -- Then
-  eq( popup.get(),
+  eq( popup.content(),
     {
       { type = link,     link = item.link,                         count = 1 },
       { type = "roll",   player_name = "Obszczymucha",             player_class = C.Druid,   roll_type = RT.SoftRes, padding = 11 },
@@ -1273,7 +1273,7 @@ function SoftResRollPopupContentSpec:should_display_the_winners()
   controller.start( RS.SoftResRoll, item, 2, 7 )
 
   -- Then
-  eq( popup.get(),
+  eq( popup.content(),
     {
       { type = link,     link = item.link,                              count = 2 },
       { type = "text",   value = "Obszczymucha soft-ressed this item.", padding = 11 },
@@ -1293,7 +1293,7 @@ function SoftResRollPopupContentSpec:should_display_the_winners_and_the_award_bu
   controller.start( RS.SoftResRoll, item, 2, 7 )
 
   -- Then
-  eq( popup.get(),
+  eq( popup.content(),
     {
       { type = link,           link = item.link,                              count = 2 },
       { type = "text",         value = "Obszczymucha soft-ressed this item.", padding = 11 },
@@ -1324,7 +1324,7 @@ function SoftResRollPopupContentSpec:should_properly_hide_and_show_the_popup_wit
   eq( popup.is_visible(), true )
 
   -- Then
-  eq( popup.get(),
+  eq( popup.content(),
     {
       { type = link,           link = item.link,                              count = 2 },
       { type = "text",         value = "Obszczymucha soft-ressed this item.", padding = 11 },
@@ -1355,7 +1355,7 @@ function SoftResRollPopupContentSpec:should_display_the_remaining_winner_after_a
   eq( popup.is_visible(), true )
 
   -- Then
-  eq( popup.get(),
+  eq( popup.content(),
     {
       { type = link,     link = item.link,                              count = 1 },
       { type = "text",   value = "Obszczymucha soft-ressed this item.", padding = 11 },
@@ -1379,7 +1379,7 @@ function TieRollPopupContentSpec:should_display_tied_rolls()
   roll( p2.name, 69, 1, 100 )
 
   -- Then
-  eq( popup.get(),
+  eq( popup.content(),
     {
       { type = link,         link = item.link,                count = 1 },
       { type = "roll",       player_name = "Ohhaimark",       player_class = C.Priest,  roll_type = RT.MainSpec, roll = 69,   padding = 11 },
@@ -1404,7 +1404,7 @@ function TieRollPopupContentSpec:should_display_tied_rolls_with_waiting_message(
   tick()
 
   -- Then
-  eq( popup.get(),
+  eq( popup.content(),
     {
       { type = link,     link = item.link,                         count = 1 },
       { type = "roll",   player_name = "Ohhaimark",                player_class = C.Priest,  roll_type = RT.MainSpec, roll = 69,   padding = 11 },

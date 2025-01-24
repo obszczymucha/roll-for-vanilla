@@ -26,7 +26,7 @@ local function cleanse( t )
 end
 
 ---@class RollingPopupMock : RollingPopup
----@field get fun(): table
+---@field content fun(): table
 ---@field is_visible fun(): boolean
 ---@field click fun( button_type: RollingPopupButtonType )
 
@@ -38,7 +38,7 @@ function M.new( popup_builder, db, config, controller )
 
   local popup = RollingPopup.new( popup_builder, db, config, controller )
   ---@diagnostic disable-next-line: inject-field
-  popup.get = function() return content and cleanse( content ) or {} end
+  popup.content = function() return content and cleanse( content ) or {} end
 
   local old_refresh = popup.refresh
   popup.refresh = function( _, new_content )
