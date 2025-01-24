@@ -229,8 +229,9 @@ local function New()
     return self
   end
 
-  function M.loot_list( self, loot_list )
-    dependencies[ "LootList" ] = mock_loot_list( loot_list )
+  ---@param ... MasterLootDistributableItem[]
+  function M.loot_list( self, ... )
+    dependencies[ "LootList" ] = mock_loot_list( { ... } )
     return self
   end
 
@@ -239,13 +240,20 @@ local function New()
     return self
   end
 
-  function M.roster( self, group_roster_api, is_in_raid )
-    dependencies[ "GroupRosterApi" ] = mock_roster( group_roster_api, is_in_raid )
+  ---@param ... Player[]
+  function M.roster( self, ... )
+    dependencies[ "GroupRosterApi" ] = mock_roster( { ... } )
     return self
   end
 
-  function M.soft_res_data( self, data )
-    dependencies[ "SoftResData" ] = data
+  ---@param ... Player[]
+  function M.raid_roster( self, ... )
+    dependencies[ "GroupRosterApi" ] = mock_roster( { ... }, true )
+    return self
+  end
+
+  function M.soft_res_data( self, ... )
+    dependencies[ "SoftResData" ] = make_data( ... )
     return self
   end
 
@@ -295,7 +303,7 @@ function RaidRollPopupContentSpec:should_display_the_winner()
   local item = i( "Hearthstone", 123 )
   local popup, controller, roll = New()
       :config( { auto_raid_roll = true } )
-      :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
+      :roster( p( "Psikutas" ), p( "Jogobobek" ) )
       :build()
 
   -- When
@@ -317,8 +325,8 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_the_award_button
   local item = i( "Hearthstone", 123 )
   local popup, controller, roll = New()
       :config( { auto_raid_roll = true } )
-      :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
-      :loot_list( { item } )
+      :roster( p( "Psikutas" ), p( "Jogobobek" ) )
+      :loot_list( item )
       :build()
   -- enable_debug( "RollController" )
 
@@ -342,8 +350,8 @@ function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again
   local item = i( "Hearthstone", 123 )
   local popup, controller, roll = New()
       :config( { auto_raid_roll = true, raid_roll_again = true } )
-      :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
-      :loot_list( { item } )
+      :roster( p( "Psikutas" ), p( "Jogobobek" ) )
+      :loot_list( item )
       :build()
 
   -- When
@@ -367,8 +375,8 @@ function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_i
   local item = i( "Hearthstone", 123 )
   local popup, controller, roll = New()
       :config( { auto_raid_roll = false } )
-      :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
-      :loot_list( { item } )
+      :roster( p( "Psikutas" ), p( "Jogobobek" ) )
+      :loot_list( item )
       :build()
 
   -- When
@@ -392,7 +400,7 @@ function RaidRollPopupContentSpec:should_display_the_winners()
   local item = i( "Hearthstone", 123 )
   local popup, controller, roll = New()
       :config( { auto_raid_roll = true } )
-      :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
+      :roster( p( "Psikutas" ), p( "Jogobobek" ) )
       :build()
 
   -- When
@@ -416,8 +424,8 @@ function RaidRollPopupContentSpec:should_display_the_winners_and_the_individual_
   local item = i( "Hearthstone", 123 )
   local popup, controller, roll = New()
       :config( { auto_raid_roll = true } )
-      :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
-      :loot_list( { item } )
+      :roster( p( "Psikutas" ), p( "Jogobobek" ) )
+      :loot_list( item )
       :build()
 
   -- When
@@ -441,8 +449,8 @@ function RaidRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_c
   local item = i( "Hearthstone", 123 )
   local popup, controller, roll = New()
       :config( { auto_raid_roll = true } )
-      :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
-      :loot_list( { item } )
+      :roster( p( "Psikutas" ), p( "Jogobobek" ) )
+      :loot_list( item )
       :build()
   -- enable_debug( "RollController" )
 
@@ -474,8 +482,8 @@ function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awar
   local item = i( "Hearthstone", 123 )
   local popup, controller, roll = New()
       :config( { auto_raid_roll = true } )
-      :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
-      :loot_list( { item } )
+      :roster( p( "Psikutas" ), p( "Jogobobek" ) )
+      :loot_list( item )
       :build()
 
   -- When
@@ -513,7 +521,7 @@ InstaRaidRollPopupContentSpec = {}
 function InstaRaidRollPopupContentSpec:should_display_the_winner()
   -- Given
   local item = i( "Hearthstone" )
-  local popup, controller = New():roster( { p( "Psikutas" ), p( "Obszczymucha" ) } ):build()
+  local popup, controller = New():roster( p( "Psikutas" ), p( "Obszczymucha" ) ):build()
   mock_random( { { 1, 2, 1 } } )
 
   -- When
@@ -532,8 +540,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_and_the_award_b
   -- Given
   local item = i( "Hearthstone" )
   local popup, controller = New()
-      :roster( { p( "Psikutas" ), p( "Obszczymucha" ) } )
-      :loot_list( { item } )
+      :roster( p( "Psikutas" ), p( "Obszczymucha" ) )
+      :loot_list( item )
       :build()
   -- enable_debug( "RollController" )
   mock_random( { { 1, 2, 1 } } )
@@ -556,8 +564,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_with_award_and_
   local item = i( "Hearthstone" )
   local popup, controller = New()
       :config( { raid_roll_again = true } )
-      :roster( { p( "Psikutas" ), p( "Obszczymucha" ) } )
-      :loot_list( { item } )
+      :roster( p( "Psikutas" ), p( "Obszczymucha" ) )
+      :loot_list( item )
       :build()
   local strategy = RS.InstaRaidRoll
   mock_random( { { 1, 2, 1 } } )
@@ -581,7 +589,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_
   local item = i( "Hearthstone" )
   local popup, controller = New()
       :config( { raid_roll_again = true } )
-      :roster( { p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid ) } )
+      :roster( p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid ) )
       :build()
   mock_random( { { 1, 2, 1 } } )
 
@@ -604,7 +612,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_with_raid_roll
   local item = i( "Hearthstone" )
   local popup, controller = New()
       :config( { raid_roll_again = true } )
-      :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
+      :roster( p( "Psikutas" ), p( "Jogobobek" ) )
       :build()
   mock_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
 
@@ -627,7 +635,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_without_raid_r
   -- Given
   local popup, controller = New()
       :config( { raid_roll_again = false } )
-      :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
+      :roster( p( "Psikutas" ), p( "Jogobobek" ) )
       :build()
   local item = i( "Hearthstone" )
   mock_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
@@ -651,8 +659,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_indivi
   local item = i( "Hearthstone" )
   local popup, controller = New()
       :config( { raid_roll_again = false } )
-      :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
-      :loot_list( { item } )
+      :roster( p( "Psikutas" ), p( "Jogobobek" ) )
+      :loot_list( item )
       :build()
   mock_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
 
@@ -675,8 +683,8 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_indivi
   local item = i( "Hearthstone" )
   local popup, controller = New()
       :config( { raid_roll_again = true } )
-      :roster( { p( "Psikutas" ), p( "Jogobobek" ) } )
-      :loot_list( { item } )
+      :roster( p( "Psikutas" ), p( "Jogobobek" ) )
+      :loot_list( item )
       :build()
   mock_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
 
@@ -703,7 +711,7 @@ function NormalRollPopupContentSpec:should_return_initial_content()
   local chat = mock_chat() ---@type ChatMock
   local popup, controller = New()
       :chat( chat )
-      :roster( { p( "Psikutas" ), p( "Jogobobek" ) }, true )
+      :raid_roster( p( "Psikutas" ), p( "Jogobobek" ) )
       :build()
 
   -- When
@@ -798,7 +806,7 @@ end
 function NormalRollPopupContentSpec:should_display_the_winners()
   -- Given
   local item, p1, p2 = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
-  local popup, controller, roll = New():roster( { p1, p2 } ):no_master_loot_candidates():build()
+  local popup, controller, roll = New():roster( p1, p2 ):no_master_loot_candidates():build()
 
   -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -819,7 +827,7 @@ end
 function NormalRollPopupContentSpec:should_display_the_winners_and_the_individual_award_buttons()
   -- Given
   local item, p1, p2 = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
-  local popup, controller, roll = New():roster( { p1, p2 } ):build()
+  local popup, controller, roll = New():roster( p1, p2 ):build()
 
   -- When
   controller.start( RS.NormalRoll, item, 2, 8 )
@@ -843,7 +851,7 @@ end
 function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_8()
   -- Given
   local item, p1, p2 = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
-  local popup, controller, roll = New():roster( { p1, p2 } ):build()
+  local popup, controller, roll = New():roster( p1, p2 ):build()
 
   -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -865,7 +873,7 @@ end
 function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_11()
   -- Given
   local item, p1, p2 = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
-  local popup, controller, roll = New():roster( { p1, p2 } ):build()
+  local popup, controller, roll = New():roster( p1, p2 ):build()
 
   -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -887,7 +895,7 @@ end
 function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_18()
   -- Given
   local item, p1, p2 = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
-  local popup, controller, roll = New():roster( { p1, p2 } ):build()
+  local popup, controller, roll = New():roster( p1, p2 ):build()
 
   -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -909,7 +917,7 @@ end
 function NormalRollPopupContentSpec:should_sort_the_rolls()
   -- Given
   local item, p1, p2, p3        = i( "Hearthstone" ), p( "Psikutas" ), p( "Obszczymucha" ), p( "Ponpon" )
-  local popup, controller, roll = New():roster( { p1, p2, p3 } ):build()
+  local popup, controller, roll = New():roster( p1, p2, p3 ):build()
 
   -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -939,7 +947,7 @@ end
 function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
   -- Given
   local item, p1, p2            = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
-  local popup, controller, roll = New():roster( { p1, p2 } ):build()
+  local popup, controller, roll = New():roster( p1, p2 ):build()
 
   -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -962,7 +970,7 @@ end
 function NormalRollPopupContentSpec:should_display_the_transmog_winner()
   -- Given
   local item, p1, p2            = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
-  local popup, controller, roll = New():roster( { p1, p2 } ):build()
+  local popup, controller, roll = New():roster( p1, p2 ):build()
 
   -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -985,7 +993,7 @@ end
 function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_if_enabled()
   -- Given
   local item, p1, p2            = i( "Hearthstone" ), p( "Psikutas" ), p( "Ohhaimark" )
-  local popup, controller, roll = New():config( { auto_raid_roll = true } ):roster( { p1, p2 } ):build()
+  local popup, controller, roll = New():config( { auto_raid_roll = true } ):roster( p1, p2 ):build()
 
   -- When
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -1029,7 +1037,7 @@ end
 function NormalRollPopupContentSpec:should_not_close_the_popup_if_someone_loots_another_item_while_rolling()
   -- Given
   local item, p1, p2               = i( "Hearthstone" ), p( "Psikutas" ), p( "Obszczymucha" )
-  local popup, controller, _, deps = New():roster( { p1, p2 } ):build()
+  local popup, controller, _, deps = New():roster( p1, p2 ):build()
   local master_loot                = deps[ "MasterLoot" ]
 
   -- When
@@ -1060,8 +1068,8 @@ function SoftResRollPopupContentSpec:should_preview_rolls()
   -- Given
   local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
   local popup, controller = New()
-      :roster( { p1, p2 } )
-      :soft_res_data( make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 123 ) ) )
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 123 ) )
       :build()
 
   -- When
