@@ -8,6 +8,7 @@ if m.PlayerInfo then return end
 ---@field get_class fun(): string
 ---@field is_master_looter fun(): boolean
 ---@field is_leader fun(): boolean
+---@field is_assistant fun(): boolean
 
 local M = {}
 
@@ -40,12 +41,26 @@ function M.new( api )
     return api.UnitIsPartyLeader( "player" )
   end
 
+  local function is_assistant()
+    if not api.IsInRaid() then return false end
+    local my_name = get_name()
+
+    for i = 1, 40 do
+      local name, rank = api.GetRaidRosterInfo( i )
+
+      if name and name == my_name then
+        return rank and rank > 0 or false
+      end
+    end
+  end
+
   ---@type PlayerInfo
   return {
     get_name = get_name,
     get_class = get_class,
     is_master_looter = is_master_looter,
-    is_leader = is_leader
+    is_leader = is_leader,
+    is_assistant = is_assistant
   }
 end
 

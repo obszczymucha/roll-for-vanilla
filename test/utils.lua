@@ -70,7 +70,7 @@ function M.debugln( message )
 end
 
 ---@param message string
----@param chat_type ChatType
+---@param chat_type ChatType|"CONSOLE"
 function M.chat_message( message, chat_type )
   return { message = message, type = chat_type }
 end
@@ -301,6 +301,7 @@ function M.mock_api()
   M.mock( "UnitName", "Psikutas" )
   M.mock( "UnitClass", "Warrior" )
   M.mock( "GetRealZoneText", "Elwynn Forest" )
+  M.mock( "UnitIsPartyLeader", false )
 
   -- Loot Interface
   M.mock( "GetLootSlotLink" )

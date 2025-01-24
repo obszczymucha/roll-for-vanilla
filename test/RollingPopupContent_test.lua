@@ -28,9 +28,9 @@ u.mock_wow_api()
 local link = "item_link_with_icon"
 
 ---@param name string
----@param class PlayerClass
+---@param class PlayerClass?
 ---@return Player
-local function p( name, class ) return make_player( name, class, true ) end
+local function p( name, class ) return make_player( name, class or C.Warrior, true ) end
 
 ---@param player Player
 ---@param rolls number?
@@ -39,7 +39,7 @@ local function rp( player, rolls )
   return make_rolling_player( player.name, player.class, player.online, rolls or 1 )
 end
 
-local mock_group_roster = require( "mocks/GroupRosterApi" ).new
+local mock_roster = require( "mocks/GroupRosterApi" ).new
 
 ---@diagnostic disable-next-line: unused-local, unused-function
 local function enable_debug( ... )
@@ -57,7 +57,7 @@ end
 ---@return ChatMock
 local function mock_chat()
   ---@diagnostic disable-next-line: return-type-mismatch
-  return require( "mocks/Chat" ).new()
+  return require( "mocks/ChatApi" ).new()
 end
 
 ---@return Config
@@ -107,12 +107,13 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   local player_info = require( "mocks/PlayerInfo" ).new( "Psikutas", "Warrior", true, true )
   deps[ "PlayerInfo" ] = player_info
 
-  local chat = deps[ "Chat" ] or require( "mocks/Chat" ).new()
-  deps[ "Chat" ] = chat
-
-  local group_roster_api = deps[ "GroupRosterApi" ] or mock_group_roster( { p( "Jogobobek", C.Warrior ), p( "Obszczymucha", C.Druid ) } )
+  local group_roster_api = deps[ "GroupRosterApi" ] or mock_roster( { p( "Jogobobek", C.Warrior ), p( "Obszczymucha", C.Druid ) } )
   local group_roster = require( "src/GroupRoster" ).new( group_roster_api, player_info )
   deps[ "GroupRoster" ] = group_roster
+
+  local chat_api = deps[ "ChatApi" ] or require( "mocks/ChatApi" ).new()
+  local chat = deps[ "Chat" ] or require( "src/Chat" ).new( chat_api, group_roster, player_info )
+  deps[ "Chat" ] = chat
 
   local loot_list = deps[ "LootList" ] or mock_loot_list()
   deps[ "SoftResLootList" ] = loot_list
@@ -213,12 +214,47 @@ local function i( name, id, sr_players, hr )
   return item
 end
 
+local function New()
+  local dependencies = {}
+  local M = {}
+
+  ---@param chat_api ChatApi|ChatMock
+  function M.chat( self, chat_api )
+    dependencies[ "ChatApi" ] = chat_api
+    return self
+  end
+
+  ---@param config Config
+  function M.config( self, config )
+    dependencies[ "Config" ] = config
+    return self
+  end
+
+  ---@param loot_list LootList
+  function M.loot_list( self, loot_list )
+    dependencies[ "LootList" ] = loot_list
+    return self
+  end
+
+  ---@param group_roster_api GroupRosterApi
+  function M.roster( self, group_roster_api )
+    dependencies[ "GroupRosterApi" ] = group_roster_api
+    return self
+  end
+
+  function M.build()
+    return new( dependencies )
+  end
+
+  return M
+end
+
 RaidRollPopupContentSpec = {}
 
 function RaidRollPopupContentSpec:should_return_initial_content()
   -- Given
-  local popup, controller = new()
   local item = i( "Hearthstone", 123 )
+  local popup, controller = new()
   controller.start( RS.RaidRoll, item, 1 )
 
   -- Then
@@ -231,8 +267,8 @@ end
 
 function RaidRollPopupContentSpec:should_return_initial_content_with_multiple_items_to_roll()
   -- Given
-  local popup, controller = new()
   local item = i( "Hearthstone", 123 )
+  local popup, controller = new()
   controller.start( RS.RaidRoll, item, 2 )
 
   -- Then
@@ -245,10 +281,11 @@ end
 
 function RaidRollPopupContentSpec:should_display_the_winner()
   -- Given
-  local config = mock_config( { auto_raid_roll = true } )
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
-  local popup, controller, roll = new( { [ "Config" ] = config, [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone", 123 )
+  local popup, controller, roll = New()
+      :config( mock_config( { auto_raid_roll = true } ) )
+      :roster( mock_roster( { p( "Psikutas" ), p( "Jogobobek" ) } ) )
+      :build()
   controller.start( RS.RaidRoll, item, 1 )
   mock_random_roll( "Psikutas", 1, 2, roll )
   tick()
@@ -264,11 +301,12 @@ end
 
 function RaidRollPopupContentSpec:should_display_the_winner_and_the_award_button()
   -- Given
-  local config = mock_config( { auto_raid_roll = true } )
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
   local item = i( "Hearthstone", 123 )
-  local loot_list = mock_loot_list( { item } )
-  local popup, controller, roll = new( { [ "Config" ] = config, [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list } )
+  local popup, controller, roll = New()
+      :config( mock_config( { auto_raid_roll = true } ) )
+      :roster( mock_roster( { p( "Psikutas" ), p( "Jogobobek" ) } ) )
+      :loot_list( mock_loot_list( { item } ) )
+      :build()
   -- enable_debug( "RollController" )
   controller.start( RS.RaidRoll, item, 1 )
   mock_random_roll( "Psikutas", 2, 2, roll )
@@ -286,11 +324,12 @@ end
 
 function RaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again_button()
   -- Given
-  local config = mock_config( { auto_raid_roll = true, raid_roll_again = true } )
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
   local item = i( "Hearthstone", 123 )
-  local loot_list = mock_loot_list( { item } )
-  local popup, controller, roll = new( { [ "Config" ] = config, [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list } )
+  local popup, controller, roll = New()
+      :config( mock_config( { auto_raid_roll = true, raid_roll_again = true } ) )
+      :roster( mock_roster( { p( "Psikutas" ), p( "Jogobobek" ) } ) )
+      :loot_list( mock_loot_list( { item } ) )
+      :build()
   controller.start( RS.RaidRoll, item, 1 )
   mock_random_roll( "Psikutas", 2, 2, roll )
   tick()
@@ -308,11 +347,12 @@ end
 
 function RaidRollPopupContentSpec:should_display_the_winner_and_auto_raid_roll_info()
   -- Given
-  local config = mock_config( { auto_raid_roll = false } )
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
   local item = i( "Hearthstone", 123 )
-  local loot_list = mock_loot_list( { item } )
-  local popup, controller, roll = new( { [ "Config" ] = config, [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list } )
+  local popup, controller, roll = New()
+      :config( mock_config( { auto_raid_roll = false } ) )
+      :roster( mock_roster( { p( "Psikutas" ), p( "Jogobobek" ) } ) )
+      :loot_list( mock_loot_list( { item } ) )
+      :build()
   controller.start( RS.RaidRoll, item, 1 )
   mock_random_roll( "Psikutas", 2, 2, roll )
   tick()
@@ -330,10 +370,11 @@ end
 
 function RaidRollPopupContentSpec:should_display_the_winners()
   -- Given
-  local config = mock_config( { auto_raid_roll = true } )
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
   local item = i( "Hearthstone", 123 )
-  local popup, controller, roll = new( { [ "Config" ] = config, [ "GroupRosterApi" ] = group_roster } )
+  local popup, controller, roll = New()
+      :config( mock_config( { auto_raid_roll = true } ) )
+      :roster( mock_roster( { p( "Psikutas" ), p( "Jogobobek" ) } ) )
+      :build()
   controller.start( RS.RaidRoll, item, 2 )
   mock_multi_random_roll( { { "Psikutas", 1, 2, roll }, { "Psikutas", 2, 2, roll } } )
   tick()
@@ -351,11 +392,12 @@ end
 
 function RaidRollPopupContentSpec:should_display_the_winners_and_the_individual_award_buttons()
   -- Given
-  local config = mock_config( { auto_raid_roll = true } )
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
   local item = i( "Hearthstone", 123 )
-  local loot_list = mock_loot_list( { item } )
-  local popup, controller, roll = new( { [ "Config" ] = config, [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list } )
+  local popup, controller, roll = New()
+      :config( mock_config( { auto_raid_roll = true } ) )
+      :roster( mock_roster( { p( "Psikutas" ), p( "Jogobobek" ) } ) )
+      :loot_list( mock_loot_list( { item } ) )
+      :build()
   controller.start( RS.RaidRoll, item, 2 )
   mock_multi_random_roll( { { "Psikutas", 1, 2, roll }, { "Psikutas", 2, 2, roll } } )
   tick()
@@ -373,11 +415,12 @@ end
 
 function RaidRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_content_unchanged_after_aborting_the_award()
   -- Given
-  local config = mock_config( { auto_raid_roll = true } )
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
   local item = i( "Hearthstone", 123 )
-  local loot_list = mock_loot_list( { item } )
-  local popup, controller, roll = new( { [ "Config" ] = config, [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list } )
+  local popup, controller, roll = New()
+      :config( mock_config( { auto_raid_roll = true } ) )
+      :roster( mock_roster( { p( "Psikutas" ), p( "Jogobobek" ) } ) )
+      :loot_list( mock_loot_list( { item } ) )
+      :build()
   -- enable_debug( "RollController" )
   controller.start( RS.RaidRoll, item, 1 )
   mock_random_roll( "Psikutas", 2, 2, roll )
@@ -403,11 +446,12 @@ end
 
 function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awarding_one()
   -- Given
-  local config = mock_config( { auto_raid_roll = true } )
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
   local item = i( "Hearthstone", 123 )
-  local loot_list = mock_loot_list( { item } )
-  local popup, controller, roll = new( { [ "Config" ] = config, [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list } )
+  local popup, controller, roll = New()
+      :config( mock_config( { auto_raid_roll = true } ) )
+      :roster( mock_roster( { p( "Psikutas" ), p( "Jogobobek" ) } ) )
+      :loot_list( mock_loot_list( { item } ) )
+      :build()
   controller.start( RS.RaidRoll, item, 2 )
   mock_multi_random_roll( { { "Psikutas", 1, 2, roll }, { "Psikutas", 2, 2, roll } } )
   tick()
@@ -441,7 +485,7 @@ InstaRaidRollPopupContentSpec = {}
 
 function InstaRaidRollPopupContentSpec:should_display_the_winner()
   -- Given
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid ) } )
+  local group_roster = mock_roster( { p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid ) } )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone" )
   mock_random( { { 1, 2, 1 } } )
@@ -458,7 +502,7 @@ end
 
 function InstaRaidRollPopupContentSpec:should_display_the_winner_and_the_award_button()
   -- Given
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid ) } )
+  local group_roster = mock_roster( { p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid ) } )
   local item = i( "Hearthstone" )
   local loot_list = mock_loot_list( { item } )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list } )
@@ -479,7 +523,7 @@ end
 function InstaRaidRollPopupContentSpec:should_display_the_winner_with_award_and_raid_roll_again_buttons_if_the_award_was_aborted()
   -- Given
   local config = mock_config( { raid_roll_again = true } )
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid ) } )
+  local group_roster = mock_roster( { p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid ) } )
   local item = i( "Hearthstone" )
   local loot_list = mock_loot_list( { item } )
   local popup, controller = new( { [ "Config" ] = config, [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list } )
@@ -501,7 +545,7 @@ end
 function InstaRaidRollPopupContentSpec:should_display_the_winner_with_raid_roll_again_button_if_the_award_was_aborted()
   -- Given
   local config = mock_config( { raid_roll_again = true } )
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid ) } )
+  local group_roster = mock_roster( { p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid ) } )
   local popup, controller = new( { [ "Config" ] = config, [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone" )
   mock_random( { { 1, 2, 1 } } )
@@ -521,7 +565,7 @@ end
 function InstaRaidRollPopupContentSpec:should_display_the_winners_with_raid_roll_again_button()
   -- Given
   local config = mock_config( { raid_roll_again = true } )
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
+  local group_roster = mock_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
   local popup, controller = new( { [ "Config" ] = config, [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone" )
   mock_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
@@ -542,7 +586,7 @@ end
 function InstaRaidRollPopupContentSpec:should_display_the_winners_without_raid_roll_again_button()
   -- Given
   local config = mock_config( { raid_roll_again = false } )
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
+  local group_roster = mock_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
   local popup, controller = new( { [ "Config" ] = config, [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone" )
   mock_random( { { 1, 2, 2 }, { 1, 2, 1 } } )
@@ -562,7 +606,7 @@ end
 function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_individual_award_buttons_without_raid_roll_again_button()
   -- Given
   local config = mock_config( { raid_roll_again = false } )
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
+  local group_roster = mock_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
   local item = i( "Hearthstone" )
   local loot_list = mock_loot_list( { item } )
   local popup, controller = new( { [ "Config" ] = config, [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list } )
@@ -583,7 +627,7 @@ end
 function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_individual_award_buttons_with_raid_roll_again_button()
   -- Given
   local config = mock_config( { raid_roll_again = true } )
-  local group_roster = mock_group_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
+  local group_roster = mock_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) } )
   local item = i( "Hearthstone" )
   local loot_list = mock_loot_list( { item } )
   local popup, controller = new( { [ "Config" ] = config, [ "GroupRosterApi" ] = group_roster, [ "LootList" ] = loot_list } )
@@ -607,7 +651,8 @@ NormalRollPopupContentSpec = {}
 function NormalRollPopupContentSpec:should_return_initial_content()
   -- Given
   local chat = mock_chat() ---@type ChatMock
-  local popup, controller = new( { [ "Chat" ] = chat } )
+  local group_roster = mock_roster( { p( "Psikutas", C.Warrior ), p( "Jogobobek", C.Warlock ) }, true )
+  local popup, controller = new( { [ "ChatApi" ] = chat, [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone" )
   controller.start( RS.NormalRoll, item, 1, 8 )
 
@@ -693,7 +738,7 @@ function NormalRollPopupContentSpec:should_display_the_winners()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
   local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
   local item = i( "Hearthstone" )
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -714,7 +759,7 @@ end
 function NormalRollPopupContentSpec:should_display_the_winners_and_the_individual_award_buttons()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone" )
   controller.start( RS.NormalRoll, item, 2, 8 )
@@ -738,7 +783,7 @@ end
 function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_8()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone" )
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -760,7 +805,7 @@ end
 function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_11()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone" )
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -782,7 +827,7 @@ end
 function NormalRollPopupContentSpec:should_display_the_winner_with_proper_article_for_18()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone" )
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -804,7 +849,7 @@ end
 function NormalRollPopupContentSpec:should_sort_the_rolls()
   -- Given
   local p1, p2, p3 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid ), p( "Ponpon", C.Warlock )
-  local group_roster = mock_group_roster( { p1, p2, p3 } )
+  local group_roster = mock_roster( { p1, p2, p3 } )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone" )
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -834,7 +879,7 @@ end
 function NormalRollPopupContentSpec:should_display_the_off_spec_winner()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone" )
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -857,7 +902,7 @@ end
 function NormalRollPopupContentSpec:should_display_the_transmog_winner()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone" )
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -880,7 +925,7 @@ end
 function NormalRollPopupContentSpec:should_auto_raid_roll_when_finishing_early_if_enabled()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local popup, controller, roll = new( { [ "Config" ] = mock_config( { auto_raid_roll = true } ), [ "GroupRosterApi" ] = group_roster } )
   local item = i( "Hearthstone" )
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -924,7 +969,7 @@ end
 function NormalRollPopupContentSpec:should_not_close_the_popup_if_someone_loots_another_item_while_rolling()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local popup, controller, _, deps = new( { [ "GroupRosterApi" ] = group_roster } )
   local master_loot = deps[ "MasterLoot" ]
   local item = i( "Hearthstone" )
@@ -954,7 +999,7 @@ SoftResrollPopupContentSpec = {}
 function SoftResrollPopupContentSpec:should_preview_rolls()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123 )
@@ -974,7 +1019,7 @@ end
 function SoftResrollPopupContentSpec:should_preview_the_winner_without_award_button_if_the_winner_is_not_a_candidate()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local item = i( "Hearthstone", 123 )
   local loot_list = mock_loot_list( { item } )
   local data = make_data( sr( p1.name, 123 ) )
@@ -999,7 +1044,7 @@ end
 function SoftResrollPopupContentSpec:should_preview_the_winner_with_award_button()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local item = i( "Hearthstone", 123 )
   local loot_list = mock_loot_list( { item } )
   local data = make_data( sr( p1.name, 123 ) )
@@ -1019,7 +1064,7 @@ end
 function SoftResrollPopupContentSpec:should_preview_the_winners()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local item = i( "Hearthstone", 123 )
   local loot_list = mock_loot_list( { item } )
   local data = make_data( sr( p1.name, 123 ), sr( p2.name, 123 ) )
@@ -1041,7 +1086,7 @@ end
 function SoftResrollPopupContentSpec:should_return_initial_softres_content()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
@@ -1063,7 +1108,7 @@ end
 function SoftResrollPopupContentSpec:should_update_rolling_ends_message()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
@@ -1086,7 +1131,7 @@ end
 function SoftResrollPopupContentSpec:should_update_rolling_ends_message_for_one_second_left()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
@@ -1110,7 +1155,7 @@ function SoftResrollPopupContentSpec:should_display_the_winner_if_the_winner_sti
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
@@ -1134,7 +1179,7 @@ function SoftResrollPopupContentSpec:should_display_the_winner_if_the_winner_use
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
   local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
@@ -1158,7 +1203,7 @@ end
 function SoftResrollPopupContentSpec:should_display_the_winner_and_the_award_button()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
@@ -1183,7 +1228,7 @@ end
 function SoftResrollPopupContentSpec:should_display_the_only_soft_resser()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local data = make_data( sr( p1.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123 )
@@ -1203,7 +1248,7 @@ end
 function SoftResrollPopupContentSpec:should_say_waiting_for_remaining_rolls()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
@@ -1226,7 +1271,7 @@ end
 function SoftResrollPopupContentSpec:should_display_the_winners()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
@@ -1247,7 +1292,7 @@ end
 function SoftResrollPopupContentSpec:should_display_the_winners_and_the_award_buttons()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local item = i( "Hearthstone", 123, { rp( p1, 2 ), rp( p2, 1 ) } )
@@ -1269,7 +1314,7 @@ end
 function SoftResrollPopupContentSpec:should_properly_hide_and_show_the_popup_with_content_unchanged_after_aborting_the_award()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller, _, deps = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local to_winner = deps[ "MasterLootCandidates" ].transform_to_winner
@@ -1300,7 +1345,7 @@ end
 function SoftResrollPopupContentSpec:should_display_the_remaining_winner_after_awarding_one()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Obszczymucha", C.Druid )
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local data = make_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 69, 2 ), sr( p2.name, 123 ) )
   local popup, controller, _, deps = new( { [ "GroupRosterApi" ] = group_roster, [ "SoftResData" ] = data } )
   local to_winner = deps[ "MasterLootCandidates" ].transform_to_winner
@@ -1332,7 +1377,7 @@ function TieRollPopupContentSpec:should_display_tied_rolls()
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
   local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
   local item = i( "Hearthstone" )
   controller.start( RS.NormalRoll, item, 1, 8 )
@@ -1356,7 +1401,7 @@ function TieRollPopupContentSpec:should_display_tied_rolls_with_waiting_message(
   -- Given
   local p1, p2 = p( "Psikutas", C.Warrior ), p( "Ohhaimark", C.Priest )
   local ml_candidates_api = require( "mocks/MasterLootCandidatesApi" ).new()
-  local group_roster = mock_group_roster( { p1, p2 } )
+  local group_roster = mock_roster( { p1, p2 } )
   local popup, controller, roll = new( { [ "GroupRosterApi" ] = group_roster, [ "MasterLootCandidatesApi" ] = ml_candidates_api } )
   local item = i( "Hearthstone" )
   controller.start( RS.NormalRoll, item, 1, 8 )

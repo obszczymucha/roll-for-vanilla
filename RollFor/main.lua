@@ -111,8 +111,11 @@ local function create_components()
   ---@type PlayerInfo
   M.player_info = m.PlayerInfo.new( M.api() )
 
+  ---@type GroupRoster
+  M.group_roster = m.GroupRoster.new( M.api(), M.player_info )
+
   ---@type Chat
-  M.chat = m.Chat.new( M.api(), M.player_info )
+  M.chat = m.Chat.new( M.api(), M.group_roster, M.player_info )
 
   ---@alias GroupAwareSoftResFn fun ( softres: SoftRes ): GroupAwareSoftRes
   ---@type GroupAwareSoftResFn
@@ -128,9 +131,6 @@ local function create_components()
 
   ---@type AwardedLoot
   M.awarded_loot = m.AwardedLoot.new( db( "awarded_loot" ) )
-
-  ---@type GroupRoster
-  M.group_roster = m.GroupRoster.new( M.api(), M.player_info )
 
   -- TODO: Add type.
   M.softres_db = db( "softres" )
