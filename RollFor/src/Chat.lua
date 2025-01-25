@@ -3,20 +3,11 @@ local m = RollFor
 
 if m.chat then return end
 
-local blue = m.colors.blue
-
 local M = {}
 
----@alias AnnounceFn fun( text: string, use_raid_warning: boolean? )
----@alias InfoFn fun( text: string )
-
 ---@class Chat
----@field announce AnnounceFn
----@field info fun( text: string )
-
----@class ChatApi
----@field SendChatMessage fun( text: string, chat_type: string )
----@field DEFAULT_CHAT_FRAME table
+---@field announce fun( text: string, use_raid_Warning: boolean? )
+---@field info fun( text: string, color_fn: ColorFn?, module_name: string? )
 
 ---@param api ChatApi
 ---@param group_roster GroupRoster
@@ -37,13 +28,18 @@ function M.new( api, group_roster, player_info )
     end
   end
 
-  ---@type AnnounceFn
   local function announce( text, use_raid_warning )
     api.SendChatMessage( text, get_roll_announcement_chat_type( use_raid_warning ) )
   end
 
-  local function info( text )
-    api.DEFAULT_CHAT_FRAME:AddMessage( string.format( "%s: %s", blue( "RollFor" ), text ) )
+  local function info( message, color_fn, module_name )
+    if not message then return end
+
+    local c = color_fn and type( color_fn ) == "function" and color_fn or color_fn and type( color_fn ) == "string" and m.colors[ color_fn ] or m.colors.blue
+    local module_str = module_name and string.format( "%s%s%s", c( " [" ), m.colors.white( module_name ), c( "]" ) ) or ""
+
+    local frame = api.DEFAULT_CHAT_FRAME
+    if frame then frame:AddMessage( string.format( "%s%s: %s", c( "RollFor" ), module_str, message ) ) end
   end
 
   ---@type Chat

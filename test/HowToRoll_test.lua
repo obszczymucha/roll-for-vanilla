@@ -1,16 +1,19 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-local lu = require( "luaunit" )
-local utils = require( "test/utils" )
-local player = utils.player
-local leader = utils.raid_leader
-local is_in_party = utils.is_in_party
-local is_in_raid = utils.is_in_raid
-local c = utils.console_message
-local p = utils.party_message
-local r = utils.raid_message
-local run_command = utils.run_command
-local assert_messages = utils.assert_messages
+local u = require( "test/utils" )
+local lu = u.luaunit()
+local player, leader = u.player, u.raid_leader
+local is_in_party, is_in_raid = u.is_in_party, u.is_in_raid
+local c, p, r = u.console_message, u.party_message, u.raid_message
+local run_command = u.run_command
+
+---@type ModuleRegistry
+local module_registry = {
+  { module_name = "ChatApi", mock = "mocks/ChatApi", variable_name = "chat" }
+}
+
+-- The modules will be injected here using the above module_registry.
+local m = {}
 
 HowToRollSpec = {}
 
@@ -22,7 +25,7 @@ function HowToRollSpec:should_not_show_how_to_roll_if_not_in_a_group()
   run_command( "HTR" )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     c( "RollFor: Not in a group." )
   )
 end
@@ -36,7 +39,7 @@ function HowToRollSpec:should_show_how_to_roll_if_in_party()
   run_command( "HTR" )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     p( "How to roll:" ),
     p( "For main-spec, type: /roll" ),
     p( "For off-spec, type: /roll 99" ),
@@ -53,7 +56,7 @@ function HowToRollSpec:should_show_how_to_roll_if_in_raid()
   run_command( "HTR" )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "How to roll:" ),
     r( "For main-spec, type: /roll" ),
     r( "For off-spec, type: /roll 99" ),
@@ -70,7 +73,7 @@ function HowToRollSpec:should_show_how_to_roll_if_in_raid_and_a_leader()
   run_command( "HTR" )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "How to roll:" ),
     r( "For main-spec, type: /roll" ),
     r( "For off-spec, type: /roll 99" ),
@@ -78,7 +81,7 @@ function HowToRollSpec:should_show_how_to_roll_if_in_raid_and_a_leader()
   )
 end
 
-utils.mock_libraries()
-utils.load_real_stuff()
+u.mock_libraries()
+u.load_real_stuff_and_inject( module_registry, m )
 
 os.exit( lu.LuaUnit.run() )

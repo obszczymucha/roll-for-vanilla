@@ -5,7 +5,6 @@ if m.SoftResRollingLogic then return end
 
 local M = {}
 local map = m.map
-local pretty_print = m.pretty_print
 local take = m.take
 local roll_type = m.Types.RollType.SoftRes
 local strategy = m.Types.RollingStrategy.SoftResRoll
@@ -78,7 +77,7 @@ local function winner_found( rollers, rolls, item_count )
   return has_everyone_rolled( rollers, rolls ) and is_the_winner_the_only_player_with_extra_rolls( rollers, rolls, item_count )
 end
 
----@param announce AnnounceFn
+---@param chat Chat
 ---@param ace_timer AceTimer
 ---@param players RollingPlayer[]
 ---@param item Item
@@ -91,7 +90,7 @@ end
 ---@param master_loot_candidates MasterLootCandidates
 ---@param controller RollControllerFacade
 function M.new(
-    announce,
+    chat,
     ace_timer,
     players,
     item,
@@ -187,21 +186,21 @@ function M.new(
 
     if not player then
       -- TODO: move the messages to a separate module.
-      pretty_print( string.format( "|cffff9f69%s|r did not SR %s. This roll (|cffff9f69%s|r) is ignored.", player_name, item.link, roll ) )
+      chat.info( string.format( "|cffff9f69%s|r did not SR %s. This roll (|cffff9f69%s|r) is ignored.", player_name, item.link, roll ) )
       controller.roll_was_ignored( player_name, nil, roll_type, roll, "Did not soft-res." )
       return
     end
 
     if not ms_roll then
       -- TODO: move the messages to a separate module.
-      pretty_print( string.format( "|cffff9f69%s|r did SR %s, but didn't roll MS. This roll (|cffff9f69%s|r) is ignored.", player_name, item.link, roll ) )
+      chat.info( string.format( "|cffff9f69%s|r did SR %s, but didn't roll MS. This roll (|cffff9f69%s|r) is ignored.", player_name, item.link, roll ) )
       controller.roll_was_ignored( player_name, player.class, roll_type, roll, "Didn't roll MS." )
       return
     end
 
     if player.rolls == 0 then
       -- TODO: move the messages to a separate module.
-      pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
+      chat.info( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
       controller.roll_was_ignored( player_name, player.class, roll_type, roll, "Rolled too many times." )
       return
     end
@@ -246,7 +245,7 @@ function M.new(
     local ressed_by = m.prettify_table( map( players, format_name_with_rolls ) )
 
     if player_count ~= item_count then
-      announce( string.format( "Roll for %s%s: (SR by %s)%s", count_str, item.link, ressed_by, x_rolls_win ), true )
+      chat.announce( string.format( "Roll for %s%s: (SR by %s)%s", count_str, item.link, ressed_by, x_rolls_win ), true )
       accept_rolls()
       return
     end
@@ -265,22 +264,22 @@ function M.new(
 
   local function show_sorted_rolls( limit )
     sort_rolls()
-    pretty_print( "SR rolls:" )
+    chat.info( "SR rolls:" )
 
     for i, v in ipairs( rolls ) do
       if limit and limit > 0 and i > limit then return end
-      pretty_print( string.format( "[|cffff9f69%d|r]: %s", v.roll, m.colorize_player_by_class( v.player.name, v.player.class ) ) )
+      chat.info( string.format( "[|cffff9f69%d|r]: %s", v.roll, m.colorize_player_by_class( v.player.name, v.player.class ) ) )
     end
   end
 
   local function print_rolling_complete( canceled )
-    pretty_print( string.format( "Rolling for %s has %s.", item.link, canceled and "been canceled" or "finished" ) )
+    chat.info( string.format( "Rolling for %s has %s.", item.link, canceled and "been canceled" or "finished" ) )
   end
 
   local function cancel_rolling()
     stop_listening()
     print_rolling_complete( true )
-    announce( string.format( "Rolling for %s has been canceled.", item.link ) )
+    chat.announce( string.format( "Rolling for %s has been canceled.", item.link ) )
   end
 
   local function is_rolling()

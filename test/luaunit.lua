@@ -1409,10 +1409,10 @@ end
 --                  Equality assertions
 ------------------------------------------------------------------
 
-function M.assertEquals(actual, expected, extra_msg_or_nil, doDeepAnalysis)
+function M.assertEquals(actual, expected, extra_msg_or_nil, doDeepAnalysis, level)
     if type(actual) == 'table' and type(expected) == 'table' then
         if not is_table_equals(actual, expected) then
-            failure( errorMsgEquality(actual, expected, doDeepAnalysis), extra_msg_or_nil, 2 )
+            failure( errorMsgEquality(actual, expected, doDeepAnalysis), extra_msg_or_nil, level or 2 )
         end
     elseif type(actual) ~= type(expected) then
         failure( errorMsgEquality(actual, expected), extra_msg_or_nil, 2 )

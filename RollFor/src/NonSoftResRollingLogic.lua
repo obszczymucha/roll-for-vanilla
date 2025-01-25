@@ -6,7 +6,6 @@ if m.NonSoftResRollingLogic then return end
 local M = m.Module.new( "NonSoftResRollingLogic" )
 
 local count_elements = m.count_elements
-local pretty_print = m.pretty_print
 local merge = m.merge
 local take = m.take
 local rlu = m.RollingLogicUtils
@@ -27,7 +26,7 @@ local function have_all_players_rolled( players )
   return true
 end
 
----@param announce AnnounceFn
+---@param chat Chat
 ---@param ace_timer AceTimer
 ---@param players RollingPlayer[]
 ---@param item Item
@@ -38,7 +37,7 @@ end
 ---@param config Config
 ---@param controller RollControllerFacade
 function M.new(
-    announce,
+    chat,
     ace_timer,
     players,
     item,
@@ -173,7 +172,7 @@ function M.new(
     local player = find_player( player_name, rollers )
 
     if player.rolls == 0 then
-      pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
+      chat.info( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
       controller.roll_was_ignored( player_name, player.class, roll_type, roll, "Rolled too many times." )
       return
     end
@@ -214,7 +213,7 @@ function M.new(
     local info_str = info and info ~= "" and string.format( " %s", info ) or roll_info
     local x_rolls_win = item_count > 1 and string.format( ". %d top rolls win.", item_count ) or ""
 
-    announce( string.format( "Roll for %s%s:%s%s", count_str, item.link, info_str, x_rolls_win ), true )
+    chat.announce( string.format( "Roll for %s%s:%s%s", count_str, item.link, info_str, x_rolls_win ), true )
     accept_rolls()
   end
 
@@ -222,13 +221,13 @@ function M.new(
     local function show( prefix, sorted_rolls )
       if getn( sorted_rolls ) == 0 then return end
 
-      pretty_print( string.format( "%s rolls:", prefix ) )
+      chat.info( string.format( "%s rolls:", prefix ) )
       local i = 0
 
       for _, v in ipairs( sorted_rolls ) do
         if limit and limit > 0 and i > limit then return end
 
-        pretty_print( string.format( "[|cffff9f69%d|r]: %s", v.roll, v.player.name ) )
+        chat.info( string.format( "[|cffff9f69%d|r]: %s", v.roll, v.player.name ) )
         i = i + 1
       end
     end
@@ -237,7 +236,7 @@ function M.new(
     local total_offspec_rolls = count_elements( offspec_rolls )
 
     if total_mainspec_rolls + total_offspec_rolls == 0 then
-      pretty_print( "No rolls found." )
+      chat.info( "No rolls found." )
       return
     end
 
@@ -248,13 +247,13 @@ function M.new(
   end
 
   local function print_rolling_complete( canceled )
-    pretty_print( string.format( "Rolling for %s has %s.", item.link, canceled and "been canceled" or "finished" ) )
+    chat.info( string.format( "Rolling for %s has %s.", item.link, canceled and "been canceled" or "finished" ) )
   end
 
   local function cancel_rolling()
     stop_listening()
     print_rolling_complete( true )
-    announce( string.format( "Rolling for %s has been canceled.", item.link ) )
+    chat.announce( string.format( "Rolling for %s has been canceled.", item.link ) )
   end
 
   local function is_rolling()

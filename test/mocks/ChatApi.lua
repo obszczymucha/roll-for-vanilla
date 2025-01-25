@@ -3,7 +3,7 @@ local M = {}
 local u = require( "test/utils" )
 local _, eq = u.luaunit( "assertEquals" )
 
----@class ChatMock
+---@class ChatApiMock : ChatApi
 ---@field assert fun( ...: ChatMessage[] )
 ---@field assert_no_messages fun()
 
@@ -29,7 +29,8 @@ function M.new()
     local args = { ... }
     local expected = {}
     u.flatten( expected, args )
-    eq( messages, expected )
+
+    eq( messages, expected, nil, nil, 3 )
   end
 
   local function default_chat_frame( _, message )
@@ -38,10 +39,10 @@ function M.new()
   end
 
   local function assert_no_messages()
-    eq( messages, {} )
+    eq( messages, {}, nil, nil, 3 )
   end
 
-  ---@type ChatApi
+  ---@type ChatApiMock
   return {
     SendChatMessage = send_chat_message,
     DEFAULT_CHAT_FRAME = { AddMessage = default_chat_frame },

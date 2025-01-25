@@ -7,7 +7,6 @@ local M = {}
 
 local RT = m.Types.RollType
 local RS = m.Types.RollingStrategy
-local info = m.pretty_print
 local hl = m.colors.hl
 local getn = table.getn
 
@@ -43,7 +42,7 @@ function M.new( chat, roll_controller, roll_tracker, config )
     end
 
     local rollers = m.prettify_table( winners, function( p ) return p.name end )
-    info( message( rollers, hl ) )
+    chat.info( message( rollers, hl ) )
     chat.announce( message( rollers ) )
   end
 
@@ -134,7 +133,7 @@ function M.new( chat, roll_controller, roll_tracker, config )
       )
     end
 
-    info( message( top_rollers_str_colored ) )
+    chat.info( message( top_rollers_str_colored ) )
     chat.announce( message( top_rollers_str ) )
   end
 

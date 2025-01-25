@@ -4,7 +4,6 @@ local m = RollFor
 if m.RaidRollRollingLogic then return end
 
 local M = {}
-local pretty_print = m.pretty_print
 local hl = m.colors.hl
 local strategy = m.Types.RollingStrategy.RaidRoll
 local roll_type = m.Types.RollType.MainSpec
@@ -18,6 +17,7 @@ local getn = table.getn
 
 -- TODO: Lots of similarity with InstaRaidRollRollingLogic. Perhaps refactor.
 
+---@param chat Chat
 ---@param ace_timer AceTimer
 ---@param item Item
 ---@param item_count number
@@ -26,7 +26,7 @@ local getn = table.getn
 ---@param candidates ItemCandidate[]|Player[]
 ---@param player_info PlayerInfo
 function M.new(
-    announce,
+    chat,
     ace_timer,
     item,
     item_count,
@@ -52,14 +52,14 @@ function M.new(
       local next_player = string.format( "[%d]:%s", i, player.name )
 
       if (string.len( buffer .. separator .. next_player ) > 255) then
-        announce( buffer )
+        chat.announce( buffer )
         buffer = next_player
       else
         buffer = buffer .. separator .. next_player
       end
     end
 
-    if buffer ~= "" then announce( buffer ) end
+    if buffer ~= "" then chat.announce( buffer ) end
   end
 
   local function raid_roll()
@@ -71,7 +71,7 @@ function M.new(
     m_rolling = true
     clear_winners()
 
-    announce( string.format( "Raid rolling %s%s...", item_count and item_count > 1 and string.format( "%sx", item_count ) or "", item.link ) )
+    chat.announce( string.format( "Raid rolling %s%s...", item_count and item_count > 1 and string.format( "%sx", item_count ) or "", item.link ) )
 
     print_players( candidates )
     ace_timer.ScheduleTimer( M, function()
@@ -109,12 +109,12 @@ function M.new(
 
   local function show_sorted_rolls()
     if getn( m_winners ) == 0 then
-      pretty_print( "There is no winner yet.", nil, "RaidRoll" )
+      chat.info( "There is no winner yet.", nil, "RaidRoll" )
       return
     end
 
     for _, winner in ipairs( m_winners ) do
-      pretty_print( string.format( "%s won %s.", hl( winner.name ), item.link ), nil, "RaidRoll" )
+      chat.info( string.format( "%s won %s.", hl( winner.name ), item.link ), nil, "RaidRoll" )
     end
   end
 

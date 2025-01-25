@@ -225,10 +225,17 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
 
     local sr_count = getn( soft_ressers )
     local buttons = {}
+    local dropped_item = loot_list.get_by_id( item.id )
+    local candidate_count = getn( candidates )
 
     if sr_count == 0 then
       table.insert( buttons, button( "Roll", function() start( RS.NormalRoll, item, item_count, config.default_rolling_time_seconds() ) end ) )
       add_close_button( buttons )
+
+      print( string.format( "dropped_item: %s  candidate_count: %s", dropped_item and dropped_item.id, candidate_count ) )
+      if dropped_item and candidate_count > 0 then
+        table.insert( buttons, button( "AwardOther", function() end ) )
+      end
 
       preview_data = {
         item_link = item.link,
@@ -246,9 +253,6 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     end
 
     if item_count == sr_count then
-      local dropped_item = loot_list.get_by_id( item.id )
-      local candidate_count = getn( candidates )
-
       ---@type WinnerWithAwardCallback[]
       local winners = m.map( soft_ressers,
         ---@param player RollingPlayer

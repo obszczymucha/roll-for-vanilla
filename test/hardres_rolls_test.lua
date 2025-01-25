@@ -1,19 +1,20 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-local lu = require( "luaunit" )
-local utils = require( "test/utils" )
-local player = utils.player
-local leader = utils.raid_leader
-local is_in_raid = utils.is_in_raid
-local rw = utils.raid_warning
-local rolling_not_in_progress = utils.rolling_not_in_progress
-local roll_for = utils.roll_for
-local finish_rolling = utils.finish_rolling
-local roll = utils.roll
-local roll_os = utils.roll_os
-local assert_messages = utils.assert_messages
-local soft_res = utils.soft_res
-local hr = utils.hard_res_item
+local u = require( "test/utils" )
+local lu = u.luaunit()
+local player, leader, is_in_raid = u.player, u.raid_leader, u.is_in_raid
+local rw = u.raid_warning
+local rolling_not_in_progress, finish_rolling = u.rolling_not_in_progress, u.finish_rolling
+local roll_for, roll, roll_os = u.roll_for, u.roll, u.roll_os
+local soft_res, hr = u.soft_res, u.hard_res_item
+
+---@type ModuleRegistry
+local module_registry = {
+  { module_name = "ChatApi", mock = "mocks/ChatApi", variable_name = "chat" }
+}
+
+-- The modules will be injected here using the above module_registry.
+local m = {}
 
 HardResRollsSpec = {}
 
@@ -30,13 +31,13 @@ function HardResRollsSpec:should_announce_hr_and_ignore_all_rolls()
   finish_rolling()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "[Hearthstone] is hard-ressed." ),
     rolling_not_in_progress()
   )
 end
 
-utils.mock_libraries()
-utils.load_real_stuff()
+u.mock_libraries()
+u.load_real_stuff_and_inject( module_registry, m )
 
 os.exit( lu.LuaUnit.run() )

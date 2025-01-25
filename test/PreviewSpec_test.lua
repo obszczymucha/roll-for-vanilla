@@ -47,7 +47,7 @@ local function enable_debug( ... )
   end
 end
 
----@return ChatMock
+---@return ChatApiMock
 local function mock_chat()
   ---@diagnostic disable-next-line: return-type-mismatch
   return require( "mocks/ChatApi" ).new()
@@ -68,7 +68,8 @@ local function mock_config( configuration )
     tmog_roll_threshold = function() return 98 end,
     tmog_rolling_enabled = function() return true end,
     insta_raid_roll = function() return true end,
-    default_rolling_time_seconds = function() return 8 end
+    default_rolling_time_seconds = function() return 8 end,
+    auto_process_loot = function() return false end
   }
 end
 
@@ -91,7 +92,14 @@ local function mock_loot_list( items )
   return frequire( "mocks/LootList" )( items or {} )
 end
 
+local function mock_loot_facade()
+  return require( "mocks/LootFacade" ).new()
+end
+
 local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_player )
+  u.loot_threshold( 2 )
+  u.targetting_enemy( "Princess Kenny" )
+
   local deps = dependencies or {}
 
   local config = deps[ "Config" ] or mock_config()
@@ -108,7 +116,7 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   local chat = deps[ "Chat" ] or require( "src/Chat" ).new( chat_api, group_roster, player_info )
   deps[ "Chat" ] = chat
 
-  local loot_facade = deps[ "LootFacade" ] or require( "mocks/LootFacade" ).new()
+  local loot_facade = deps[ "LootFacade" ] or mock_loot_facade()
   deps[ "LootFacade" ] = loot_facade
 
   local loot_list = deps[ "LootList" ] and deps[ "LootList" ].new( loot_facade ) or mock_loot_list().new( loot_facade )
@@ -238,7 +246,7 @@ local function New()
   local dependencies = {}
   local M = {}
 
-  ---@param chat_api ChatApi|ChatMock
+  ---@param chat_api ChatApi|ChatApiMock
   function M.chat( self, chat_api )
     dependencies[ "ChatApi" ] = chat_api
     return self
@@ -246,6 +254,12 @@ local function New()
 
   function M.config( self, config )
     dependencies[ "Config" ] = mock_config( config )
+    return self
+  end
+
+  ---@param loot_facade LootFacadeMock
+  function M.loot_facade( self, loot_facade )
+    dependencies[ "LootFacade" ] = loot_facade
     return self
   end
 
@@ -311,7 +325,7 @@ end
 
 function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_party()
   -- Given
-  local chat = mock_chat() ---@type ChatMock
+  local chat = mock_chat()
   local item = i( "Hearthstone", 123 )
   local popup, controller = New():chat( chat ):build()
 
@@ -361,6 +375,36 @@ function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rol
   chat.assert( rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ) )
 end
 
+function PreviewNotSoftRessedItemSpec:should_display_award_other_button_that_shows_player_selection_popup_and_awards_the_item()
+  -- Given
+  local loot_facade       = mock_loot_facade()
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
+      :loot_facade( loot_facade )
+      :roster( p1, p2 )
+      :loot_list( item )
+      :build()
+
+  -- When
+  loot_facade.notify( "LootOpened" )
+  controller.preview( item, 1 )
+
+  -- Then
+  eq( popup.is_visible(), true )
+  eq( popup.content(), {
+    { type = link,     link = item.link,   tooltip_link = item.tooltip_link, count = 1 },
+    { type = "button", label = "Roll",     width = 70 },
+    { type = "button", label = "Close",    width = 70 },
+    { type = "button", label = "Award...", width = 90 }
+  } )
+
+  -- When
+  popup.click( "Close" )
+
+  -- Then
+  eq( popup.is_visible(), false )
+end
+
 PreviewSoftResWinnersSpec = {}
 
 function PreviewSoftResWinnersSpec:should_display_close_button_that_closes_the_popup()
@@ -392,12 +436,14 @@ end
 function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_display_the_popup_again_if_award_confirmation_is_aborted()
   -- Given
   u.mock( "GiveMasterLoot", u.noop )
+  local loot_facade                = mock_loot_facade()
   local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
   local chat                       = mock_chat()
   local popup, controller, _, deps = New()
       :roster( p1, p2 )
       :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ) )
       :loot_list( item )
+      :loot_facade( loot_facade )
       :chat( chat )
       :build()
   -- enable_debug( "RollController", "RollTracker", "RollingPopupContent" )
@@ -409,6 +455,15 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_displa
     { type = "button", label = "Close",                           width = 70 },
     { type = "button", label = "Award...",                        width = 90 },
   }
+
+  -- When
+  loot_facade.notify( "LootOpened" )
+
+  -- Then
+  chat.assert(
+    pm( "Princess Kenny dropped 1 item:" ),
+    pm( "1. [Hearthstone] (SR by Psikutas)" )
+  )
 
   -- When
   controller.preview( item, 1 )
@@ -424,7 +479,6 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_displa
   -- Then
   eq( award_popup.is_visible(), true )
   eq( popup.is_visible(), false )
-  chat.assert_no_messages()
   -- TODO: verify loot confirmation popup content
 
   -- When
@@ -447,8 +501,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
       :chat( chat )
       :build()
   local loot_facade                = deps[ "LootFacade" ] ---@type LootFacadeMock
-  enable_debug( "MasterLoot", "RollController" )
-  u.mock( "GetLootThreshold", 3 )
+  -- enable_debug( "MasterLoot", "RollController" )
   u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
   local award_popup           = deps[ "LootAwardPopup" ]
   local rolling_popup_content = {
@@ -460,6 +513,14 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
   }
 
   -- When
+  loot_facade.notify( "LootOpened" )
+
+  -- Then
+  chat.assert(
+    pm( "Princess Kenny dropped 1 item:" ),
+    pm( "1. [Hearthstone] (SR by Psikutas)" )
+  )
+
   controller.preview( item, 1 )
 
   -- Then
@@ -473,7 +534,6 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
   -- Then
   eq( award_popup.is_visible(), true )
   eq( popup.is_visible(), false )
-  chat.assert_no_messages()
   -- TODO: verify loot confirmation popup content
 
   -- When
@@ -481,6 +541,8 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
 
   -- Then
   chat.assert(
+    pm( "Princess Kenny dropped 1 item:" ),
+    pm( "1. [Hearthstone] (SR by Psikutas)" ),
     c( "RollFor: Psikutas received [Hearthstone]." )
   )
   eq( award_popup.is_visible(), false )
@@ -498,8 +560,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
       :chat( chat )
       :build()
   local loot_facade                = deps[ "LootFacade" ] ---@type LootFacadeMock
-  enable_debug( "MasterLoot", "RollController" )
-  u.mock( "GetLootThreshold", 3 )
+  -- enable_debug( "MasterLoot", "RollController" )
   u.mock( "GiveMasterLoot", function()
     loot_facade.notify( "LootClosed" )
     loot_facade.notify( "ChatMsgLoot", string.format( "%s receives loot: %s", p1.name, item.link ) )
@@ -515,6 +576,15 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
   }
 
   -- When
+  loot_facade.notify( "LootOpened" )
+
+  -- Then
+  chat.assert(
+    pm( "Princess Kenny dropped 1 item:" ),
+    pm( "1. [Hearthstone] (SR by Psikutas)" )
+  )
+
+  -- When
   controller.preview( item, 1 )
 
   -- Then
@@ -528,7 +598,6 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
   -- Then
   eq( award_popup.is_visible(), true )
   eq( popup.is_visible(), false )
-  chat.assert_no_messages()
   -- TODO: verify loot confirmation popup content
 
   -- When
@@ -536,6 +605,8 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
 
   -- Then
   chat.assert(
+    pm( "Princess Kenny dropped 1 item:" ),
+    pm( "1. [Hearthstone] (SR by Psikutas)" ),
     c( "RollFor: Psikutas received [Hearthstone]." )
   )
   eq( award_popup.is_visible(), false )

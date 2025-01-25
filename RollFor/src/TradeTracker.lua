@@ -28,7 +28,9 @@ M.debug_enabled = false
 -- other than waiting a bit and checking if TRADE_REQUEST_CANCEL
 -- was submitted or not.
 
-function M.new( ace_timer, trade_complete_callback )
+---@param ace_timer AceTimer
+---@param chat Chat
+function M.new( ace_timer, chat, trade_complete_callback )
   local m_trading = false
   local m_items_giving = {}
   local m_items_receiving = {}
@@ -37,8 +39,6 @@ function M.new( ace_timer, trade_complete_callback )
   local m_trade_canceled = false
   local m_received_trade_close = false -- Server sends multiple ones. Probably server bug.
 
-  local pretty_print = m.pretty_print
-
   local function highlight( text )
     return string.format( "|cffff9f69%s|r", text )
   end
@@ -46,18 +46,18 @@ function M.new( ace_timer, trade_complete_callback )
   local function finalize_trading()
     if M.debug_enabled then
       if m_trade_canceled then
-        pretty_print( string.format( "Trading with %s was canceled.", highlight( m_recipient_name ) ) )
+        chat.info( string.format( "Trading with %s was canceled.", highlight( m_recipient_name ) ) )
         return
       end
 
-      pretty_print( string.format( "Trading with %s complete.", highlight( m_recipient_name ) ) )
+      chat.info( string.format( "Trading with %s complete.", highlight( m_recipient_name ) ) )
 
       for _, v in pairs( m_items_giving ) do
-        if v then pretty_print( string.format( "Traded: %sx%s", v.quantity, v.link ) ) end
+        if v then chat.info( string.format( "Traded: %sx%s", v.quantity, v.link ) ) end
       end
 
       for _, v in pairs( m_items_receiving ) do
-        if v then pretty_print( string.format( "Received: %sx%s", v.quantity, v.link ) ) end
+        if v then chat.info( string.format( "Received: %sx%s", v.quantity, v.link ) ) end
       end
     end
 
@@ -74,13 +74,13 @@ function M.new( ace_timer, trade_complete_callback )
 
     if quantity and item_link then
       if M.debug_enabled then
-        pretty_print( string.format( "Giving in slot %s: %sx%s", slot, quantity, item_link ) )
+        chat.info( string.format( "Giving in slot %s: %sx%s", slot, quantity, item_link ) )
       end
 
       m_items_giving[ slot ] = { quantity = quantity, link = item_link }
     else
       if M.debug_enabled and m_items_giving[ slot ] then
-        pretty_print( string.format( "Giving slot %s cleared.", slot ) )
+        chat.info( string.format( "Giving slot %s cleared.", slot ) )
       end
 
       m_items_giving[ slot ] = nil
@@ -91,7 +91,7 @@ function M.new( ace_timer, trade_complete_callback )
     m_recipient_name = m.api.TradeFrameRecipientNameText:GetText() or "Unknown"
 
     if M.debug_enabled then
-      pretty_print( string.format( "Started trading with %s.", highlight( m_recipient_name ) ) )
+      chat.info( string.format( "Started trading with %s.", highlight( m_recipient_name ) ) )
     end
 
     m_trading = true
@@ -113,13 +113,13 @@ function M.new( ace_timer, trade_complete_callback )
 
     if quantity and item_link then
       if M.debug_enabled then
-        pretty_print( string.format( "Receiving in slot %s: %sx%s", slot, quantity, item_link ) )
+        chat.info( string.format( "Receiving in slot %s: %sx%s", slot, quantity, item_link ) )
       end
 
       m_items_receiving[ slot ] = { quantity = quantity, link = item_link }
     else
       if M.debug_enabled and m_items_receiving[ slot ] then
-        pretty_print( string.format( "Receiving slot %s cleared.", slot ) )
+        chat.info( string.format( "Receiving slot %s cleared.", slot ) )
       end
 
       m_items_receiving[ slot ] = nil
@@ -135,7 +135,7 @@ function M.new( ace_timer, trade_complete_callback )
       return
     end
 
-    pretty_print( string.format( "Trading with %s was canceled.", highlight( m_recipient_name ) ) )
+    chat.info( string.format( "Trading with %s was canceled.", highlight( m_recipient_name ) ) )
     m_trading = false
   end
 

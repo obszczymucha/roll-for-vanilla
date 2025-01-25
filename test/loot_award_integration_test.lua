@@ -66,7 +66,7 @@ local module_registry = {
   { module_name = "LootFacade",     variable_name = "loot_facade",    mock = "mocks/LootFacade" },
   { module_name = "RollController", variable_name = "roll_controller" },
   { module_name = "RollTracker",    variable_name = "roll_tracker" },
-  {}
+  { module_name = "ChatApi",        mock = "mocks/ChatApi",           variable_name = "chat" }
 }
 
 -- The modules will be injected here using the above module_registry.
@@ -104,11 +104,11 @@ function LootAwardIntegrationSpec:should_successfully_assign_an_item_to_the_only
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "1 item dropped:" ),
     r( "1. [Hearthstone] (SR by Psikutas)" )
-    -- r( "Remove calls to roll controller from the rolling popup and pass the callbacks instead." ),
-    -- r( "That was we'll be able to mock the popup and call the callbacks." )
+  -- r( "Remove calls to roll controller from the rolling popup and pass the callbacks instead." ),
+  -- r( "That was we'll be able to mock the popup and call the callbacks." )
   )
 end
 

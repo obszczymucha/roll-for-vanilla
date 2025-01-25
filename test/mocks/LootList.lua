@@ -4,10 +4,18 @@ return function( items )
 
   ---@param loot_facade LootFacade
   function M.new( loot_facade )
+    local m_items = {}
+
+    local function load_items()
+      for slot, item in pairs( items or {} ) do
+        m_items[ slot ] = item
+      end
+    end
+
     local looting = false
 
     local function get_items()
-      return items or {}
+      return m_items or {}
     end
 
     local function get_source_guid()
@@ -16,7 +24,7 @@ return function( items )
 
     ---@param item_id number
     local function get_slot( item_id )
-      for slot, item in pairs( items or {} ) do
+      for slot, item in pairs( m_items or {} ) do
         if item.id == item_id then
           return slot
         end
@@ -46,10 +54,11 @@ return function( items )
 
     local function on_loot_opened()
       looting = true
+      load_items()
     end
 
     local function on_loot_slot_cleared( slot )
-      items[ slot ] = nil
+      m_items[ slot ] = nil
     end
 
     local function on_loot_closed()

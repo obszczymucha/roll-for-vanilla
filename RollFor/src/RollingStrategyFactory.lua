@@ -58,7 +58,7 @@ function M.new(
     end )
 
     return m.NonSoftResRollingLogic.new(
-      chat.announce,
+      chat,
       ace_timer,
       rollers,
       item,
@@ -95,7 +95,7 @@ function M.new(
     end
 
     return m.SoftResRollingLogic.new(
-      chat.announce,
+      chat,
       ace_timer,
       softressing_players,
       item,
@@ -125,7 +125,7 @@ function M.new(
         return
       end
 
-      return f( chat.announce, ace_timer, item, item_count or 1, winner_tracker, roll_controller_facade, online_candidates, player_info )
+      return f( chat, ace_timer, item, item_count or 1, winner_tracker, roll_controller_facade, online_candidates, player_info )
     end
   end
 
@@ -138,7 +138,7 @@ function M.new(
     )
 
     return m.TieRollingLogic.new(
-      chat.announce,
+      chat,
       rollers, -- Trackback: changed player_names to players
       item,
       item_count,

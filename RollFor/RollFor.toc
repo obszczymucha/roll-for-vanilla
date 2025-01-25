@@ -80,6 +80,7 @@ src\RollingStrategyFactory.lua
 src\RollingLogic.lua
 src\ArgsParser.lua
 src\RollResultAnnouncer.lua
+src\ChatApi.lua
 src\Chat.lua
 src\PlayerInfo.lua
 src\LootAwardCallback.lua

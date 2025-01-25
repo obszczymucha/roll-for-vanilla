@@ -4,7 +4,6 @@ local m = RollFor
 if m.TieRollingLogic then return end
 
 local M = {}
-local pretty_print = m.pretty_print
 local take = m.take
 local RollType = m.Types.RollType
 local hl = m.colors.hl
@@ -15,7 +14,7 @@ local make_roll = m.Types.make_roll
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
----@param announce AnnounceFn
+---@param chat Chat
 ---@param players RollingPlayer[]
 ---@param item Item
 ---@param item_count number
@@ -23,7 +22,7 @@ local getn = table.getn
 ---@param roll_type RollType
 ---@param config Config
 ---@param controller RollControllerFacade
-function M.new( announce, players, item, item_count, on_rolling_finished, roll_type, config, controller )
+function M.new( chat, players, item, item_count, on_rolling_finished, roll_type, config, controller )
   local rolls = {}
   local rolling = false
   local player_count = getn( players )
@@ -122,20 +121,20 @@ function M.new( announce, players, item, item_count, on_rolling_finished, roll_t
 
     if actual_roll_type ~= roll_type and not (actual_roll_type == RollType.MainSpec and roll_type == RollType.SoftRes) then
       local roll_threshold_str = config.roll_threshold( roll_type ).str
-      pretty_print( string.format( "|cffff9f69%s|r didn't %s. This roll (|cffff9f69%s|r) is ignored.", player_name, hl( roll_threshold_str ), roll ) )
+      chat.info( string.format( "|cffff9f69%s|r didn't %s. This roll (|cffff9f69%s|r) is ignored.", player_name, hl( roll_threshold_str ), roll ) )
       return
     end
 
     local player = find_player( player_name )
 
     if not player then
-      pretty_print( string.format( "|cffff9f69%s|r is not allowed to re-roll. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
+      chat.info( string.format( "|cffff9f69%s|r is not allowed to re-roll. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
       controller.roll_was_ignored( player_name, nil, roll_type, roll, "Not in GroupRoster." )
       return
     end
 
     if player.rolls == 0 then
-      pretty_print( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
+      chat.info( string.format( "|cffff9f69%s|r exhausted their rolls. This roll (|cffff9f69%s|r) is ignored.", player_name, roll ) )
       return
     end
 
@@ -148,16 +147,16 @@ function M.new( announce, players, item, item_count, on_rolling_finished, roll_t
 
   local function show_sorted_rolls( limit )
     sort_rolls()
-    pretty_print( "Tie rolls:" )
+    chat.info( "Tie rolls:" )
 
     for i, v in ipairs( rolls ) do
       if limit and limit > 0 and i > limit then return end
-      pretty_print( string.format( "[|cffff9f69%d|r]: %s", v.roll, m.colorize_player_by_class( v.player.name, v.player.class ) ) )
+      chat.info( string.format( "[|cffff9f69%d|r]: %s", v.roll, m.colorize_player_by_class( v.player.name, v.player.class ) ) )
     end
   end
 
   local function print_rolling_complete( canceled )
-    pretty_print( string.format( "Rolling for %s has %s.", item.link, canceled and "been canceled" or "finished" ) )
+    chat.info( string.format( "Rolling for %s has %s.", item.link, canceled and "been canceled" or "finished" ) )
   end
 
   local function stop_accepting_rolls()
@@ -168,7 +167,7 @@ function M.new( announce, players, item, item_count, on_rolling_finished, roll_t
   local function cancel_rolling()
     stop_listening()
     print_rolling_complete( true )
-    announce( string.format( "Rolling for %s has been canceled.", item.link ) )
+    chat.announce( string.format( "Rolling for %s has been canceled.", item.link ) )
   end
 
   local function is_rolling()

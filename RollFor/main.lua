@@ -114,8 +114,10 @@ local function create_components()
   ---@type GroupRoster
   M.group_roster = m.GroupRoster.new( M.api(), M.player_info )
 
+  M.chat_api = m.ChatApi.new()
+
   ---@type Chat
-  M.chat = m.Chat.new( M.api(), M.group_roster, M.player_info )
+  M.chat = m.Chat.new( M.chat_api, M.group_roster, M.player_info )
 
   ---@alias GroupAwareSoftResFn fun ( softres: SoftRes ): GroupAwareSoftRes
   ---@type GroupAwareSoftResFn
@@ -201,7 +203,7 @@ local function create_components()
   ---@type SoftResLootList
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
 
-  -- TODO: Add type.
+  ---@type DroppedLootAnnounce
   M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.loot_list, M.chat, M.dropped_loot, M.softres, M.winner_tracker, M.player_info )
 
   ---@type RollTracker
@@ -232,13 +234,10 @@ local function create_components()
   M.softres_gui = m.SoftResGui.new( M.api, M.import_encoded_softres_data, M.softres_check, M.softres, clear_data, M.dropped_loot_announce.reset )
 
   -- TODO: Add type.
-  M.trade_tracker = m.TradeTracker.new(
-    M.ace_timer,
-    trade_complete_callback
-  )
+  M.trade_tracker = m.TradeTracker.new( M.ace_timer, M.chat, trade_complete_callback )
 
   -- TODO: Add type.
-  M.usage_printer = m.UsagePrinter.new( M.config )
+  M.usage_printer = m.UsagePrinter.new( M.config, M.chat )
 
   -- TODO: Add type.
   M.minimap_button = m.MinimapButton.new( M.api, db( "minimap_button" ), M.softres_gui.toggle, M.softres_check, M.config )
@@ -401,7 +400,7 @@ local function on_roll_command( roll_slash_command )
       --   return
       -- end
 
-      info( "Rolling is in progress." )
+      M.chat.info( "Rolling is in progress." )
       return
     end
 
@@ -430,7 +429,7 @@ local function on_roll_command( roll_slash_command )
     end
 
     if not M.api().IsInGroup() then
-      info( "Not in a group." )
+      M.chat.info( "Not in a group." )
       return
     end
 
@@ -484,7 +483,7 @@ local function is_rolling_check( f )
   ---@diagnostic disable-next-line: unused-vararg
   return function( ... )
     if not M.rolling_logic.is_rolling() then
-      info( "Rolling not in progress." )
+      M.chat.info( "Rolling not in progress." )
       return
     end
 
@@ -496,7 +495,7 @@ local function in_group_check( f )
   ---@diagnostic disable-next-line: unused-vararg
   return function( ... )
     if not M.api().IsInGroup() then
-      info( "Not in a group." )
+      M.chat.info( "Not in a group." )
       return
     end
 

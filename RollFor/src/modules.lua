@@ -7,6 +7,8 @@ local debugstack = debugstack
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
+---@alias ColorFn fun( text: string ): string
+
 M.api = getfenv()
 M.lua = {
   ---@diagnostic disable-next-line: undefined-global
@@ -22,28 +24,28 @@ M.lua = {
 
 M.colors = {
   highlight = function( text )
-    return string.format( "|cffff9f69%s|r", text )
+    return string.format( "|cffff9f69%s|r", text ) ---@type ColorFn
   end,
   blue = function( text )
-    return string.format( "|cff209ff9%s|r", text )
+    return string.format( "|cff209ff9%s|r", text ) ---@type ColorFn
   end,
   white = function( text )
-    return string.format( "|cffffffff%s|r", text )
+    return string.format( "|cffffffff%s|r", text ) ---@type ColorFn
   end,
   red = function( text )
-    return string.format( "|cffff2f2f%s|r", text )
+    return string.format( "|cffff2f2f%s|r", text ) ---@type ColorFn
   end,
   orange = function( text )
-    return string.format( "|cffff8f2f%s|r", text )
+    return string.format( "|cffff8f2f%s|r", text ) ---@type ColorFn
   end,
   grey = function( text )
-    return string.format( "|cff9f9f9f%s|r", text )
+    return string.format( "|cff9f9f9f%s|r", text ) ---@type ColorFn
   end,
   green = function( text )
-    return string.format( "|cff2fff5f%s|r", text )
+    return string.format( "|cff2fff5f%s|r", text ) ---@type ColorFn
   end,
   pink = function( text )
-    return string.format( "|cffdf8eed%s|r", text )
+    return string.format( "|cffdf8eed%s|r", text ) ---@type ColorFn
   end
 }
 

@@ -4,7 +4,6 @@ local m = RollFor
 if m.InstaRaidRollRollingLogic then return end
 
 local M = {}
-local pp = m.pretty_print
 local hl = m.colors.hl
 local strategy = m.Types.RollingStrategy.InstaRaidRoll
 local roll_type = m.Types.RollType.MainSpec
@@ -18,13 +17,14 @@ local getn = table.getn
 
 -- TODO: Lots of similarity with RaidRollRollingLogic. Perhaps refactor.
 
+---@param chat Chat
 ---@param item Item|MasterLootDistributableItem
 ---@param item_count number
 ---@param winner_tracker WinnerTracker
 ---@param controller RollControllerFacade
 ---@param candidates ItemCandidate[]|Player[]
 function M.new(
-    _,
+    chat,
     _,
     item,
     item_count,
@@ -63,12 +63,12 @@ function M.new(
 
   local function show_sorted_rolls()
     if getn( m_winners ) == 0 then
-      pp( "There is no winner yet.", nil, "RaidRoll" )
+      chat.info( "There is no winner yet.", nil, "RaidRoll" )
       return
     end
 
     for _, winner in ipairs( m_winners ) do
-      pp( string.format( "%s won %s.", hl( winner.name ), item.link ), nil, "InstaRaidRoll" )
+      chat.info( string.format( "%s won %s.", hl( winner.name ), item.link ), nil, "InstaRaidRoll" )
     end
   end
 

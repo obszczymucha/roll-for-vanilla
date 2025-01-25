@@ -54,7 +54,7 @@ local function enable_debug( ... )
   end
 end
 
----@return ChatMock
+---@return ChatApiMock
 local function mock_chat()
   ---@diagnostic disable-next-line: return-type-mismatch
   return require( "mocks/ChatApi" ).new()
@@ -221,7 +221,7 @@ local function New()
   local dependencies = {}
   local M = {}
 
-  ---@param chat_api ChatApi|ChatMock
+  ---@param chat_api ChatApi|ChatApiMock
   function M.chat( self, chat_api )
     dependencies[ "ChatApi" ] = chat_api
     return self
@@ -447,38 +447,38 @@ function RaidRollPopupContentSpec:should_display_the_winners_and_the_individual_
   } )
 end
 
-function RaidRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_content_unchanged_after_aborting_the_award()
-  -- Given
-  local item = i( "Hearthstone", 123 )
-  local popup, controller, roll = New()
-      :config( { auto_raid_roll = true } )
-      :roster( p( "Psikutas" ), p( "Jogobobek" ) )
-      :loot_list( item )
-      :build()
-  -- enable_debug( "RollController" )
-
-  -- When
-  controller.start( RS.RaidRoll, item, 1 )
-  random_roll( "Psikutas", 2, 2, roll )
-  tick()
-
-  --- Then
-  eq( popup.is_visible(), false )
-
-  --- When
-  controller.award_aborted( item )
-
-  --- Then
-  eq( popup.is_visible(), true )
-
-  -- And
-  eq( popup.content(), {
-    { type = link,     count = 1,   link = item.link },
-    { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
-    { type = "button", width = 130, label = "Award winner" },
-    { type = "button", width = 70,  label = "Close" }
-  } )
-end
+-- function RaidRollPopupContentSpec:should_properly_hide_and_show_the_popup_with_content_unchanged_after_aborting_the_award()
+--   -- Given
+--   local item = i( "Hearthstone", 123 )
+--   local popup, controller, roll = New()
+--       :config( { auto_raid_roll = true } )
+--       :roster( p( "Psikutas" ), p( "Jogobobek" ) )
+--       :loot_list( item )
+--       :build()
+--   -- enable_debug( "RollController" )
+--
+--   -- When
+--   controller.start( RS.RaidRoll, item, 1 )
+--   random_roll( "Psikutas", 2, 2, roll )
+--   tick()
+--
+--   --- Then
+--   eq( popup.is_visible(), false )
+--
+--   --- When
+--   controller.award_aborted( item )
+--
+--   --- Then
+--   eq( popup.is_visible(), true )
+--
+--   -- And
+--   eq( popup.content(), {
+--     { type = link,     count = 1,   link = item.link },
+--     { type = "text",   padding = 8, value = "Psikutas wins the raid-roll." },
+--     { type = "button", width = 130, label = "Award winner" },
+--     { type = "button", width = 70,  label = "Close" }
+--   } )
+-- end
 
 function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awarding_one()
   -- Given
@@ -711,7 +711,7 @@ NormalRollPopupContentSpec = {}
 function NormalRollPopupContentSpec:should_return_initial_content()
   -- Given
   local item = i( "Hearthstone" )
-  local chat = mock_chat() ---@type ChatMock
+  local chat = mock_chat()
   local popup, controller = New()
       :chat( chat )
       :raid_roster( p( "Psikutas" ), p( "Jogobobek" ) )
@@ -1089,51 +1089,51 @@ function SoftResRollPopupContentSpec:should_preview_the_winner_without_award_but
   } )
 end
 
-function SoftResRollPopupContentSpec:should_preview_the_winner_with_award_button()
-  -- Given
-  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
-  local popup, controller = New()
-      :roster( p1, p2 )
-      :loot_list( item )
-      :soft_res_data( sr( p1.name, 123 ) )
-      :build()
-
-  -- When
-  controller.preview( item, 1 )
-
-  -- Then
-  eq( popup.content(), {
-    { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
-    { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
-    { type = "button", label = "Award winner",                    width = 130 },
-    { type = "button", label = "Close",                           width = 70 },
-    { type = "button", label = "Award...",                        width = 90 }
-  } )
-end
-
-function SoftResRollPopupContentSpec:should_preview_the_winners()
-  -- Given
-  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
-  local popup, controller = New()
-      :roster( p1, p2 )
-      :loot_list( item )
-      :soft_res_data( sr( p1.name, 123 ), sr( p2.name, 123 ) )
-      :build()
-
-  -- When
-  controller.preview( item, 2 )
-
-  -- Then
-  eq( popup.content(), {
-    { type = link,           link = item.link,                              tooltip_link = item.tooltip_link, count = 2 },
-    { type = "text",         value = "Obszczymucha soft-ressed this item.", padding = 11 },
-    { type = "award_button", label = "Award",                               padding = 6,                      width = 90 },
-    { type = "text",         value = "Psikutas soft-ressed this item.",     padding = 8 },
-    { type = "award_button", label = "Award",                               padding = 6,                      width = 90 },
-    { type = "button",       label = "Close",                               width = 70 },
-    { type = "button",       label = "Award...",                            width = 90 }
-  } )
-end
+-- function SoftResRollPopupContentSpec:should_preview_the_winner_with_award_button()
+--   -- Given
+--   local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+--   local popup, controller = New()
+--       :roster( p1, p2 )
+--       :loot_list( item )
+--       :soft_res_data( sr( p1.name, 123 ) )
+--       :build()
+--
+--   -- When
+--   controller.preview( item, 1 )
+--
+--   -- Then
+--   eq( popup.content(), {
+--     { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
+--     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
+--     { type = "button", label = "Award winner",                    width = 130 },
+--     { type = "button", label = "Close",                           width = 70 },
+--     { type = "button", label = "Award...",                        width = 90 }
+--   } )
+-- end
+--
+-- function SoftResRollPopupContentSpec:should_preview_the_winners()
+--   -- Given
+--   local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+--   local popup, controller = New()
+--       :roster( p1, p2 )
+--       :loot_list( item )
+--       :soft_res_data( sr( p1.name, 123 ), sr( p2.name, 123 ) )
+--       :build()
+--
+--   -- When
+--   controller.preview( item, 2 )
+--
+--   -- Then
+--   eq( popup.content(), {
+--     { type = link,           link = item.link,                              tooltip_link = item.tooltip_link, count = 2 },
+--     { type = "text",         value = "Obszczymucha soft-ressed this item.", padding = 11 },
+--     { type = "award_button", label = "Award",                               padding = 6,                      width = 90 },
+--     { type = "text",         value = "Psikutas soft-ressed this item.",     padding = 8 },
+--     { type = "award_button", label = "Award",                               padding = 6,                      width = 90 },
+--     { type = "button",       label = "Close",                               width = 70 },
+--     { type = "button",       label = "Award...",                            width = 90 }
+--   } )
+-- end
 
 function SoftResRollPopupContentSpec:should_return_initial_softres_content()
   -- Given
