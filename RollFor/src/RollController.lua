@@ -8,6 +8,7 @@ local M = m.Module.new( "RollController" )
 local S = m.Types.RollingStatus
 local RS = m.Types.RollingStrategy
 local LAE = m.Types.LootAwardError
+local IU = m.ItemUtils ---@type ItemUtils
 local getn = table.getn
 
 ---@class RollControllerFacade
@@ -18,7 +19,7 @@ local getn = table.getn
 ---@field finish fun()
 
 ---@class RollController
----@field preview fun( item: Item|MasterLootDistributableItem, count: number, seconds: number?, message: string? )
+---@field preview fun( item: Item, count: number, seconds: number?, message: string? )
 ---@field start fun( rolling_strategy: RollingStrategyType, item: Item, count: number, seconds: number?, info: string? )
 ---@field winners_found fun( item: Item, item_count: number, winners: Winner[], strategy: RollingStrategyType )
 ---@field finish fun()
@@ -56,6 +57,7 @@ local getn = table.getn
 function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, config )
   local callbacks = {}
   local ml_confirmation_data = nil ---@type MasterLootConfirmationData?
+  local preview_data = nil ---@type RollingPopupPreviewData
 
   local function notify_subscribers( event_type, data )
     M.debug.add( event_type )
@@ -138,24 +140,89 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     table.insert( buttons, button( "Close", function() notify_subscribers( "rolling_popup_hide" ) end ) )
   end
 
-  ---@param item Item|MasterLootDistributableItem
+  local function process_next_item()
+    if not player_info.is_master_looter() then return end
+    notify_subscribers( "process_next_item" )
+  end
+
+  local function award_aborted( item )
+    if ml_confirmation_data then
+      notify_subscribers( "hide_master_loot_confirmation" )
+      ml_confirmation_data = nil
+    end
+
+    notify_subscribers( "award_aborted", { item = item } )
+
+    if preview_data then
+      notify_subscribers( "ShowRollingPopupPreview", preview_data )
+      return
+    end
+
+    local data, current_iteration = roll_tracker.get()
+
+    if not data or not data.status or not data.item or not current_iteration then
+      process_next_item()
+      return
+    end
+
+    notify_subscribers( "TemporaryHack" ) -- TODO: So we don't break things until everything is aligned in RollingPopupContent.
+  end
+
+  ---@class MasterLootConfirmationData
+  ---@field item MasterLootDistributableItem
+  ---@field winners Winner[]
+  ---@field receiver ItemCandidate
+  ---@field strategy_type RollingStrategyType
+  ---@field confirm_fn fun()
+  ---@field abort_fn fun()
+  ---@field error LootAwardError?
+
+  ---@param player ItemCandidate|Winner
+  ---@param item MasterLootDistributableItem
+  ---@param strategy_type RollingStrategyType
+  local function show_master_loot_confirmation( player, item, strategy_type )
+    local candidate = ml_candidates.find( player.name )
+
+    if not candidate then
+      M.debug.add( "Candidate not found: %s", player.name )
+      return
+    end
+
+    local winners = roll_tracker.get().winners
+
+    ml_confirmation_data = {
+      item = item,
+      winners = winners,
+      receiver = candidate,
+      strategy_type = strategy_type,
+      confirm_fn = function() award_confirmed( candidate, item ) end,
+      abort_fn = function() award_aborted( item ) end
+    }
+
+    notify_subscribers( "rolling_popup_hide" )
+    notify_subscribers( "show_master_loot_confirmation", ml_confirmation_data )
+  end
+
+  ---@param item Item
   ---@param item_count number
   ---@param seconds number?
   ---@param message string?
   ---@diagnostic disable-next-line: unused-local
   local function new_preview( item, item_count, seconds, message )
+    M.debug.add( "new_preview" )
     if not item_count or item_count == 0 then
       m.trace( string.format( "item_count: %s", item_count or "nil" ) )
       return
     end
 
     local candidates = ml_candidates.get()
-    roll_tracker.preview( item, item_count, candidates )
+    local soft_ressers = softres.get( item.id )
+    local hard_ressed = softres.is_item_hardressed( item.id )
+    roll_tracker.preview( item, item_count, candidates, soft_ressers, hard_ressed )
 
     local color = get_color( item.quality )
     notify_subscribers( "border_color", { color = color } )
 
-    local soft_ressers = softres.get( item.id )
     local sr_count = getn( soft_ressers )
     local buttons = {}
 
@@ -163,10 +230,9 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
       table.insert( buttons, button( "Roll", function() start( RS.NormalRoll, item, item_count, config.default_rolling_time_seconds() ) end ) )
       add_close_button( buttons )
 
-      ---@type RollingPopupPreviewData
-      local data = {
+      preview_data = {
         item_link = item.link,
-        item_tooltip_link = item.tooltip_link,
+        item_tooltip_link = IU.get_tooltip_link( item.link ),
         item_texture = item.texture,
         item_count = item_count,
         winners = {},
@@ -175,7 +241,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
         buttons = buttons
       }
 
-      notify_subscribers( "ShowRollingPopupPreview", data )
+      notify_subscribers( "ShowRollingPopupPreview", preview_data )
       return
     end
 
@@ -188,7 +254,9 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
         ---@param player RollingPlayer
         function( player )
           local candidate = ml_candidates.find( player.name )
-          local award_callback = candidate and dropped_item and function() award_confirmed( candidate, dropped_item ) end
+          local award_callback = candidate and dropped_item and function()
+            show_master_loot_confirmation( candidate, dropped_item, RS.SoftResRoll )
+          end
 
           ---@type WinnerWithAwardCallback
           return { name = player.name, class = player.class, roll_type = "SoftRes", award_callback = award_callback }
@@ -206,10 +274,9 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
         table.insert( buttons, button( "AwardOther", function() end ) )
       end
 
-      ---@type RollingPopupPreviewData
-      local data = {
+      preview_data = {
         item_link = item.link,
-        item_tooltip_link = item.tooltip_link,
+        item_tooltip_link = IU.get_tooltip_link( item.link ),
         item_texture = item.texture,
         item_count = item_count,
         winners = winners,
@@ -218,17 +285,16 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
         buttons = buttons
       }
 
-      notify_subscribers( "ShowRollingPopupPreview", data )
+      notify_subscribers( "ShowRollingPopupPreview", preview_data )
       return
     end
 
     table.insert( buttons, button( "Roll", function() start( RS.SoftResRoll, item, item_count, config.default_rolling_time_seconds() ) end ) )
     add_close_button( buttons )
 
-    ---@type RollingPopupPreviewData
-    local data = {
+    preview_data = {
       item_link = item.link,
-      item_tooltip_link = item.tooltip_link,
+      item_tooltip_link = IU.get_tooltip_link( item.link ),
       item_texture = item.texture,
       item_count = item_count,
       winners = {},
@@ -237,7 +303,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
       buttons = buttons
     }
 
-    notify_subscribers( "ShowRollingPopupPreview", data )
+    notify_subscribers( "ShowRollingPopupPreview", preview_data )
   end
 
   ---@param item Item|MasterLootDistributableItem
@@ -245,7 +311,9 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
   ---@diagnostic disable-next-line: unused-function, unused-local
   local function preview( item, count )
     local candidates = ml_candidates.get()
-    roll_tracker.preview( item, count, candidates )
+    local soft_ressers = softres.get( item.id )
+    local hard_ressed = softres.is_item_hardressed( item.id )
+    roll_tracker.preview( item, count, candidates, soft_ressers, hard_ressed )
     local color = get_color( item.quality )
 
     notify_subscribers( "border_color", { color = color } )
@@ -343,27 +411,6 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     notify_subscribers( "waiting_for_rolls" )
   end
 
-  local function process_next_item()
-    if not player_info.is_master_looter() then return end
-    notify_subscribers( "process_next_item" )
-  end
-
-  local function award_aborted( item )
-    if ml_confirmation_data then
-      notify_subscribers( "hide_master_loot_confirmation" )
-      ml_confirmation_data = nil
-    end
-
-    notify_subscribers( "award_aborted", { item = item } )
-
-    local data, current_iteration = roll_tracker.get()
-
-    if not data or not data.status or not data.item or not current_iteration then
-      process_next_item()
-      return
-    end
-  end
-
   ---@class LootAwardedData
   ---@field player_name string
   ---@field item_id number
@@ -385,42 +432,6 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
       notify_subscribers( "not_all_items_awarded" )
     end
   end
-
-  ---@class MasterLootConfirmationData
-  ---@field item MasterLootDistributableItem
-  ---@field winners Winner[]
-  ---@field receiver ItemCandidate
-  ---@field strategy_type RollingStrategyType
-  ---@field confirm_fn fun()
-  ---@field abort_fn fun()
-  ---@field error LootAwardError?
-
-  ---@param player ItemCandidate|Winner
-  ---@param item MasterLootDistributableItem
-  ---@param strategy_type RollingStrategyType
-  local function show_master_loot_confirmation( player, item, strategy_type )
-    local candidate = ml_candidates.find( player.name )
-
-    if not candidate then
-      M.debug.add( "Candidate not found: %s", player.name )
-      return
-    end
-
-    local winners = roll_tracker.get().winners
-
-    ml_confirmation_data = {
-      item = item,
-      winners = winners,
-      receiver = candidate,
-      strategy_type = strategy_type,
-      confirm_fn = function() award_confirmed( candidate, item ) end,
-      abort_fn = function() award_aborted( item ) end
-    }
-
-    notify_subscribers( "rolling_popup_hide" )
-    notify_subscribers( "show_master_loot_confirmation", ml_confirmation_data )
-  end
-
   local function loot_opened()
     notify_subscribers( "loot_opened" )
   end
@@ -469,11 +480,11 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
   local function rolling_popup_closed()
     notify_subscribers( "rolling_popup_closed" )
 
-    local data = roll_tracker.get()
-
-    if data and data.status and data.status.type == S.Preview then
-      roll_tracker.clear()
-    end
+    -- local data = roll_tracker.get()
+    --
+    -- if data and data.status and data.status.type == S.Preview then
+    --   roll_tracker.clear()
+    -- end
   end
 
   local function loot_award_popup_closed()

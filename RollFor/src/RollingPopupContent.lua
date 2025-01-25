@@ -652,6 +652,7 @@ function M.new(
   end
 
   local function award_aborted()
+    M.debug.add( "award_aborted" )
     local data, current_iteration = roll_tracker.get()
 
     if not data or not data.status or not data.item or not current_iteration then
@@ -690,7 +691,8 @@ function M.new(
   roll_controller.subscribe( "tie", show_and_refresh )
   roll_controller.subscribe( "tie_start", refresh )
   roll_controller.subscribe( "border_color", border_color )
-  roll_controller.subscribe( "award_aborted", award_aborted )
+  roll_controller.subscribe( "TemporaryHack", award_aborted )
+  -- roll_controller.subscribe( "award_aborted", award_aborted )
   roll_controller.subscribe( "not_all_items_awarded", award_aborted )
   roll_controller.subscribe( "loot_opened", loot_opened )
   roll_controller.subscribe( "loot_closed", loot_closed )

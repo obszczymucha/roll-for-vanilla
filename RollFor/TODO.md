@@ -10,4 +10,4 @@
 8. Make sure to show/hide award buttons on lootopen/close.
 9. When rolling is finished and winner determined and we close the popup and reopen with the same item the data is cleared. Persist the data until awarded.
 10. When awarding the item via player selection and aborting, the rolling popup doesn't show back up, the item is still selected on the list.
-
+11. When one player is soft ressing and two items dropped it doesn't ask to award, but rather it asks the player to roll lol.
