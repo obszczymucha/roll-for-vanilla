@@ -182,6 +182,9 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   )
   deps[ "RollingPopupContent" ] = rolling_popup_content
 
+  local loot_award_popup = require( "mocks/LootAwardPopup" ).new( nil, roll_controller )
+  deps[ "LootAwardPopup" ] = loot_award_popup
+
   if m.RollController.debug.is_enabled() then m.RollController.debug.disable() end
   return popup, roll_controller, rolling_logic.on_roll, deps
 end
@@ -292,7 +295,7 @@ function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rol
   controller.preview( item, 1 )
 
   -- Then
-  chat.assert()
+  chat.assert_no_messages()
   eq( popup.is_visible(), true )
   eq( popup.content(), {
     { type = link,     link = item.link, tooltip_link = item.tooltip_link, count = 1 },
@@ -324,7 +327,7 @@ function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rol
     { type = "button", label = "Roll",   width = 70 },
     { type = "button", label = "Close",  width = 70 }
   } )
-  chat.assert()
+  chat.assert_no_messages()
 
   -- When
   popup.click( "Roll" )
@@ -332,6 +335,81 @@ function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rol
   -- Then
   eq( popup.is_visible(), true )
   chat.assert( rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ) )
+end
+
+PreviewSoftResWinnersSpec = {}
+
+function PreviewSoftResWinnersSpec:should_display_close_button_that_closes_the_popup()
+  -- Given
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ) )
+      :build()
+
+  -- When
+  controller.preview( item, 1 )
+
+  -- Then
+  eq( popup.is_visible(), true )
+  eq( popup.content(), {
+    { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
+    { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
+    { type = "button", label = "Close",                           width = 70 }
+  } )
+
+  -- When
+  popup.click( "Close" )
+
+  -- Then
+  eq( popup.is_visible(), false )
+end
+
+function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_display_the_popup_again_if_award_confirmation_is_aborted()
+  -- Given
+  u.mock( "GiveMasterLoot", u.noop )
+  local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local chat                       = mock_chat()
+  local popup, controller, _, deps = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ) )
+      :loot_list( item )
+      :chat( chat )
+      :build()
+  enable_debug( "RollController", "RollTracker", "RollingPopupContent" )
+  local award_popup           = deps[ "LootAwardPopup" ]
+  local rolling_popup_content = {
+    { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
+    { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
+    { type = "button", label = "Award winner",                    width = 130 },
+    { type = "button", label = "Close",                           width = 70 },
+    { type = "button", label = "Award...",                        width = 90 },
+  }
+
+  -- When
+  controller.preview( item, 1 )
+
+  -- Then
+  eq( award_popup.is_visible(), false )
+  eq( popup.is_visible(), true )
+  eq( popup.content(), rolling_popup_content )
+
+  -- When
+  popup.click( "AwardWinner" )
+
+  -- Then
+  eq( award_popup.is_visible(), true )
+  eq( popup.is_visible(), false )
+  chat.assert_no_messages()
+  -- TODO: verify loot confirmation popup content
+
+  -- When
+  award_popup.abort()
+
+  -- Then
+  eq( award_popup.is_visible(), false )
+  eq( popup.is_visible(), true )
+  eq( popup.content(), rolling_popup_content )
 end
 
 PreviewSoftRessedItemSpec = {}

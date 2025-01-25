@@ -14,9 +14,6 @@ local RS = m.Types.RollingStrategy
 local RT = m.Types.RollType
 local S = m.Types.RollingStatus
 
----@type LT
-local LT = m.ItemUtils.LootType
-
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 
@@ -49,7 +46,7 @@ local getn = table.getn
 ---  ml_candidates: ItemCandidate[] }
 
 ---@class RollTracker
----@field preview fun( item: Item|MasterLootDistributableItem, count: number, ml_candidates: ItemCandidate[] )
+---@field preview fun( item: Item, count: number, ml_candidates: ItemCandidate[], soft_ressers: RollingPlayer[], hard_ressed: boolean )
 ---@field start fun( rolling_strategy: RollingStrategyType, item: Item|DroppedItem|SoftRessedDroppedItem, count: number, seconds: number?, message: string?, required_rolling_players: RollingPlayer[]? )
 ---@field waiting_for_rolls fun()
 ---@field add_winners fun( winners: Winner[] )
@@ -117,10 +114,9 @@ function M.new()
   end
 
   local function add( player_name, player_class, roll_type, roll )
-    M.debug.add( "add" )
     if current_iteration == 0 then return end
+    M.debug.add( "add" )
 
-    M.debug.add( "add2" )
     ---@type RollData
     local data = { player_name = player_name, player_class = player_class, roll_type = roll_type, roll = roll }
     local iteration = iterations[ current_iteration ]
@@ -149,10 +145,12 @@ function M.new()
     return result
   end
 
-  ---@param item MasterLootDistributableItem
+  ---@param item Item
   ---@param count number
   ---@param ml_candidates ItemCandidate[]
-  local function preview( item, count, ml_candidates )
+  ---@param soft_ressers RollingPlayer[]
+  ---@param hard_ressed boolean
+  local function preview( item, count, ml_candidates, soft_ressers, hard_ressed )
     M.debug.add( "preview" )
     lua50_clear_table( iterations )
     lua50_clear_table( winners )
@@ -162,19 +160,18 @@ function M.new()
     item_on_roll = item
     item_on_roll_count = count
 
-    local ressed_item = item.type == LT.SoftRessedDroppedItem or item.type == LT.HardRessedDroppedItem
+    local soft_ressed = getn( soft_ressers ) > 0
+    local ressed_item = soft_ressed or hard_ressed
 
     table.insert( iterations, {
       rolling_strategy = ressed_item and RS.SoftResRoll or RS.NormalRoll,
       rolls = {}
     } )
 
-    if item.type == LT.SoftRessedDroppedItem then
-      ---@type RollingPlayer[]
-      local candidates = item.sr_players
-      status.winners = candidates
+    if soft_ressed then
+      status.winners = soft_ressers
 
-      for _, player in ipairs( candidates or {} ) do
+      for _, player in ipairs( soft_ressers or {} ) do
         for _ = 1, player.rolls or 1 do
           add( player.name, player.class, RT.SoftRes )
         end

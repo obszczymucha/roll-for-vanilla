@@ -161,6 +161,7 @@ function MainspecRollsSpec:should_only_record_loot_that_we_are_awarding()
   roll_for( item.name, 1, item.id )
   roll( "Obszczymucha", 13 )
   roll( "Psikutas", 69 )
+  RollFor.MasterLoot.debug.enable(true)
 
   -- Then
   assert_messages(
