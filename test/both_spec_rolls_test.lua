@@ -1,19 +1,21 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-local lu = require( "luaunit" )
-local utils = require( "test/utils" )
-local player = utils.player
-local leader = utils.raid_leader
-local is_in_raid = utils.is_in_raid
-local r = utils.raid_message
-local cr = utils.console_and_raid_message
-local rw = utils.raid_warning
-local rolling_finished = utils.rolling_finished
-local roll_for = utils.roll_for
-local roll = utils.roll
-local roll_os = utils.roll_os
-local assert_messages = utils.assert_messages
-local tick = utils.repeating_tick
+local u = require( "test/utils" )
+local lu = u.luaunit()
+local player, leader = u.player, u.raid_leader
+local is_in_raid = u.is_in_raid
+local r, cr, rw = u.raid_message, u.console_and_raid_message, u.raid_warning
+local rolling_finished = u.rolling_finished
+local roll_for, roll, roll_os = u.roll_for, u.roll, u.roll_os
+local tick = u.repeating_tick
+
+---@type ModuleRegistry
+local module_registry = {
+  { module_name = "ChatApi", mock = "mocks/ChatApi", variable_name = "chat" }
+}
+
+-- The modules will be injected here using the above module_registry.
+local m = {}
 
 BothSpecRollsSpec = {}
 
@@ -29,7 +31,7 @@ function BothSpecRollsSpec:should_prioritize_mainspec_over_offspec_rolls()
   tick( 8 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
@@ -50,7 +52,7 @@ function BothSpecRollsSpec:should_override_offspec_roll_with_mainspec_and_finish
   roll( "Obszczymucha", 42 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     r( "Stopping rolls in 3", "2" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
@@ -72,7 +74,7 @@ function BothSpecRollsSpec:should_override_offspec_roll_with_mainspec_and_not_fi
   tick( 2 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
@@ -92,7 +94,7 @@ function BothSpecRollsSpec:should_recognize_both_mainspec_and_offspec_rollers_an
   roll_os( "Psikutas", 63 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
     r( "Stopping rolls in 3", "2" ),
     cr( "Obszczymucha rolled the highest (3) for [Hearthstone]." ),
@@ -114,7 +116,7 @@ function BothSpecRollsSpec:should_recognize_both_mainspec_and_top_offspec_roller
   roll_os( "Psikutas", 63 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 3x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 3 top rolls win." ),
     r( "Stopping rolls in 3", "2" ),
     cr( "Obszczymucha rolled the highest (3) for [Hearthstone]." ),
@@ -137,7 +139,7 @@ function BothSpecRollsSpec:should_recognize_both_top_mainspec_and_offspec_roller
   roll_os( "Psikutas", 63 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 3x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 3 top rolls win." ),
     r( "Stopping rolls in 3", "2" ),
     cr( "Chuj rolled the highest (99) for [Hearthstone]." ),
@@ -161,7 +163,7 @@ function BothSpecRollsSpec:should_recognize_both_mainspec_rollers_and_not_stop_a
   tick( 2 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (63) for [Hearthstone]." ),
@@ -183,7 +185,7 @@ function BothSpecRollsSpec:should_recognize_both_mainspec_rollers_and_not_stop_a
   tick( 2 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 3x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 3 top rolls win." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (63) for [Hearthstone]." ),
@@ -206,7 +208,7 @@ function BothSpecRollsSpec:should_recognize_mainspec_and_offspec_rollers_and_not
   tick( 2 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (63) for [Hearthstone]." ),
@@ -229,7 +231,7 @@ function BothSpecRollsSpec:should_recognize_mainspec_roller_and_top_offspec_roll
   tick( 2 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Obszczymucha rolled the highest (1) for [Hearthstone]." ),
@@ -252,7 +254,7 @@ function BothSpecRollsSpec:should_recognize_mainspec_rollers_if_item_count_is_le
   tick( 2 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
@@ -261,7 +263,7 @@ function BothSpecRollsSpec:should_recognize_mainspec_rollers_if_item_count_is_le
   )
 end
 
-utils.mock_libraries()
-utils.load_real_stuff()
+u.mock_libraries()
+u.load_real_stuff_and_inject( module_registry, m )
 
 os.exit( lu.LuaUnit.run() )

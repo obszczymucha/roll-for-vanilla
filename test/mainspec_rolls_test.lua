@@ -8,7 +8,6 @@ local c, r = u.console_message, u.raid_message
 local cr, rw = u.console_and_raid_message, u.raid_warning
 local rolling_finished, rolling_not_in_progress = u.rolling_finished, u.rolling_not_in_progress
 local roll_for, roll, finish_rolling = u.roll_for, u.roll, u.finish_rolling
-local assert_messages = u.assert_messages
 local repeating_tick = u.repeating_tick
 local t, i = require( "src/Types" ), require( "src/ItemUtils" )
 local make_item_candidate, make_dropped_item = t.make_item_candidate, i.make_dropped_item
@@ -18,7 +17,8 @@ local C = t.PlayerClass
 local module_registry = {
   { module_name = "RollController", variable_name = "roll_controller" },
   { module_name = "AwardedLoot",    variable_name = "awarded_loot" },
-  { module_name = "LootFacade",     variable_name = "loot_facade",    mock = "mocks/LootFacade" }
+  { module_name = "LootFacade",     variable_name = "loot_facade",    mock = "mocks/LootFacade" },
+  { module_name = "ChatApi",        variable_name = "chat",           mock = "mocks/ChatApi" }
 }
 
 -- The modules will be injected here using the above module_registry.
@@ -38,7 +38,7 @@ function MainspecRollsSpec:should_finish_rolling_automatically_if_all_players_ro
   finish_rolling()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished(),
@@ -58,7 +58,7 @@ function MainspecRollsSpec:should_finish_rolling_after_the_timer_if_not_all_play
   finish_rolling()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
@@ -80,7 +80,7 @@ function MainspecRollsSpec:should_detect_and_ignore_double_rolls()
   roll( "Psikutas", 69 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     r( "Stopping rolls in 3", "2" ),
     c( "RollFor: Obszczymucha exhausted their rolls. This roll (100) is ignored." ),
@@ -100,7 +100,7 @@ function MainspecRollsSpec:should_recognize_multiple_rollers_for_multiple_items_
   roll( "Obszczymucha", 100 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
     cr( "Obszczymucha rolled the highest (100) for [Hearthstone]." ),
     cr( "Psikutas rolled the next highest (69) for [Hearthstone]." ),
@@ -121,7 +121,7 @@ function MainspecRollsSpec:should_recognize_multiple_rollers_for_multiple_items_
   repeating_tick( 2 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Obszczymucha rolled the highest (100) for [Hearthstone]." ),
@@ -163,10 +163,10 @@ function MainspecRollsSpec:should_only_record_loot_that_we_are_awarding()
   roll_for( item.name, 1, item.id )
   roll( "Obszczymucha", 13 )
   roll( "Psikutas", 69 )
-  RollFor.MasterLoot.debug.enable( true )
+  -- RollFor.MasterLoot.debug.enable( true )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished()
@@ -189,7 +189,7 @@ function MainspecRollsSpec:should_only_record_loot_that_we_are_awarding()
 
   -- Then
   eq( awarded_loot.has_item_been_awarded( "Psikutas", item.id ), true )
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished(),

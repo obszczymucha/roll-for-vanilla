@@ -6,7 +6,6 @@ if m.RollingLogic then return end
 local M = {}
 
 local getn = table.getn
-local info = m.pretty_print
 local RS = m.Types.RollingStrategy
 
 ---@alias SoftresRollsAvailableCallback fun( rollers: RollingPlayer[] )
@@ -185,7 +184,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
           roll( strategy, item, item_count )
         end
       elseif m_rolling_strategy and not m_rolling_strategy.is_rolling() then
-        info( string.format( "Rolling for %s has finished.", item.link ) )
+        chat.info( string.format( "Rolling for %s has finished.", item.link ) )
       end
 
       return
@@ -222,7 +221,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     handle_winners()
 
     if not is_rolling() then
-      info( string.format( "Rolling for %s has finished.", item.link ) )
+      chat.info( string.format( "Rolling for %s has finished.", item.link ) )
     end
   end
 
@@ -281,7 +280,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
         return strategy_factory.raid_roll( data.item, data.item_count, facade )
       elseif data.strategy_type == RS.InstaRaidRoll then
         if not config.insta_raid_roll() then
-          info( string.format( "Insta raid-roll is %s.", m.msg.disabled ) )
+          chat.info( string.format( "Insta raid-roll is %s.", m.msg.disabled ) )
           return
         end
 

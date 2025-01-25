@@ -1,15 +1,22 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-local lu = require( "luaunit" )
 local u = require( "test/utils" )
+local lu = u.luaunit()
 local player, leader, is_in_raid = u.player, u.raid_leader, u.is_in_raid
 local r, rw = u.raid_message, u.raid_warning
 local c, cr = u.console_message, u.console_and_raid_message
 local rolling_finished = u.rolling_finished
 local roll_for, roll = u.roll_for, u.roll
-local assert_messages = u.assert_messages
 local tick, repeating_tick = u.tick, u.repeating_tick
 local finish_rolling = u.finish_rolling
+
+---@type ModuleRegistry
+local module_registry = {
+  { module_name = "ChatApi", mock = "mocks/ChatApi", variable_name = "chat" }
+}
+
+-- The modules will be injected here using the above module_registry.
+local m = {}
 
 TieRollsSpec = {}
 
@@ -27,7 +34,7 @@ function TieRollsSpec:should_recognize_tie_rolls_when_all_players_tie()
   roll( "Obszczymucha", 99 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     cr( "Obszczymucha and Psikutas rolled the highest (69) for [Hearthstone]." ),
     r( "Obszczymucha and Psikutas /roll for [Hearthstone] now." ),
@@ -51,7 +58,7 @@ function TieRollsSpec:should_recognize_tie_rolls_when_some_players_tie()
   roll( "Obszczymucha", 99 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Obszczymucha and Psikutas rolled the highest (69) for [Hearthstone]." ),
@@ -73,7 +80,7 @@ function TieRollsSpec:should_not_reroll_if_enough_items_dropped_for_players_that
   roll( "Ponpon", 42 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 3x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 3 top rolls win." ),
     cr( "Obszczymucha rolled the highest (69) for [Hearthstone]." ),
     cr( "Ponpon and Psikutas rolled the next highest (42) for [Hearthstone]." ),
@@ -93,7 +100,7 @@ function TieRollsSpec:should_not_reroll_if_enough_items_dropped_for_players_that
   roll( "Ponpon", 69 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 3x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 3 top rolls win." ),
     cr( "Obszczymucha and Ponpon rolled the highest (69) for [Hearthstone]." ),
     cr( "Psikutas rolled the next highest (42) for [Hearthstone]." ),
@@ -117,7 +124,7 @@ function TieRollsSpec:should_reroll_if_not_enough_items_dropped_for_players_that
   roll( "Ponpon", 99 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
     cr( "Obszczymucha rolled the highest (69) for [Hearthstone]." ),
     cr( "Ponpon and Psikutas rolled the next highest (42) for [Hearthstone]." ),
@@ -144,7 +151,7 @@ function TieRollsSpec:should_reroll_if_two_items_dropped_and_three_players_tied(
   roll( "Obszczymucha", 98 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
     cr( "Chuj, Obszczymucha and Psikutas rolled the highest (69) for [Hearthstone]." ),
     r( "Chuj, Obszczymucha and Psikutas /roll for 2x[Hearthstone] now. 2 top rolls win." ),
@@ -171,7 +178,7 @@ function TieRollsSpec:should_decrease_the_number_of_items_on_reroll_if_there_was
   roll( "Ponpon", 1 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 3x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 3 top rolls win." ),
     cr( "Chuj rolled the highest (70) for [Hearthstone]." ),
     cr( "Obszczymucha, Ponpon and Psikutas rolled the next highest (69) for [Hearthstone]." ),
@@ -196,7 +203,7 @@ function TieRollsSpec:should_not_allow_the_winner_to_reroll_a_tie_of_other_playe
   roll( "Ohhaimark", 23 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
     cr( "Ohhaimark rolled the highest (99) for [Hearthstone]." ),
     cr( "Jogobobek and Obszczymucha rolled the next highest (69) for [Hearthstone]." ),
@@ -220,7 +227,7 @@ function TieRollsSpec:should_resolve_a_tie_if_it_was_the_second_top_roll()
   roll( "Obszczymucha", 67 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
     cr( "Ohhaimark rolled the highest (99) for [Hearthstone]." ),
     cr( "Jogobobek and Obszczymucha rolled the next highest (69) for [Hearthstone]." ),
@@ -248,7 +255,7 @@ function TieRollsSpec:should_resolve_a_second_tie_if_it_was_the_top_roll()
   roll( "Jogobobek", 1 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     cr( "Jogobobek and Obszczymucha rolled the highest (69) for [Hearthstone]." ),
     r( "Jogobobek and Obszczymucha /roll for [Hearthstone] now." ),
@@ -277,7 +284,7 @@ function TieRollsSpec:should_resolve_a_second_tie_if_it_was_the_second_top_roll(
   roll( "Jogobobek", 1 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
     cr( "Ohhaimark rolled the highest (99) for [Hearthstone]." ),
     cr( "Jogobobek and Obszczymucha rolled the next highest (69) for [Hearthstone]." ),
@@ -303,7 +310,7 @@ function TieRollsSpec:should_wait_for_the_rerollers_forever()
   repeating_tick( 9000 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
     cr( "Ohhaimark rolled the highest (99) for [Hearthstone]." ),
     cr( "Jogobobek and Obszczymucha rolled the next highest (69) for [Hearthstone]." ),
@@ -326,7 +333,7 @@ function TieRollsSpec:should_take_the_tie_roller_as_a_winner_if_the_other_tie_ro
   finish_rolling()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
     cr( "Ohhaimark rolled the highest (99) for [Hearthstone]." ),
     cr( "Jogobobek and Obszczymucha rolled the next highest (69) for [Hearthstone]." ),
@@ -352,7 +359,7 @@ function TieRollsSpec:should_take_the_tie_roller_winner_if_one_tie_roller_is_ret
   finish_rolling()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
     cr( "Jogobobek, Obszczymucha and Ohhaimark rolled the highest (69) for [Hearthstone]." ),
     r( "Jogobobek, Obszczymucha and Ohhaimark /roll for 2x[Hearthstone] now. 2 top rolls win." ),
@@ -383,7 +390,7 @@ function TieRollsSpec:should_consider_two_top_roll_tie_rollers_as_winners_and_re
   roll( "Ohhaimark", 2 )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     rw( "Roll for 3x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 3 top rolls win." ),
     cr( "Jogobobek, Obszczymucha, Ohhaimark and Psikutas rolled the highest (69) for [Hearthstone]." ),
     r( "Jogobobek, Obszczymucha, Ohhaimark and Psikutas /roll for 3x[Hearthstone] now. 3 top rolls win." ),
@@ -396,6 +403,6 @@ function TieRollsSpec:should_consider_two_top_roll_tie_rollers_as_winners_and_re
 end
 
 u.mock_libraries()
-u.load_real_stuff()
+u.load_real_stuff_and_inject( module_registry, m )
 
 os.exit( lu.LuaUnit.run() )

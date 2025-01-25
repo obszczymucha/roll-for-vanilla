@@ -1,22 +1,25 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-local lu = require( "luaunit" )
-local utils = require( "test/utils" )
-
-local player = utils.player
-local trade_with = utils.trade_with
-local cancel_trade = utils.cancel_trade
-local trade_complete = utils.trade_complete
-local trade_cancelled_by_recipient = utils.trade_cancelled_by_recipient
-local trade_items = utils.trade_items
-local recipient_trades_items = utils.recipient_trades_items
-local assert_messages = utils.assert_messages
-local c = utils.console_message
-local tick = utils.tick
+local u = require( "test/utils" )
+local lu = u.luaunit()
+local player = u.player
+local trade_with, cancel_trade = u.trade_with, u.cancel_trade
+local trade_complete, trade_cancelled_by_recipient = u.trade_complete, u.trade_cancelled_by_recipient
+local trade_items, recipient_trades_items = u.trade_items, u.recipient_trades_items
+local c = u.console_message
+local tick = u.tick
 
 require( "src/modules" )
 local mod = require( "src/TradeTracker" )
 mod.debug_enabled = true
+
+---@type ModuleRegistry
+local module_registry = {
+  { module_name = "ChatApi", mock = "mocks/ChatApi", variable_name = "chat" }
+}
+
+-- The modules will be injected here using the above module_registry.
+local m = {}
 
 TradeTrackerIntegrationSpec = {}
 
@@ -29,7 +32,7 @@ function TradeTrackerIntegrationSpec:should_log_trading_process_when_trade_cance
   cancel_trade()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     c( "RollFor: Started trading with Obszczymucha." ),
     c( "RollFor: Trading with Obszczymucha was canceled." )
   )
@@ -44,7 +47,7 @@ function TradeTrackerIntegrationSpec:should_log_trading_process_when_trade_cance
   trade_cancelled_by_recipient()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     c( "RollFor: Started trading with Obszczymucha." ),
     c( "RollFor: Trading with Obszczymucha was canceled." )
   )
@@ -60,7 +63,7 @@ function TradeTrackerIntegrationSpec:should_log_trading_process_when_trade_is_co
   tick() -- Gotta tick, cuz we have no choice but to hack it with a timer in TBC.
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     c( "RollFor: Started trading with Obszczymucha." ),
     c( "RollFor: Trading with Obszczymucha complete." )
   )
@@ -73,7 +76,9 @@ function TradeTrackerIntegrationSpec:should_call_back_with_recipient_name()
   local result
   ---@diagnostic disable-next-line: undefined-global
   local ace_timer = LibStub( "AceTimer-3.0" )
-  local trade_tracker = mod.new( ace_timer, function( recipient ) result = recipient end )
+  local chat_api = require( "mocks/ChatApi" ).new()
+  local mocked_chat = require( "mocks/Chat" ).new( chat_api, "PARTY" )
+  local trade_tracker = mod.new( ace_timer, mocked_chat, function( recipient ) result = recipient end )
   trade_with( "Obszczymucha", trade_tracker )
 
   -- When
@@ -89,7 +94,9 @@ function TradeTrackerIntegrationSpec:should_call_back_with_items_given()
   local result
   ---@diagnostic disable-next-line: undefined-global
   local ace_timer = LibStub( "AceTimer-3.0" )
-  local trade_tracker = mod.new( ace_timer, function( _, giving_items ) result = giving_items end )
+  local chat_api = require( "mocks/ChatApi" ).new()
+  local mocked_chat = require( "mocks/Chat" ).new( chat_api, "PARTY" )
+  local trade_tracker = mod.new( ace_timer, mocked_chat, function( _, giving_items ) result = giving_items end )
   player( "Psikutas" )
   trade_with( "Obszczymucha", trade_tracker )
   trade_items( trade_tracker, { item_link = "fake item link", quantity = 1 } )
@@ -109,7 +116,9 @@ function TradeTrackerIntegrationSpec:should_call_back_with_items_received()
   local result
   ---@diagnostic disable-next-line: undefined-global
   local ace_timer = LibStub( "AceTimer-3.0" )
-  local trade_tracker = mod.new( ace_timer, function( _, _, receiving_items ) result = receiving_items end )
+  local chat_api = require( "mocks/ChatApi" ).new()
+  local mocked_chat = require( "mocks/Chat" ).new( chat_api, "PARTY" )
+  local trade_tracker = mod.new( ace_timer, mocked_chat, function( _, _, receiving_items ) result = receiving_items end )
   player( "Psikutas" )
   trade_with( "Obszczymucha", trade_tracker )
   recipient_trades_items( trade_tracker, { item_link = "fake item link", quantity = 1 } )
@@ -124,7 +133,7 @@ function TradeTrackerIntegrationSpec:should_call_back_with_items_received()
   } )
 end
 
-utils.mock_libraries()
-utils.load_real_stuff()
+u.mock_libraries()
+u.load_real_stuff_and_inject( module_registry, m )
 
 os.exit( lu.LuaUnit.run() )

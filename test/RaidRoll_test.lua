@@ -1,23 +1,22 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-local lu = require( "luaunit" )
-local utils = require( "test/utils" )
-local player = utils.player
-local leader = utils.raid_leader
-local is_in_party = utils.is_in_party
-local is_in_raid = utils.is_in_raid
-local c = utils.console_message
-local p = utils.party_message
-local r = utils.raid_message
-local roll_for = utils.roll_for
-local raid_roll = utils.raid_roll
-local run_command = utils.run_command
-local raid_roll_raw = utils.raid_roll_raw
-local assert_messages = utils.assert_messages
-local mock_random_roll = utils.mock_random_roll
-local mock_multiple_random_roll = utils.mock_multiple_random_roll
-local tick = utils.tick
-local roll = utils.roll
+local u = require( "test/utils" )
+local lu = u.luaunit()
+local player, leader = u.player, u.raid_leader
+local is_in_party, is_in_raid = u.is_in_party, u.is_in_raid
+local c, p, r = u.console_message, u.party_message, u.raid_message
+local roll_for, raid_roll, raid_roll_raw = u.roll_for, u.raid_roll, u.raid_roll_raw
+local run_command = u.run_command
+local mock_random_roll, mock_multiple_random_roll = u.mock_random_roll, u.mock_multiple_random_roll
+local tick, roll = u.tick, u.roll
+
+---@type ModuleRegistry
+local module_registry = {
+  { module_name = "ChatApi", mock = "mocks/ChatApi", variable_name = "chat" }
+}
+
+-- The modules will be injected here using the above module_registry.
+local m = {}
 
 RaidRollSpec = {}
 
@@ -29,7 +28,7 @@ function RaidRollSpec:should_not_roll_if_not_in_group()
   raid_roll()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     c( "RollFor: Not in a group." )
   )
 end
@@ -43,7 +42,7 @@ function RaidRollSpec:should_print_usage_if_in_party_and_no_item_is_provided()
   raid_roll_raw( "" )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     c( "RollFor [RaidRoll]: Usage: /rr <item>" )
   )
 end
@@ -57,7 +56,7 @@ function RaidRollSpec:should_print_usage_if_in_raid_and_no_item_is_provided()
   raid_roll_raw( "" )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     c( "RollFor [RaidRoll]: Usage: /rr <item>" )
   )
 end
@@ -71,7 +70,7 @@ function RaidRollSpec:should_print_usage_if_in_party_and_invalid_item_is_provide
   raid_roll_raw( "not an item" )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     c( "RollFor [RaidRoll]: Usage: /rr <item>" )
   )
 end
@@ -85,7 +84,7 @@ function RaidRollSpec:should_print_usage_if_in_raid_and_invalid_item_is_provided
   raid_roll_raw( "not an item" )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     c( "RollFor [RaidRoll]: Usage: /rr <item>" )
   )
 end
@@ -101,7 +100,7 @@ function RaidRollSpec:should_raid_roll_the_item_in_party_chat()
   tick()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     p( "Raid rolling [Hearthstone]..." ),
     p( "[1]:Obszczymucha, [2]:Psikutas" ),
     p( "Psikutas wins [Hearthstone]." )
@@ -119,7 +118,7 @@ function RaidRollSpec:should_raid_roll_two_items_in_party_chat()
   tick()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     p( "Raid rolling 2x[Hearthstone]..." ),
     p( "[1]:Obszczymucha, [2]:Psikutas" ),
     p( "Psikutas wins [Hearthstone]." ),
@@ -137,7 +136,7 @@ function RaidRollSpec:should_not_raid_roll_if_rolling_is_in_progress()
   raid_roll( "Hearthstone" )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     p( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     c( "RollFor: Rolling is in progress." )
   )
@@ -155,7 +154,7 @@ function RaidRollSpec:should_not_raid_roll_again_if_raid_rolling_is_in_progress(
   tick()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     p( "Raid rolling [Hearthstone]..." ),
     p( "[1]:Obszczymucha, [2]:Psikutas" ),
     c( "RollFor: Rolling is in progress." ),
@@ -175,7 +174,7 @@ function RaidRollSpec:should_ignore_other_players_rolls()
   tick()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     p( "Raid rolling [Hearthstone]..." ),
     p( "[1]:Obszczymucha, [2]:Psikutas" ),
     p( "Obszczymucha wins [Hearthstone]." )
@@ -194,7 +193,7 @@ function RaidRollSpec:should_ignore_my_own_hacky_rolls()
   tick()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     p( "Raid rolling [Hearthstone]..." ),
     p( "[1]:Obszczymucha, [2]:Psikutas" ),
     p( "Psikutas wins [Hearthstone]." )
@@ -212,7 +211,7 @@ function RaidRollSpec:should_raid_roll_the_item_in_raid_chat()
   tick()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "Raid rolling [Hearthstone]..." ),
     r( "[1]:Obszczymucha, [2]:Psikutas" ),
     r( "Psikutas wins [Hearthstone]." )
@@ -230,7 +229,7 @@ function RaidRollSpec:should_raid_roll_the_item_in_raid_chat_even_as_a_leader()
   tick()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "Raid rolling [Hearthstone]..." ),
     r( "[1]:Obszczymucha, [2]:Psikutas" ),
     r( "Psikutas wins [Hearthstone]." )
@@ -250,7 +249,7 @@ function RaidRollSpec:should_show_the_winner_with_ssr_command()
   run_command( "SSR" )
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     p( "Raid rolling [Hearthstone]..." ),
     p( "[1]:Obszczymucha, [2]:Psikutas" ),
     p( "Psikutas wins [Hearthstone]." ),
@@ -258,7 +257,7 @@ function RaidRollSpec:should_show_the_winner_with_ssr_command()
   )
 end
 
-utils.mock_libraries()
-utils.load_real_stuff()
+u.mock_libraries()
+u.load_real_stuff_and_inject( module_registry, m )
 
 os.exit( lu.LuaUnit.run() )

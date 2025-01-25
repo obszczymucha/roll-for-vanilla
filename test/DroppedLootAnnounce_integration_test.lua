@@ -2,7 +2,7 @@ package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../Roll
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
-local m = require( "src/modules" )
+local mods = require( "src/modules" )
 local fr = utils.force_require
 
 local player = utils.player
@@ -13,7 +13,6 @@ local mock_blizzard_loot_buttons = utils.mock_blizzard_loot_buttons
 local LootQuality = utils.LootQuality
 local r = utils.raid_message
 local master_looter = utils.master_looter
-local assert_messages = utils.assert_messages
 local item = utils.item
 local targetting_enemy = utils.targetting_enemy
 local soft_res = utils.soft_res
@@ -21,16 +20,23 @@ local hr = utils.hard_res_item
 local sr = utils.soft_res_item
 local mock = utils.mock
 
-local loot_event_facade
+---@type ModuleRegistry
+local module_registry = {
+  { module_name = "LootFacade", mock = "mocks/LootFacade", variable_name = "loot_facade" },
+  { module_name = "ChatApi",    mock = "mocks/ChatApi",    variable_name = "chat" }
+}
+
+-- The modules will be injected here using the above module_registry.
+local m = {}
 
 local function loot()
-  loot_event_facade.notify( "LootOpened" )
+  m.loot_facade.notify( "LootOpened" )
 end
 
 local function dropped( ... )
   RollFor.LootList = nil
 
-  local items = m.map( { ... }, function( i )
+  local items = mods.map( { ... }, function( i )
     if not i.quality then i.quality = 4 end
 
     return i
@@ -52,8 +58,7 @@ function DroppedLootAnnounceIntegrationSpec:should_not_show_loot_that_dropped_if
   loot()
 
   -- Then
-  assert_messages(
-  )
+  m.chat.assert_no_messages()
 end
 
 function DroppedLootAnnounceIntegrationSpec:should_not_show_loot_if_there_are_no_epic_quality_items()
@@ -68,8 +73,7 @@ function DroppedLootAnnounceIntegrationSpec:should_not_show_loot_if_there_are_no
   loot()
 
   -- Then
-  assert_messages(
-  )
+  m.chat.assert_no_messages()
 end
 
 function DroppedLootAnnounceIntegrationSpec:should_only_show_loot_once()
@@ -84,7 +88,7 @@ function DroppedLootAnnounceIntegrationSpec:should_only_show_loot_once()
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "Moroes dropped 3 items:" ),
     r( "1. 2x[Hearthstone]" ),
     r( "2. [Some item]" )
@@ -102,7 +106,7 @@ function DroppedLootAnnounceIntegrationSpec:should_show_loot_that_dropped_if_a_m
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "Instructor Razuvious dropped 2 items:" ),
     r( "1. [Hearthstone]" ),
     r( "2. [Some item]" )
@@ -123,7 +127,7 @@ function DroppedLootAnnounceIntegrationSpec:should_not_announce_badges_of_justic
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "Netherspite dropped 2 items:" ),
     r( "1. [Hearthstone]" ),
     r( "2. [Some item]" )
@@ -141,7 +145,7 @@ function DroppedLootAnnounceIntegrationSpec:should_show_hard_ressed_items()
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "1 item dropped:" ),
     r( "1. [Hearthstone] (HR)" )
   )
@@ -158,7 +162,7 @@ function DroppedLootAnnounceIntegrationSpec:should_show_soft_ressed_items_by_one
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "1 item dropped:" ),
     r( "1. [Hearthstone] (SR by Psikutas)" )
   )
@@ -175,7 +179,7 @@ function DroppedLootAnnounceIntegrationSpec:should_show_soft_ressed_items_by_two
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "1 item dropped:" ),
     r( "1. [Hearthstone] (SR by Obszczymucha and Psikutas)" )
   )
@@ -192,7 +196,7 @@ function DroppedLootAnnounceIntegrationSpec:should_show_soft_ressed_items_by_two
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "2 items dropped:" ),
     r( "1. [Hearthstone] (SR by Obszczymucha)" ),
     r( "2. [Hearthstone] (SR by Psikutas)" )
@@ -210,7 +214,7 @@ function DroppedLootAnnounceIntegrationSpec:should_show_soft_ressed_items_by_thr
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "1 item dropped:" ),
     r( "1. [Hearthstone] (SR by Obszczymucha, Ponpon and Psikutas)" )
   )
@@ -227,7 +231,7 @@ function DroppedLootAnnounceIntegrationSpec:should_show_soft_ressed_items_by_two
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "1 item dropped:" ),
     r( "1. [Hearthstone] (SR by Obszczymucha and Psikutas [2 rolls])" )
   )
@@ -244,7 +248,7 @@ function DroppedLootAnnounceIntegrationSpec:should_show_hr_items_first()
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "2 items dropped:" ),
     r( "1. [Onyxia's Droppings] (HR)" ),
     r( "2. [Wirt's Third Leg]" )
@@ -262,7 +266,7 @@ function DroppedLootAnnounceIntegrationSpec:should_show_single_res_sr_items_alph
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "4 items dropped:" ),
     r( "1. [Onyxia's Droppings] (HR)" ),
     r( "2. [Dick] (SR by Obszczymucha)" ),
@@ -282,7 +286,7 @@ function DroppedLootAnnounceIntegrationSpec:should_not_sort_items_items_with_the
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "4 items dropped:" ),
     r( "1. [Onyxia's Droppings] (HR)" ),
     r( "2. [Dick] (SR by Obszczymucha and Psikutas)" ),
@@ -302,7 +306,7 @@ function DroppedLootAnnounceIntegrationSpec:should_show_sort_softres_player_coun
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "4 items dropped:" ),
     r( "1. [Onyxia's Droppings] (HR)" ),
     r( "2. [Hearthstone] (SR by Obszczymucha and Psikutas)" ),
@@ -331,7 +335,7 @@ function DroppedLootAnnounceIntegrationSpec:should_not_announce_greens_and_blues
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "7 items dropped:" ),
     r( "1. [Onyxia's Droppings] (HR)" ),
     r( "2. [Hearthstone] (SR by Obszczymucha and Psikutas)" ),
@@ -360,7 +364,7 @@ function DroppedLootAnnounceIntegrationSpec:should_announce_greens_and_blues_if_
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "5 items dropped:" ),
     r( "1. [Onyxia's Droppings] (HR)" ),
     r( "2. [Hearthstone] (SR by Obszczymucha and Psikutas)" ),
@@ -399,7 +403,7 @@ function DroppedLootAnnounceIntegrationSpec:should_announce_all_sr_items_even_if
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "6 items dropped:" ),
     r( "1. [Onyxia's Droppings] (HR)" ),
     r( "2. [Wirt's Third Leg] (SR by Jogobobek)" ),
@@ -430,7 +434,7 @@ function DroppedLootAnnounceIntegrationSpec:should_sort_non_sr_items_by_quality_
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "7 items dropped:" ),
     r( "1. [Hearthstone] (SR by Psikutas)" ),
     r( "2. [Dupa]" ),
@@ -471,7 +475,7 @@ function DroppedLootAnnounceIntegrationSpec:should_announce_all_sr_items_even_if
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "7 items dropped:" ),
     r( "1. [Onyxia's Droppings] (HR)" ),
     r( "2. [Wirt's Third Leg] (SR by Jogobobek)" ),
@@ -514,7 +518,7 @@ function DroppedLootAnnounceIntegrationSpec:should_announce_all_sr_items_even_if
   loot()
 
   -- Then
-  assert_messages(
+  m.chat.assert(
     r( "8 items dropped:" ),
     r( "1. [Onyxia's Droppings] (HR)" ),
     r( "2. [Wirt's Third Leg] (SR by Jogobobek)" ),
@@ -527,16 +531,7 @@ function DroppedLootAnnounceIntegrationSpec:should_announce_all_sr_items_even_if
 end
 
 utils.mock_libraries()
-utils.load_real_stuff( function( module_name )
-  if module_name == "src/LootList" then require( "mocks/LootList" ) end
-  if module_name == "src/LootFacade" then
-    ---@diagnostic disable-next-line: different-requires
-    loot_event_facade = require( "mocks/LootFacade" )
-    return loot_event_facade
-  end
-
-  return require( module_name )
-end )
+utils.load_real_stuff_and_inject( module_registry, m )
 utils.mock_blizzard_loot_buttons()
 
 os.exit( lu.LuaUnit.run() )

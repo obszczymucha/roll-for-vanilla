@@ -13,8 +13,6 @@ local m_player_name = nil
 local m_target = nil
 local m_loot_confirm_callback = nil
 
-local eq = require( "luaunit" ).assertEquals
-
 ---@diagnostic disable-next-line: undefined-field
 local lua50 = table.setn and true or false
 
@@ -312,7 +310,6 @@ function M.mock_api()
   M.mock( "GetNumLootItems" )
 
   M.loot_threshold( 2 )
-  M.mock_messages()
   M.mock_loot_frame()
 end
 
@@ -324,22 +321,6 @@ end
 
 function M.mock_slashcmdlist()
   M.modules().api.SlashCmdList = m_slashcmdlist
-end
-
-function M.mock_messages()
-  m_messages = {}
-
-  M.modules().api.SendChatMessage = function( message, chat_type )
-    local parsed_message = M.parse_item_link( message )
-    table.insert( m_messages, { message = parsed_message, type = chat_type } )
-  end
-
-  M.modules().api.DEFAULT_CHAT_FRAME = {
-    AddMessage = function( _, message )
-      local message_without_colors = M.parse_item_link( M.decolorize( message ) )
-      table.insert( m_messages, { message = message_without_colors, type = "CONSOLE" } )
-    end
-  }
 end
 
 function M.get_messages()
@@ -478,7 +459,6 @@ end
 function M.init()
   M.mock_api()
   M.fire_login_events()
-  M.mock_messages()
   M.import_soft_res( nil )
   m_is_master_looter = false
 end
@@ -684,7 +664,7 @@ end
 
 function M.player( name, config )
   if config then
-    config()
+    RollFor.Config = config
   else
     M.force_require( "src/Config" )
   end
@@ -727,14 +707,6 @@ function M.console_and_raid_warning( message )
   return function()
     return M.console_message( string.format( "RollFor: %s", message ) ), M.raid_warning( message )
   end
-end
-
--- Helper functions.
-function M.assert_messages( ... )
-  local args = { ... }
-  local expected = {}
-  M.flatten( expected, args )
-  eq( M.get_messages(), expected )
 end
 
 function M.tick()
@@ -833,6 +805,7 @@ function M.load_real_stuff( req )
   r( "src/EventFrame" )
   r( "src/WowApi" )
   r( "src/PlayerInfo" )
+  r( "src/ChatApi" )
   r( "src/Chat" )
   r( "src/Config" )
   r( "src/RollingLogicUtils" )
@@ -1247,6 +1220,8 @@ end
 function M.info( message )
   print( "\n" .. message )
 end
+
+function M.noop() end
 
 M.getn = table.getn
 
