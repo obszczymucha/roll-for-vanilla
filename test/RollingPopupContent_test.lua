@@ -1064,28 +1064,6 @@ end
 
 SoftResRollPopupContentSpec = {}
 
-function SoftResRollPopupContentSpec:should_preview_rolls()
-  -- Given
-  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
-  local popup, controller = New()
-      :roster( p1, p2 )
-      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 123 ) )
-      :build()
-
-  -- When
-  controller.preview( item, 1 )
-
-  -- Then
-  eq( popup.content(), {
-    { type = link,     link = item.link,      tooltip_link = item.tooltip_link, count = 1 },
-    { type = "roll",   player_name = p2.name, player_class = p2.class,          roll_type = RT.SoftRes, padding = 11 },
-    { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
-    { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
-    { type = "button", label = "Roll",        width = 70 },
-    { type = "button", label = "Award...",    width = 90 }
-  } )
-end
-
 function SoftResRollPopupContentSpec:should_preview_the_winner_without_award_button_if_the_winner_is_not_a_candidate()
   -- Given
   local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )

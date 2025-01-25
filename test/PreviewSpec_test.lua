@@ -14,7 +14,7 @@ local db = Db.new( {} )
 local sr, make_data = u.soft_res_item, u.create_softres_data
 
 ---@diagnostic disable-next-line: unused-local
-local c, r = u.console_message, u.raid_message
+local c, r, pm = u.console_message, u.raid_message, u.party_message
 ---@diagnostic disable-next-line: unused-local
 local cr, rw = u.console_and_raid_message, u.raid_warning
 ---@diagnostic disable-next-line: unused-local
@@ -259,7 +259,7 @@ end
 
 PreviewNotSoftRessedItemSpec = {}
 
-function PreviewNotSoftRessedItemSpec:should_close_the_popup()
+function PreviewNotSoftRessedItemSpec:should_display_close_button_that_closes_the_popup()
   -- Given
   local item = i( "Hearthstone", 123 )
   local popup, controller = New():build()
@@ -282,11 +282,37 @@ function PreviewNotSoftRessedItemSpec:should_close_the_popup()
   eq( popup.is_visible(), false )
 end
 
-function PreviewNotSoftRessedItemSpec:should_start_rolling()
+function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_party()
   -- Given
   local chat = mock_chat() ---@type ChatMock
   local item = i( "Hearthstone", 123 )
   local popup, controller = New():chat( chat ):build()
+
+  -- When
+  controller.preview( item, 1 )
+
+  -- Then
+  chat.assert()
+  eq( popup.is_visible(), true )
+  eq( popup.content(), {
+    { type = link,     link = item.link, tooltip_link = item.tooltip_link, count = 1 },
+    { type = "button", label = "Roll",   width = 70 },
+    { type = "button", label = "Close",  width = 70 }
+  } )
+
+  -- When
+  popup.click( "Roll" )
+
+  -- Then
+  eq( popup.is_visible(), true )
+  chat.assert( pm( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ) )
+end
+
+function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_raid()
+  -- Given
+  local chat = mock_chat()
+  local item = i( "Hearthstone", 123 )
+  local popup, controller = New():chat( chat ):raid_roster( p( "Ohhaimark" ), p( "Obszczymucha" ) ):build()
 
   -- When
   controller.preview( item, 1 )
@@ -301,10 +327,108 @@ function PreviewNotSoftRessedItemSpec:should_start_rolling()
   chat.assert()
 
   -- When
+  popup.click( "Roll" )
+
+  -- Then
+  eq( popup.is_visible(), true )
+  chat.assert( rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ) )
+end
+
+PreviewSoftRessedItemSpec = {}
+
+function PreviewSoftRessedItemSpec:should_display_close_button_that_closes_the_popup()
+  -- Given
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 123 ) )
+      :build()
+
+  -- When
+  controller.preview( item, 1 )
+
+  -- Then
+  eq( popup.is_visible(), true )
+  eq( popup.content(), {
+    { type = link,     link = item.link,      tooltip_link = item.tooltip_link, count = 1 },
+    { type = "roll",   player_name = p2.name, player_class = p2.class,          roll_type = RT.SoftRes, padding = 11 },
+    { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
+    { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
+    { type = "button", label = "Roll",        width = 70 },
+    { type = "button", label = "Close",       width = 70 }
+  } )
+
+  -- When
   popup.click( "Close" )
 
   -- Then
   eq( popup.is_visible(), false )
+end
+
+function PreviewSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_party()
+  -- Given
+  local chat              = mock_chat()
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 123 ) )
+      :chat( chat )
+      :build()
+
+  -- When
+  controller.preview( item, 1 )
+
+  -- Then
+  chat.assert()
+  eq( popup.is_visible(), true )
+  eq( popup.content(), {
+    { type = link,     link = item.link,      tooltip_link = item.tooltip_link, count = 1 },
+    { type = "roll",   player_name = p2.name, player_class = p2.class,          roll_type = RT.SoftRes, padding = 11 },
+    { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
+    { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
+    { type = "button", label = "Roll",        width = 70 },
+    { type = "button", label = "Close",       width = 70 }
+  } )
+
+  -- When
+  popup.click( "Roll" )
+
+  -- Then
+  eq( popup.is_visible(), true )
+  chat.assert( pm( "Roll for [Hearthstone]: (SR by Obszczymucha and Psikutas [2 rolls])" ) )
+end
+
+function PreviewSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_raid()
+  -- Given
+  local chat              = mock_chat()
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
+      :raid_roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 123 ) )
+      :chat( chat )
+      :build()
+
+  -- When
+  controller.preview( item, 1 )
+
+  -- Then
+  chat.assert()
+  eq( popup.is_visible(), true )
+  eq( popup.content(), {
+    { type = link,     link = item.link,      tooltip_link = item.tooltip_link, count = 1 },
+    { type = "roll",   player_name = p2.name, player_class = p2.class,          roll_type = RT.SoftRes, padding = 11 },
+    { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
+    { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
+    { type = "button", label = "Roll",        width = 70 },
+    { type = "button", label = "Close",       width = 70 }
+  } )
+
+  -- When
+  popup.click( "Roll" )
+
+  -- Then
+  eq( popup.is_visible(), true )
+  chat.assert( rw( "Roll for [Hearthstone]: (SR by Obszczymucha and Psikutas [2 rolls])" ) )
 end
 
 os.exit( lu.LuaUnit.run() )
