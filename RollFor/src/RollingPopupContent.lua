@@ -129,7 +129,6 @@ end
 ---@param raid_roll function
 ---@param roll_item fun( item: Item, item_count: number )
 ---@param insta_raid_roll function
----@param select_player function
 function M.new(
     popup,
     roll_controller,
@@ -138,8 +137,7 @@ function M.new(
     config,
     raid_roll,
     roll_item,
-    insta_raid_roll,
-    select_player
+    insta_raid_roll
 )
   ---@param content table
   ---@param buttons RollingPopupButtonWithCallback[]
@@ -322,9 +320,9 @@ function M.new(
         getn( data.item.sr_players ) == data.item_count
   end
 
-  local function select_player_button( item )
+  local function select_player_button()
     M.debug.add( "select_player_button" )
-    return { type = "button", label = "Award...", width = 90, on_click = function() select_player( item ) end }
+    return { type = "button", label = "Award...", width = 90, on_click = function() print( "TODO" ) end }
   end
 
   ---@param data RollTrackerData
@@ -379,7 +377,7 @@ function M.new(
     end
 
     table.insert( result, close_button() )
-    table.insert( result, select_player_button( item ) )
+    table.insert( result, select_player_button() )
 
     return result
   end
@@ -472,7 +470,7 @@ function M.new(
 
     table.insert( result, roll_button( data ) )
     table.insert( result, { type = "button", label = "Insta RR", width = 80, on_click = function() insta_raid_roll( data.item, data.item_count ) end } )
-    table.insert( result, select_player_button( data.item ) )
+    table.insert( result, select_player_button() )
 
     return result
   end
@@ -481,7 +479,7 @@ function M.new(
   ---@param data RollTrackerData
   local function preview_with_rolls_content( result, data )
     table.insert( result, roll_button( data ) )
-    table.insert( result, select_player_button( data.item ) )
+    table.insert( result, select_player_button() )
 
     return result
   end
@@ -512,10 +510,10 @@ function M.new(
     return result
   end
 
-  local function hard_ressed_item_content( result, data )
+  local function hard_ressed_item_content( result )
     M.debug.add( "hard_ressed_item_content" )
     table.insert( result, { type = "text", value = string.format( "This item is %s.", red( "hard-ressed" ) ), padding = top_padding } )
-    table.insert( result, select_player_button( data.item ) )
+    table.insert( result, select_player_button() )
     -- table.insert( result, free_roll_button( data ) )
     return result
   end
@@ -596,7 +594,7 @@ function M.new(
     end
 
     if data.item.type == LT.HardRessedItem or data.item.type == LT.HardRessedDroppedItem then
-      return hard_ressed_item_content( result, data )
+      return hard_ressed_item_content( result )
     end
 
     M.debug.add( "Uncaught content." )

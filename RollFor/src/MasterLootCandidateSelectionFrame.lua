@@ -129,28 +129,28 @@ local function create_button( parent, index, rows )
     end
   end )
 
+  frame.unmark_winner = function()
+    frame.text:SetPoint( "CENTER", frame, "CENTER" )
+    frame.icon:Hide()
+  end
+
+  frame.mark_winner = function()
+    frame.text:SetPoint( "CENTER", frame, "CENTER", 2 - icon_width / 2, 0 )
+    frame.icon:Show()
+  end
+
   return frame
 end
 
 ---@class MasterLootCandidateSelectionFrame
----@field create fun()
----@field create_candidate_frames fun( candidates: ItemCandidate[], item: DroppedItem, strategy: RollingStrategyType )
----@field show fun( item_link: ItemLink )
+---@field show fun( candidates: MasterLootCandidate[] )
 ---@field hide fun()
 ---@field get_frame fun(): Frame
 
----@param winner_tracker WinnerTracker
----@param roll_controller RollController
 ---@param config Config
----@return MasterLootCandidateSelectionFrame
-function M.new( winner_tracker, roll_controller, config )
+function M.new( config )
   local m_frame
   local m_buttons = {}
-
-  local function create()
-    if m_frame then return end
-    m_frame = create_main_frame()
-  end
 
   local function resize_frame( total, rows )
     local columns = m.api.math.ceil( total / rows )
@@ -160,10 +160,8 @@ function M.new( winner_tracker, roll_controller, config )
     m_frame:SetHeight( (button_height + vertical_padding) * total_rows + vertical_padding + 9 )
   end
 
-  ---@param candidates ItemCandidate[]
-  ---@param item DroppedItem
-  ---@param strategy RollingStrategyType
-  local function create_candidate_frames( candidates, item, strategy )
+  ---@param candidates MasterLootCandidate[]
+  local function create_candidate_frames( candidates )
     local total = getn( candidates )
     local rows = config.master_loot_frame_rows()
 
@@ -194,12 +192,12 @@ function M.new( winner_tracker, roll_controller, config )
         button.text:SetTextColor( 1, 1, 1 )
       end
 
-      button:SetScript( "OnClick", function()
-        ---@diagnostic disable-next-line: undefined-global
-        local self = button
-        roll_controller.show_master_loot_confirmation( self.player, item, strategy )
-      end )
-
+      button:SetScript( "OnClick", candidate.confirm_fn )
+      if candidate.is_winner then
+        button.mark_winner()
+      else
+        button.unmark_winner()
+      end
       button:Show()
     end
 
@@ -208,48 +206,17 @@ function M.new( winner_tracker, roll_controller, config )
     end
   end
 
-  local function clear_winners()
-    for i = 1, 40 do
-      local button = m_buttons[ i ]
-      if button then
-        button.text:SetPoint( "CENTER", button, "CENTER" )
-        button.icon:Hide()
-        button.winner = nil
-        button.winning_roll = nil
-      end
-    end
-  end
+  ---@param candidates MasterLootCandidate[]
+  local function show( candidates )
+    if not m_frame then m_frame = create_main_frame() end
 
-  ---@param winner_name string
-  local function mark_winner( winner_name )
-    for i = 1, 40 do
-      local button = m_buttons[ i ]
-
-      if button and button:IsVisible() and button.text:GetText() == winner_name then
-        button.text:SetPoint( "CENTER", button, "CENTER", 2 - icon_width / 2, 0 )
-        button.icon:Show()
-      end
-    end
-  end
-
-  ---@param item_link ItemLink
-  local function show( item_link )
-    if not m_frame then return end
-
-    clear_winners()
+    create_candidate_frames( candidates )
     m_frame:Show()
-
-    for _, winner in ipairs( winner_tracker.find_winners( item_link ) ) do
-      mark_winner( winner.winner_name )
-    end
   end
 
   local function hide()
     if m_frame then m_frame:Hide() end
   end
-
-  winner_tracker.subscribe_for_rolling_started( clear_winners )
-  winner_tracker.subscribe_for_winner_found( mark_winner )
 
   config.subscribe( "master_loot_frame_rows", function()
     if not m_frame then return end
@@ -267,12 +234,8 @@ function M.new( winner_tracker, roll_controller, config )
     resize_frame( total, rows )
   end )
 
-  roll_controller.subscribe( "show_master_loot_confirmation", hide )
-  roll_controller.subscribe( "rolling_started", hide )
-
+  ---@type MasterLootCandidateSelectionFrame
   return {
-    create = create,
-    create_candidate_frames = create_candidate_frames,
     show = show,
     hide = hide,
     get_frame = function() return m_frame end

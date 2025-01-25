@@ -137,19 +137,20 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
 
   local softres = deps[ "SoftResData" ] and group_aware_softres( group_roster, deps[ "SoftResData" ] ) or group_aware_softres( group_roster )
 
+  local player_selection_frame = require( "src/MasterLootCandidateSelectionFrame" ).new( config )
   local roll_controller = require( "src/RollController" ).new(
     roll_tracker,
     player_info,
     ml_candidates,
     softres,
     loot_list,
-    config
+    config,
+    player_selection_frame
   )
 
-  local master_loot_frame = require( "src/MasterLootCandidateSelectionFrame" ).new( winner_tracker, roll_controller, config )
   local awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ) )
   local loot_award_callback = require( "src/LootAwardCallback" ).new( awarded_loot, roll_controller, winner_tracker )
-  local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, master_loot_frame, loot_list, roll_controller )
+  local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, loot_list, roll_controller )
   deps[ "MasterLoot" ] = master_loot
 
   local strategy_factory = require( "src/RollingStrategyFactory" ).new(
@@ -188,8 +189,7 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
     config,
     raid_roll or noop,
     roll_item or noop,
-    insta_raid_roll or noop,
-    select_player or noop
+    insta_raid_roll or noop
   )
   deps[ "RollingPopupContent" ] = rolling_popup_content
 
@@ -325,8 +325,7 @@ end
 
 function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_party()
   -- Given
-  local chat = mock_chat()
-  local item = i( "Hearthstone", 123 )
+  local item, chat = i( "Hearthstone", 123 ), mock_chat()
   local popup, controller = New():chat( chat ):build()
 
   -- When
@@ -351,8 +350,7 @@ end
 
 function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_raid()
   -- Given
-  local chat = mock_chat()
-  local item = i( "Hearthstone", 123 )
+  local item, chat = i( "Hearthstone", 123 ), mock_chat()
   local popup, controller = New():chat( chat ):raid_roster( p( "Ohhaimark" ), p( "Obszczymucha" ) ):build()
 
   -- When
@@ -377,16 +375,24 @@ end
 
 function PreviewNotSoftRessedItemSpec:should_display_award_other_button_that_shows_player_selection_popup_and_awards_the_item()
   -- Given
-  local loot_facade       = mock_loot_facade()
-  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
-  local popup, controller = New()
+  local loot_facade, chat          = mock_loot_facade(), mock_chat()
+  local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller, _, deps = New()
       :loot_facade( loot_facade )
+      :chat( chat )
       :roster( p1, p2 )
       :loot_list( item )
       :build()
 
   -- When
   loot_facade.notify( "LootOpened" )
+
+  -- Then
+  chat.assert(
+    pm( "Princess Kenny dropped 1 item:" ),
+    pm( "1. [Hearthstone]" )
+  )
+
   controller.preview( item, 1 )
 
   -- Then
@@ -399,10 +405,14 @@ function PreviewNotSoftRessedItemSpec:should_display_award_other_button_that_sho
   } )
 
   -- When
-  popup.click( "Close" )
+  popup.click( "AwardOther" )
 
   -- Then
-  eq( popup.is_visible(), false )
+  eq( popup.is_visible(), true )
+  chat.assert(
+    pm( "Princess Kenny dropped 1 item:" ),
+    pm( "1. [Hearthstone]" )
+  )
 end
 
 PreviewSoftResWinnersSpec = {}

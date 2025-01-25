@@ -29,8 +29,7 @@ M.center_point = { point = "CENTER", relative_point = "CENTER", x = 0, y = 150 }
 ---@param popup_builder PopupBuilder
 ---@param db table
 ---@param config Config
----@param roll_controller RollController
-function M.new( popup_builder, db, config, roll_controller )
+function M.new( popup_builder, db, config )
   ---@type Popup?
   local popup
   db.point = db.point or M.center_point
@@ -240,8 +239,8 @@ function M.new( popup_builder, db, config, roll_controller )
     popup:backdrop_color( r, g, b, a )
   end
 
-  roll_controller.subscribe( "all_items_awarded", hide )
-  roll_controller.subscribe( "rolling_popup_hide", hide )
+  -- roll_controller.subscribe( "all_items_awarded", hide )
+  -- roll_controller.subscribe( "rolling_popup_hide", hide )
 
   local function get_frame()
     if not popup then

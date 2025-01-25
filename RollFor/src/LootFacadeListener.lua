@@ -38,7 +38,6 @@ function M.new(
   end )
 
   loot_facade.subscribe( "LootClosed", function()
-    master_loot.on_loot_closed()
     roll_controller.loot_closed()
     loot_frame.hide()
     loot_auto_process.on_loot_closed()

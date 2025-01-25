@@ -68,16 +68,16 @@ local function trade_complete_callback( recipient, items_given, items_received )
   end
 end
 
----@param item DroppedItem
----@param strategy RollingStrategyType
-local function select_player( item, strategy )
-  local anchor = M.rolling_popup.get_frame()
-  M.master_loot.show_loot_candidates_frame( item, strategy )
-  local player_list = M.master_loot_frame.get_frame()
-
-  player_list:ClearAllPoints()
-  player_list:SetPoint( "TOP", anchor, "BOTTOM", 0, -5 )
-end
+-- ---@param item DroppedItem
+-- ---@param strategy RollingStrategyType
+-- local function select_player( item, strategy )
+--   local anchor = M.rolling_popup.get_frame()
+--   M.master_loot.show_loot_candidates_frame( item, strategy )
+--   local player_list = M.master_loot_frame.get_frame()
+--
+--   player_list:ClearAllPoints()
+--   player_list:SetPoint( "TOP", anchor, "BOTTOM", 0, -5 )
+-- end
 
 ---@param item Item
 ---@param item_count number
@@ -212,11 +212,25 @@ local function create_components()
   ---@type MasterLootCandidates
   M.master_loot_candidates = m.MasterLootCandidates.new( M.api(), M.group_roster ) -- remove group_roster for testing (dummy candidates)
 
-  ---@type RollController
-  M.roll_controller = m.RollController.new( M.roll_tracker, M.player_info, M.master_loot_candidates, M.softres, M.loot_list, M.config )
-
   ---@type MasterLootCandidateSelectionFrame
-  M.master_loot_frame = m.MasterLootCandidateSelectionFrame.new( M.winner_tracker, M.roll_controller, M.config )
+  M.player_selection_frame = m.MasterLootCandidateSelectionFrame.new( M.config )
+
+  local rolling_popup_db = db( "rolling_popup" )
+
+  ---@type RollingPopup
+  M.rolling_popup = m.RollingPopup.new( m.PopupBuilder.new( m.FrameBuilder ), rolling_popup_db, M.config )
+
+  ---@type RollController
+  M.roll_controller = m.RollController.new(
+    M.roll_tracker,
+    M.player_info,
+    M.master_loot_candidates,
+    M.softres,
+    M.loot_list,
+    M.config,
+    M.rolling_popup,
+    M.player_selection_frame
+  )
 
   ---@type LootAwardCallback
   M.loot_award_callback = m.LootAwardCallback.new( M.awarded_loot, M.roll_controller, M.winner_tracker )
@@ -225,7 +239,6 @@ local function create_components()
   M.master_loot = m.MasterLoot.new(
     M.master_loot_candidates,
     M.loot_award_callback,
-    M.master_loot_frame,
     M.loot_list,
     M.roll_controller
   )
@@ -263,13 +276,8 @@ local function create_components()
   -- TODO: Add type.
   M.tie_roll_gui_data = m.TieRollGuiData.new( M.group_roster )
 
-  local rolling_popup_db = db( "rolling_popup" )
-
   ---@type LootAutoProcess
   M.loot_auto_process = m.LootAutoProcess.new( M.config, M.roll_tracker, M.loot_list, M.roll_controller, M.player_info )
-
-  -- TODO: Add type.
-  M.rolling_popup = m.RollingPopup.new( m.PopupBuilder.new( m.FrameBuilder ), rolling_popup_db, M.config, M.roll_controller )
 
   -- TODO: Add type.
   M.rolling_popup_content = m.RollingPopupContent.new(
@@ -280,8 +288,7 @@ local function create_components()
     M.config,
     raid_roll_item,
     roll_item,
-    insta_raid_roll_item,
-    select_player
+    insta_raid_roll_item
   )
 
   -- TODO: Add type.

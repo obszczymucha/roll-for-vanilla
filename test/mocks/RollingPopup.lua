@@ -36,7 +36,7 @@ function M.new( popup_builder, db, config, controller )
   local content
   local m_data ---@type RollingPopupPreviewData?
 
-  local popup = RollingPopup.new( popup_builder, db, config, controller )
+  local popup = RollingPopup.new( popup_builder, db, config )
   ---@diagnostic disable-next-line: inject-field
   popup.content = function() return content and cleanse( content ) or {} end
 
@@ -64,8 +64,6 @@ function M.new( popup_builder, db, config, controller )
       if button.type == button_type then button.callback() end
     end
   end
-
-  controller.subscribe( "ShowRollingPopupPreview", show_preview )
 
   ---@type RollingPopupMock
   return popup
