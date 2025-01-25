@@ -247,6 +247,10 @@ local function should_announce( i, item_count, announcement )
   return false
 end
 
+---@class DroppedLootAnnounce
+---@field on_loot_opened fun()
+---@field reset fun()
+
 ---@param loot_list LootList
 ---@param chat Chat
 ---@param dropped_loot DroppedLoot
@@ -321,6 +325,7 @@ function M.new( loot_list, chat, dropped_loot, softres, winner_tracker, player_i
     end
   end
 
+  ---@type DroppedLootAnnounce
   return {
     on_loot_opened = on_loot_opened,
     reset = reset

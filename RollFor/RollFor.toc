@@ -83,4 +83,5 @@ src\RollResultAnnouncer.lua
 src\Chat.lua
 src\PlayerInfo.lua
 src\LootAwardCallback.lua
+src\LootFacadeListener.lua
 main.lua

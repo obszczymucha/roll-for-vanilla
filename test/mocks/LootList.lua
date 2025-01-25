@@ -2,9 +2,10 @@
 return function( items )
   local M = {}
 
-  local getn = table.getn
+  ---@param loot_facade LootFacade
+  function M.new( loot_facade )
+    local looting = false
 
-  function M.new()
     local function get_items()
       return items or {}
     end
@@ -43,6 +44,22 @@ return function( items )
       end
     end
 
+    local function on_loot_opened()
+      looting = true
+    end
+
+    local function on_loot_slot_cleared( slot )
+      items[ slot ] = nil
+    end
+
+    local function on_loot_closed()
+      looting = false
+    end
+
+    loot_facade.subscribe( "LootOpened", on_loot_opened )
+    loot_facade.subscribe( "LootSlotCleared", on_loot_slot_cleared )
+    loot_facade.subscribe( "LootClosed", on_loot_closed )
+
     ---@type SoftResLootList
     return {
       ---@diagnostic disable-next-line: assign-type-mismatch
@@ -50,7 +67,7 @@ return function( items )
       get_source_guid = get_source_guid,
       get_slot = get_slot,
       count = count,
-      is_looting = function() return items and getn( get_items() ) > 0 and true or false end,
+      is_looting = function() return looting end,
       get_by_id = get_by_id
     }
   end

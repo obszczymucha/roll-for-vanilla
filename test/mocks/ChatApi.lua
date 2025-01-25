@@ -33,7 +33,8 @@ function M.new()
   end
 
   local function default_chat_frame( _, message )
-    table.insert( u.chat_message( message, "CONSOLE" ) )
+    local message_without_colors = u.parse_item_link( u.decolorize( message ) )
+    table.insert( messages, u.chat_message( message_without_colors, "CONSOLE" ) )
   end
 
   local function assert_no_messages()

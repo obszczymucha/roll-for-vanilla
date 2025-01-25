@@ -95,7 +95,7 @@ end
 
 ---@param items (MasterLootDistributableItem)[]?
 local function mock_loot_list( items )
-  return frequire( "mocks/LootList" )( items or {} ).new()
+  return frequire( "mocks/LootList" )( items or {} )
 end
 
 local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_player )
@@ -115,7 +115,10 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   local chat = deps[ "Chat" ] or require( "src/Chat" ).new( chat_api, group_roster, player_info )
   deps[ "Chat" ] = chat
 
-  local loot_list = deps[ "LootList" ] or mock_loot_list()
+  local loot_facade = deps[ "LootFacade" ] or require( "mocks/LootFacade" ).new()
+  deps[ "LootFacade" ] = loot_facade
+
+  local loot_list = deps[ "LootList" ] and deps[ "LootList" ].new( loot_facade ) or mock_loot_list().new( loot_facade )
   deps[ "SoftResLootList" ] = loot_list
 
   local ml_candidates_api = deps[ "MasterLootCandidatesApi" ] or require( "mocks/MasterLootCandidatesApi" ).new( group_roster )

@@ -421,6 +421,12 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
   ---@param item_link string
   local function loot_awarded( player_name, item_id, item_link )
     roll_tracker.loot_awarded( player_name, item_id )
+
+    if ml_confirmation_data then
+      ml_confirmation_data = nil
+      notify_subscribers( "hide_master_loot_confirmation" )
+    end
+
     notify_subscribers( "loot_awarded", { player_name = player_name, item_id = item_id, item_link = item_link } )
     process_next_item()
 

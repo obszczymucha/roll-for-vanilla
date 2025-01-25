@@ -184,14 +184,14 @@ function M.new( chat, roll_controller, roll_tracker, config )
 
     if winner_count == 0 then
       local message = string.format( "No one rolled for %s.", data.item.link )
-      info( message )
+      chat.info( message )
       chat.announce( message )
     end
   end
 
   ---@param data LootAwardedData
   local function on_loot_awarded( data )
-    info( string.format( "%s received %s.", hl( data.player_name ), data.item_link ) )
+    chat.info( string.format( "%s received %s.", hl( data.player_name ), data.item_link ) )
   end
 
   roll_controller.subscribe( "finish", on_finish )
