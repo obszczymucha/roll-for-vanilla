@@ -136,19 +136,20 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
 
   local softres = deps[ "SoftResData" ] and group_aware_softres( group_roster, deps[ "SoftResData" ] ) or group_aware_softres( group_roster )
 
+  local player_selection_frame = require( "src/MasterLootCandidateSelectionFrame" ).new( config )
   local roll_controller = require( "src/RollController" ).new(
     roll_tracker,
     player_info,
     ml_candidates,
     softres,
     loot_list,
-    config
+    config,
+    player_selection_frame
   )
 
-  local master_loot_frame = require( "src/MasterLootCandidateSelectionFrame" ).new( winner_tracker, roll_controller, config )
   local awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ) )
   local loot_award_callback = require( "src/LootAwardCallback" ).new( awarded_loot, roll_controller, winner_tracker )
-  local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, master_loot_frame, loot_list, roll_controller )
+  local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, loot_list, roll_controller )
   deps[ "MasterLoot" ] = master_loot
 
   local strategy_factory = require( "src/RollingStrategyFactory" ).new(
@@ -176,7 +177,7 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   deps[ "RollingLogic" ] = rolling_logic
 
   local popup_builder = require( "mocks/PopupBuilder" )
-  local popup = require( "mocks/RollingPopup" ).new( popup_builder.new(), db( "dummy" ), config, roll_controller )
+  local popup = require( "mocks/RollingPopup" ).new( popup_builder.new(), db( "dummy" ), config )
   local noop = function() end
 
   local rolling_popup_content = require( "src/RollingPopupContent" ).new(
@@ -187,8 +188,7 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
     config,
     raid_roll or noop,
     roll_item or noop,
-    insta_raid_roll or noop,
-    select_player or noop
+    insta_raid_roll or noop
   )
   deps[ "RollingPopupContent" ] = rolling_popup_content
 

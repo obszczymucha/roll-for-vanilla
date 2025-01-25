@@ -54,7 +54,9 @@ local getn = table.getn
 ---@param ml_candidates MasterLootCandidates
 ---@param softres GroupAwareSoftRes
 ---@param loot_list SoftResLootList
-function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, config )
+---@param rolling_popup RollingPopup
+---@param player_selection_frame MasterLootCandidateSelectionFrame
+function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, config, rolling_popup, player_selection_frame )
   local callbacks = {}
   local ml_confirmation_data = nil ---@type MasterLootConfirmationData?
   local preview_data = nil ---@type RollingPopupPreviewData
@@ -232,9 +234,28 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
       table.insert( buttons, button( "Roll", function() start( RS.NormalRoll, item, item_count, config.default_rolling_time_seconds() ) end ) )
       add_close_button( buttons )
 
-      print( string.format( "dropped_item: %s  candidate_count: %s", dropped_item and dropped_item.id, candidate_count ) )
       if dropped_item and candidate_count > 0 then
-        table.insert( buttons, button( "AwardOther", function() end ) )
+        table.insert( buttons,
+          button( "AwardOther", function()
+            ---@type MasterLootCandidate[]
+            local players = m.map( candidates,
+              ---@param candidate ItemCandidate
+              function( candidate )
+                ---@type MasterLootCandidate
+                return {
+                  name = candidate.name,
+                  class = candidate.class,
+                  is_winner = false,
+                  confirm_fn = function()
+                    player_selection_frame.hide()
+                    show_master_loot_confirmation( candidate, dropped_item, RS.NormalRoll )
+                  end
+                }
+              end )
+
+            player_selection_frame.show( players )
+            player_selection_frame.anchor_to( rolling_popup.get_frame() )
+          end ) )
       end
 
       preview_data = {
@@ -414,6 +435,12 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     roll_tracker.waiting_for_rolls()
     notify_subscribers( "waiting_for_rolls" )
   end
+
+  ---@class MasterLootCandidate
+  ---@field name string
+  ---@field class PlayerClass
+  ---@field is_winner boolean
+  ---@field confirm_fn fun()
 
   ---@class LootAwardedData
   ---@field player_name string

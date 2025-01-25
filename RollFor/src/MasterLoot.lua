@@ -14,20 +14,17 @@ local getn = table.getn
 
 ---@class MasterLoot
 ---@field on_loot_opened fun()
----@field on_loot_closed fun()
 ---@field on_recipient_inventory_full fun()
 ---@field on_player_is_too_far fun()
 ---@field on_unknown_error_message fun( message: string )
----@field show_loot_candidates_frame fun( item: DroppedItem, strategy: RollingStrategyType )
 ---@field on_loot_slot_cleared fun( slot: number )
 ---@field on_loot_received fun( player_name: string, item_id: number, item_link: string )
 
 ---@param master_loot_candidates MasterLootCandidates
 ---@param loot_award_callback LootAwardCallback
----@param player_selection_frame MasterLootCandidateSelectionFrame
 ---@param loot_list LootList
 ---@param roll_controller RollController
-function M.new( master_loot_candidates, loot_award_callback, player_selection_frame, loot_list, roll_controller )
+function M.new( master_loot_candidates, loot_award_callback, loot_list, roll_controller )
   ---@type { player: ItemCandidate|Winner, item: Item }?
   local m_confirmed = nil
   local m_slot_cache = {}
@@ -83,42 +80,12 @@ function M.new( master_loot_candidates, loot_award_callback, player_selection_fr
     end
 
     m.api.GiveMasterLoot( slot, index )
-    player_selection_frame.hide()
-  end
-
-  ---@param item DroppedItem
-  ---@param strategy RollingStrategyType
-  local function show_loot_candidates_frame( item, strategy )
-    player_selection_frame.create()
-    player_selection_frame.hide()
-
-    local candidates = master_loot_candidates.get()
-
-    if getn( candidates ) == 0 then
-      -- This happened before.
-      m.pretty_print( "Game API didn't return any loot candidates.", m.colors.red )
-      return
-    end
-
-    player_selection_frame.create_candidate_frames( candidates, item, strategy )
-    player_selection_frame.show( item.link )
   end
 
   local function on_loot_opened()
     M.debug.add( "on_loot_opened" )
     clear_table( m_slot_cache )
     reset_confirmation()
-  end
-
-  local function on_loot_closed()
-    M.debug.add( "on_loot_closed" )
-    -- Do not clear items when the loot window is closed.
-    -- It's possible that the item was master looted and the master looter moved the character quickly,
-    -- which in turn closed the loot window. This can trigger LOOT_CLOSED and we don't want to clear
-    -- the items in that case. When the loot is closed the LOOT_SLOT_CLEARED doesn't fire for us, so
-    -- we need to additionally check the CHAT_MSG_LOOT below.
-    -- clear_table( m_slot_cache )
-    player_selection_frame.hide()
   end
 
   local function on_loot_received( player_name, item_id, item_link )
@@ -163,11 +130,9 @@ function M.new( master_loot_candidates, loot_award_callback, player_selection_fr
   ---@type MasterLoot
   return {
     on_loot_opened = on_loot_opened,
-    on_loot_closed = on_loot_closed,
     on_recipient_inventory_full = on_recipient_inventory_full,
     on_player_is_too_far = on_player_is_too_far,
     on_unknown_error_message = on_unknown_error_message,
-    show_loot_candidates_frame = show_loot_candidates_frame,
     on_loot_slot_cleared = on_loot_slot_cleared,
     on_loot_received = on_loot_received
   }
