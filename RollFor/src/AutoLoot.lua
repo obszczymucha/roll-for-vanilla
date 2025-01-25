@@ -14,6 +14,17 @@ local M = {}
 local button_visible = false
 local _G = getfenv( 0 )
 
+---@class AutoLoot
+---@field on_loot_opened fun()
+---@field add fun( item_link: string )
+---@field remove fun( item_link: string )
+---@field clear fun()
+---@field loot_item fun( slot: number )
+
+---@param loot_list LootList
+---@param api table
+---@param db table
+---@param config Config
 function M.new( loot_list, api, db, config )
   db.items = db.items or {}
 
@@ -149,6 +160,7 @@ function M.new( loot_list, api, db, config )
   _G[ "SLASH_RFAL1" ] = "/rfal"
   _G[ "SlashCmdList" ][ "RFAL" ] = on_command
 
+  ---@type AutoLoot
   return {
     on_loot_opened = on_loot_opened,
     add = add,

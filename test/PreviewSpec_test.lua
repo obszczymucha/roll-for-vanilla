@@ -88,7 +88,7 @@ end
 
 ---@param items (MasterLootDistributableItem)[]?
 local function mock_loot_list( items )
-  return frequire( "mocks/LootList" )( items or {} ).new()
+  return frequire( "mocks/LootList" )( items or {} )
 end
 
 local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_player )
@@ -108,7 +108,10 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   local chat = deps[ "Chat" ] or require( "src/Chat" ).new( chat_api, group_roster, player_info )
   deps[ "Chat" ] = chat
 
-  local loot_list = deps[ "LootList" ] or mock_loot_list()
+  local loot_facade = deps[ "LootFacade" ] or require( "mocks/LootFacade" ).new()
+  deps[ "LootFacade" ] = loot_facade
+
+  local loot_list = deps[ "LootList" ] and deps[ "LootList" ].new( loot_facade ) or mock_loot_list().new( loot_facade )
   deps[ "SoftResLootList" ] = loot_list
 
   local ml_candidates_api = deps[ "MasterLootCandidatesApi" ] or require( "mocks/MasterLootCandidatesApi" ).new( group_roster )
@@ -185,6 +188,26 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   local loot_award_popup = require( "mocks/LootAwardPopup" ).new( nil, roll_controller )
   deps[ "LootAwardPopup" ] = loot_award_popup
 
+  require( "src/RollResultAnnouncer" ).new( chat, roll_controller, roll_tracker, config )
+  local auto_loot = require( "mocks/AutoLoot" ).new()
+  local dropped_loot = require( "src/DroppedLoot" ).new( db( "dummy" ) )
+  local dropped_loot_announce = require( "src/DroppedLootAnnounce" ).new( loot_list, chat, dropped_loot, softres, winner_tracker, player_info )
+  local auto_group_loot = require( "mocks/AutoGroupLoot" ).new()
+  local loot_frame = require( "mocks/LootFrame" ).new()
+  local loot_auto_process = require( "src/LootAutoProcess" ).new( config, roll_tracker, loot_list, roll_controller, player_info )
+  local loot_facade_listener = require( "src/LootFacadeListener" ).new(
+    loot_facade,
+    auto_loot,
+    dropped_loot_announce,
+    master_loot,
+    auto_group_loot,
+    loot_frame,
+    roll_controller,
+    loot_auto_process,
+    player_info
+  )
+  deps[ "LootFacadeListener" ] = loot_facade_listener
+
   if m.RollController.debug.is_enabled() then m.RollController.debug.disable() end
   return popup, roll_controller, rolling_logic.on_roll, deps
 end
@@ -193,11 +216,12 @@ end
 ---@param id number?
 ---@param sr_players RollingPlayer[]?
 ---@param hr boolean?
+---@param quality number?
 ---@return MasterLootDistributableItem
-local function i( name, id, sr_players, hr )
+local function i( name, id, sr_players, hr, quality )
   local l = u.item_link( name, id )
   local tooltip_link = IU.get_tooltip_link( l )
-  local item = IU.make_dropped_item( id or 123, name, l, tooltip_link )
+  local item = IU.make_dropped_item( id or 123, name, l, tooltip_link, quality or 4 )
 
   if hr then
     return IU.make_hardres_dropped_item( item )
@@ -376,9 +400,9 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_displa
       :loot_list( item )
       :chat( chat )
       :build()
-  enable_debug( "RollController", "RollTracker", "RollingPopupContent" )
-  local award_popup           = deps[ "LootAwardPopup" ]
-  local rolling_popup_content = {
+  -- enable_debug( "RollController", "RollTracker", "RollingPopupContent" )
+  local award_popup                = deps[ "LootAwardPopup" ]
+  local rolling_popup_content      = {
     { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
     { type = "button", label = "Award winner",                    width = 130 },
@@ -410,6 +434,112 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_displa
   eq( award_popup.is_visible(), false )
   eq( popup.is_visible(), true )
   eq( popup.content(), rolling_popup_content )
+end
+
+function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_the_winner_when_confirmed()
+  -- Given
+  local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local chat                       = mock_chat()
+  local popup, controller, _, deps = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ) )
+      :loot_list( item )
+      :chat( chat )
+      :build()
+  local loot_facade                = deps[ "LootFacade" ] ---@type LootFacadeMock
+  enable_debug( "MasterLoot", "RollController" )
+  u.mock( "GetLootThreshold", 3 )
+  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+  local award_popup           = deps[ "LootAwardPopup" ]
+  local rolling_popup_content = {
+    { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
+    { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
+    { type = "button", label = "Award winner",                    width = 130 },
+    { type = "button", label = "Close",                           width = 70 },
+    { type = "button", label = "Award...",                        width = 90 },
+  }
+
+  -- When
+  controller.preview( item, 1 )
+
+  -- Then
+  eq( award_popup.is_visible(), false )
+  eq( popup.is_visible(), true )
+  eq( popup.content(), rolling_popup_content )
+
+  -- When
+  popup.click( "AwardWinner" )
+
+  -- Then
+  eq( award_popup.is_visible(), true )
+  eq( popup.is_visible(), false )
+  chat.assert_no_messages()
+  -- TODO: verify loot confirmation popup content
+
+  -- When
+  award_popup.confirm()
+
+  -- Then
+  chat.assert(
+    c( "RollFor: Psikutas received [Hearthstone]." )
+  )
+  eq( award_popup.is_visible(), false )
+  eq( popup.is_visible(), false )
+end
+
+function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_the_winner_when_confirmed_and_moved_quickly()
+  -- Given
+  local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local chat                       = mock_chat()
+  local popup, controller, _, deps = New()
+      :roster( p1, p2 )
+      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ) )
+      :loot_list( item )
+      :chat( chat )
+      :build()
+  local loot_facade                = deps[ "LootFacade" ] ---@type LootFacadeMock
+  enable_debug( "MasterLoot", "RollController" )
+  u.mock( "GetLootThreshold", 3 )
+  u.mock( "GiveMasterLoot", function()
+    loot_facade.notify( "LootClosed" )
+    loot_facade.notify( "ChatMsgLoot", string.format( "%s receives loot: %s", p1.name, item.link ) )
+  end )
+
+  local award_popup           = deps[ "LootAwardPopup" ]
+  local rolling_popup_content = {
+    { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
+    { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
+    { type = "button", label = "Award winner",                    width = 130 },
+    { type = "button", label = "Close",                           width = 70 },
+    { type = "button", label = "Award...",                        width = 90 },
+  }
+
+  -- When
+  controller.preview( item, 1 )
+
+  -- Then
+  eq( award_popup.is_visible(), false )
+  eq( popup.is_visible(), true )
+  eq( popup.content(), rolling_popup_content )
+
+  -- When
+  popup.click( "AwardWinner" )
+
+  -- Then
+  eq( award_popup.is_visible(), true )
+  eq( popup.is_visible(), false )
+  chat.assert_no_messages()
+  -- TODO: verify loot confirmation popup content
+
+  -- When
+  award_popup.confirm()
+
+  -- Then
+  chat.assert(
+    c( "RollFor: Psikutas received [Hearthstone]." )
+  )
+  eq( award_popup.is_visible(), false )
+  eq( popup.is_visible(), false )
 end
 
 PreviewSoftRessedItemSpec = {}

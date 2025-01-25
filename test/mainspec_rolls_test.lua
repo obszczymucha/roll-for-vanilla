@@ -132,18 +132,19 @@ end
 
 ---@param item MasterLootDistributableItem
 local function loot_item( item )
-  local loot_facade = m.loot_facade ---@type LootFacade
+  local loot_facade = m.loot_facade ---@type LootFacadeMock
   loot_facade.get_item_count = function() return 1 end
   loot_facade.get_link = function( _ ) return item.link end
   loot_facade.get_info = function( _ ) return { quality = 4, quantity = 1, texture = "chuj" } end
   u.mock( "GiveMasterLoot", function() end )
-  m.LootFacade.notify( "LootOpened" )
+  loot_facade.notify( "LootOpened" )
 end
 
+---@param loot_facade LootFacadeMock
 ---@param player_name string
 ---@param item_link string
-local function loot_received( player_name, item_link )
-  u.fire_event( "CHAT_MSG_LOOT", string.format( "%s receives loot: %s", player_name, item_link ) )
+local function loot_received( loot_facade, player_name, item_link )
+  loot_facade.notify( "ChatMsgLoot", string.format( "%s receives loot: %s", player_name, item_link ) )
 end
 
 function MainspecRollsSpec:should_only_record_loot_that_we_are_awarding()
@@ -153,6 +154,7 @@ function MainspecRollsSpec:should_only_record_loot_that_we_are_awarding()
   is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
   local controller = m.roll_controller ---@type RollController
   local awarded_loot = m.awarded_loot ---@type AwardedLoot
+  local loot_facade = m.loot_facade ---@type LootFacadeMock
 
   -- When
   local link = u.item_link( "Hearthstone", 123 )
@@ -161,7 +163,7 @@ function MainspecRollsSpec:should_only_record_loot_that_we_are_awarding()
   roll_for( item.name, 1, item.id )
   roll( "Obszczymucha", 13 )
   roll( "Psikutas", 69 )
-  RollFor.MasterLoot.debug.enable(true)
+  RollFor.MasterLoot.debug.enable( true )
 
   -- Then
   assert_messages(
@@ -174,16 +176,16 @@ function MainspecRollsSpec:should_only_record_loot_that_we_are_awarding()
   -- And we confirm loot award and move, so the loot is closed.
   local candidate = make_item_candidate( "Psikutas", C.Warrior, true )
   controller.award_confirmed( candidate, item )
-  m.LootFacade.notify( "LootClosed" )
+  loot_facade.notify( "LootClosed" )
 
   -- And also, Psikutas receives another item.
-  loot_received( "Psikutas", u.item_link( "Some other item", 96 ) )
+  loot_received( loot_facade, "Psikutas", u.item_link( "Some other item", 96 ) )
 
   -- Then
   eq( awarded_loot.has_item_been_awarded( "Psikutas", item.id ), false )
 
   -- And
-  loot_received( "Psikutas", item.link )
+  loot_received( loot_facade, "Psikutas", item.link )
 
   -- Then
   eq( awarded_loot.has_item_been_awarded( "Psikutas", item.id ), true )

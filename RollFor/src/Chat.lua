@@ -3,6 +3,8 @@ local m = RollFor
 
 if m.chat then return end
 
+local blue = m.colors.blue
+
 local M = {}
 
 ---@alias AnnounceFn fun( text: string, use_raid_warning: boolean? )
@@ -41,7 +43,7 @@ function M.new( api, group_roster, player_info )
   end
 
   local function info( text )
-    api.DEFAULT_CHAT_FRAME:AddMessage( text )
+    api.DEFAULT_CHAT_FRAME:AddMessage( string.format( "%s: %s", blue( "RollFor" ), text ) )
   end
 
   ---@type Chat

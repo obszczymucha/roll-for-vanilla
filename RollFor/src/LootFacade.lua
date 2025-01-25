@@ -35,8 +35,8 @@ M.interface = {
 ---| "LootOpened"
 ---| "LootClosed"
 ---| "LootSlotCleared"
+---| "ChatMsgLoot"
 
----@return LootFacade
 function M.new( event_frame, api )
   interface.validate( api, m.WowApi.LootInterface )
 
@@ -46,7 +46,8 @@ function M.new( event_frame, api )
     local blizz_event =
         event_name == "LootOpened" and "LOOT_OPENED" or
         event_name == "LootClosed" and "LOOT_CLOSED" or
-        event_name == "LootSlotCleared" and "LOOT_SLOT_CLEARED"
+        event_name == "LootSlotCleared" and "LOOT_SLOT_CLEARED" or
+        event_name == "ChatMsgLoot" and "CHAT_MSG_LOOT"
 
     if blizz_event then
       event_frame.subscribe( blizz_event, callback )
@@ -94,6 +95,7 @@ function M.new( event_frame, api )
     return api.LootSlotIsCoin( slot ) == 1 or false
   end
 
+  ---@type LootFacade
   return {
     subscribe = subscribe,
     get_item_count = get_item_count,

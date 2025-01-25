@@ -11,6 +11,10 @@ local ignore_zones = {
   "Blackwing Lair"
 }
 
+---@class AutoGroupLoot
+---@field on_loot_opened fun()
+---@field on_loot_slot_cleared fun()
+
 ---@param loot_list LootList
 ---@param config Config
 ---@param boss_list BossList
@@ -39,6 +43,7 @@ function M.new( loot_list, config, boss_list, player_info )
     end
   end
 
+  ---@type AutoGroupLoot
   return {
     on_loot_opened = on_loot_opened,
     on_loot_slot_cleared = on_loot_slot_cleared

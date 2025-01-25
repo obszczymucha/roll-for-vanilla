@@ -107,5 +107,6 @@ M.zones    = {
   }
 }
 
+---@type BossList
 m.BossList = M
 return M

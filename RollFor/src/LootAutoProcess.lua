@@ -25,7 +25,7 @@ local clear_table = m.clear_table
 ---@return LootAutoProcess
 function M.new( config, roll_tracker, loot_list, roll_controller, player_info )
   local loot_cache = {}
-  local selected_loot_list_item
+  -- local selected_loot_list_item
 
   local function process_next_item()
     local threshold = m.api.GetLootThreshold()
@@ -69,13 +69,13 @@ function M.new( config, roll_tracker, loot_list, roll_controller, player_info )
     loot_cache.n = 0
   end
 
-  local function on_loot_list_item_selected( selected_item )
-    selected_loot_list_item = selected_item
-  end
-
-  local function on_loot_list_item_deselected()
-    selected_loot_list_item = nil
-  end
+  -- local function on_loot_list_item_selected( selected_item )
+  --   selected_loot_list_item = selected_item
+  -- end
+  --
+  -- local function on_loot_list_item_deselected()
+  --   selected_loot_list_item = nil
+  -- end
 
   roll_controller.subscribe( "process_next_item", process_next_item )
   -- roll_controller.subscribe( "loot_list_item_selected", on_loot_list_item_selected )

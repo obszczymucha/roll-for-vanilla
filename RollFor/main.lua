@@ -339,6 +339,18 @@ local function create_components()
 
   -- TODO: Add type.
   M.roll_result_announcer = m.RollResultAnnouncer.new( M.chat, M.roll_controller, M.roll_tracker, M.config )
+
+  M.loot_facade_listener = m.LootFacadeListener.new(
+    M.loot_facade,
+    M.auto_loot,
+    M.dropped_loot_announce,
+    M.master_loot,
+    M.auto_group_loot,
+    M.loot_frame,
+    M.roll_controller,
+    M.loot_auto_process,
+    M.player_info
+  )
 end
 
 local function subscribe_for_component_events()
@@ -348,29 +360,6 @@ local function subscribe_for_component_events()
     else
       M.master_loot_warning.hide()
     end
-  end )
-
-  M.loot_facade.subscribe( "LootOpened", function()
-    M.auto_loot.on_loot_opened()
-    M.dropped_loot_announce.on_loot_opened()
-    M.master_loot.on_loot_opened()
-    M.auto_group_loot.on_loot_opened()
-    M.loot_frame.show()
-    M.roll_controller.loot_opened()
-    M.loot_auto_process.on_loot_opened()
-  end )
-
-  M.loot_facade.subscribe( "LootClosed", function()
-    M.master_loot.on_loot_closed()
-    M.roll_controller.loot_closed()
-    M.loot_frame.hide()
-    M.loot_auto_process.on_loot_closed()
-  end )
-
-  M.loot_facade.subscribe( "LootSlotCleared", function( slot )
-    M.master_loot.on_loot_slot_cleared( slot )
-    M.auto_group_loot.on_loot_slot_cleared()
-    M.loot_frame.update()
   end )
 end
 
@@ -551,35 +540,6 @@ end
 local function on_master_looter_changed( player_name )
   if M.player_info.get_name() == player_name and m.is_master_loot() then
     M.ace_timer.ScheduleTimer( M, M.config.print_raid_roll_settings, 0.1 )
-  end
-end
-
--- This covers the scenario where the master looter assigns the loot and then moves immediately,
--- causing the loot frame to close. In normal circumstances, when the last item gets assigned,
--- the LOOT_SLOT_CLEARED fires and then LOOT_CLOSED event follows. In this case, however,
--- LOOT_CLOSED fires first, because of the player movement and the LOOT_SLOT_CLEARED doesn't
--- (because we're not looting anymore).
-function M.on_chat_msg_loot( message )
-  for player_name, link_with_optional_quantity in string.gmatch( message, "(.-) receives loot: (.*)" ) do
-    local item_link = M.item_utils.parse_link( link_with_optional_quantity )
-    local item_id = item_link and M.item_utils.get_item_id( item_link )
-
-    if item_id and item_link then
-      M.master_loot.on_loot_received( player_name, item_id, item_link )
-    end
-
-    return
-  end
-
-  for link_with_optional_quantity in string.gmatch( message, "You receive loot: (.*)" ) do
-    local item_link = M.item_utils.parse_link( link_with_optional_quantity )
-    local item_id = item_link and M.item_utils.get_item_id( item_link )
-
-    if item_id and item_link then
-      M.master_loot.on_loot_received( M.player_info.get_name(), item_id, item_link )
-    end
-
-    return
   end
 end
 
