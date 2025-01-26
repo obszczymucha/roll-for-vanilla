@@ -475,9 +475,15 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     end
 
     notify_subscribers( "loot_awarded", { player_name = player_name, item_id = item_id, item_link = item_link } )
-    process_next_item()
 
     local data = roll_tracker.get()
+
+    if data.status and data.status.type == S.Preview and data.item_count > 0 then
+      new_preview( data.item, data.item_count )
+      return
+    end
+
+    process_next_item()
 
     if getn( data.winners ) == 0 then
       rolling_popup.hide()
@@ -486,6 +492,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
       notify_subscribers( "not_all_items_awarded" )
     end
   end
+
   local function loot_opened()
     notify_subscribers( "loot_opened" )
   end

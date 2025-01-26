@@ -9,9 +9,6 @@ local hl = m.colors.hl
 local clear_table = m.clear_table
 local err = m.err
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 ---@class MasterLoot
 ---@field on_loot_opened fun()
 ---@field on_recipient_inventory_full fun()

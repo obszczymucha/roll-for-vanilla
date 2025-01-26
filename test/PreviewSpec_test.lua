@@ -6,10 +6,10 @@ local lu, eq = u.luaunit( "assertEquals" )
 local m, T, IU = require( "src/modules" ), require( "src/Types" ), require( "src/ItemUtils" )
 reqsrc( "DebugBuffer", "Module", "Types", "SoftResDataTransformer", "RollingLogicUtils" )
 reqsrc( "TieRollingLogic", "SoftResRollingLogic", "NonSoftResRollingLogic", "RaidRollRollingLogic", "InstaRaidRollRollingLogic" )
+local SoftResAwardedLootDecorator = require( "src/SoftResAwardedLootDecorator" )
 local SoftResDecorator = require( "src/SoftResPresentPlayersDecorator" )
 local SoftRes, Db = require( "src/SoftRes" ), require( "src/Db" )
 local RollingLogic = require( "src/RollingLogic" )
-local db = Db.new( {} )
 ---@diagnostic disable-next-line: unused-local
 local sr, make_data = u.soft_res_item, u.create_softres_data
 
@@ -75,11 +75,13 @@ local function mock_config( configuration )
 end
 
 ---@param group_roster GroupRoster
+---@param awarded_loot AwardedLoot
 ---@param data table?
 ---@return GroupAwareSoftRes
-local function group_aware_softres( group_roster, data )
+local function group_aware_softres( group_roster, awarded_loot, data )
   local raw_softres = SoftRes.new()
-  local result = SoftResDecorator.new( group_roster, raw_softres )
+  local awarded_loot_softres = SoftResAwardedLootDecorator.new( awarded_loot, raw_softres )
+  local result = SoftResDecorator.new( group_roster, awarded_loot_softres )
 
   if data then
     result.import( data )
@@ -102,6 +104,7 @@ local function new( dependencies )
   u.targetting_enemy( "Princess Kenny" )
 
   local deps = dependencies or {}
+  local db = Db.new( {} )
 
   local config = deps[ "Config" ] or mock_config()
   deps[ "Config" ] = config
@@ -136,7 +139,9 @@ local function new( dependencies )
   local roll_tracker = require( "src/RollTracker" ).new()
   deps[ "RollTracker" ] = roll_tracker
 
-  local softres = deps[ "SoftResData" ] and group_aware_softres( group_roster, deps[ "SoftResData" ] ) or group_aware_softres( group_roster )
+  local awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ) )
+  local softres = deps[ "SoftResData" ] and group_aware_softres( group_roster, awarded_loot, deps[ "SoftResData" ] ) or
+      group_aware_softres( group_roster, awarded_loot )
 
   local popup_builder = require( "mocks/PopupBuilder" )
   local rolling_popup = require( "mocks/RollingPopup" ).new( popup_builder.new(), db( "dummy" ), config )
@@ -153,7 +158,6 @@ local function new( dependencies )
     player_selection_frame
   )
 
-  local awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ) )
   local loot_award_callback = require( "src/LootAwardCallback" ).new( awarded_loot, roll_controller, winner_tracker )
   local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, loot_list, roll_controller )
   deps[ "MasterLoot" ] = master_loot
@@ -208,7 +212,7 @@ local function new( dependencies )
   )
   deps[ "LootFacadeListener" ] = loot_facade_listener
 
-  require("src/DebugBuffer").disable_all()
+  require( "src/DebugBuffer" ).disable_all()
   return rolling_popup, roll_controller, rolling_logic.on_roll, deps
 end
 
@@ -583,18 +587,8 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
       :chat( chat )
       :build()
   local loot_facade                = deps[ "LootFacade" ] ---@type LootFacadeMock
-  enable_debug( "RollController" )
   u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
-  local award_popup           = deps[ "LootAwardPopup" ]
-  local rolling_popup_content = {
-    { type = link,           link = item.link,                              tooltip_link = item.tooltip_link, count = 2 },
-    { type = "text",         value = "Obszczymucha soft-ressed this item.", padding = 11 },
-    { type = "award_button", label = "Award",                               width = 90,                       padding = 6 },
-    { type = "text",         value = "Psikutas soft-ressed this item.",     padding = 8 },
-    { type = "award_button", label = "Award",                               width = 90,                       padding = 6 },
-    { type = "button",       label = "Close",                               width = 70 },
-    { type = "button",       label = "Award...",                            width = 90 },
-  }
+  local award_popup = deps[ "LootAwardPopup" ]
 
   -- When
   loot_facade.notify( "LootOpened" )
@@ -611,7 +605,15 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
   -- Then
   eq( award_popup.is_visible(), false )
   eq( popup.is_visible(), true )
-  eq( popup.content(), rolling_popup_content )
+  eq( popup.content(), {
+    { type = link,           link = item.link,                              tooltip_link = item.tooltip_link, count = 2 },
+    { type = "text",         value = "Obszczymucha soft-ressed this item.", padding = 11 },
+    { type = "award_button", label = "Award",                               width = 90,                       padding = 6 },
+    { type = "text",         value = "Psikutas soft-ressed this item.",     padding = 8 },
+    { type = "award_button", label = "Award",                               width = 90,                       padding = 6 },
+    { type = "button",       label = "Close",                               width = 70 },
+    { type = "button",       label = "Award...",                            width = 90 },
+  } )
 
   -- When
   popup.award( "Obszczymucha" )
@@ -628,7 +630,36 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
   chat.assert(
     pm( "Princess Kenny dropped 2 items:" ),
     pm( "1. [Hearthstone] (SR by Obszczymucha)" ),
-    pm( "2. [Hearthstone] (ikutas)" ),
+    pm( "2. [Hearthstone] (SR by Psikutas)" ),
+    c( "RollFor: Obszczymucha received [Hearthstone]." )
+  )
+  eq( award_popup.is_visible(), false )
+  eq( popup.is_visible(), true )
+  eq( popup.content(), {
+    { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
+    { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
+    { type = "button", label = "Award winner",                    width = 130 },
+    { type = "button", label = "Close",                           width = 70 },
+    { type = "button", label = "Award...",                        width = 90 },
+  } )
+
+  -- When
+  popup.click( "AwardWinner" )
+
+  -- Then
+  eq( award_popup.is_visible(), true )
+  eq( popup.is_visible(), false )
+  -- TODO: verify loot confirmation popup content
+
+  -- When
+  award_popup.confirm()
+
+  -- Then
+  chat.assert(
+    pm( "Princess Kenny dropped 2 items:" ),
+    pm( "1. [Hearthstone] (SR by Obszczymucha)" ),
+    pm( "2. [Hearthstone] (SR by Psikutas)" ),
+    c( "RollFor: Obszczymucha received [Hearthstone]." ),
     c( "RollFor: Psikutas received [Hearthstone]." )
   )
   eq( award_popup.is_visible(), false )

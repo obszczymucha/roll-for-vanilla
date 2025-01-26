@@ -3,7 +3,7 @@ local m = RollFor
 
 if m.LootAwardCallback then return end
 
-local M = {}
+local M = m.Module.new( "LootAwardCallback" )
 
 ---@class LootAwardCallback
 ---@field on_loot_awarded fun( player_name: string, item_id: number, item_link: string )
@@ -16,6 +16,7 @@ function M.new( awarded_loot, roll_controller, winner_tracker )
   ---@param item_id number
   ---@param item_link string
   local function on_loot_awarded( player_name, item_id, item_link )
+    M.debug.add( string.format( "on_loot_awarded(%s, %s, %s)", player_name, item_id, item_link ) )
     awarded_loot.award( player_name, item_id )
     roll_controller.loot_awarded( player_name, item_id, item_link )
     winner_tracker.untrack( player_name, item_link )

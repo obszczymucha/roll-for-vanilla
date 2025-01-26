@@ -316,8 +316,8 @@ function M.new()
     M.debug.add( "cleared" )
   end
 
-  local function clear_if_no_winners()
-    if getn( winners ) == 0 then
+  local function clear_if_no_winners( w )
+    if getn( w ) == 0 then
       clear()
     end
   end
@@ -327,17 +327,21 @@ function M.new()
   local function loot_awarded( player_name, item_id )
     if not item_on_roll or item_on_roll.id ~= item_id then return end
 
-    for i, winner in ipairs( winners ) do
+    local w = status.type == S.Preview and status.winners or winners
+
+    print( string.format( "Size: %s", getn( w ) ) )
+    for i, winner in ipairs( w ) do
       if winner.name == player_name then
-        table.remove( winners, i )
+        table.remove( w, i )
+        print( string.format( "Size: %s", getn( w ) ) )
         item_on_roll_count = item_on_roll_count - 1
-        clear_if_no_winners()
+        clear_if_no_winners( w )
 
         return
       end
     end
 
-    clear_if_no_winners()
+    clear_if_no_winners( w )
   end
 
   ---@type RollTracker
