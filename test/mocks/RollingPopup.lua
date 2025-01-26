@@ -1,3 +1,4 @@
+---@diagnostic disable: inject-field
 local M = {}
 
 local u = require( "test/utils" )
@@ -30,37 +31,36 @@ end
 ---@field is_visible fun(): boolean
 ---@field click fun( button_type: RollingPopupButtonType )
 
+---@param popup_builder PopupBuilder
+---@param db table
 ---@param config Config
----@param controller RollController
-function M.new( popup_builder, db, config, controller )
+function M.new( popup_builder, db, config )
   local content
-  local m_data ---@type RollingPopupPreviewData?
+  local preview_content ---@type RollingPopupPreviewData?
 
   local popup = RollingPopup.new( popup_builder, db, config )
-  ---@diagnostic disable-next-line: inject-field
   popup.content = function() return content and cleanse( content ) or {} end
 
-  local old_refresh = popup.refresh
+  local original_refresh = popup.refresh
   popup.refresh = function( _, new_content )
     content = new_content
-    old_refresh( _, new_content )
+    original_refresh( _, new_content )
   end
 
-  ---@diagnostic disable-next-line: inject-field
+  local original_refresh_preview = popup.refresh_preview
+  popup.refresh_preview = function( _, new_content )
+    preview_content = new_content
+    original_refresh_preview( _, new_content )
+  end
+
   popup.is_visible = function()
     return popup.get_frame():IsVisible()
   end
 
-  ---@param data RollingPopupPreviewData
-  local function show_preview( data )
-    m_data = data
-  end
-
-  ---@diagnostic disable-next-line: inject-field
   popup.click = function( button_type )
-    if not m_data then return end
+    if not preview_content then return end
 
-    for _, button in ipairs( m_data.buttons ) do
+    for _, button in ipairs( preview_content.buttons ) do
       if button.type == button_type then button.callback() end
     end
   end

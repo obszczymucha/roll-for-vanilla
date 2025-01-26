@@ -739,8 +739,6 @@ function M.new(
     popup:show()
     popup:refresh( content )
   end
-
-  roll_controller.subscribe( "ShowRollingPopupPreview", show_preview )
 end
 
 m.RollingPopupContent = M
