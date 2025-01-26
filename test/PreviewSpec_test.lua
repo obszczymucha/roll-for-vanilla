@@ -96,7 +96,7 @@ local function mock_loot_facade()
   return require( "mocks/LootFacade" ).new()
 end
 
-local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_player )
+local function new( dependencies )
   u.loot_threshold( 2 )
   u.targetting_enemy( "Princess Kenny" )
 
@@ -180,18 +180,7 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   )
   deps[ "RollingLogic" ] = rolling_logic
 
-  local noop = function() end
-
-  local rolling_popup_content = require( "src/RollingPopupContent" ).new(
-    rolling_popup,
-    roll_controller,
-    roll_tracker,
-    loot_list,
-    config,
-    raid_roll or noop,
-    roll_item or noop,
-    insta_raid_roll or noop
-  )
+  local rolling_popup_content = require( "src/RollingPopupContentTransformer" ).new( config )
   deps[ "RollingPopupContent" ] = rolling_popup_content
 
   local loot_award_popup = require( "mocks/LootAwardPopup" ).new( nil, roll_controller )
@@ -376,9 +365,9 @@ end
 
 function PreviewNotSoftRessedItemSpec:should_display_award_other_button_that_shows_player_selection_popup_and_awards_the_item()
   -- Given
-  local loot_facade, chat          = mock_loot_facade(), mock_chat()
-  local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
-  local popup, controller, _, deps = New()
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller = New()
       :loot_facade( loot_facade )
       :chat( chat )
       :roster( p1, p2 )

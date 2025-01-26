@@ -66,7 +66,7 @@ src\RollController.lua
 src\RollingPopup.lua
 src\SoftResRollGuiData.lua
 src\TieRollGuiData.lua
-src\RollingPopupContent.lua
+src\RollingPopupContentTransformer.lua
 src\GuiElements.lua
 src\WelcomePopup.lua
 src\InstaRaidRollRollingLogic.lua

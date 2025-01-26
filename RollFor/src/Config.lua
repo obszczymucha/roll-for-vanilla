@@ -24,7 +24,6 @@ function M.new( db )
     [ "auto_master_loot" ] = { cmd = "auto-master-loot", display = "Auto master loot", help = "toggle auto master loot" },
     [ "rolling_popup_lock" ] = { cmd = "rolling-popup-lock", display = "Rolling popup lock", help = "toggle rolling popup lock" },
     [ "raid_roll_again" ] = { cmd = "raid-roll-again", display = string.format( "%s button", hl( "Raid roll again" ) ), help = string.format( "toggle %s button", hl( "Raid roll again" ) ) },
-    [ "rolling_popup" ] = { cmd = "rolling-popup", display = "Rolling popup", help = "toggle rolling popup" },
     [ "insta_raid_roll" ] = { cmd = "insta-rr", display = "Insta raid-roll", help = "toggle insta raid-roll" },
     [ "auto_process_loot" ] = { cmd = "auto-process-loot", display = "Auto process loot", help = "toggle auto loot processing" },
     [ "autostart_loot_process" ] = { cmd = "autostart-loot-process", display = "Autostart loot process on loot open", help = "toggle autostart loot processing" },
@@ -43,7 +42,6 @@ function M.new( db )
     if not db.os_roll_threshold then db.os_roll_threshold = 99 end
     if not db.tmog_roll_threshold then db.tmog_roll_threshold = 98 end
     if db.tmog_rolling_enabled == nil then db.tmog_rolling_enabled = true end
-    if db.rolling_popup == nil then db.rolling_popup = true end
     if db.show_ml_warning == nil then db.show_ml_warning = true end
     if db.default_rolling_time_seconds == nil then db.default_rolling_time_seconds = 8 end
     if db.master_loot_frame_rows == nil then db.master_loot_frame_rows = 5 end

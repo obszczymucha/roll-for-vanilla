@@ -98,7 +98,7 @@ local function mock_loot_list( items )
   return frequire( "mocks/LootList" )( items or {} )
 end
 
-local function new( dependencies, raid_roll, roll_item, insta_raid_roll )
+local function new( dependencies )
   local deps = dependencies or {}
 
   local config = deps[ "Config" ] or mock_config()
@@ -179,18 +179,7 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll )
   )
   deps[ "RollingLogic" ] = rolling_logic
 
-  local noop = function() end
-
-  local rolling_popup_content = require( "src/RollingPopupContent" ).new(
-    rolling_popup,
-    roll_controller,
-    roll_tracker,
-    loot_list,
-    config,
-    raid_roll or noop,
-    roll_item or noop,
-    insta_raid_roll or noop
-  )
+  local rolling_popup_content = require( "src/RollingPopupContentTransformer" ).new( config )
   deps[ "RollingPopupContent" ] = rolling_popup_content
 
   if m.RollController.debug.is_enabled() then m.RollController.debug.disable() end
@@ -268,7 +257,7 @@ local function New()
   return M
 end
 
-RaidRollPopupContentSpec = {}
+local RaidRollPopupContentSpec = {}
 
 function RaidRollPopupContentSpec:should_return_initial_content()
   -- Given
@@ -520,7 +509,7 @@ function RaidRollPopupContentSpec:should_display_the_remaining_winner_after_awar
   } )
 end
 
-InstaRaidRollPopupContentSpec = {}
+local InstaRaidRollPopupContentSpec = {}
 
 function InstaRaidRollPopupContentSpec:should_display_the_winner()
   -- Given
@@ -707,7 +696,7 @@ function InstaRaidRollPopupContentSpec:should_display_the_winners_and_the_indivi
   } )
 end
 
-NormalRollPopupContentSpec = {}
+local NormalRollPopupContentSpec = {}
 
 function NormalRollPopupContentSpec:should_return_initial_content()
   -- Given
@@ -1066,7 +1055,7 @@ function NormalRollPopupContentSpec:should_not_close_the_popup_if_someone_loots_
   } )
 end
 
-SoftResRollPopupContentSpec = {}
+local SoftResRollPopupContentSpec = {}
 
 function SoftResRollPopupContentSpec:should_preview_the_winner_without_award_button_if_the_winner_is_not_a_candidate()
   -- Given
@@ -1448,7 +1437,7 @@ function SoftResRollPopupContentSpec:should_display_the_remaining_winner_after_a
     } )
 end
 
-TieRollPopupContentSpec = {}
+local TieRollPopupContentSpec = {}
 
 function TieRollPopupContentSpec:should_display_tied_rolls()
   -- Given

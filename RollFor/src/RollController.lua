@@ -69,6 +69,13 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     end
   end
 
+  ---@class RgbaColor
+  ---@field r number
+  ---@field g number
+  ---@field b number
+  ---@field a number
+
+  ---@return RgbaColor
   local function get_color( quality )
     local color = m.api.ITEM_QUALITY_COLORS[ quality ] or { r = 0, g = 0, b = 0, a = 1 }
 
@@ -223,7 +230,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     roll_tracker.preview( item, item_count, candidates, soft_ressers, hard_ressed )
 
     local color = get_color( item.quality )
-    notify_subscribers( "border_color", { color = color } )
+    rolling_popup:border_color( color )
 
     local sr_count = getn( soft_ressers )
     local buttons = {}
@@ -271,7 +278,8 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
         buttons = buttons
       }
 
-      notify_subscribers( "ShowRollingPopupPreview", preview_data )
+      rolling_popup:show()
+      rolling_popup:refresh_preview( preview_data )
       return
     end
 
@@ -312,7 +320,8 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
         buttons = buttons
       }
 
-      notify_subscribers( "ShowRollingPopupPreview", preview_data )
+      rolling_popup:show()
+      rolling_popup:refresh_preview( preview_data )
       return
     end
 
@@ -330,7 +339,8 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
       buttons = buttons
     }
 
-    notify_subscribers( "ShowRollingPopupPreview", preview_data )
+    rolling_popup:show()
+    rolling_popup:refresh_preview( preview_data )
   end
 
   ---@param item Item|MasterLootDistributableItem
@@ -343,7 +353,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     roll_tracker.preview( item, count, candidates, soft_ressers, hard_ressed )
     local color = get_color( item.quality )
 
-    notify_subscribers( "border_color", { color = color } )
+    rolling_popup:border_color( color )
     notify_subscribers( "preview", { item = item } )
   end
 
@@ -401,7 +411,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     local _, _, quality = m.api.GetItemInfo( string.format( "item:%s:0:0:0", item.id ) )
     local color = get_color( quality )
 
-    notify_subscribers( "border_color", { color = color } )
+    rolling_popup:border_color( color )
     notify_subscribers( "rolling_started" )
   end
 
@@ -549,7 +559,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
 
   ---@type RollController
   return {
-    preview = preview,
+    preview = new_preview,
     start = start,
     winners_found = winners_found,
     finish = finish,

@@ -38,8 +38,9 @@ function M.new( popup_builder, db, config )
   local content
   local preview_content ---@type RollingPopupPreviewData?
 
-  local popup = RollingPopup.new( popup_builder, db, config )
-  popup.content = function() return content and cleanse( content ) or {} end
+  local transformer = require( "src/RollingPopupContentTransformer" ).new( config )
+  local popup = RollingPopup.new( popup_builder, transformer, db, config )
+  popup.content = function() return preview_content and cleanse( preview_content ) or {} end
 
   local original_refresh = popup.refresh
   popup.refresh = function( _, new_content )
@@ -54,7 +55,8 @@ function M.new( popup_builder, db, config )
   end
 
   popup.is_visible = function()
-    return popup.get_frame():IsVisible()
+    local frame = popup and popup.get_frame()
+    return frame and frame:IsVisible() or false
   end
 
   popup.click = function( button_type )

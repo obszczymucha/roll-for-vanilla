@@ -19,8 +19,8 @@ local button_defaults = {
 ---@field refresh fun( _, content: table )
 ---@field refresh_preview fun( _, content: RollingPopupPreviewData ) -- TODO: adding temporarily to retain backwards compatibility.
 ---@field hide fun()
----@field border_color fun( _, r: number, g: number, b: number, a: number )
----@field backdrop_color fun( _, r: number, g: number, b: number, a: number )
+---@field border_color fun( _, color: RgbaColor )
+---@field backdrop_color fun( _, color: RgbaColor )
 ---@field get_frame fun(): table
 
 local M = {}
@@ -28,9 +28,10 @@ local M = {}
 M.center_point = { point = "CENTER", relative_point = "CENTER", x = 0, y = 150 }
 
 ---@param popup_builder PopupBuilder
+---@param content_transformer RollingPopupContentTransformer
 ---@param db table
 ---@param config Config
-function M.new( popup_builder, db, config )
+function M.new( popup_builder, content_transformer, db, config )
   ---@type Popup?
   local popup
   db.point = db.point or M.center_point
@@ -127,11 +128,11 @@ function M.new( popup_builder, db, config )
     return result
   end
 
-  local function refresh( _, content )
-    if not popup then return end
+  local function refresh( _, data )
+    if not popup then popup = create_popup() end
     popup:clear()
 
-    for _, v in ipairs( content ) do
+    for _, v in ipairs( content_transformer.transform( data ) ) do
       popup.add_line( v.type, function( type, frame, lines )
         if type == "item_link_with_icon" then
           frame:SetItem( v, v.link and m.ItemUtils.get_tooltip_link( v.link ) )
@@ -209,8 +210,6 @@ function M.new( popup_builder, db, config )
   end
 
   local function show()
-    if not config.rolling_popup() then return end
-
     if not popup then
       popup = create_popup()
     else
@@ -224,20 +223,22 @@ function M.new( popup_builder, db, config )
     if popup then popup:Hide() end
   end
 
-  local function border_color( _, r, g, b, a )
+  ---@param color RgbaColor
+  local function border_color( _, color )
     if not popup then
       popup = create_popup()
     end
 
-    popup:border_color( r, g, b, a )
+    popup:border_color( color.r, color.g, color.b, color.a )
   end
 
-  local function backdrop_color( _, r, g, b, a )
+  ---@param color RgbaColor
+  local function backdrop_color( _, color )
     if not popup then
       popup = create_popup()
     end
 
-    popup:backdrop_color( r, g, b, a )
+    popup:backdrop_color( color.r, color.g, color.b, color.a )
   end
 
   -- roll_controller.subscribe( "all_items_awarded", hide )

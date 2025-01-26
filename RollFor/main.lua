@@ -10,7 +10,7 @@ local M = {}
 local info = m.pretty_print
 local hl = m.colors.highlight
 local RollSlashCommand = m.Types.RollSlashCommand
-local RS = m.Types.RollingStrategy
+-- local RS = m.Types.RollingStrategy
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
@@ -79,23 +79,23 @@ end
 --   player_list:SetPoint( "TOP", anchor, "BOTTOM", 0, -5 )
 -- end
 
----@param item Item
----@param item_count number
-local function raid_roll_item( item, item_count )
-  M.roll_controller.start( RS.RaidRoll, item, item_count )
-end
-
----@param item Item
----@param item_count number
-local function insta_raid_roll_item( item, item_count )
-  M.roll_controller.start( RS.InstaRaidRoll, item, item_count )
-end
-
----@param item Item
----@param item_count number
-local function roll_item( item, item_count )
-  M.roll_controller.start( RS.SoftResRoll, item, item_count, M.config.default_rolling_time_seconds() )
-end
+-- ---@param item Item
+-- ---@param item_count number
+-- local function raid_roll_item( item, item_count )
+--   M.roll_controller.start( RS.RaidRoll, item, item_count )
+-- end
+--
+-- ---@param item Item
+-- ---@param item_count number
+-- local function insta_raid_roll_item( item, item_count )
+--   M.roll_controller.start( RS.InstaRaidRoll, item, item_count )
+-- end
+--
+-- ---@param item Item
+-- ---@param item_count number
+-- local function roll_item( item, item_count )
+--   M.roll_controller.start( RS.SoftResRoll, item, item_count, M.config.default_rolling_time_seconds() )
+-- end
 
 local function create_components()
   ---@type AceTimer
@@ -217,8 +217,16 @@ local function create_components()
 
   local rolling_popup_db = db( "rolling_popup" )
 
+  ---@type RollingPopupContentTransformer
+  local rolling_popup_content_transformer = m.RollingPopupContentTransformer.new( M.config )
+
   ---@type RollingPopup
-  M.rolling_popup = m.RollingPopup.new( m.PopupBuilder.new( m.FrameBuilder ), rolling_popup_db, M.config )
+  M.rolling_popup = m.RollingPopup.new(
+    m.PopupBuilder.new( m.FrameBuilder ),
+    rolling_popup_content_transformer,
+    rolling_popup_db,
+    M.config
+  )
 
   ---@type RollController
   M.roll_controller = m.RollController.new(
@@ -278,18 +286,6 @@ local function create_components()
 
   ---@type LootAutoProcess
   M.loot_auto_process = m.LootAutoProcess.new( M.config, M.roll_tracker, M.loot_list, M.roll_controller, M.player_info )
-
-  -- TODO: Add type.
-  M.rolling_popup_content = m.RollingPopupContent.new(
-    M.rolling_popup,
-    M.roll_controller,
-    M.roll_tracker,
-    M.loot_list,
-    M.config,
-    raid_roll_item,
-    roll_item,
-    insta_raid_roll_item
-  )
 
   -- TODO: Add type.
   M.loot_award_popup = m.LootAwardPopup.new(
