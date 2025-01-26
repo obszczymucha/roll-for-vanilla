@@ -407,7 +407,7 @@ function PreviewNotSoftRessedItemSpec:should_display_award_other_button_that_sho
   eq( award_popup.is_visible(), false )
 
   -- When
-  player_selection.confirm( p1.name )
+  player_selection.select( p1.name )
 
   -- Then
   eq( player_selection.is_visible(), false )

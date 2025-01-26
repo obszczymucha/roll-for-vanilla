@@ -2,7 +2,7 @@ local M = {}
 
 ---@class MasterLootCandidateSelectionFrameMock : MasterLootCandidateSelectionFrame
 ---@field is_visible fun(): boolean
----@field confirm fun( player_name: string )
+---@field select fun( player_name: string )
 
 function M.new( config )
   local m_candidates = nil ---@type MasterLootCandidate[]?
@@ -24,7 +24,7 @@ function M.new( config )
     return frame and frame:IsVisible() or false
   end
 
-  local function confirm( player_name )
+  local function select( player_name )
     for _, candidate in ipairs( m_candidates or {} ) do
       if candidate.name == player_name then
         candidate.confirm_fn()
@@ -39,7 +39,7 @@ function M.new( config )
     hide = hide,
     get_frame = real_frame.get_frame,
     is_visible = is_visible,
-    confirm = confirm
+    select = select
   }
 end
 
