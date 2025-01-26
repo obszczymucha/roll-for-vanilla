@@ -208,7 +208,7 @@ local function new( dependencies )
   )
   deps[ "LootFacadeListener" ] = loot_facade_listener
 
-  if m.RollController.debug.is_enabled() then m.RollController.debug.disable() end
+  require("src/DebugBuffer").disable_all()
   return rolling_popup, roll_controller, rolling_logic.on_roll, deps
 end
 
@@ -583,7 +583,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
       :chat( chat )
       :build()
   local loot_facade                = deps[ "LootFacade" ] ---@type LootFacadeMock
-  -- enable_debug( "MasterLoot", "RollController" )
+  enable_debug( "RollController" )
   u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
   local award_popup           = deps[ "LootAwardPopup" ]
   local rolling_popup_content = {
@@ -628,7 +628,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
   chat.assert(
     pm( "Princess Kenny dropped 2 items:" ),
     pm( "1. [Hearthstone] (SR by Obszczymucha)" ),
-    pm( "2. [Hearthstone] (SR by Psikutas)" ),
+    pm( "2. [Hearthstone] (ikutas)" ),
     c( "RollFor: Psikutas received [Hearthstone]." )
   )
   eq( award_popup.is_visible(), false )

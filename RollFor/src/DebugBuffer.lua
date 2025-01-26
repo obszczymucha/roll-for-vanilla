@@ -5,6 +5,8 @@ if m.DebugBuffer then return end
 
 local M = {}
 
+M.modules = {}
+
 local pp = m.pretty_print
 
 ---@class DebugBuffer
@@ -85,7 +87,7 @@ function M.new( module_name, max_size )
     print_debug_status()
   end
 
-  return {
+  local result = {
     add = add,
     show = show,
     enable = enable,
@@ -93,6 +95,16 @@ function M.new( module_name, max_size )
     toggle = toggle,
     is_enabled = function() return debug_enabled end
   }
+
+  M.modules[ module_name ] = result
+
+  return result
+end
+
+M.disable_all = function()
+  for _, module in pairs( M.modules ) do
+    module.disable()
+  end
 end
 
 m.DebugBuffer = M
