@@ -240,10 +240,6 @@ function M.new( popup_builder, db, config, roll_controller )
     popup:backdrop_color( r, g, b, a )
   end
 
-  if not roll_controller.subscribe then
-    m.trace("CHUJ")
-    m.pdump(roll_controller)
-  end
   roll_controller.subscribe( "all_items_awarded", hide )
   roll_controller.subscribe( "rolling_popup_hide", hide )
 

@@ -500,7 +500,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
 
   ---@type RollController
   return {
-    preview = new_preview,
+    preview = preview,
     start = start,
     winners_found = winners_found,
     finish = finish,
