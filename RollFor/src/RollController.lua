@@ -139,7 +139,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
 
   ---@param buttons RollingPopupButtonWithCallback[]
   local function add_close_button( buttons )
-    table.insert( buttons, button( "Close", function() notify_subscribers( "rolling_popup_hide" ) end ) )
+    table.insert( buttons, button( "Close", function() rolling_popup.hide() end ) )
   end
 
   local function process_next_item()
@@ -201,7 +201,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
       abort_fn = function() award_aborted( item ) end
     }
 
-    notify_subscribers( "rolling_popup_hide" )
+    rolling_popup.hide()
     notify_subscribers( "show_master_loot_confirmation", ml_confirmation_data )
   end
 
@@ -254,7 +254,9 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
               end )
 
             player_selection_frame.show( players )
-            player_selection_frame.anchor_to( rolling_popup.get_frame() )
+            local frame = player_selection_frame.get_frame()
+            frame:ClearAllPoints()
+            frame:SetPoint( "TOP", rolling_popup.get_frame(), "BOTTOM", 0, -5 )
           end ) )
       end
 
@@ -464,6 +466,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     local data = roll_tracker.get()
 
     if getn( data.winners ) == 0 then
+      rolling_popup.hide()
       notify_subscribers( "all_items_awarded" )
     else
       notify_subscribers( "not_all_items_awarded" )
@@ -487,7 +490,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
 
     if status and status.type == S.Preview then
       roll_tracker.clear()
-      notify_subscribers( "rolling_popup_hide" )
+      rolling_popup.hide()
     end
   end
 

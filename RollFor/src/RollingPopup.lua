@@ -17,6 +17,7 @@ local button_defaults = {
 ---@class RollingPopup
 ---@field show fun()
 ---@field refresh fun( _, content: table )
+---@field refresh_preview fun( _, content: RollingPopupPreviewData ) -- TODO: adding temporarily to retain backwards compatibility.
 ---@field hide fun()
 ---@field border_color fun( _, r: number, g: number, b: number, a: number )
 ---@field backdrop_color fun( _, r: number, g: number, b: number, a: number )
@@ -98,7 +99,7 @@ function M.new( popup_builder, db, config )
         :movable()
         :on_drag_stop( on_drag_stop )
         :on_hide( function()
-          roll_controller.rolling_popup_closed()
+          print( "TODO: address ESC callback" )
         end )
         :self_centered_anchor()
 
@@ -240,7 +241,6 @@ function M.new( popup_builder, db, config )
   end
 
   -- roll_controller.subscribe( "all_items_awarded", hide )
-  -- roll_controller.subscribe( "rolling_popup_hide", hide )
 
   local function get_frame()
     if not popup then
@@ -254,6 +254,7 @@ function M.new( popup_builder, db, config )
   return {
     show = show,
     refresh = refresh,
+    refresh_preview = refresh,
     hide = hide,
     border_color = border_color,
     backdrop_color = backdrop_color,

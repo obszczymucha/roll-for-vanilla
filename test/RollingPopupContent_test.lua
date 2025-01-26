@@ -98,7 +98,7 @@ local function mock_loot_list( items )
   return frequire( "mocks/LootList" )( items or {} )
 end
 
-local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_player )
+local function new( dependencies, raid_roll, roll_item, insta_raid_roll )
   local deps = dependencies or {}
 
   local config = deps[ "Config" ] or mock_config()
@@ -136,6 +136,8 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
 
   local softres = deps[ "SoftResData" ] and group_aware_softres( group_roster, deps[ "SoftResData" ] ) or group_aware_softres( group_roster )
 
+  local popup_builder = require( "mocks/PopupBuilder" )
+  local rolling_popup = require( "mocks/RollingPopup" ).new( popup_builder.new(), db( "dummy" ), config )
   local player_selection_frame = require( "src/MasterLootCandidateSelectionFrame" ).new( config )
   local roll_controller = require( "src/RollController" ).new(
     roll_tracker,
@@ -144,6 +146,7 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
     softres,
     loot_list,
     config,
+    rolling_popup,
     player_selection_frame
   )
 
@@ -176,12 +179,10 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   )
   deps[ "RollingLogic" ] = rolling_logic
 
-  local popup_builder = require( "mocks/PopupBuilder" )
-  local popup = require( "mocks/RollingPopup" ).new( popup_builder.new(), db( "dummy" ), config )
   local noop = function() end
 
   local rolling_popup_content = require( "src/RollingPopupContent" ).new(
-    popup,
+    rolling_popup,
     roll_controller,
     roll_tracker,
     loot_list,
@@ -193,7 +194,7 @@ local function new( dependencies, raid_roll, roll_item, insta_raid_roll, select_
   deps[ "RollingPopupContent" ] = rolling_popup_content
 
   if m.RollController.debug.is_enabled() then m.RollController.debug.disable() end
-  return popup, roll_controller, rolling_logic.on_roll, deps
+  return rolling_popup, roll_controller, rolling_logic.on_roll, deps
 end
 
 ---@param name string
