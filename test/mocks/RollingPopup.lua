@@ -30,6 +30,7 @@ end
 ---@field content fun(): table
 ---@field is_visible fun(): boolean
 ---@field click fun( button_type: RollingPopupButtonType )
+---@field award fun( player_name: string )
 
 ---@param popup_builder PopupBuilder
 ---@param db table
@@ -59,6 +60,14 @@ function M.new( popup_builder, db, config )
 
     for _, button in ipairs( model.buttons ) do
       if button.type == button_type then button.callback() end
+    end
+  end
+
+  popup.award = function( player_name )
+    if not model then return end
+
+    for _, winner in ipairs( model.winners ) do
+      if winner.name == player_name and winner.award_callback then winner.award_callback() end
     end
   end
 
