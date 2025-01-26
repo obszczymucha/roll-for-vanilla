@@ -35,23 +35,18 @@ end
 ---@param db table
 ---@param config Config
 function M.new( popup_builder, db, config )
-  local content
-  local preview_content ---@type RollingPopupPreviewData?
+  local transformed_content
+  local model ---@type RollingPopupPreviewData?
 
   local transformer = require( "src/RollingPopupContentTransformer" ).new( config )
   local popup = RollingPopup.new( popup_builder, transformer, db, config )
-  popup.content = function() return preview_content and cleanse( preview_content ) or {} end
+  popup.content = function() return transformed_content and cleanse( transformed_content ) or {} end
 
   local original_refresh = popup.refresh
-  popup.refresh = function( _, new_content )
-    content = new_content
-    original_refresh( _, new_content )
-  end
-
-  local original_refresh_preview = popup.refresh_preview
-  popup.refresh_preview = function( _, new_content )
-    preview_content = new_content
-    original_refresh_preview( _, new_content )
+  popup.refresh = function( _, input )
+    transformed_content = transformer.transform( input )
+    model = input
+    original_refresh( _, model )
   end
 
   popup.is_visible = function()
@@ -60,9 +55,9 @@ function M.new( popup_builder, db, config )
   end
 
   popup.click = function( button_type )
-    if not preview_content then return end
+    if not model then return end
 
-    for _, button in ipairs( preview_content.buttons ) do
+    for _, button in ipairs( model.buttons ) do
       if button.type == button_type then button.callback() end
     end
   end

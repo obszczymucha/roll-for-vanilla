@@ -32,6 +32,7 @@ M.interface = {
 ---@field GetHeight fun(): number
 ---@field ClearAllPoints fun()
 ---@field IsVisible fun( self ): boolean
+---@field GetName fun(): string?
 
 ---@alias Anchor table
 

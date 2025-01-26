@@ -49,7 +49,8 @@ function M.new()
         GetHeight = function() return 1 end,
         ClearAllPoints = function() end,
         IsVisible = function( self ) return self.visible end,
-        resize = function() end
+        resize = function() end,
+        GetName = function() return "PrincessKenny" end
       }
     end
   }

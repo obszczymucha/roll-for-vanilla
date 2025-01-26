@@ -146,7 +146,10 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
 
   ---@param buttons RollingPopupButtonWithCallback[]
   local function add_close_button( buttons )
-    table.insert( buttons, button( "Close", function() rolling_popup.hide() end ) )
+    table.insert( buttons, button( "Close", function()
+      M.debug.add( "on_close" )
+      rolling_popup.hide()
+    end ) )
   end
 
   local function process_next_item()
@@ -163,7 +166,8 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     notify_subscribers( "award_aborted", { item = item } )
 
     if preview_data then
-      notify_subscribers( "ShowRollingPopupPreview", preview_data )
+      rolling_popup:show()
+      rolling_popup:refresh( preview_data )
       return
     end
 
@@ -233,7 +237,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     rolling_popup:border_color( color )
 
     local sr_count = getn( soft_ressers )
-    local buttons = {}
+    local buttons = {} ---@type RollingPopupButtonWithCallback[]
     local dropped_item = loot_list.get_by_id( item.id )
     local candidate_count = getn( candidates )
 
@@ -279,7 +283,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
       }
 
       rolling_popup:show()
-      rolling_popup:refresh_preview( preview_data )
+      rolling_popup:refresh( preview_data )
       return
     end
 
@@ -321,7 +325,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
       }
 
       rolling_popup:show()
-      rolling_popup:refresh_preview( preview_data )
+      rolling_popup:refresh( preview_data )
       return
     end
 
@@ -340,7 +344,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     }
 
     rolling_popup:show()
-    rolling_popup:refresh_preview( preview_data )
+    rolling_popup:refresh( preview_data )
   end
 
   ---@param item Item|MasterLootDistributableItem

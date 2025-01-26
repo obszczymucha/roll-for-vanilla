@@ -31,6 +31,7 @@ local button_defaults = {
 function M.new( popup_builder, roll_controller, db, center_point )
   local popup
   local top_padding = 14
+  local on_hide ---@type fun()?
 
   local function create_popup()
     local frame = popup_builder
@@ -42,6 +43,11 @@ function M.new( popup_builder, roll_controller, db, center_point )
         :esc()
         :gui_elements( m.GuiElements )
         :frame_style( "PrincessKenny" )
+        :on_hide( function()
+          if on_hide then
+            on_hide()
+          end
+        end )
         :self_centered_anchor()
         :build()
 
@@ -153,7 +159,15 @@ function M.new( popup_builder, roll_controller, db, center_point )
     end
 
     table.insert( content, { type = "button", label = "Yes", width = 80, on_click = data.confirm_fn } )
-    table.insert( content, { type = "button", label = "No", width = 80, on_click = data.abort_fn } )
+    table.insert( content, {
+      type = "button",
+      label = "No",
+      width = 80,
+      on_click = function()
+        on_hide = nil
+        data.abort_fn()
+      end
+    } )
 
     return content
   end
@@ -162,6 +176,7 @@ function M.new( popup_builder, roll_controller, db, center_point )
   local function show( data )
     if not popup then popup = create_popup() end
     popup:clear()
+    on_hide = data.abort_fn
 
     for _, v in ipairs( make_content( data ) ) do
       popup.add_line( v.type, function( type, frame, lines )
@@ -209,7 +224,10 @@ function M.new( popup_builder, roll_controller, db, center_point )
   end
 
   local function hide()
-    if popup then popup:Hide() end
+    if popup then
+      on_hide = nil
+      popup:Hide()
+    end
   end
 
   roll_controller.subscribe( "show_master_loot_confirmation", show )

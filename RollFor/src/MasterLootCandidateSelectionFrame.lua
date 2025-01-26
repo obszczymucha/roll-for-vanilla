@@ -193,11 +193,13 @@ function M.new( config )
       end
 
       button:SetScript( "OnClick", candidate.confirm_fn )
+
       if candidate.is_winner then
         button.mark_winner()
       else
         button.unmark_winner()
       end
+
       button:Show()
     end
 

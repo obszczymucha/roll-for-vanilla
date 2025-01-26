@@ -16,8 +16,7 @@ local button_defaults = {
 
 ---@class RollingPopup
 ---@field show fun()
----@field refresh fun( _, content: table )
----@field refresh_preview fun( _, content: RollingPopupPreviewData ) -- TODO: adding temporarily to retain backwards compatibility.
+---@field refresh fun( _, content: RollingPopupPreviewData ) -- TODO: adding temporarily to retain backwards compatibility.
 ---@field hide fun()
 ---@field border_color fun( _, color: RgbaColor )
 ---@field backdrop_color fun( _, color: RgbaColor )
@@ -37,6 +36,36 @@ function M.new( popup_builder, content_transformer, db, config )
   db.point = db.point or M.center_point
 
   local top_padding = 14
+  local on_hide ---@type fun()?
+
+  ---@param frame_name string?
+  ---@param close_button_callback fun()?
+  local function toggle_esc( frame_name, close_button_callback )
+    if not frame_name then return end
+
+    ---@diagnostic disable-next-line: undefined-global
+    local f = UISpecialFrames
+
+    local function disable_esc()
+      ---@diagnostic disable-next-line: undefined-global
+      for i, v in ipairs( f ) do
+        if v == frame_name then table.remove( f, i ) end
+      end
+    end
+
+    local function enable_esc()
+      disable_esc()
+      table.insert( f, frame_name )
+    end
+
+    if close_button_callback then
+      on_hide = close_button_callback
+      enable_esc()
+    else
+      on_hide = nil
+      disable_esc()
+    end
+  end
 
   local function create_popup()
     local function is_out_of_bounds( x, y, frame_width, frame_height, screen_width, screen_height )
@@ -93,14 +122,15 @@ function M.new( popup_builder, content_transformer, db, config )
         :point( get_point() )
         :bg_file( "Interface/Buttons/WHITE8x8" )
         :sound()
-        :esc()
         :backdrop_color( 0, 0, 0, 0.6 )
         :gui_elements( m.GuiElements )
         :frame_style( "PrincessKenny" )
         :movable()
         :on_drag_stop( on_drag_stop )
         :on_hide( function()
-          print( "TODO: address ESC callback" )
+          if on_hide then
+            on_hide()
+          end
         end )
         :self_centered_anchor()
 
@@ -128,9 +158,22 @@ function M.new( popup_builder, content_transformer, db, config )
     return result
   end
 
+  ---@param buttons RollingPopupButtonWithCallback[]
+  ---@return fun()?
+  local function find_close_button_callback( buttons )
+    for _, button in ipairs( buttons or {} ) do
+      if button.type == "Close" then
+        return button.callback
+      end
+    end
+  end
+
   local function refresh( _, data )
     if not popup then popup = create_popup() end
     popup:clear()
+
+    local close_button_callback = find_close_button_callback( data.buttons )
+    toggle_esc( popup:GetName(), close_button_callback )
 
     for _, v in ipairs( content_transformer.transform( data ) ) do
       popup.add_line( v.type, function( type, frame, lines )
@@ -165,7 +208,13 @@ function M.new( popup_builder, content_transformer, db, config )
           frame:SetHeight( v.height or button_defaults.height )
           frame:SetText( v.label or "" )
           frame:SetScale( v.scale or button_defaults.scale )
-          frame:SetScript( "OnClick", v.on_click or function() end )
+
+          local f = v.on_click and close_button_callback and v.on_click == close_button_callback and function()
+            on_hide = nil
+            close_button_callback()
+          end or v.on_click or function() end
+
+          frame:SetScript( "OnClick", f )
 
           if v.disabled then
             frame:Disable()
@@ -220,7 +269,10 @@ function M.new( popup_builder, content_transformer, db, config )
   end
 
   local function hide()
-    if popup then popup:Hide() end
+    if popup then
+      on_hide = nil
+      popup:Hide()
+    end
   end
 
   ---@param color RgbaColor
@@ -255,7 +307,6 @@ function M.new( popup_builder, content_transformer, db, config )
   return {
     show = show,
     refresh = refresh,
-    refresh_preview = refresh,
     hide = hide,
     border_color = border_color,
     backdrop_color = backdrop_color,

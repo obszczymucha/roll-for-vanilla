@@ -69,7 +69,8 @@ local function mock_config( configuration )
     tmog_rolling_enabled = function() return true end,
     insta_raid_roll = function() return true end,
     default_rolling_time_seconds = function() return 8 end,
-    auto_process_loot = function() return false end
+    auto_process_loot = function() return false end,
+    master_loot_frame_rows = function() return 5 end
   }
 end
 
@@ -139,7 +140,8 @@ local function new( dependencies )
 
   local popup_builder = require( "mocks/PopupBuilder" )
   local rolling_popup = require( "mocks/RollingPopup" ).new( popup_builder.new(), db( "dummy" ), config )
-  local player_selection_frame = require( "src/MasterLootCandidateSelectionFrame" ).new( config )
+  local player_selection_frame = require( "mocks/MasterLootCandidateSelectionFrame" ).new( config )
+  deps[ "PlayerSelectionFrame" ] = player_selection_frame
   local roll_controller = require( "src/RollController" ).new(
     roll_tracker,
     player_info,
@@ -365,14 +367,16 @@ end
 
 function PreviewNotSoftRessedItemSpec:should_display_award_other_button_that_shows_player_selection_popup_and_awards_the_item()
   -- Given
-  local loot_facade, chat = mock_loot_facade(), mock_chat()
-  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
-  local popup, controller = New()
+  local loot_facade, chat             = mock_loot_facade(), mock_chat()
+  local item, p1, p2                  = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local popup, controller, _, deps    = New()
       :loot_facade( loot_facade )
       :chat( chat )
       :roster( p1, p2 )
       :loot_list( item )
       :build()
+  local player_selection, award_popup = deps[ "PlayerSelectionFrame" ], deps[ "LootAwardPopup" ]
+  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
 
   -- When
   loot_facade.notify( "LootOpened" )
@@ -399,9 +403,28 @@ function PreviewNotSoftRessedItemSpec:should_display_award_other_button_that_sho
 
   -- Then
   eq( popup.is_visible(), true )
+  eq( player_selection.is_visible(), true )
+  eq( award_popup.is_visible(), false )
+
+  -- When
+  player_selection.confirm( p1.name )
+
+  -- Then
+  eq( player_selection.is_visible(), false )
+  eq( popup.is_visible(), false )
+  eq( award_popup.is_visible(), true )
+
+  -- When
+  award_popup.confirm()
+
+  -- Then
+  eq( player_selection.is_visible(), false )
+  eq( popup.is_visible(), false )
+  eq( award_popup.is_visible(), false )
   chat.assert(
     pm( "Princess Kenny dropped 1 item:" ),
-    pm( "1. [Hearthstone]" )
+    pm( "1. [Hearthstone]" ),
+    c( "RollFor: Psikutas received [Hearthstone]." )
   )
 end
 
@@ -446,9 +469,9 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_displa
       :loot_facade( loot_facade )
       :chat( chat )
       :build()
-  -- enable_debug( "RollController", "RollTracker", "RollingPopupContent" )
-  local award_popup                = deps[ "LootAwardPopup" ]
-  local rolling_popup_content      = {
+  enable_debug( "RollController", "RollTracker", "RollingPopupContent" )
+  local award_popup           = deps[ "LootAwardPopup" ]
+  local rolling_popup_content = {
     { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
     { type = "button", label = "Award winner",                    width = 130 },

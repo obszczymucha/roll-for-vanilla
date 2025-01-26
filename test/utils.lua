@@ -134,8 +134,9 @@ function M.mock_wow_api()
           self.OnTextChangedCallback = callback
         end
       end,
-      Show = function() end,
+      Show = function( self ) self.visible = true end,
       Hide = function( self )
+        self.visible = false
         if self.OnHideCallback then self.OnHideCallback() end
       end,
       Enable = function() end,
@@ -195,7 +196,7 @@ function M.mock_wow_api()
       GetText = function( self )
         return self.text
       end,
-      IsVisible = function() end,
+      IsVisible = function( self ) return self.visible end,
       CreateFontString = function()
         return {
           Hide = function() end,
