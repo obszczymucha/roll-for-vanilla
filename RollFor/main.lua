@@ -242,9 +242,6 @@ local function create_components()
     m.RollingPopup.center_point
   )
 
-  ---@type LootController
-  M.loot_controller = m.LootController.new( M.player_info, M.loot_list, M.loot_frame )
-
   ---@type RollController
   M.roll_controller = m.RollController.new(
     M.roll_tracker,
@@ -253,11 +250,13 @@ local function create_components()
     M.softres,
     M.loot_list,
     M.config,
-    M.loot_controller,
     M.rolling_popup,
     M.loot_award_popup,
     M.player_selection_frame
   )
+
+  ---@type LootController
+  M.loot_controller = m.LootController.new( M.player_info, M.loot_facade, M.loot_list, M.loot_frame, M.roll_controller )
 
   ---@type LootAwardCallback
   M.loot_award_callback = m.LootAwardCallback.new( M.awarded_loot, M.roll_controller, M.winner_tracker )

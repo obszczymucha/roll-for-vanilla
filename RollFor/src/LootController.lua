@@ -11,9 +11,11 @@ local M = m.Module.new( "LootController" )
 ---@field hide fun()
 
 ---@param player_info PlayerInfo
+---@param loot_facade LootFacade
 ---@param loot_list LootList
 ---@param loot_frame LootFrame
-function M.new( player_info, loot_list, loot_frame )
+---@param roll_controller RollController
+function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller )
   local selected_item_name = nil
 
   local function show()
@@ -22,14 +24,12 @@ function M.new( player_info, loot_list, loot_frame )
   end
 
   ---@param item DroppedItem
-  ---@param preview_fn RollControllerPreviewFn
-  local function select_item( item, preview_fn )
+  local function select_item( item )
     selected_item_name = item.name
-    preview_fn( item, 1 )
+    roll_controller.preview( item, 1 )
   end
 
-  ---@param preview_fn RollControllerPreviewFn
-  local function update( preview_fn )
+  local function update()
     M.debug.add( "update" )
 
     local items = loot_list.get_items() ---@type (DroppedItem|Coin)[]
@@ -39,6 +39,7 @@ function M.new( player_info, loot_list, loot_frame )
     for i, item in ipairs( items ) do
       local is_coin = item.type == "Coin"
       local item_to_select = item
+
       ---@type LootFrameItem
       table.insert( result, {
         index = i,
@@ -48,7 +49,7 @@ function M.new( player_info, loot_list, loot_frame )
         quantity = item.quantity,
         click_fn = function()
           if item_to_select.type == "Coin" or not player_info.is_master_looter() then return end
-          select_item( item_to_select, preview_fn ); update( preview_fn )
+          select_item( item_to_select ); update()
         end,
         is_selected = selected_item_name and selected_item_name == item.name or false,
         is_enabled = not selected_item_name or selected_item_name == item.name or false,
@@ -69,7 +70,30 @@ function M.new( player_info, loot_list, loot_frame )
 
   local function deselect()
     selected_item_name = nil
+    update()
   end
+
+  local function on_loot_opened()
+    M.debug.add( "loot_opened" )
+    selected_item_name = nil
+    show()
+    update()
+  end
+
+  local function on_loot_slot_cleared( slot )
+    M.debug.add( string.format( "loot_slot_cleared(%s)", slot ) )
+    update()
+  end
+
+  local function on_loot_closed()
+    M.debug.add( "loot_closed" )
+    hide()
+  end
+
+  loot_facade.subscribe( "LootOpened", on_loot_opened )
+  loot_facade.subscribe( "LootClosed", on_loot_closed )
+  loot_facade.subscribe( "LootSlotCleared", on_loot_slot_cleared )
+  roll_controller.subscribe( "LootFrameDeselect", deselect )
 
   ---@type LootController
   return {

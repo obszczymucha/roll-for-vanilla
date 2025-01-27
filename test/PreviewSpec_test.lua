@@ -153,9 +153,6 @@ local function new( dependencies )
   local player_selection_frame = require( "mocks/MasterLootCandidateSelectionFrame" ).new( config )
   deps[ "PlayerSelectionFrame" ] = player_selection_frame
 
-  local loot_controller = require( "src/LootController" ).new( player_info, loot_list, loot_frame )
-  deps[ "LootController" ] = loot_controller
-
   local roll_controller = require( "src/RollController" ).new(
     roll_tracker,
     player_info,
@@ -163,11 +160,13 @@ local function new( dependencies )
     softres,
     loot_list,
     config,
-    loot_controller,
     rolling_popup,
     loot_award_popup, ---@diagnostic disable-line: param-type-mismatch
     player_selection_frame
   )
+
+  local loot_controller = require( "src/LootController" ).new( player_info, loot_facade, loot_list, loot_frame, roll_controller )
+  deps[ "LootController" ] = loot_controller
 
   local loot_award_callback = require( "src/LootAwardCallback" ).new( awarded_loot, roll_controller, winner_tracker )
   local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, loot_list, roll_controller )

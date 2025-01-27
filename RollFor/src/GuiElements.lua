@@ -485,14 +485,14 @@ function M.dropped_item( parent, text )
       container.quantity:Hide()
     end
 
-    container:SetScript( "OnClick", v.click_fn )
-    container.icon:SetScript( "OnClick", v.click_fn )
+    container:SetScript( "OnClick", v.is_enabled and not v.is_selected and v.click_fn or nil )
+    container.icon:SetScript( "OnClick", v.is_enabled and not v.is_selected and v.click_fn or nil )
 
     -- Fucking hell this took forever to figure out. Fuck you Blizzard.
     -- For looting to work in vanilla, the frame must be of a "LootButton" type and
     -- then it comes with the SetSlot function that we need to use to set the slot.
     -- This will probably be a pain in the ass when porting.
-    container:SetSlot( v.slot or 0)
+    container:SetSlot( v.slot or 0 )
 
     update()
     resize()
@@ -504,12 +504,12 @@ function M.dropped_item( parent, text )
 
     ---@diagnostic disable-next-line: undefined-global
     local self = this
-    if not item.is_enabled then return end
 
     m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
     m.api.GameTooltip:SetHyperlink( item.tooltip_link )
     m.api.GameTooltip:Show()
 
+    if not item.is_enabled then return end
     hovered_color()
   end
 
@@ -535,7 +535,6 @@ function M.dropped_item( parent, text )
     local self = this
     self.tooltip_scale = m.api.GameTooltip:GetScale()
     m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
-
     m.api.GameTooltip:AddLine( m.colors.blue( "Soft-ressed by" ), 1, 1, 1 )
 
     for _, player in ipairs( item.sr_players ) do
@@ -546,6 +545,7 @@ function M.dropped_item( parent, text )
     m.api.GameTooltip:SetScale( 0.75 )
     m.api.GameTooltip:Show()
 
+    if not item.is_enabled then return end
     hovered_color()
   end )
 
@@ -568,16 +568,12 @@ function M.dropped_item( parent, text )
   container.icon:SetScript( "OnEnter", on_enter )
   container.icon:SetScript( "OnLeave", on_leave )
 
-  container:SetScript( "OnEnter", function()
-    hovered_color()
-    on_enter()
-  end )
-
+  container:SetScript( "OnEnter", on_enter )
   container:SetScript( "OnLeave", on_leave )
 
   local function on_mouse_down()
     if not item then return end
-    if not item.is_enabled then return end
+    if not item.is_enabled or item.is_selected then return end
 
     mouse_down = true
     clicked_color()
@@ -585,7 +581,7 @@ function M.dropped_item( parent, text )
 
   local function on_mouse_up()
     if not item then return end
-    if not item.is_enabled then return end
+    if not item.is_enabled or item.is_selected then return end
 
     if not mouse_down then return end
     hovered_color()

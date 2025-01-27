@@ -30,7 +30,6 @@ function M.new(
     dropped_loot_announce.on_loot_opened()
     master_loot.on_loot_opened()
     auto_group_loot.on_loot_opened()
-    roll_controller.loot_opened()
     loot_auto_process.on_loot_opened()
   end )
 
@@ -42,7 +41,6 @@ function M.new(
   loot_facade.subscribe( "LootSlotCleared", function( slot )
     master_loot.on_loot_slot_cleared( slot )
     auto_group_loot.on_loot_slot_cleared()
-    roll_controller.loot_slot_cleared( slot )
   end )
 
   -- This covers the scenario where the master looter assigns the loot and then moves immediately,

@@ -35,8 +35,6 @@ local getn = table.getn
 ---@field waiting_for_rolls fun()
 ---@field award_aborted fun( item: Item )
 ---@field loot_awarded fun( player_name: string, item_id: number, item_link: string )
----@field loot_opened fun()
----@field loot_slot_cleared fun( slot: number )
 ---@field loot_closed fun()
 ---@field player_already_has_unique_item fun()
 ---@field player_has_full_bags fun()
@@ -56,7 +54,6 @@ local getn = table.getn
 ---@param ml_candidates MasterLootCandidates
 ---@param softres GroupAwareSoftRes
 ---@param loot_list SoftResLootList
----@param loot_controller LootController
 ---@param rolling_popup RollingPopup
 ---@param loot_award_popup LootAwardPopup
 ---@param player_selection_frame MasterLootCandidateSelectionFrame
@@ -67,7 +64,6 @@ function M.new(
     softres,
     loot_list,
     config,
-    loot_controller,
     rolling_popup,
     loot_award_popup,
     player_selection_frame
@@ -164,6 +160,7 @@ function M.new(
     table.insert( buttons, button( "Close", function()
       M.debug.add( "on_close" )
       rolling_popup.hide()
+      notify_subscribers( "LootFrameDeselect" )
     end ) )
   end
 
@@ -490,6 +487,7 @@ function M.new(
     end
 
     notify_subscribers( "loot_awarded", { player_name = player_name, item_id = item_id, item_link = item_link } )
+    notify_subscribers( "LootFrameDeselect" )
 
     local data = roll_tracker.get()
 
@@ -508,25 +506,13 @@ function M.new(
     end
   end
 
-  local function loot_opened()
-    M.debug.add( "loot_opened" )
-    loot_controller.show()
-    loot_controller.update( new_preview )
-  end
-
-  local function loot_slot_cleared( slot )
-    M.debug.add( string.format( "loot_slot_cleared(%s)", slot ) )
-    loot_controller.update( new_preview )
-  end
-
   local function loot_closed()
     M.debug.add( "loot_closed" )
-    loot_controller.hide()
 
     if ml_confirmation_data then
       award_aborted( ml_confirmation_data.item )
       ml_confirmation_data = nil
-      notify_subscribers( "hide_master_loot_confirmation" )
+      loot_award_popup.hide()
       return
     end
 
@@ -607,8 +593,6 @@ function M.new(
     tie_start = tie_start,
     award_aborted = award_aborted,
     loot_awarded = loot_awarded,
-    loot_opened = loot_opened,
-    loot_slot_cleared = loot_slot_cleared,
     loot_closed = loot_closed,
     player_already_has_unique_item = player_already_has_unique_item,
     player_has_full_bags = player_has_full_bags,

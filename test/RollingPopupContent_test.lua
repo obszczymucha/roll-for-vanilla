@@ -137,7 +137,6 @@ local function new( dependencies )
   local softres = deps[ "SoftResData" ] and group_aware_softres( group_roster, deps[ "SoftResData" ] ) or group_aware_softres( group_roster )
 
   local popup_builder = require( "mocks/PopupBuilder" )
-  local loot_frame = require( "mocks/LootFrame" ).new()
   local rolling_popup = require( "mocks/RollingPopup" ).new( popup_builder.new(), db( "dummy" ), config )
 
   local loot_award_popup = require( "mocks/LootAwardPopup" ).new( nil )
@@ -151,7 +150,6 @@ local function new( dependencies )
     softres,
     loot_list,
     config,
-    loot_frame,
     rolling_popup,
     loot_award_popup, ---@diagnostic disable-line: param-type-mismatch
     player_selection_frame
