@@ -8,6 +8,7 @@ local M = m.Module.new( "LootFrame" )
 ---@field show fun()
 ---@field update fun( items: LootFrameItem[] )
 ---@field hide fun()
+---@field get_frame fun(): Frame
 
 M.center_point = { point = "CENTER", relative_point = "CENTER", x = -260, y = 220 }
 
@@ -293,7 +294,8 @@ function M.new( frame_builder, db, config )
   return {
     show = show,
     update = update,
-    hide = hide
+    hide = hide,
+    get_frame = function() return boss_name_frame end
   }
 end
 

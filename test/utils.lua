@@ -1227,4 +1227,27 @@ function M.noop() end
 
 M.getn = table.getn
 
+function M.clone( t )
+  local result = {}
+
+  if not t then return result end
+
+  for k, v in pairs( t ) do
+    result[ k ] = v
+  end
+
+  return result
+end
+
+function M.table_contains_value( t, value, f )
+  if not t then return false end
+
+  for _, v in pairs( t ) do
+    local val = type( f ) == "function" and f( v ) or v
+    if val == value then return true end
+  end
+
+  return false
+end
+
 return M

@@ -2,6 +2,7 @@
 local M = {}
 
 local u = require( "test/utils" )
+local _, eq = u.luaunit( "assertEquals" )
 local RollingPopup = require( "src/RollingPopup" )
 
 local function strip_functions( t )
@@ -28,7 +29,10 @@ end
 
 ---@class RollingPopupMock : RollingPopup
 ---@field content fun(): table
+---@field should_display fun( ...: table ): table
 ---@field is_visible fun(): boolean
+---@field should_be_visible fun()
+---@field should_be_hidden fun()
 ---@field click fun( button_type: RollingPopupButtonType )
 ---@field award fun( player_name: string )
 
@@ -68,6 +72,22 @@ function M.new( popup_builder, db, config )
 
     for _, winner in ipairs( model.winners ) do
       if winner.name == player_name and winner.award_callback then winner.award_callback() end
+    end
+  end
+
+  popup.should_display = function( ... )
+    eq( transformed_content and cleanse( transformed_content ) or {}, { ... }, _, _, 3 )
+  end
+
+  popup.should_be_visible = function()
+    if not popup.is_visible() then
+      error( "Popup is hidden.", 2 )
+    end
+  end
+
+  popup.should_be_hidden = function()
+    if popup.is_visible() then
+      error( "Popup is visible.", 2 )
     end
   end
 

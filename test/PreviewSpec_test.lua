@@ -2,7 +2,7 @@ package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../Roll
 
 local u = require( "test/utils" )
 local getn, frequire, reqsrc = u.getn, u.force_require, u.multi_require_src
-local lu, eq = u.luaunit( "assertEquals" )
+local lu = u.luaunit( "assertEquals" )
 local m, T, IU = require( "src/modules" ), require( "src/Types" ), require( "src/ItemUtils" )
 reqsrc( "DebugBuffer", "Module", "Types", "SoftResDataTransformer", "RollingLogicUtils" )
 reqsrc( "TieRollingLogic", "SoftResRollingLogic", "NonSoftResRollingLogic", "RaidRollRollingLogic", "InstaRaidRollRollingLogic" )
@@ -123,7 +123,12 @@ local function new( dependencies )
   local loot_facade = deps[ "LootFacade" ] or mock_loot_facade()
   deps[ "LootFacade" ] = loot_facade
 
-  local loot_list = deps[ "LootList" ] and deps[ "LootList" ].new( loot_facade ) or mock_loot_list().new( loot_facade )
+  local awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ) )
+  local softres = deps[ "SoftResData" ] and group_aware_softres( group_roster, awarded_loot, deps[ "SoftResData" ] ) or
+      group_aware_softres( group_roster, awarded_loot )
+
+  local raw_loot_list = deps[ "LootList" ] and deps[ "LootList" ].new( loot_facade ) or mock_loot_list().new( loot_facade )
+  local loot_list = require( "src/SoftResLootListDecorator" ).new( raw_loot_list, softres )
   deps[ "SoftResLootList" ] = loot_list
 
   local ml_candidates_api = deps[ "MasterLootCandidatesApi" ] or require( "mocks/MasterLootCandidatesApi" ).new( group_roster )
@@ -139,12 +144,9 @@ local function new( dependencies )
   local roll_tracker = require( "src/RollTracker" ).new()
   deps[ "RollTracker" ] = roll_tracker
 
-  local awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ) )
-  local softres = deps[ "SoftResData" ] and group_aware_softres( group_roster, awarded_loot, deps[ "SoftResData" ] ) or
-      group_aware_softres( group_roster, awarded_loot )
-
+  local frame_builder = require( "mocks/FrameBuilder" )
+  local loot_frame = require( "mocks/LootFrame" ).new( frame_builder, db( "loot_frame" ), config )
   local popup_builder = require( "mocks/PopupBuilder" )
-  local loot_frame = require( "mocks/LootFrame" ).new()
   local rolling_popup = require( "mocks/RollingPopup" ).new( popup_builder.new(), db( "dummy" ), config )
 
   local loot_award_popup = require( "mocks/LootAwardPopup" ).new( nil )
@@ -218,7 +220,7 @@ local function new( dependencies )
   deps[ "LootFacadeListener" ] = loot_facade_listener
 
   require( "src/DebugBuffer" ).disable_all()
-  return rolling_popup, roll_controller, rolling_logic.on_roll, deps
+  return loot_frame, rolling_popup, roll_controller, rolling_logic.on_roll, deps
 end
 
 ---@param name string
@@ -303,533 +305,562 @@ PreviewNotSoftRessedItemSpec = {}
 
 function PreviewNotSoftRessedItemSpec:should_display_close_button_that_closes_the_popup()
   -- Given
-  local item = i( "Hearthstone", 123 )
-  local popup, controller = New():build()
-
-  -- When
-  controller.preview( item, 1 )
-
-  -- Then
-  eq( popup.is_visible(), true )
-  eq( popup.content(), {
-    { type = link,     link = item.link, tooltip_link = item.tooltip_link, count = 1 },
-    { type = "button", label = "Roll",   width = 70 },
-    { type = "button", label = "Close",  width = 70 }
-  } )
-
-  -- When
-  popup.click( "Close" )
-
-  -- Then
-  eq( popup.is_visible(), false )
-end
-
-function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_party()
-  -- Given
-  local item, chat = i( "Hearthstone", 123 ), mock_chat()
-  local popup, controller = New():chat( chat ):build()
-
-  -- When
-  controller.preview( item, 1 )
-
-  -- Then
-  chat.assert_no_messages()
-  eq( popup.is_visible(), true )
-  eq( popup.content(), {
-    { type = link,     link = item.link, tooltip_link = item.tooltip_link, count = 1 },
-    { type = "button", label = "Roll",   width = 70 },
-    { type = "button", label = "Close",  width = 70 }
-  } )
-
-  -- When
-  popup.click( "Roll" )
-
-  -- Then
-  eq( popup.is_visible(), true )
-  chat.assert( pm( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ) )
-end
-
-function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_raid()
-  -- Given
-  local item, chat = i( "Hearthstone", 123 ), mock_chat()
-  local popup, controller = New():chat( chat ):raid_roster( p( "Ohhaimark" ), p( "Obszczymucha" ) ):build()
-
-  -- When
-  controller.preview( item, 1 )
-
-  -- Then
-  eq( popup.is_visible(), true )
-  eq( popup.content(), {
-    { type = link,     link = item.link, tooltip_link = item.tooltip_link, count = 1 },
-    { type = "button", label = "Roll",   width = 70 },
-    { type = "button", label = "Close",  width = 70 }
-  } )
-  chat.assert_no_messages()
-
-  -- When
-  popup.click( "Roll" )
-
-  -- Then
-  eq( popup.is_visible(), true )
-  chat.assert( rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ) )
-end
-
-function PreviewNotSoftRessedItemSpec:should_display_award_other_button_that_shows_player_selection_popup_and_awards_the_item()
-  -- Given
-  local loot_facade, chat             = mock_loot_facade(), mock_chat()
-  local item, p1, p2                  = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
-  local popup, controller, _, deps    = New()
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, item2 = i( "Hearthstone", 123 ), i( "Dragon's Balls", 69 )
+  local loot_frame, rolling_popup = New()
       :loot_facade( loot_facade )
       :chat( chat )
-      :roster( p1, p2 )
-      :loot_list( item )
+      :loot_list( item, item2 )
       :build()
-  local player_selection, award_popup = deps[ "PlayerSelectionFrame" ], deps[ "LootAwardPopup" ]
-  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+
+  -- Then
+  loot_frame.should_be_hidden()
 
   -- When
   loot_facade.notify( "LootOpened" )
 
   -- Then
+  loot_frame.should_be_visible()
+  loot_frame.should_display(
+    { index = 1, is_enabled = true, is_selected = false, name = "Dragon's Balls" },
+    { index = 2, is_enabled = true, is_selected = false, name = "Hearthstone" }
+  )
   chat.assert(
-    pm( "Princess Kenny dropped 1 item:" ),
-    pm( "1. [Hearthstone]" )
+    pm( "Princess Kenny dropped 2 items:" ),
+    pm( "1. [Dragon's Balls]" ),
+    pm( "2. [Hearthstone]" )
   )
 
-  controller.preview( item, 1 )
+  -- When
+  loot_frame.click( 1 )
 
   -- Then
-  eq( popup.is_visible(), true )
-  eq( popup.content(), {
-    { type = link,     link = item.link,   tooltip_link = item.tooltip_link, count = 1 },
-    { type = "button", label = "Roll",     width = 70 },
-    { type = "button", label = "Close",    width = 70 },
+  loot_frame.should_be_visible()
+  loot_frame.should_display(
+    { index = 1, is_enabled = true, is_selected = true, name = "Dragon's Balls" },
+    { index = 2, is_enabled = false, is_selected = false, name = "Hearthstone" }
+  )
+  rolling_popup.should_be_visible()
+  rolling_popup.should_display(
+    { type = link, link = item2.link, tooltip_link = item2.tooltip_link, count = 1 },
+    { type = "button", label = "Roll", width = 70 },
+    { type = "button", label = "Close", width = 70 },
     { type = "button", label = "Award...", width = 90 }
-  } )
-
-  -- When
-  popup.click( "AwardOther" )
-
-  -- Then
-  eq( popup.is_visible(), true )
-  eq( player_selection.is_visible(), true )
-  eq( award_popup.is_visible(), false )
-
-  -- When
-  player_selection.select( p1.name )
-
-  -- Then
-  eq( player_selection.is_visible(), false )
-  eq( popup.is_visible(), false )
-  eq( award_popup.is_visible(), true )
-
-  -- When
-  award_popup.confirm()
-
-  -- Then
-  eq( player_selection.is_visible(), false )
-  eq( popup.is_visible(), false )
-  eq( award_popup.is_visible(), false )
-  chat.assert(
-    pm( "Princess Kenny dropped 1 item:" ),
-    pm( "1. [Hearthstone]" ),
-    c( "RollFor: Psikutas received [Hearthstone]." )
-  )
-end
-
-PreviewSoftResWinnersSpec = {}
-
-function PreviewSoftResWinnersSpec:should_display_close_button_that_closes_the_popup()
-  -- Given
-  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
-  local popup, controller = New()
-      :roster( p1, p2 )
-      :soft_res_data( sr( p1.name, 123 ) )
-      :build()
-
-  -- When
-  controller.preview( item, 1 )
-
-  -- Then
-  eq( popup.is_visible(), true )
-  eq( popup.content(), {
-    { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
-    { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
-    { type = "button", label = "Close",                           width = 70 }
-  } )
-
-  -- When
-  popup.click( "Close" )
-
-  -- Then
-  eq( popup.is_visible(), false )
-end
-
-function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_display_the_popup_again_if_award_confirmation_is_aborted()
-  -- Given
-  u.mock( "GiveMasterLoot", u.noop )
-  local loot_facade                = mock_loot_facade()
-  local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
-  local chat                       = mock_chat()
-  local popup, controller, _, deps = New()
-      :roster( p1, p2 )
-      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ) )
-      :loot_list( item )
-      :loot_facade( loot_facade )
-      :chat( chat )
-      :build()
-  enable_debug( "RollController", "RollTracker", "RollingPopupContent" )
-  local award_popup           = deps[ "LootAwardPopup" ]
-  local rolling_popup_content = {
-    { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
-    { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
-    { type = "button", label = "Award winner",                    width = 130 },
-    { type = "button", label = "Close",                           width = 70 },
-    { type = "button", label = "Award...",                        width = 90 },
-  }
-
-  -- When
-  loot_facade.notify( "LootOpened" )
-
-  -- Then
-  chat.assert(
-    pm( "Princess Kenny dropped 1 item:" ),
-    pm( "1. [Hearthstone] (SR by Psikutas)" )
   )
 
   -- When
-  controller.preview( item, 1 )
+  rolling_popup.click( "Close" )
 
   -- Then
-  eq( award_popup.is_visible(), false )
-  eq( popup.is_visible(), true )
-  eq( popup.content(), rolling_popup_content )
-
-  -- When
-  popup.click( "AwardWinner" )
-
-  -- Then
-  eq( award_popup.is_visible(), true )
-  eq( popup.is_visible(), false )
-  -- TODO: verify loot confirmation popup content
-
-  -- When
-  award_popup.abort()
-
-  -- Then
-  eq( award_popup.is_visible(), false )
-  eq( popup.is_visible(), true )
-  eq( popup.content(), rolling_popup_content )
+  rolling_popup.should_be_hidden()
 end
 
-function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_the_winner_when_confirmed()
-  -- Given
-  local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
-  local chat                       = mock_chat()
-  local popup, controller, _, deps = New()
-      :roster( p1, p2 )
-      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ) )
-      :loot_list( item )
-      :chat( chat )
-      :build()
-  local loot_facade                = deps[ "LootFacade" ] ---@type LootFacadeMock
-  -- enable_debug( "MasterLoot", "RollController" )
-  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
-  local award_popup           = deps[ "LootAwardPopup" ]
-  local rolling_popup_content = {
-    { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
-    { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
-    { type = "button", label = "Award winner",                    width = 130 },
-    { type = "button", label = "Close",                           width = 70 },
-    { type = "button", label = "Award...",                        width = 90 },
-  }
-
-  -- When
-  loot_facade.notify( "LootOpened" )
-
-  -- Then
-  chat.assert(
-    pm( "Princess Kenny dropped 1 item:" ),
-    pm( "1. [Hearthstone] (SR by Psikutas)" )
-  )
-
-  controller.preview( item, 1 )
-
-  -- Then
-  eq( award_popup.is_visible(), false )
-  eq( popup.is_visible(), true )
-  eq( popup.content(), rolling_popup_content )
-
-  -- When
-  popup.click( "AwardWinner" )
-
-  -- Then
-  eq( award_popup.is_visible(), true )
-  eq( popup.is_visible(), false )
-  -- TODO: verify loot confirmation popup content
-
-  -- When
-  award_popup.confirm()
-
-  -- Then
-  chat.assert(
-    pm( "Princess Kenny dropped 1 item:" ),
-    pm( "1. [Hearthstone] (SR by Psikutas)" ),
-    c( "RollFor: Psikutas received [Hearthstone]." )
-  )
-  eq( award_popup.is_visible(), false )
-  eq( popup.is_visible(), false )
-end
-
-function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award_the_winner_when_confirmed_then_display_the_remaining_winner()
-  -- Given
-  local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
-  local chat                       = mock_chat()
-  local popup, controller, _, deps = New()
-      :roster( p1, p2 )
-      :soft_res_data( sr( p1.name, 123 ), sr( p2.name, 123 ) )
-      :loot_list( item, item )
-      :chat( chat )
-      :build()
-  local loot_facade                = deps[ "LootFacade" ] ---@type LootFacadeMock
-  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
-  local award_popup = deps[ "LootAwardPopup" ]
-
-  -- When
-  loot_facade.notify( "LootOpened" )
-
-  -- Then
-  chat.assert(
-    pm( "Princess Kenny dropped 2 items:" ),
-    pm( "1. [Hearthstone] (SR by Obszczymucha)" ),
-    pm( "2. [Hearthstone] (SR by Psikutas)" )
-  )
-
-  controller.preview( item, 2 )
-
-  -- Then
-  eq( award_popup.is_visible(), false )
-  eq( popup.is_visible(), true )
-  eq( popup.content(), {
-    { type = link,           link = item.link,                              tooltip_link = item.tooltip_link, count = 2 },
-    { type = "text",         value = "Obszczymucha soft-ressed this item.", padding = 11 },
-    { type = "award_button", label = "Award",                               width = 90,                       padding = 6 },
-    { type = "text",         value = "Psikutas soft-ressed this item.",     padding = 8 },
-    { type = "award_button", label = "Award",                               width = 90,                       padding = 6 },
-    { type = "button",       label = "Close",                               width = 70 },
-    { type = "button",       label = "Award...",                            width = 90 },
-  } )
-
-  -- When
-  popup.award( "Obszczymucha" )
-
-  -- Then
-  eq( award_popup.is_visible(), true )
-  eq( popup.is_visible(), false )
-  -- TODO: verify loot confirmation popup content
-
-  -- When
-  award_popup.confirm()
-
-  -- Then
-  chat.assert(
-    pm( "Princess Kenny dropped 2 items:" ),
-    pm( "1. [Hearthstone] (SR by Obszczymucha)" ),
-    pm( "2. [Hearthstone] (SR by Psikutas)" ),
-    c( "RollFor: Obszczymucha received [Hearthstone]." )
-  )
-  eq( award_popup.is_visible(), false )
-  eq( popup.is_visible(), true )
-  eq( popup.content(), {
-    { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
-    { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
-    { type = "button", label = "Award winner",                    width = 130 },
-    { type = "button", label = "Close",                           width = 70 },
-    { type = "button", label = "Award...",                        width = 90 },
-  } )
-
-  -- When
-  popup.click( "AwardWinner" )
-
-  -- Then
-  eq( award_popup.is_visible(), true )
-  eq( popup.is_visible(), false )
-  -- TODO: verify loot confirmation popup content
-
-  -- When
-  award_popup.confirm()
-
-  -- Then
-  chat.assert(
-    pm( "Princess Kenny dropped 2 items:" ),
-    pm( "1. [Hearthstone] (SR by Obszczymucha)" ),
-    pm( "2. [Hearthstone] (SR by Psikutas)" ),
-    c( "RollFor: Obszczymucha received [Hearthstone]." ),
-    c( "RollFor: Psikutas received [Hearthstone]." )
-  )
-  eq( award_popup.is_visible(), false )
-  eq( popup.is_visible(), false )
-end
-
-function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_the_winner_when_confirmed_and_moved_quickly()
-  -- Given
-  local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
-  local chat                       = mock_chat()
-  local popup, controller, _, deps = New()
-      :roster( p1, p2 )
-      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ) )
-      :loot_list( item )
-      :chat( chat )
-      :build()
-  local loot_facade                = deps[ "LootFacade" ] ---@type LootFacadeMock
-  -- enable_debug( "MasterLoot", "RollController" )
-  u.mock( "GiveMasterLoot", function()
-    loot_facade.notify( "LootClosed" )
-    loot_facade.notify( "ChatMsgLoot", string.format( "%s receives loot: %s", p1.name, item.link ) )
-  end )
-
-  local award_popup           = deps[ "LootAwardPopup" ]
-  local rolling_popup_content = {
-    { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
-    { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
-    { type = "button", label = "Award winner",                    width = 130 },
-    { type = "button", label = "Close",                           width = 70 },
-    { type = "button", label = "Award...",                        width = 90 },
-  }
-
-  -- When
-  loot_facade.notify( "LootOpened" )
-
-  -- Then
-  chat.assert(
-    pm( "Princess Kenny dropped 1 item:" ),
-    pm( "1. [Hearthstone] (SR by Psikutas)" )
-  )
-
-  -- When
-  controller.preview( item, 1 )
-
-  -- Then
-  eq( award_popup.is_visible(), false )
-  eq( popup.is_visible(), true )
-  eq( popup.content(), rolling_popup_content )
-
-  -- When
-  popup.click( "AwardWinner" )
-
-  -- Then
-  eq( award_popup.is_visible(), true )
-  eq( popup.is_visible(), false )
-  -- TODO: verify loot confirmation popup content
-
-  -- When
-  award_popup.confirm()
-
-  -- Then
-  chat.assert(
-    pm( "Princess Kenny dropped 1 item:" ),
-    pm( "1. [Hearthstone] (SR by Psikutas)" ),
-    c( "RollFor: Psikutas received [Hearthstone]." )
-  )
-  eq( award_popup.is_visible(), false )
-  eq( popup.is_visible(), false )
-end
-
-PreviewSoftRessedItemSpec = {}
-
-function PreviewSoftRessedItemSpec:should_display_close_button_that_closes_the_popup()
-  -- Given
-  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
-  local popup, controller = New()
-      :roster( p1, p2 )
-      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 123 ) )
-      :build()
-
-  -- When
-  controller.preview( item, 1 )
-
-  -- Then
-  eq( popup.is_visible(), true )
-  eq( popup.content(), {
-    { type = link,     link = item.link,      tooltip_link = item.tooltip_link, count = 1 },
-    { type = "roll",   player_name = p2.name, player_class = p2.class,          roll_type = RT.SoftRes, padding = 11 },
-    { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
-    { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
-    { type = "button", label = "Roll",        width = 70 },
-    { type = "button", label = "Close",       width = 70 }
-  } )
-
-  -- When
-  popup.click( "Close" )
-
-  -- Then
-  eq( popup.is_visible(), false )
-end
-
-function PreviewSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_party()
-  -- Given
-  local chat              = mock_chat()
-  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
-  local popup, controller = New()
-      :roster( p1, p2 )
-      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 123 ) )
-      :chat( chat )
-      :build()
-
-  -- When
-  controller.preview( item, 1 )
-
-  -- Then
-  chat.assert()
-  eq( popup.is_visible(), true )
-  eq( popup.content(), {
-    { type = link,     link = item.link,      tooltip_link = item.tooltip_link, count = 1 },
-    { type = "roll",   player_name = p2.name, player_class = p2.class,          roll_type = RT.SoftRes, padding = 11 },
-    { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
-    { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
-    { type = "button", label = "Roll",        width = 70 },
-    { type = "button", label = "Close",       width = 70 }
-  } )
-
-  -- When
-  popup.click( "Roll" )
-
-  -- Then
-  eq( popup.is_visible(), true )
-  chat.assert( pm( "Roll for [Hearthstone]: (SR by Obszczymucha and Psikutas [2 rolls])" ) )
-end
-
-function PreviewSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_raid()
-  -- Given
-  local chat              = mock_chat()
-  local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
-  local popup, controller = New()
-      :raid_roster( p1, p2 )
-      :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 123 ) )
-      :chat( chat )
-      :build()
-
-  -- When
-  controller.preview( item, 1 )
-
-  -- Then
-  chat.assert()
-  eq( popup.is_visible(), true )
-  eq( popup.content(), {
-    { type = link,     link = item.link,      tooltip_link = item.tooltip_link, count = 1 },
-    { type = "roll",   player_name = p2.name, player_class = p2.class,          roll_type = RT.SoftRes, padding = 11 },
-    { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
-    { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
-    { type = "button", label = "Roll",        width = 70 },
-    { type = "button", label = "Close",       width = 70 }
-  } )
-
-  -- When
-  popup.click( "Roll" )
-
-  -- Then
-  eq( popup.is_visible(), true )
-  chat.assert( rw( "Roll for [Hearthstone]: (SR by Obszczymucha and Psikutas [2 rolls])" ) )
-end
+-- function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_party()
+--   -- Given
+--   local item, chat = i( "Hearthstone", 123 ), mock_chat()
+--   local popup, controller = New():chat( chat ):build()
+--
+--   -- When
+--   controller.preview( item, 1 )
+--
+--   -- Then
+--   chat.assert_no_messages()
+--   eq( popup.is_visible(), true )
+--   eq( popup.content(), {
+--     { type = link,     link = item.link, tooltip_link = item.tooltip_link, count = 1 },
+--     { type = "button", label = "Roll",   width = 70 },
+--     { type = "button", label = "Close",  width = 70 }
+--   } )
+--
+--   -- When
+--   popup.click( "Roll" )
+--
+--   -- Then
+--   eq( popup.is_visible(), true )
+--   chat.assert( pm( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ) )
+-- end
+--
+-- function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_raid()
+--   -- Given
+--   local item, chat = i( "Hearthstone", 123 ), mock_chat()
+--   local popup, controller = New():chat( chat ):raid_roster( p( "Ohhaimark" ), p( "Obszczymucha" ) ):build()
+--
+--   -- When
+--   controller.preview( item, 1 )
+--
+--   -- Then
+--   eq( popup.is_visible(), true )
+--   eq( popup.content(), {
+--     { type = link,     link = item.link, tooltip_link = item.tooltip_link, count = 1 },
+--     { type = "button", label = "Roll",   width = 70 },
+--     { type = "button", label = "Close",  width = 70 }
+--   } )
+--   chat.assert_no_messages()
+--
+--   -- When
+--   popup.click( "Roll" )
+--
+--   -- Then
+--   eq( popup.is_visible(), true )
+--   chat.assert( rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ) )
+-- end
+--
+-- function PreviewNotSoftRessedItemSpec:should_display_award_other_button_that_shows_player_selection_popup_and_awards_the_item()
+--   -- Given
+--   local loot_facade, chat             = mock_loot_facade(), mock_chat()
+--   local item, p1, p2                  = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+--   local popup, controller, _, deps    = New()
+--       :loot_facade( loot_facade )
+--       :chat( chat )
+--       :roster( p1, p2 )
+--       :loot_list( item )
+--       :build()
+--   local player_selection, award_popup = deps[ "PlayerSelectionFrame" ], deps[ "LootAwardPopup" ]
+--   u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+--
+--   -- When
+--   loot_facade.notify( "LootOpened" )
+--
+--   -- Then
+--   chat.assert(
+--     pm( "Princess Kenny dropped 1 item:" ),
+--     pm( "1. [Hearthstone]" )
+--   )
+--
+--   controller.preview( item, 1 )
+--
+--   -- Then
+--   eq( popup.is_visible(), true )
+--   eq( popup.content(), {
+--     { type = link,     link = item.link,   tooltip_link = item.tooltip_link, count = 1 },
+--     { type = "button", label = "Roll",     width = 70 },
+--     { type = "button", label = "Close",    width = 70 },
+--     { type = "button", label = "Award...", width = 90 }
+--   } )
+--
+--   -- When
+--   popup.click( "AwardOther" )
+--
+--   -- Then
+--   eq( popup.is_visible(), true )
+--   eq( player_selection.is_visible(), true )
+--   eq( award_popup.is_visible(), false )
+--
+--   -- When
+--   player_selection.select( p1.name )
+--
+--   -- Then
+--   eq( player_selection.is_visible(), false )
+--   eq( popup.is_visible(), false )
+--   eq( award_popup.is_visible(), true )
+--
+--   -- When
+--   award_popup.confirm()
+--
+--   -- Then
+--   eq( player_selection.is_visible(), false )
+--   eq( popup.is_visible(), false )
+--   eq( award_popup.is_visible(), false )
+--   chat.assert(
+--     pm( "Princess Kenny dropped 1 item:" ),
+--     pm( "1. [Hearthstone]" ),
+--     c( "RollFor: Psikutas received [Hearthstone]." )
+--   )
+-- end
+--
+-- PreviewSoftResWinnersSpec = {}
+--
+-- function PreviewSoftResWinnersSpec:should_display_close_button_that_closes_the_popup()
+--   -- Given
+--   local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+--   local popup, controller = New()
+--       :roster( p1, p2 )
+--       :soft_res_data( sr( p1.name, 123 ) )
+--       :build()
+--
+--   -- When
+--   controller.preview( item, 1 )
+--
+--   -- Then
+--   eq( popup.is_visible(), true )
+--   eq( popup.content(), {
+--     { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
+--     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
+--     { type = "button", label = "Close",                           width = 70 }
+--   } )
+--
+--   -- When
+--   popup.click( "Close" )
+--
+--   -- Then
+--   eq( popup.is_visible(), false )
+-- end
+--
+-- function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_display_the_popup_again_if_award_confirmation_is_aborted()
+--   -- Given
+--   u.mock( "GiveMasterLoot", u.noop )
+--   local loot_facade                = mock_loot_facade()
+--   local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+--   local chat                       = mock_chat()
+--   local popup, controller, _, deps = New()
+--       :roster( p1, p2 )
+--       :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ) )
+--       :loot_list( item )
+--       :loot_facade( loot_facade )
+--       :chat( chat )
+--       :build()
+--   enable_debug( "RollController", "RollTracker", "RollingPopupContent" )
+--   local award_popup           = deps[ "LootAwardPopup" ]
+--   local rolling_popup_content = {
+--     { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
+--     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
+--     { type = "button", label = "Award winner",                    width = 130 },
+--     { type = "button", label = "Close",                           width = 70 },
+--     { type = "button", label = "Award...",                        width = 90 },
+--   }
+--
+--   -- When
+--   loot_facade.notify( "LootOpened" )
+--
+--   -- Then
+--   chat.assert(
+--     pm( "Princess Kenny dropped 1 item:" ),
+--     pm( "1. [Hearthstone] (SR by Psikutas)" )
+--   )
+--
+--   -- When
+--   controller.preview( item, 1 )
+--
+--   -- Then
+--   eq( award_popup.is_visible(), false )
+--   eq( popup.is_visible(), true )
+--   eq( popup.content(), rolling_popup_content )
+--
+--   -- When
+--   popup.click( "AwardWinner" )
+--
+--   -- Then
+--   eq( award_popup.is_visible(), true )
+--   eq( popup.is_visible(), false )
+--   -- TODO: verify loot confirmation popup content
+--
+--   -- When
+--   award_popup.abort()
+--
+--   -- Then
+--   eq( award_popup.is_visible(), false )
+--   eq( popup.is_visible(), true )
+--   eq( popup.content(), rolling_popup_content )
+-- end
+--
+-- function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_the_winner_when_confirmed()
+--   -- Given
+--   local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+--   local chat                       = mock_chat()
+--   local popup, controller, _, deps = New()
+--       :roster( p1, p2 )
+--       :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ) )
+--       :loot_list( item )
+--       :chat( chat )
+--       :build()
+--   local loot_facade                = deps[ "LootFacade" ] ---@type LootFacadeMock
+--   -- enable_debug( "MasterLoot", "RollController" )
+--   u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+--   local award_popup           = deps[ "LootAwardPopup" ]
+--   local rolling_popup_content = {
+--     { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
+--     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
+--     { type = "button", label = "Award winner",                    width = 130 },
+--     { type = "button", label = "Close",                           width = 70 },
+--     { type = "button", label = "Award...",                        width = 90 },
+--   }
+--
+--   -- When
+--   loot_facade.notify( "LootOpened" )
+--
+--   -- Then
+--   chat.assert(
+--     pm( "Princess Kenny dropped 1 item:" ),
+--     pm( "1. [Hearthstone] (SR by Psikutas)" )
+--   )
+--
+--   controller.preview( item, 1 )
+--
+--   -- Then
+--   eq( award_popup.is_visible(), false )
+--   eq( popup.is_visible(), true )
+--   eq( popup.content(), rolling_popup_content )
+--
+--   -- When
+--   popup.click( "AwardWinner" )
+--
+--   -- Then
+--   eq( award_popup.is_visible(), true )
+--   eq( popup.is_visible(), false )
+--   -- TODO: verify loot confirmation popup content
+--
+--   -- When
+--   award_popup.confirm()
+--
+--   -- Then
+--   chat.assert(
+--     pm( "Princess Kenny dropped 1 item:" ),
+--     pm( "1. [Hearthstone] (SR by Psikutas)" ),
+--     c( "RollFor: Psikutas received [Hearthstone]." )
+--   )
+--   eq( award_popup.is_visible(), false )
+--   eq( popup.is_visible(), false )
+-- end
+--
+-- function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award_the_winner_when_confirmed_then_display_the_remaining_winner()
+--   -- Given
+--   local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+--   local chat                       = mock_chat()
+--   local popup, controller, _, deps = New()
+--       :roster( p1, p2 )
+--       :soft_res_data( sr( p1.name, 123 ), sr( p2.name, 123 ) )
+--       :loot_list( item, item )
+--       :chat( chat )
+--       :build()
+--   local loot_facade                = deps[ "LootFacade" ] ---@type LootFacadeMock
+--   u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+--   local award_popup = deps[ "LootAwardPopup" ]
+--
+--   -- When
+--   loot_facade.notify( "LootOpened" )
+--
+--   -- Then
+--   chat.assert(
+--     pm( "Princess Kenny dropped 2 items:" ),
+--     pm( "1. [Hearthstone] (SR by Obszczymucha)" ),
+--     pm( "2. [Hearthstone] (SR by Psikutas)" )
+--   )
+--
+--   controller.preview( item, 2 )
+--
+--   -- Then
+--   eq( award_popup.is_visible(), false )
+--   eq( popup.is_visible(), true )
+--   eq( popup.content(), {
+--     { type = link,           link = item.link,                              tooltip_link = item.tooltip_link, count = 2 },
+--     { type = "text",         value = "Obszczymucha soft-ressed this item.", padding = 11 },
+--     { type = "award_button", label = "Award",                               width = 90,                       padding = 6 },
+--     { type = "text",         value = "Psikutas soft-ressed this item.",     padding = 8 },
+--     { type = "award_button", label = "Award",                               width = 90,                       padding = 6 },
+--     { type = "button",       label = "Close",                               width = 70 },
+--     { type = "button",       label = "Award...",                            width = 90 },
+--   } )
+--
+--   -- When
+--   popup.award( "Obszczymucha" )
+--
+--   -- Then
+--   eq( award_popup.is_visible(), true )
+--   eq( popup.is_visible(), false )
+--   -- TODO: verify loot confirmation popup content
+--
+--   -- When
+--   award_popup.confirm()
+--
+--   -- Then
+--   chat.assert(
+--     pm( "Princess Kenny dropped 2 items:" ),
+--     pm( "1. [Hearthstone] (SR by Obszczymucha)" ),
+--     pm( "2. [Hearthstone] (SR by Psikutas)" ),
+--     c( "RollFor: Obszczymucha received [Hearthstone]." )
+--   )
+--   eq( award_popup.is_visible(), false )
+--   eq( popup.is_visible(), true )
+--   eq( popup.content(), {
+--     { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
+--     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
+--     { type = "button", label = "Award winner",                    width = 130 },
+--     { type = "button", label = "Close",                           width = 70 },
+--     { type = "button", label = "Award...",                        width = 90 },
+--   } )
+--
+--   -- When
+--   popup.click( "AwardWinner" )
+--
+--   -- Then
+--   eq( award_popup.is_visible(), true )
+--   eq( popup.is_visible(), false )
+--   -- TODO: verify loot confirmation popup content
+--
+--   -- When
+--   award_popup.confirm()
+--
+--   -- Then
+--   chat.assert(
+--     pm( "Princess Kenny dropped 2 items:" ),
+--     pm( "1. [Hearthstone] (SR by Obszczymucha)" ),
+--     pm( "2. [Hearthstone] (SR by Psikutas)" ),
+--     c( "RollFor: Obszczymucha received [Hearthstone]." ),
+--     c( "RollFor: Psikutas received [Hearthstone]." )
+--   )
+--   eq( award_popup.is_visible(), false )
+--   eq( popup.is_visible(), false )
+-- end
+--
+-- function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_the_winner_when_confirmed_and_moved_quickly()
+--   -- Given
+--   local item, p1, p2               = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+--   local chat                       = mock_chat()
+--   local popup, controller, _, deps = New()
+--       :roster( p1, p2 )
+--       :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ) )
+--       :loot_list( item )
+--       :chat( chat )
+--       :build()
+--   local loot_facade                = deps[ "LootFacade" ] ---@type LootFacadeMock
+--   -- enable_debug( "MasterLoot", "RollController" )
+--   u.mock( "GiveMasterLoot", function()
+--     loot_facade.notify( "LootClosed" )
+--     loot_facade.notify( "ChatMsgLoot", string.format( "%s receives loot: %s", p1.name, item.link ) )
+--   end )
+--
+--   local award_popup           = deps[ "LootAwardPopup" ]
+--   local rolling_popup_content = {
+--     { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
+--     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
+--     { type = "button", label = "Award winner",                    width = 130 },
+--     { type = "button", label = "Close",                           width = 70 },
+--     { type = "button", label = "Award...",                        width = 90 },
+--   }
+--
+--   -- When
+--   loot_facade.notify( "LootOpened" )
+--
+--   -- Then
+--   chat.assert(
+--     pm( "Princess Kenny dropped 1 item:" ),
+--     pm( "1. [Hearthstone] (SR by Psikutas)" )
+--   )
+--
+--   -- When
+--   controller.preview( item, 1 )
+--
+--   -- Then
+--   eq( award_popup.is_visible(), false )
+--   eq( popup.is_visible(), true )
+--   eq( popup.content(), rolling_popup_content )
+--
+--   -- When
+--   popup.click( "AwardWinner" )
+--
+--   -- Then
+--   eq( award_popup.is_visible(), true )
+--   eq( popup.is_visible(), false )
+--   -- TODO: verify loot confirmation popup content
+--
+--   -- When
+--   award_popup.confirm()
+--
+--   -- Then
+--   chat.assert(
+--     pm( "Princess Kenny dropped 1 item:" ),
+--     pm( "1. [Hearthstone] (SR by Psikutas)" ),
+--     c( "RollFor: Psikutas received [Hearthstone]." )
+--   )
+--   eq( award_popup.is_visible(), false )
+--   eq( popup.is_visible(), false )
+-- end
+--
+-- PreviewSoftRessedItemSpec = {}
+--
+-- function PreviewSoftRessedItemSpec:should_display_close_button_that_closes_the_popup()
+--   -- Given
+--   local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+--   local popup, controller = New()
+--       :roster( p1, p2 )
+--       :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 123 ) )
+--       :build()
+--
+--   -- When
+--   controller.preview( item, 1 )
+--
+--   -- Then
+--   eq( popup.is_visible(), true )
+--   eq( popup.content(), {
+--     { type = link,     link = item.link,      tooltip_link = item.tooltip_link, count = 1 },
+--     { type = "roll",   player_name = p2.name, player_class = p2.class,          roll_type = RT.SoftRes, padding = 11 },
+--     { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
+--     { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
+--     { type = "button", label = "Roll",        width = 70 },
+--     { type = "button", label = "Close",       width = 70 }
+--   } )
+--
+--   -- When
+--   popup.click( "Close" )
+--
+--   -- Then
+--   eq( popup.is_visible(), false )
+-- end
+--
+-- function PreviewSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_party()
+--   -- Given
+--   local chat              = mock_chat()
+--   local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+--   local popup, controller = New()
+--       :roster( p1, p2 )
+--       :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 123 ) )
+--       :chat( chat )
+--       :build()
+--
+--   -- When
+--   controller.preview( item, 1 )
+--
+--   -- Then
+--   chat.assert()
+--   eq( popup.is_visible(), true )
+--   eq( popup.content(), {
+--     { type = link,     link = item.link,      tooltip_link = item.tooltip_link, count = 1 },
+--     { type = "roll",   player_name = p2.name, player_class = p2.class,          roll_type = RT.SoftRes, padding = 11 },
+--     { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
+--     { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
+--     { type = "button", label = "Roll",        width = 70 },
+--     { type = "button", label = "Close",       width = 70 }
+--   } )
+--
+--   -- When
+--   popup.click( "Roll" )
+--
+--   -- Then
+--   eq( popup.is_visible(), true )
+--   chat.assert( pm( "Roll for [Hearthstone]: (SR by Obszczymucha and Psikutas [2 rolls])" ) )
+-- end
+--
+-- function PreviewSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_raid()
+--   -- Given
+--   local chat              = mock_chat()
+--   local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+--   local popup, controller = New()
+--       :raid_roster( p1, p2 )
+--       :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ), sr( p2.name, 123 ) )
+--       :chat( chat )
+--       :build()
+--
+--   -- When
+--   controller.preview( item, 1 )
+--
+--   -- Then
+--   chat.assert()
+--   eq( popup.is_visible(), true )
+--   eq( popup.content(), {
+--     { type = link,     link = item.link,      tooltip_link = item.tooltip_link, count = 1 },
+--     { type = "roll",   player_name = p2.name, player_class = p2.class,          roll_type = RT.SoftRes, padding = 11 },
+--     { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
+--     { type = "roll",   player_name = p1.name, player_class = p1.class,          roll_type = RT.SoftRes },
+--     { type = "button", label = "Roll",        width = 70 },
+--     { type = "button", label = "Close",       width = 70 }
+--   } )
+--
+--   -- When
+--   popup.click( "Roll" )
+--
+--   -- Then
+--   eq( popup.is_visible(), true )
+--   chat.assert( rw( "Roll for [Hearthstone]: (SR by Obszczymucha and Psikutas [2 rolls])" ) )
+-- end
 
 os.exit( lu.LuaUnit.run() )
