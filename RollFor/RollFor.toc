@@ -85,4 +85,5 @@ src\Chat.lua
 src\PlayerInfo.lua
 src\LootAwardCallback.lua
 src\LootFacadeListener.lua
+src\LootController.lua
 main.lua

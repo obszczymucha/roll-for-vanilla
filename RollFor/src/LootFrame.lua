@@ -163,8 +163,6 @@ function M.new( frame_builder, db, config )
     --   selected_item = item
     -- end
 
-    max_frame_width = nil
-
     boss_name_frame.clear()
     boss_name_frame.add_line( "text", function( type, frame )
       if type == "text" then
@@ -192,6 +190,7 @@ function M.new( frame_builder, db, config )
   local function show()
     M.debug.add( "show" )
     create_frames()
+    max_frame_width = nil
     boss_name_frame:Show()
   end
 
@@ -277,7 +276,6 @@ function M.new( frame_builder, db, config )
     for _, frame in ipairs( frames ) do
       frame:SetWidth( max_frame_width - 2 )
     end
-    return max_width, frames
   end
 
   -- roll_controller.subscribe( "preview", select )

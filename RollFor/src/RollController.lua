@@ -18,8 +18,10 @@ local getn = table.getn
 ---@field winners_found fun( item: Item, item_count: number, winners: Winner[], strategy: RollingStrategyType )
 ---@field finish fun()
 
+---@alias RollControllerPreviewFn fun( item: Item, count: number, seconds: number?, message: string? )
+
 ---@class RollController
----@field preview fun( item: Item, count: number, seconds: number?, message: string? )
+---@field preview RollControllerPreviewFn
 ---@field start fun( rolling_strategy: RollingStrategyType, item: Item, count: number, seconds: number?, info: string? )
 ---@field winners_found fun( item: Item, item_count: number, winners: Winner[], strategy: RollingStrategyType )
 ---@field finish fun()
@@ -54,11 +56,22 @@ local getn = table.getn
 ---@param ml_candidates MasterLootCandidates
 ---@param softres GroupAwareSoftRes
 ---@param loot_list SoftResLootList
----@param loot_frame LootFrame
+---@param loot_controller LootController
 ---@param rolling_popup RollingPopup
 ---@param loot_award_popup LootAwardPopup
 ---@param player_selection_frame MasterLootCandidateSelectionFrame
-function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, config, loot_frame, rolling_popup, loot_award_popup, player_selection_frame )
+function M.new(
+    roll_tracker,
+    player_info,
+    ml_candidates,
+    softres,
+    loot_list,
+    config,
+    loot_controller,
+    rolling_popup,
+    loot_award_popup,
+    player_selection_frame
+)
   local callbacks = {}
   local ml_confirmation_data = nil ---@type MasterLootConfirmationData?
   local preview_data = nil ---@type RollingPopupPreviewData
@@ -495,56 +508,20 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     end
   end
 
-  ---@param item DroppedItem|Coin
-  local function select_item( item )
-    if item.type == "Coin" then return function() end end
-
-    return function()
-      new_preview( item, 1 )
-    end
-  end
-
-  local function update_loot_frame()
-    local items = loot_list.get_items() ---@type (DroppedItem|Coin)[]
-    ---@type LootFrameItem[]
-    local result = {}
-
-    for i, item in ipairs( items ) do
-      local is_coin = item.type == "Coin"
-      ---@type LootFrameItem
-      table.insert( result, {
-        index = i,
-        texture = item.texture,
-        name = is_coin and item.amount_text or item.name,
-        quality = item.quality or 0,
-        quantity = item.quantity,
-        click_fn = select_item( item ),
-        is_selected = false,
-        is_enabled = true,
-        slot = loot_list.get_slot( is_coin and "Coin" or item.id ),
-        tooltip_link = item.tooltip_link,
-        comment = nil,
-        comment_tooltip = nil
-      } )
-    end
-
-    loot_frame.update( result )
-  end
-
   local function loot_opened()
     M.debug.add( "loot_opened" )
-    loot_frame.show()
-    update_loot_frame()
+    loot_controller.show()
+    loot_controller.update( new_preview )
   end
 
   local function loot_slot_cleared( slot )
     M.debug.add( string.format( "loot_slot_cleared(%s)", slot ) )
-    update_loot_frame()
+    loot_controller.update( new_preview )
   end
 
   local function loot_closed()
     M.debug.add( "loot_closed" )
-    loot_frame.hide()
+    loot_controller.hide()
 
     if ml_confirmation_data then
       award_aborted( ml_confirmation_data.item )
