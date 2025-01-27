@@ -12,7 +12,7 @@ local M = {}
 ---@field confirm fun()
 ---@field abort fun()
 
-function M.new( _, roll_controller )
+function M.new( _ )
   local visible = false
   ---@type MasterLootConfirmationData?
   local m_data
@@ -36,9 +36,6 @@ function M.new( _, roll_controller )
     if not m_data then return end
     m_data.abort_fn()
   end
-
-  roll_controller.subscribe( "show_master_loot_confirmation", show )
-  roll_controller.subscribe( "hide_master_loot_confirmation", hide )
 
   ---@type AwardPopupMock
   return {

@@ -24,11 +24,14 @@ local button_defaults = {
   scale = 0.76
 }
 
+---@class LootAwardPopup
+---@field show fun( data: MasterLootConfirmationData )
+---@field hide fun()
+
 ---@param popup_builder table
----@param roll_controller RollController -- TODO: Replace with event bus.
 ---@param db table
 ---@param center_point table
-function M.new( popup_builder, roll_controller, db, center_point )
+function M.new( popup_builder, db, center_point )
   local popup
   local top_padding = 14
   local on_hide ---@type fun()?
@@ -230,8 +233,11 @@ function M.new( popup_builder, roll_controller, db, center_point )
     end
   end
 
-  roll_controller.subscribe( "show_master_loot_confirmation", show )
-  roll_controller.subscribe( "hide_master_loot_confirmation", hide )
+  ---@type LootAwardPopup
+  return {
+    show = show,
+    hide = hide
+  }
 end
 
 m.LootAwardPopup = M

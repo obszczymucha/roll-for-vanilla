@@ -144,9 +144,15 @@ local function new( dependencies )
       group_aware_softres( group_roster, awarded_loot )
 
   local popup_builder = require( "mocks/PopupBuilder" )
+  local loot_frame = require( "mocks/LootFrame" ).new()
   local rolling_popup = require( "mocks/RollingPopup" ).new( popup_builder.new(), db( "dummy" ), config )
+
+  local loot_award_popup = require( "mocks/LootAwardPopup" ).new( nil )
+  deps[ "LootAwardPopup" ] = loot_award_popup
+
   local player_selection_frame = require( "mocks/MasterLootCandidateSelectionFrame" ).new( config )
   deps[ "PlayerSelectionFrame" ] = player_selection_frame
+
   local roll_controller = require( "src/RollController" ).new(
     roll_tracker,
     player_info,
@@ -154,7 +160,9 @@ local function new( dependencies )
     softres,
     loot_list,
     config,
+    loot_frame,
     rolling_popup,
+    loot_award_popup, ---@diagnostic disable-line: param-type-mismatch
     player_selection_frame
   )
 
@@ -189,15 +197,11 @@ local function new( dependencies )
   local rolling_popup_content = require( "src/RollingPopupContentTransformer" ).new( config )
   deps[ "RollingPopupContent" ] = rolling_popup_content
 
-  local loot_award_popup = require( "mocks/LootAwardPopup" ).new( nil, roll_controller )
-  deps[ "LootAwardPopup" ] = loot_award_popup
-
   require( "src/RollResultAnnouncer" ).new( chat, roll_controller, roll_tracker, config )
   local auto_loot = require( "mocks/AutoLoot" ).new()
   local dropped_loot = require( "src/DroppedLoot" ).new( db( "dummy" ) )
   local dropped_loot_announce = require( "src/DroppedLootAnnounce" ).new( loot_list, chat, dropped_loot, softres, winner_tracker, player_info )
   local auto_group_loot = require( "mocks/AutoGroupLoot" ).new()
-  local loot_frame = require( "mocks/LootFrame" ).new()
   local loot_auto_process = require( "src/LootAutoProcess" ).new( config, roll_tracker, loot_list, roll_controller, player_info )
   local loot_facade_listener = require( "src/LootFacadeListener" ).new(
     loot_facade,
@@ -205,7 +209,6 @@ local function new( dependencies )
     dropped_loot_announce,
     master_loot,
     auto_group_loot,
-    loot_frame,
     roll_controller,
     loot_auto_process,
     player_info

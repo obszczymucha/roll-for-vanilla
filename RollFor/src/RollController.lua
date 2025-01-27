@@ -33,8 +33,8 @@ local getn = table.getn
 ---@field waiting_for_rolls fun()
 ---@field award_aborted fun( item: Item )
 ---@field loot_awarded fun( player_name: string, item_id: number, item_link: string )
----@field show_master_loot_confirmation fun( player: ItemCandidate|Winner, item: MasterLootDistributableItem, rolling_strategy: RollingStrategyType )
 ---@field loot_opened fun()
+---@field loot_slot_cleared fun( slot: number )
 ---@field loot_closed fun()
 ---@field player_already_has_unique_item fun()
 ---@field player_has_full_bags fun()
@@ -54,9 +54,11 @@ local getn = table.getn
 ---@param ml_candidates MasterLootCandidates
 ---@param softres GroupAwareSoftRes
 ---@param loot_list SoftResLootList
+---@param loot_frame LootFrame
 ---@param rolling_popup RollingPopup
+---@param loot_award_popup LootAwardPopup
 ---@param player_selection_frame MasterLootCandidateSelectionFrame
-function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, config, rolling_popup, player_selection_frame )
+function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, config, loot_frame, rolling_popup, loot_award_popup, player_selection_frame )
   local callbacks = {}
   local ml_confirmation_data = nil ---@type MasterLootConfirmationData?
   local preview_data = nil ---@type RollingPopupPreviewData
@@ -159,7 +161,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
 
   local function award_aborted( item )
     if ml_confirmation_data then
-      notify_subscribers( "hide_master_loot_confirmation" )
+      loot_award_popup.hide()
       ml_confirmation_data = nil
     end
 
@@ -213,7 +215,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     }
 
     rolling_popup.hide()
-    notify_subscribers( "show_master_loot_confirmation", ml_confirmation_data )
+    loot_award_popup.show( ml_confirmation_data )
   end
 
   ---@param item Item
@@ -471,7 +473,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
 
     if ml_confirmation_data then
       ml_confirmation_data = nil
-      notify_subscribers( "hide_master_loot_confirmation" )
+      loot_award_popup.hide()
     end
 
     notify_subscribers( "loot_awarded", { player_name = player_name, item_id = item_id, item_link = item_link } )
@@ -493,12 +495,56 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     end
   end
 
+  ---@param item DroppedItem|Coin
+  local function select_item( item )
+    if item.type == "Coin" then return function() end end
+
+    return function()
+      new_preview( item, 1 )
+    end
+  end
+
+  local function update_loot_frame()
+    local items = loot_list.get_items() ---@type (DroppedItem|Coin)[]
+    ---@type LootFrameItem[]
+    local result = {}
+
+    for i, item in ipairs( items ) do
+      local is_coin = item.type == "Coin"
+      ---@type LootFrameItem
+      table.insert( result, {
+        index = i,
+        texture = item.texture,
+        name = is_coin and item.amount_text or item.name,
+        quality = item.quality or 0,
+        quantity = item.quantity,
+        click_fn = select_item( item ),
+        is_selected = false,
+        is_enabled = true,
+        slot = loot_list.get_slot( is_coin and "Coin" or item.id ),
+        tooltip_link = item.tooltip_link,
+        comment = nil,
+        comment_tooltip = nil
+      } )
+    end
+
+    loot_frame.update( result )
+  end
+
   local function loot_opened()
-    notify_subscribers( "loot_opened" )
+    M.debug.add( "loot_opened" )
+    loot_frame.show()
+    update_loot_frame()
+  end
+
+  local function loot_slot_cleared( slot )
+    M.debug.add( string.format( "loot_slot_cleared(%s)", slot ) )
+    update_loot_frame()
   end
 
   local function loot_closed()
-    notify_subscribers( "loot_closed" )
+    M.debug.add( "loot_closed" )
+    loot_frame.hide()
 
     if ml_confirmation_data then
       award_aborted( ml_confirmation_data.item )
@@ -519,7 +565,7 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
   local function update_loot_confirmation_with_error( error )
     if not ml_confirmation_data then return end
     ml_confirmation_data.error = error
-    notify_subscribers( "show_master_loot_confirmation", ml_confirmation_data )
+    loot_award_popup.show( ml_confirmation_data )
   end
 
   local function player_already_has_unique_item()
@@ -584,8 +630,8 @@ function M.new( roll_tracker, player_info, ml_candidates, softres, loot_list, co
     tie_start = tie_start,
     award_aborted = award_aborted,
     loot_awarded = loot_awarded,
-    show_master_loot_confirmation = show_master_loot_confirmation,
     loot_opened = loot_opened,
+    loot_slot_cleared = loot_slot_cleared,
     loot_closed = loot_closed,
     player_already_has_unique_item = player_already_has_unique_item,
     player_has_full_bags = player_has_full_bags,

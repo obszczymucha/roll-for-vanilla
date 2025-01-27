@@ -228,6 +228,20 @@ local function create_components()
     M.config
   )
 
+  ---@type LootFrame
+  M.loot_frame = m.LootFrame.new(
+    m.FrameBuilder,
+    db( "loot_frame" ),
+    M.config
+  )
+
+  ---@type LootAwardPopup
+  M.loot_award_popup = m.LootAwardPopup.new(
+    m.PopupBuilder.new( m.FrameBuilder ),
+    rolling_popup_db,
+    m.RollingPopup.center_point
+  )
+
   ---@type RollController
   M.roll_controller = m.RollController.new(
     M.roll_tracker,
@@ -236,7 +250,9 @@ local function create_components()
     M.softres,
     M.loot_list,
     M.config,
+    M.loot_frame,
     M.rolling_popup,
+    M.loot_award_popup,
     M.player_selection_frame
   )
 
@@ -288,26 +304,7 @@ local function create_components()
   M.loot_auto_process = m.LootAutoProcess.new( M.config, M.roll_tracker, M.loot_list, M.roll_controller, M.player_info )
 
   -- TODO: Add type.
-  M.loot_award_popup = m.LootAwardPopup.new(
-    m.PopupBuilder.new( m.FrameBuilder ),
-    M.roll_controller,
-    rolling_popup_db,
-    m.RollingPopup.center_point
-  )
-
-  -- TODO: Add type.
   M.welcome_popup = m.WelcomePopup.new( m.FrameBuilder, M.ace_timer, db( "welcome_popup" ) )
-
-  ---@type LootFrame
-  M.loot_frame = m.LootFrame.new(
-    m.FrameBuilder,
-    M.loot_list,
-    db( "loot_frame" ),
-    M.roll_controller,
-    M.roll_tracker,
-    M.config,
-    M.player_info
-  )
 
   -- TODO: Add type.
   M.roll_for_ad = m.RollForAd.new( M.player_info )
@@ -348,7 +345,6 @@ local function create_components()
     M.dropped_loot_announce,
     M.master_loot,
     M.auto_group_loot,
-    M.loot_frame,
     M.roll_controller,
     M.loot_auto_process,
     M.player_info

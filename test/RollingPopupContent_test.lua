@@ -137,7 +137,12 @@ local function new( dependencies )
   local softres = deps[ "SoftResData" ] and group_aware_softres( group_roster, deps[ "SoftResData" ] ) or group_aware_softres( group_roster )
 
   local popup_builder = require( "mocks/PopupBuilder" )
+  local loot_frame = require( "mocks/LootFrame" ).new()
   local rolling_popup = require( "mocks/RollingPopup" ).new( popup_builder.new(), db( "dummy" ), config )
+
+  local loot_award_popup = require( "mocks/LootAwardPopup" ).new( nil )
+  deps[ "LootAwardPopup" ] = loot_award_popup
+
   local player_selection_frame = require( "src/MasterLootCandidateSelectionFrame" ).new( config )
   local roll_controller = require( "src/RollController" ).new(
     roll_tracker,
@@ -146,7 +151,9 @@ local function new( dependencies )
     softres,
     loot_list,
     config,
+    loot_frame,
     rolling_popup,
+    loot_award_popup, ---@diagnostic disable-line: param-type-mismatch
     player_selection_frame
   )
 
@@ -1388,7 +1395,7 @@ function SoftResRollPopupContentSpec:should_properly_hide_and_show_the_popup_wit
 
   -- Then
   eq( popup.is_visible(), true )
-  controller.show_master_loot_confirmation( to_winner( rp( p1 ), item, RT.SoftRes ), item, strategy )
+  -- controller.show_master_loot_confirmation( to_winner( rp( p1 ), item, RT.SoftRes ), item, strategy )
   eq( popup.is_visible(), false )
   controller.award_aborted( item )
   eq( popup.is_visible(), true )
@@ -1421,7 +1428,7 @@ function SoftResRollPopupContentSpec:should_display_the_remaining_winner_after_a
 
   -- Then
   eq( popup.is_visible(), true )
-  controller.show_master_loot_confirmation( to_winner( rp( p1 ), item, RT.SoftRes ), item, strategy )
+  -- controller.show_master_loot_confirmation( to_winner( rp( p1 ), item, RT.SoftRes ), item, strategy )
   eq( popup.is_visible(), false )
   controller.loot_awarded( "Psikutas", item.id, item.link )
   eq( popup.is_visible(), true )

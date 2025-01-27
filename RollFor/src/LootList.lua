@@ -10,7 +10,7 @@ local getn = table.getn
 ---@class LootList
 ---@field get_items fun(): DroppedItem[]
 ---@field get_source_guid fun(): string
----@field get_slot fun( item_id: number ): number?
+---@field get_slot fun( item_id: number|"Coin" ): number?
 ---@field is_looting fun(): boolean
 ---@field count fun( item_id: number ): number
 
@@ -106,10 +106,14 @@ function M.new( loot_facade, item_utils, dummy_items_fn )
   loot_facade.subscribe( "LootClosed", on_loot_closed )
   loot_facade.subscribe( "LootSlotCleared", on_loot_slot_cleared )
 
-  ---@param item_id number
+  ---@param item_id number|"Coin"
   ---@return number?
   local function get_slot( item_id )
     for slot, item in pairs( items ) do
+      if item_id == "Coin" and item.type == "Coin" then
+        return slot
+      end
+
       if item.id == item_id then
         return slot
       end

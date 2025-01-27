@@ -19,7 +19,7 @@ local make_hardres_dropped_item = m.ItemUtils.make_hardres_dropped_item
 ---@class SoftResLootList : LootList
 ---@field get_items fun(): (MasterLootDistributableItem)[]
 ---@field get_source_guid fun(): string
----@field get_slot fun( item_id: number ): number?
+---@field get_slot fun( item_id: number|"Coin" ): number?
 ---@field is_looting fun(): boolean
 ---@field count fun( item_id: number ): number
 ---@field get_by_id fun( item_id: number ): MasterLootDistributableItem?

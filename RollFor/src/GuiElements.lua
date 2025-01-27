@@ -3,9 +3,6 @@ local m = RollFor
 
 if m.GuiElements then return end
 
----@type LT
-local LT = m.ItemUtils.LootType
-
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
 local hl = m.colors.hl
@@ -376,8 +373,6 @@ function M.dropped_item( parent, text )
   local icon_zoom = 1
 
   local item
-  local selected_item
-  local on_click
 
   container.index = create_text_in_container( "Frame", container, 20, "CENTER", nil, "text" )
   container.index:SetPoint( "LEFT", 0, 0 )
@@ -407,25 +402,74 @@ function M.dropped_item( parent, text )
     container:SetPoint( "RIGHT", 0, 0 )
   end
 
-  container.SetItem = function( _, index, v )
-    item = v
-    container.index.text:SetText( index )
-    container.icon.texture:SetTexture( v.texture )
-    local is_coin = v.type == LT.Coin
-    container.text:SetText( m.colorize_item_by_quality( is_coin and v.amount_text or v.name, is_coin and 0 or v.quality ) )
+  local function get_color( multiplier )
+    local mult = multiplier or 1
+    local color = m.api.ITEM_QUALITY_COLORS[ item.quality or 0 ]
+    return color.r * mult, color.g * mult, color.b * mult
+  end
 
-    if v.type == LT.HardRessedItem or v.type == LT.HardRessedDroppedItem then
-      container.comment.text:SetText( m.colors.red( "HR" ) )
+  local function hovered_color()
+    if not item then return end
+    if item.is_selected then return end
+    local r, g, b = get_color()
+    container:SetBackdropColor( r, g, b, 0.3 )
+  end
+
+  local function clicked_color()
+    local r, g, b = get_color()
+    container:SetBackdropColor( r, g, b, 0.4 )
+  end
+
+  local function selected_color()
+    if not item then return end
+    local r, g, b = get_color()
+    container:SetBackdropColor( r, g, b, 0.3 )
+  end
+
+  local function not_hovered_color()
+    if not item or item.is_selected then return end
+    container:SetBackdropColor( 0, 0, 0, 0.1 )
+  end
+
+  local function update()
+    if not item then return end
+
+    if not item.is_enabled then
+      container:SetAlpha( 0.6 )
+      return
+    end
+
+    if item.is_selected then
+      selected_color()
+    else
+      not_hovered_color()
+    end
+
+    container:SetAlpha( 1 )
+  end
+
+  ---@param v LootFrameItem
+  container.SetItem = function( _, v )
+    item = v
+    container.index.text:SetText( v.index )
+    container.icon.texture:SetTexture( v.texture )
+    container.text:SetText( m.colorize_item_by_quality( v.name, v.quality ) )
+    -- local is_coin = v.type == LT.Coin
+    -- container.text:SetText( m.colorize_item_by_quality( is_coin and v.amount_text or v.name, is_coin and 0 or v.quality ) )
+
+    if v.comment then
+      container.comment.text:SetText( v.comment )
+      -- container.comment.text:SetText( m.colors.red( "HR" ) )
       container.comment:Show()
       container.text:ClearAllPoints()
       container.text:SetPoint( "LEFT", container.icon, "RIGHT", spacing, 0 )
       container.text:SetPoint( "RIGHT", container.comment, "LEFT", 0, 0 )
-    elseif v.sr_players and getn( v.sr_players ) > 0 then
-      container.comment.text:SetText( m.colors.orange( "SR" ) )
-      container.comment:Show()
-      container.text:ClearAllPoints()
-      container.text:SetPoint( "LEFT", container.icon, "RIGHT", spacing, 0 )
-      container.text:SetPoint( "RIGHT", container.comment, "LEFT", 0, 0 )
+      -- elseif v.sr_players and getn( v.sr_players ) > 0 then
+      --   container.comment.text:SetText( m.colors.orange( "SR" ) )
+      --   container.comment:Show()
+      --   container.text:ClearAllPoints()
+      --   container.text:SetPoint( "LEFT", container.icon, "RIGHT", spacing, 0 )
+      --   container.text:SetPoint( "RIGHT", container.comment, "LEFT", 0, 0 )
     else
       container.comment:Hide()
       container.text:ClearAllPoints()
@@ -441,78 +485,27 @@ function M.dropped_item( parent, text )
       container.quantity:Hide()
     end
 
+    container:SetScript( "OnClick", v.click_fn )
+    container.icon:SetScript( "OnClick", v.click_fn )
+
+    -- Fucking hell this took forever to figure out. Fuck you Blizzard.
+    -- For looting to work in vanilla, the frame must be of a "LootButton" type and
+    -- then it comes with the SetSlot function that we need to use to set the slot.
+    -- This will probably be a pain in the ass when porting.
+    container:SetSlot( v.slot or 0)
+
+    update()
     resize()
   end
 
-  local function is_selected()
-    return selected_item and item and selected_item.id == item.id
-  end
-
-  local function get_color( multiplier )
-    local mult = multiplier or 1
-    local color = m.api.ITEM_QUALITY_COLORS[ item.quality or 0 ]
-    return color.r * mult, color.g * mult, color.b * mult
-  end
-
-  local function hovered_color()
-    if selected_item then return end
-    local r, g, b = get_color()
-    container:SetBackdropColor( r, g, b, 0.3 )
-  end
-
-  local function clicked_color()
-    local r, g, b = get_color()
-    container:SetBackdropColor( r, g, b, 0.4 )
-  end
-
-  local function selected_color()
-    local r, g, b = get_color()
-    container:SetBackdropColor( r, g, b, 0.3 )
-  end
-
-  local function not_hovered_color()
-    if selected_item then return end
-    container:SetBackdropColor( 0, 0, 0, 0.1 )
-  end
-
-  local function update()
-    if selected_item and not is_selected() then
-      container:SetAlpha( 0.6 )
-      return
-    end
-
-    if selected_item then
-      selected_color()
-    else
-      not_hovered_color()
-    end
-
-    container:SetAlpha( 1 )
-  end
-
-  container.SetSelectedItem = function( _, v )
-    selected_item = v
-    update()
-  end
-
-  container.SetOnClick = function( _, f )
-    on_click = f
-  end
-
-  container:SetScript( "OnClick", function()
-    if on_click and not selected_item then on_click( container, item ) end
-  end )
-
-  container.icon:SetScript( "OnClick", function()
-    if on_click and not selected_item then on_click( container, item ) end
-  end )
-
   local function on_enter()
+    if not item then return end
     if not item.tooltip_link then return end
-    if selected_item and not is_selected() then return end
 
     ---@diagnostic disable-next-line: undefined-global
     local self = this
+    if not item.is_enabled then return end
+
     m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
     m.api.GameTooltip:SetHyperlink( item.tooltip_link )
     m.api.GameTooltip:Show()
@@ -535,6 +528,7 @@ function M.dropped_item( parent, text )
   end
 
   container.comment:SetScript( "OnEnter", function()
+    if not item then return end
     if not item.sr_players or getn( item.sr_players ) == 0 then return end
 
     ---@diagnostic disable-next-line: undefined-global
@@ -582,14 +576,16 @@ function M.dropped_item( parent, text )
   container:SetScript( "OnLeave", on_leave )
 
   local function on_mouse_down()
-    if selected_item and not is_selected() then return end
+    if not item then return end
+    if not item.is_enabled then return end
 
     mouse_down = true
     clicked_color()
   end
 
   local function on_mouse_up()
-    if selected_item and not is_selected() then return end
+    if not item then return end
+    if not item.is_enabled then return end
 
     if not mouse_down then return end
     hovered_color()

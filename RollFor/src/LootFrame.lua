@@ -6,23 +6,15 @@ local M = m.Module.new( "LootFrame" )
 
 ---@class LootFrame
 ---@field show fun()
----@field update fun()
+---@field update fun( items: LootFrameItem[] )
 ---@field hide fun()
 
----@type LT
-local LT = m.ItemUtils.LootType
-
 M.center_point = { point = "CENTER", relative_point = "CENTER", x = -260, y = 220 }
-local S = m.Types.RollingStatus
 
 ---@param frame_builder table
----@param loot_list LootList
 ---@param db table
----@param roll_controller RollController
----@param roll_tracker RollTracker
 ---@param config Config
----@param player_info PlayerInfo
-function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, config, player_info )
+function M.new( frame_builder, db, config )
   local scale = 1.0
   ---@class Frame
   local boss_name_frame
@@ -30,11 +22,6 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
   local loot_frame
   local boss_name_width = 0
   local max_frame_width
-  local selected_item
-
-  local function get_selected_item()
-    return selected_item
-  end
 
   local function is_out_of_bounds( x, y, frame_width, frame_height, screen_width, screen_height )
     local left = x
@@ -63,108 +50,54 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
     db.point = { point = point, relative_point = relative_point, x = x, y = y }
   end
 
-  local function on_click( button, item )
-    if m.api.IsControlKeyDown() then
-      m.api.DressUpItemLink( item.link )
-      return
-    elseif m.api.IsShiftKeyDown() and m.api.ChatFrameEditBox:IsVisible() then
-      m.api.ChatFrameEditBox:Insert( item.link )
-      return
-    end
+  -- local function on_click( button, item )
+  --   if m.api.IsControlKeyDown() then
+  --     m.api.DressUpItemLink( item.link )
+  --     return
+  --   elseif m.api.IsShiftKeyDown() and m.api.ChatFrameEditBox:IsVisible() then
+  --     m.api.ChatFrameEditBox:Insert( item.link )
+  --     return
+  --   end
+  --
+  --   local loot_method = m.api.GetLootMethod()
+  --
+  --   if player_info.is_master_looter() and item.type ~= LT.Coin then
+  --     local count = loot_list.count( item.id )
+  --     roll_controller.preview( item, count )
+  --     return
+  --   end
+  --
+  --   local threshold = m.api.GetLootThreshold()
+  --
+  --   if loot_method == "freeforall" or (item.quality or 0) < threshold then
+  --     -- Fucking hell this took forever to figure out. Fuck you Blizzard.
+  --     -- For looting to work in vanilla, the frame must be of a "LootButton" type and
+  --     -- then it comes with the SetSlot function that we need to use to set the slot.
+  --     -- This will probably be a pain in the ass when porting.
+  --     local slot = loot_list.get_slot( item.id )
+  --     button:SetSlot( slot )
+  --   end
+  -- end
 
-    local loot_method = m.api.GetLootMethod()
+  -- local function select( data )
+  --   if not boss_name_frame then return end
+  --   if data and data.item and selected_item and data.item.id == selected_item.id then return end
+  --   if not boss_name_frame:IsVisible() then return end
+  --
+  --   M.debug.add( "select" )
+  --   selected_item = data and data.item or nil
+  --   update()
+  --   roll_controller.loot_list_item_selected()
+  -- end
 
-    if player_info.is_master_looter() and item.type ~= LT.Coin then
-      local count = loot_list.count( item.id )
-      roll_controller.preview( item, count )
-      return
-    end
-
-    local threshold = m.api.GetLootThreshold()
-
-    if loot_method == "freeforall" or (item.quality or 0) < threshold then
-      -- Fucking hell this took forever to figure out. Fuck you Blizzard.
-      -- For looting to work in vanilla, the frame must be of a "LootButton" type and
-      -- then it comes with the SetSlot function that we need to use to set the slot.
-      -- This will probably be a pain in the ass when porting.
-      local slot = loot_list.get_slot( item.id )
-      button:SetSlot( slot )
-    end
-  end
-
-  local function update()
-    loot_frame.clear()
-
-    local content = {}
-    for _, item in ipairs( loot_list.get_items() ) do
-      table.insert( content, {
-        type = "dropped_item",
-        item = item
-      } )
-    end
-
-    local max_width = 0
-    local anchor
-    local item_count = 0
-    local height = 25
-
-    local frames = {}
-
-    for i, v in ipairs( content ) do
-      loot_frame.add_line( v.type, function( type, frame )
-        if type == "dropped_item" then
-          local item = v.item
-          frame:SetItem( i, item )
-          frame:SetHeight( height )
-          frame:SetOnClick( on_click )
-          frame:ClearAllPoints()
-          frame:SetSelectedItem( get_selected_item() )
-
-          if max_frame_width then
-            frame:SetWidth( max_frame_width - 2 )
-          end
-
-          if not anchor then
-            frame:SetPoint( "TOPLEFT", loot_frame, "TOPLEFT", 1, -1 )
-          else
-            frame:SetPoint( "TOPLEFT", anchor, "BOTTOMLEFT", 0, 0 )
-          end
-
-          anchor = frame
-
-          local w = frame:GetWidth() + 2
-          if w > max_width then max_width = w end
-          item_count = item_count + 1
-
-          table.insert( frames, frame )
-        end
-      end, 0 )
-    end
-
-    loot_frame:SetHeight( item_count * height + 2 )
-
-    return max_width, frames
-  end
-
-  local function select( data )
-    if not boss_name_frame then return end
-    if data and data.item and selected_item and data.item.id == selected_item.id then return end
-    if not boss_name_frame:IsVisible() then return end
-
-    M.debug.add( "select" )
-    selected_item = data and data.item or nil
-    update()
-    roll_controller.loot_list_item_selected()
-  end
-
-  local function deselect()
-    if not selected_item then return end
-
-    M.debug.add( "deselect" )
-    selected_item = nil
-    update()
-    roll_controller.loot_list_item_deselected()
-  end
+  -- local function deselect()
+  --   if not selected_item then return end
+  --
+  --   M.debug.add( "deselect" )
+  --   selected_item = nil
+  --   update()
+  --   roll_controller.loot_list_item_deselected()
+  -- end
 
   local function create_boss_name_frame()
     boss_name_frame = frame_builder.new()
@@ -184,8 +117,6 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
           loot_frame:Show()
         end )
         :on_hide( function()
-          M.debug.add( "on_hide" )
-          deselect()
           loot_frame:Hide()
         end )
         :on_drag_stop( on_drag_stop )
@@ -220,25 +151,20 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
         :build()
   end
 
-  local function hide()
-    if boss_name_frame then boss_name_frame:Hide() end
-  end
-
-  local function show()
-    M.debug.add( "show" )
+  local function create_frames()
+    if boss_name_frame and loot_frame then return end
     if not boss_name_frame then create_boss_name_frame() end
     if not loot_frame then create_frame() end
 
-    local roll_data = roll_tracker.get()
-    local item = roll_data and roll_data.status and roll_data.status ~= S.Preview and roll_data.item
+    -- local roll_data = roll_tracker.get()
+    -- local item = roll_data and roll_data.status and roll_data.status ~= S.Preview and roll_data.item
 
-    if item and loot_list.get_slot( item.id ) then
-      selected_item = item
-    end
+    -- if item and loot_list.get_slot( item.id ) then
+    --   selected_item = item
+    -- end
 
     max_frame_width = nil
 
-    boss_name_frame:Show()
     boss_name_frame.clear()
     boss_name_frame.add_line( "text", function( type, frame )
       if type == "text" then
@@ -261,8 +187,88 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
 
     loot_frame:ClearAllPoints()
     loot_frame:SetPoint( "TOP", boss_name_frame, "BOTTOM", 0, 1 )
+  end
 
-    local max_width, frames = update()
+  local function show()
+    M.debug.add( "show" )
+    create_frames()
+    boss_name_frame:Show()
+  end
+
+  local function hide()
+    if boss_name_frame then
+      M.debug.add( "hide" )
+      boss_name_frame:Hide()
+    end
+  end
+
+  ---@class LootFrameItem
+  ---@field index number
+  ---@field texture ItemTexture
+  ---@field name string
+  ---@field quality ItemQuality
+  ---@field quantity number
+  ---@field click_fn fun()
+  ---@field is_selected boolean
+  ---@field is_enabled boolean
+  ---@field slot number?
+  ---@field tooltip_link TooltipItemLink?
+  ---@field comment string?
+  ---@field comment_tooltip string[]?
+
+  ---@param items LootFrameItem[]
+  local function update( items )
+    M.debug.add( "update" )
+    create_frames()
+    loot_frame.clear()
+
+    local content = {}
+
+    for _, item in ipairs( items ) do
+      table.insert( content, {
+        type = "dropped_item",
+        item = item
+      } )
+    end
+
+    local max_width = 0
+    local anchor
+    local item_count = 0
+    local height = 25
+
+    local frames = {}
+
+    for _, v in ipairs( content ) do
+      loot_frame.add_line( v.type, function( type, frame )
+        if type == "dropped_item" then
+          local item = v.item ---@type LootFrameItem
+          frame:SetItem( item )
+          frame:SetHeight( height )
+          frame:ClearAllPoints()
+
+          if max_frame_width then
+            frame:SetWidth( max_frame_width - 2 )
+          end
+
+          if not anchor then
+            frame:SetPoint( "TOPLEFT", loot_frame, "TOPLEFT", 1, -1 )
+          else
+            frame:SetPoint( "TOPLEFT", anchor, "BOTTOMLEFT", 0, 0 )
+          end
+
+          anchor = frame
+
+          local w = frame:GetWidth() + 2
+          if w > max_width then max_width = w end
+          item_count = item_count + 1
+
+          table.insert( frames, frame )
+        end
+      end, 0 )
+    end
+
+    loot_frame:SetHeight( item_count * height + 2 )
+
     max_frame_width = m.lua.math.max( boss_name_width, max_width )
 
     boss_name_frame:SetWidth( max_frame_width )
@@ -271,13 +277,14 @@ function M.new( frame_builder, loot_list, db, roll_controller, roll_tracker, con
     for _, frame in ipairs( frames ) do
       frame:SetWidth( max_frame_width - 2 )
     end
+    return max_width, frames
   end
 
-  roll_controller.subscribe( "preview", select )
-  roll_controller.subscribe( "show_master_loot_confirmation", select )
-  roll_controller.subscribe( "award_aborted", select )
-  roll_controller.subscribe( "rolling_popup_closed", deselect )
-  roll_controller.subscribe( "loot_awarded", deselect )
+  -- roll_controller.subscribe( "preview", select )
+  -- roll_controller.subscribe( "show_master_loot_confirmation", select )
+  -- roll_controller.subscribe( "award_aborted", select )
+  -- roll_controller.subscribe( "rolling_popup_closed", deselect )
+  -- roll_controller.subscribe( "loot_awarded", deselect )
 
   config.subscribe( "reset_loot_frame", function()
     db.point = nil

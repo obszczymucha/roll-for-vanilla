@@ -329,11 +329,9 @@ function M.new()
 
     local w = status.type == S.Preview and status.winners or winners
 
-    print( string.format( "Size: %s", getn( w ) ) )
     for i, winner in ipairs( w ) do
       if winner.name == player_name then
         table.remove( w, i )
-        print( string.format( "Size: %s", getn( w ) ) )
         item_on_roll_count = item_on_roll_count - 1
         clear_if_no_winners( w )
 
