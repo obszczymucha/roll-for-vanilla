@@ -3,6 +3,8 @@ local M = {}
 ---@class MasterLootCandidateSelectionFrameMock : MasterLootCandidateSelectionFrame
 ---@field is_visible fun(): boolean
 ---@field select fun( player_name: string )
+---@field should_be_visible fun()
+---@field should_be_hidden fun()
 
 function M.new( config )
   local m_candidates = nil ---@type MasterLootCandidate[]?
@@ -33,13 +35,27 @@ function M.new( config )
     end
   end
 
+  local function should_be_visible()
+    if not is_visible() then
+      error( "Player selection is hidden.", 2 )
+    end
+  end
+
+  local function should_be_hidden()
+    if is_visible() then
+      error( "Player selection is visible.", 2 )
+    end
+  end
+
   ---@type MasterLootCandidateSelectionFrameMock
   return {
     show = show,
     hide = hide,
     get_frame = real_frame.get_frame,
     is_visible = is_visible,
-    select = select
+    select = select,
+    should_be_visible = should_be_visible,
+    should_be_hidden = should_be_hidden
   }
 end
 

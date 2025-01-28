@@ -11,6 +11,8 @@ local M = {}
 ---@field is_visible fun(): boolean
 ---@field confirm fun()
 ---@field abort fun()
+---@field should_be_visible fun()
+---@field should_be_hidden fun()
 
 function M.new( _ )
   local visible = false
@@ -37,13 +39,27 @@ function M.new( _ )
     m_data.abort_fn()
   end
 
+  local function should_be_visible()
+    if not visible then
+      error( "Loot confirmation popup is hidden.", 2 )
+    end
+  end
+
+  local function should_be_hidden()
+    if visible then
+      error( "Loot confirmation popup is visible.", 2 )
+    end
+  end
+
   ---@type AwardPopupMock
   return {
     show = show,
     hide = hide,
     is_visible = function() return visible end,
     confirm = confirm,
-    abort = abort
+    abort = abort,
+    should_be_visible = should_be_visible,
+    should_be_hidden = should_be_hidden
   }
 end
 

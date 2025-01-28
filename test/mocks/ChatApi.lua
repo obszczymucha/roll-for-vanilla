@@ -3,9 +3,15 @@ local M = {}
 local u = require( "test/utils" )
 local _, eq = u.luaunit( "assertEquals" )
 
+local getn = table.getn
+
 ---@class ChatApiMock : ChatApi
 ---@field assert fun( ...: ChatMessage[] )
 ---@field assert_no_messages fun()
+---@field party fun( expected_message: string )
+---@field raid fun( expected_message: string )
+---@field raid_warning fun( expected_message: string )
+---@field console fun( expected_message: string )
 
 ---@alias ChatType
 ---| "PARTY"
@@ -19,6 +25,7 @@ local _, eq = u.luaunit( "assertEquals" )
 function M.new()
   ---@type ChatMessage[]
   local messages = {}
+  local last_message_assertion_index = 0
 
   local function send_chat_message( message, chat )
     local parsed_message = u.parse_item_link( message )
@@ -42,12 +49,63 @@ function M.new()
     eq( messages, {}, nil, nil, 3 )
   end
 
+  ---@param expected ChatMessage
+  local function assert_message( expected )
+    if getn( messages ) < last_message_assertion_index + 1 then
+      error( "No chat message found.", 3 )
+      return
+    end
+
+    local given = messages[ last_message_assertion_index + 1 ]
+
+    if given.type ~= expected.type and given.message == expected.message then
+      error( string.format( "Expected: %s  Was: %s", expected.type, given.type ), 3 )
+      return
+    end
+
+    if given.type == expected.type and given.message ~= expected.message then
+      error( string.format( "Expected: %s  Was: %s", expected.message, given.message ), 3 )
+      return
+    end
+
+    if given.message ~= expected.message then
+      error( string.format( "Expected %s: %s  Was %s: %s", expected.type, expected.message, given.type, given.message ), 3 )
+      return
+    end
+
+    last_message_assertion_index = last_message_assertion_index + 1
+  end
+
+  ---@param expected_message string
+  local function assert_party( expected_message )
+    assert_message( u.chat_message( expected_message, "PARTY" ) )
+  end
+
+  ---@param expected_message string
+  local function assert_raid( expected_message )
+    assert_message( u.chat_message( expected_message, "RAID" ) )
+  end
+
+  ---@param expected_message string
+  local function assert_raid_warning( expected_message )
+    assert_message( u.chat_message( expected_message, "RAID_WARNING" ) )
+  end
+
+  ---@param expected_message string
+  local function assert_console( expected_message )
+    assert_message( u.chat_message( expected_message, "CONSOLE" ) )
+  end
+
   ---@type ChatApiMock
   return {
     SendChatMessage = send_chat_message,
     DEFAULT_CHAT_FRAME = { AddMessage = default_chat_frame },
     assert = assert,
-    assert_no_messages = assert_no_messages
+    assert_no_messages = assert_no_messages,
+    party = assert_party,
+    raid = assert_raid,
+    raid_warning = assert_raid_warning,
+    console = assert_console
   }
 end
 

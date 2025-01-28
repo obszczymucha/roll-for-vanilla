@@ -80,13 +80,13 @@ function M.new( frame_builder, db, config )
 
   frame.should_be_visible = function()
     if not frame.is_visible() then
-      error( "Frame is hidden.", 2 )
+      error( "Loot frame is hidden.", 2 )
     end
   end
 
   frame.should_be_hidden = function()
     if frame.is_visible() then
-      error( "Frame is visible.", 2 )
+      error( "Loot frame is visible.", 2 )
     end
   end
 

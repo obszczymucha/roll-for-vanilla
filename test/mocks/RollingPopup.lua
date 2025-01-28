@@ -81,13 +81,13 @@ function M.new( popup_builder, db, config )
 
   popup.should_be_visible = function()
     if not popup.is_visible() then
-      error( "Popup is hidden.", 2 )
+      error( "Rolling popup is hidden.", 2 )
     end
   end
 
   popup.should_be_hidden = function()
     if popup.is_visible() then
-      error( "Popup is visible.", 2 )
+      error( "Rolling popup is visible.", 2 )
     end
   end
 

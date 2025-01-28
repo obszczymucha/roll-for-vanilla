@@ -18,9 +18,6 @@ local c, r, pm = u.console_message, u.raid_message, u.party_message
 ---@diagnostic disable-next-line: unused-local
 local cr, rw = u.console_and_raid_message, u.raid_warning
 ---@diagnostic disable-next-line: unused-local
-local rolling_finished, rolling_not_in_progress = u.rolling_finished, u.rolling_not_in_progress
-
----@diagnostic disable-next-line: unused-local
 local C, RT, RS = T.PlayerClass, T.RollType, T.RollingStrategy
 local make_player = T.make_player
 
@@ -220,7 +217,9 @@ local function new( dependencies )
   deps[ "LootFacadeListener" ] = loot_facade_listener
 
   require( "src/DebugBuffer" ).disable_all()
-  return loot_frame, rolling_popup, roll_controller, rolling_logic.on_roll, deps
+  deps.roll = rolling_logic.on_roll
+
+  return loot_frame, rolling_popup, deps
 end
 
 ---@param name string
@@ -306,7 +305,7 @@ PreviewNotSoftRessedItemSpec = {}
 function PreviewNotSoftRessedItemSpec:should_display_close_button_that_closes_the_popup()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
-  local item, item2 = i( "Hearthstone", 123 ), i( "Dragon's Balls", 69 )
+  local item, item2 = i( "Hearthstone", 123 ), i( "Bag", 69 )
   local loot_frame, rolling_popup = New()
       :loot_facade( loot_facade )
       :chat( chat )
@@ -322,14 +321,13 @@ function PreviewNotSoftRessedItemSpec:should_display_close_button_that_closes_th
   -- Then
   loot_frame.should_be_visible()
   loot_frame.should_display(
-    { index = 1, is_enabled = true, is_selected = false, name = "Dragon's Balls" },
+    { index = 1, is_enabled = true, is_selected = false, name = "Bag" },
     { index = 2, is_enabled = true, is_selected = false, name = "Hearthstone" }
   )
-  chat.assert(
-    pm( "Princess Kenny dropped 2 items:" ),
-    pm( "1. [Dragon's Balls]" ),
-    pm( "2. [Hearthstone]" )
-  )
+  chat.party( "Princess Kenny dropped 2 items:" )
+  chat.party( "1. [Bag]" )
+  chat.party( "2. [Hearthstone]" )
+  rolling_popup.should_be_hidden()
 
   -- When
   loot_frame.click( 1 )
@@ -337,7 +335,7 @@ function PreviewNotSoftRessedItemSpec:should_display_close_button_that_closes_th
   -- Then
   loot_frame.should_be_visible()
   loot_frame.should_display(
-    { index = 1, is_enabled = true, is_selected = true, name = "Dragon's Balls" },
+    { index = 1, is_enabled = true, is_selected = true, name = "Bag" },
     { index = 2, is_enabled = false, is_selected = false, name = "Hearthstone" }
   )
   rolling_popup.should_be_visible()
@@ -355,147 +353,217 @@ function PreviewNotSoftRessedItemSpec:should_display_close_button_that_closes_th
   rolling_popup.should_be_hidden()
 end
 
--- function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_party()
---   -- Given
---   local item, chat = i( "Hearthstone", 123 ), mock_chat()
---   local popup, controller = New():chat( chat ):build()
---
---   -- When
---   controller.preview( item, 1 )
---
---   -- Then
---   chat.assert_no_messages()
---   eq( popup.is_visible(), true )
---   eq( popup.content(), {
---     { type = link,     link = item.link, tooltip_link = item.tooltip_link, count = 1 },
---     { type = "button", label = "Roll",   width = 70 },
---     { type = "button", label = "Close",  width = 70 }
---   } )
---
---   -- When
---   popup.click( "Roll" )
---
---   -- Then
---   eq( popup.is_visible(), true )
---   chat.assert( pm( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ) )
--- end
---
--- function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_raid()
---   -- Given
---   local item, chat = i( "Hearthstone", 123 ), mock_chat()
---   local popup, controller = New():chat( chat ):raid_roster( p( "Ohhaimark" ), p( "Obszczymucha" ) ):build()
---
---   -- When
---   controller.preview( item, 1 )
---
---   -- Then
---   eq( popup.is_visible(), true )
---   eq( popup.content(), {
---     { type = link,     link = item.link, tooltip_link = item.tooltip_link, count = 1 },
---     { type = "button", label = "Roll",   width = 70 },
---     { type = "button", label = "Close",  width = 70 }
---   } )
---   chat.assert_no_messages()
---
---   -- When
---   popup.click( "Roll" )
---
---   -- Then
---   eq( popup.is_visible(), true )
---   chat.assert( rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ) )
--- end
---
--- function PreviewNotSoftRessedItemSpec:should_display_award_other_button_that_shows_player_selection_popup_and_awards_the_item()
---   -- Given
---   local loot_facade, chat             = mock_loot_facade(), mock_chat()
---   local item, p1, p2                  = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
---   local popup, controller, _, deps    = New()
---       :loot_facade( loot_facade )
---       :chat( chat )
---       :roster( p1, p2 )
---       :loot_list( item )
---       :build()
---   local player_selection, award_popup = deps[ "PlayerSelectionFrame" ], deps[ "LootAwardPopup" ]
---   u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
---
---   -- When
---   loot_facade.notify( "LootOpened" )
---
---   -- Then
---   chat.assert(
---     pm( "Princess Kenny dropped 1 item:" ),
---     pm( "1. [Hearthstone]" )
---   )
---
---   controller.preview( item, 1 )
---
---   -- Then
---   eq( popup.is_visible(), true )
---   eq( popup.content(), {
---     { type = link,     link = item.link,   tooltip_link = item.tooltip_link, count = 1 },
---     { type = "button", label = "Roll",     width = 70 },
---     { type = "button", label = "Close",    width = 70 },
---     { type = "button", label = "Award...", width = 90 }
---   } )
---
---   -- When
---   popup.click( "AwardOther" )
---
---   -- Then
---   eq( popup.is_visible(), true )
---   eq( player_selection.is_visible(), true )
---   eq( award_popup.is_visible(), false )
---
---   -- When
---   player_selection.select( p1.name )
---
---   -- Then
---   eq( player_selection.is_visible(), false )
---   eq( popup.is_visible(), false )
---   eq( award_popup.is_visible(), true )
---
---   -- When
---   award_popup.confirm()
---
---   -- Then
---   eq( player_selection.is_visible(), false )
---   eq( popup.is_visible(), false )
---   eq( award_popup.is_visible(), false )
---   chat.assert(
---     pm( "Princess Kenny dropped 1 item:" ),
---     pm( "1. [Hearthstone]" ),
---     c( "RollFor: Psikutas received [Hearthstone]." )
---   )
--- end
---
--- PreviewSoftResWinnersSpec = {}
---
--- function PreviewSoftResWinnersSpec:should_display_close_button_that_closes_the_popup()
---   -- Given
---   local item, p1, p2      = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
---   local popup, controller = New()
---       :roster( p1, p2 )
---       :soft_res_data( sr( p1.name, 123 ) )
---       :build()
---
---   -- When
---   controller.preview( item, 1 )
---
---   -- Then
---   eq( popup.is_visible(), true )
---   eq( popup.content(), {
---     { type = link,     link = item.link,                          tooltip_link = item.tooltip_link, count = 1 },
---     { type = "text",   value = "Psikutas soft-ressed this item.", padding = 11 },
---     { type = "button", label = "Close",                           width = 70 }
---   } )
---
---   -- When
---   popup.click( "Close" )
---
---   -- Then
---   eq( popup.is_visible(), false )
--- end
---
+function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_party()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, item2 = i( "Hearthstone", 123 ), i( "Bag", 69 )
+  local loot_frame, rolling_popup = New()
+      :loot_facade( loot_facade )
+      :chat( chat )
+      :loot_list( item, item2 )
+      :build()
+
+  -- Then
+  loot_frame.should_be_hidden()
+
+  -- When
+  loot_facade.notify( "LootOpened" )
+
+  -- Then
+  loot_frame.should_be_visible()
+  loot_frame.should_display(
+    { index = 1, is_enabled = true, is_selected = false, name = "Bag" },
+    { index = 2, is_enabled = true, is_selected = false, name = "Hearthstone" }
+  )
+  chat.party( "Princess Kenny dropped 2 items:" )
+  chat.party( "1. [Bag]" )
+  chat.party( "2. [Hearthstone]" )
+  rolling_popup.should_be_hidden()
+
+  -- When
+  loot_frame.click( 1 )
+
+  -- Then
+  loot_frame.should_be_visible()
+  loot_frame.should_display(
+    { index = 1, is_enabled = true, is_selected = true, name = "Bag" },
+    { index = 2, is_enabled = false, is_selected = false, name = "Hearthstone" }
+  )
+  rolling_popup.should_be_visible()
+  rolling_popup.should_display(
+    { type = link, link = item2.link, tooltip_link = item2.tooltip_link, count = 1 },
+    { type = "button", label = "Roll", width = 70 },
+    { type = "button", label = "Close", width = 70 },
+    { type = "button", label = "Award...", width = 90 }
+  )
+
+  -- When
+  rolling_popup.click( "Roll" )
+
+  -- Then
+  rolling_popup.should_be_visible()
+  chat.party( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+end
+
+function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_raid()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, item2, p1, p2 = i( "Hearthstone", 123 ), i( "Bag", 69 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local loot_frame, rolling_popup = New()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2 )
+      :chat( chat )
+      :loot_list( item, item2 )
+      :build()
+
+  -- Then
+  loot_frame.should_be_hidden()
+
+  -- When
+  loot_facade.notify( "LootOpened" )
+  rolling_popup.should_be_hidden()
+
+  -- Then
+  loot_frame.should_be_visible()
+  loot_frame.should_display(
+    { index = 1, is_enabled = true, is_selected = false, name = "Bag" },
+    { index = 2, is_enabled = true, is_selected = false, name = "Hearthstone" }
+  )
+  chat.raid( "Princess Kenny dropped 2 items:" )
+  chat.raid( "1. [Bag]" )
+  chat.raid( "2. [Hearthstone]" )
+  rolling_popup.should_be_hidden()
+
+  -- When
+  loot_frame.click( 1 )
+
+  -- Then
+  loot_frame.should_be_visible()
+  loot_frame.should_display(
+    { index = 1, is_enabled = true, is_selected = true, name = "Bag" },
+    { index = 2, is_enabled = false, is_selected = false, name = "Hearthstone" }
+  )
+  rolling_popup.should_be_visible()
+  rolling_popup.should_display(
+    { type = link, link = item2.link, tooltip_link = item2.tooltip_link, count = 1 },
+    { type = "button", label = "Roll", width = 70 },
+    { type = "button", label = "Close", width = 70 },
+    { type = "button", label = "Award...", width = 90 }
+  )
+
+  -- When
+  rolling_popup.click( "Roll" )
+
+  -- Then
+  rolling_popup.should_be_visible()
+  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+end
+
+function PreviewNotSoftRessedItemSpec:should_display_award_other_button_that_shows_player_selection_popup_and_awards_the_item()
+  -- Given
+  local loot_facade, chat               = mock_loot_facade(), mock_chat()
+  local item, p1, p2                    = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local loot_frame, rolling_popup, deps = New()
+      :loot_facade( loot_facade )
+      :chat( chat )
+      :roster( p1, p2 )
+      :loot_list( item )
+      :build()
+  local player_selection, award_popup   = deps[ "PlayerSelectionFrame" ], deps[ "LootAwardPopup" ]
+  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+
+  -- When
+  loot_facade.notify( "LootOpened" )
+
+  -- Then
+  rolling_popup.should_be_hidden()
+  chat.party( "Princess Kenny dropped 1 item:" )
+  chat.party( "1. [Hearthstone]" )
+  rolling_popup.should_be_hidden()
+
+  -- When
+  loot_frame.click( 1 )
+
+  -- Then
+  loot_frame.should_be_visible()
+  rolling_popup.should_be_visible()
+  rolling_popup.should_display(
+    { type = link, link = item.link, tooltip_link = item.tooltip_link, count = 1 },
+    { type = "button", label = "Roll", width = 70 },
+    { type = "button", label = "Close", width = 70 },
+    { type = "button", label = "Award...", width = 90 }
+  )
+
+  -- When
+  rolling_popup.click( "AwardOther" )
+
+  -- Then
+  loot_frame.should_be_visible()
+  player_selection.should_be_visible()
+  award_popup.should_be_hidden()
+
+  -- When
+  player_selection.select( p1.name )
+
+  -- Then
+  player_selection.should_be_hidden()
+  rolling_popup.should_be_hidden()
+  award_popup.should_be_visible()
+
+  -- When
+  award_popup.confirm()
+
+  -- Then
+  player_selection.should_be_hidden()
+  rolling_popup.should_be_hidden()
+  award_popup.should_be_hidden()
+  chat.console( "RollFor: Psikutas received [Hearthstone]." )
+end
+
+PreviewSoftResWinnersSpec = {}
+
+function PreviewSoftResWinnersSpec:should_display_close_button_that_closes_the_popup()
+  -- Given
+  local loot_facade, chat         = mock_loot_facade(), mock_chat()
+  local item, p1, p2              = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local loot_frame, rolling_popup = New()
+      :loot_facade( loot_facade )
+      :chat( chat )
+      :roster( p1, p2 )
+      :loot_list( item )
+      :soft_res_data( sr( p1.name, 123 ) )
+      :build()
+
+  -- When
+  loot_facade.notify( "LootOpened" )
+
+  -- Then
+  chat.party( "Princess Kenny dropped 1 item:" )
+  chat.party( "1. [Hearthstone] (SR by Psikutas)" )
+  rolling_popup.should_be_hidden()
+
+  -- When
+  loot_frame.click( 1 )
+
+  -- Then
+  loot_frame.should_be_visible()
+  rolling_popup.should_be_visible()
+  rolling_popup.should_display(
+    { type = link, link = item.link, tooltip_link = item.tooltip_link, count = 1 },
+    { type = "text", value = "Psikutas soft-ressed this item.", padding = 11 },
+    { type = "button", label = "Award winner", width = 130 },
+    { type = "button", label = "Close", width = 70 },
+    { type = "button", label = "Award...", width = 90 }
+  )
+
+  -- When
+  rolling_popup.click( "Close" )
+
+  -- Then
+  loot_frame.should_be_visible()
+  rolling_popup.should_be_hidden()
+end
+
 -- function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_display_the_popup_again_if_award_confirmation_is_aborted()
 --   -- Given
 --   u.mock( "GiveMasterLoot", u.noop )
