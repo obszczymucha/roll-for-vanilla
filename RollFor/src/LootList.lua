@@ -13,6 +13,7 @@ local getn = table.getn
 ---@field get_slot fun( item_id: number|"Coin" ): number?
 ---@field is_looting fun(): boolean
 ---@field count fun( item_id: number ): number
+---@field size fun(): number
 
 ---@param loot_facade LootFacade
 ---@param item_utils ItemUtils
@@ -136,12 +137,24 @@ function M.new( loot_facade, item_utils, dummy_items_fn )
     return result
   end
 
+  local function size()
+    local result = 0
+
+    for _ in pairs( items ) do
+      result = result + 1
+    end
+
+    return 0
+  end
+
+  ---@type LootList
   return {
     get_items = get_items,
     get_source_guid = function() return source_guid end,
     get_slot = get_slot,
     is_looting = is_looting,
-    count = count
+    count = count,
+    size = size
   }
 end
 

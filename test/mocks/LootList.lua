@@ -65,6 +65,16 @@ return function( items )
       looting = false
     end
 
+    local function size()
+      local result = 0
+
+      for _ in pairs( m_items ) do
+        result = result + 1
+      end
+
+      return result
+    end
+
     loot_facade.subscribe( "LootOpened", on_loot_opened )
     loot_facade.subscribe( "LootSlotCleared", on_loot_slot_cleared )
     loot_facade.subscribe( "LootClosed", on_loot_closed )
@@ -77,7 +87,8 @@ return function( items )
       get_slot = get_slot,
       count = count,
       is_looting = function() return looting end,
-      get_by_id = get_by_id
+      get_by_id = get_by_id,
+      size = size
     }
   end
 

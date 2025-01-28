@@ -256,7 +256,14 @@ local function create_components()
   )
 
   ---@type LootController
-  M.loot_controller = m.LootController.new( M.player_info, M.loot_facade, M.loot_list, M.loot_frame, M.roll_controller )
+  M.loot_controller = m.LootController.new(
+    M.player_info,
+    M.loot_facade,
+    M.loot_list,
+    M.loot_frame,
+    M.roll_controller,
+    M.softres
+  )
 
   ---@type LootAwardCallback
   M.loot_award_callback = m.LootAwardCallback.new( M.awarded_loot, M.roll_controller, M.winner_tracker )

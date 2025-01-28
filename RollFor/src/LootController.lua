@@ -3,6 +3,8 @@ local m = RollFor
 
 if m.LootController then return end
 
+local getn = table.getn
+
 local M = m.Module.new( "LootController" )
 
 ---@class LootController
@@ -15,7 +17,8 @@ local M = m.Module.new( "LootController" )
 ---@param loot_list LootList
 ---@param loot_frame LootFrame
 ---@param roll_controller RollController
-function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller )
+---@param softres GroupAwareSoftRes
+function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller, softres )
   local selected_item_name = nil
 
   local function show()
@@ -25,8 +28,12 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
 
   ---@param item DroppedItem
   local function select_item( item )
+    local count = loot_list.count( item.id )
+    local sr_players = softres.get( item.id )
+    local sr_player_count = getn( sr_players )
+
     selected_item_name = item.name
-    roll_controller.preview( item, 1 )
+    roll_controller.preview( item, count == sr_player_count and count or 1 )
   end
 
   local function update()
@@ -36,13 +43,15 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
     ---@type LootFrameItem[]
     local result = {}
 
-    for i, item in ipairs( items ) do
+    local index = 1
+
+    for _, item in pairs( items ) do
       local is_coin = item.type == "Coin"
       local item_to_select = item
 
       ---@type LootFrameItem
       table.insert( result, {
-        index = i,
+        index = index,
         texture = item.texture,
         name = is_coin and item.amount_text or item.name,
         quality = item.quality or 0,
@@ -58,6 +67,8 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
         comment = nil,
         comment_tooltip = nil
       } )
+
+      index = index + 1
     end
 
     loot_frame.update( result )
@@ -69,6 +80,7 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
   end
 
   local function deselect()
+    M.debug.add( "deselect" )
     selected_item_name = nil
     update()
   end

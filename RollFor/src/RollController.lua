@@ -487,13 +487,14 @@ function M.new(
     end
 
     notify_subscribers( "loot_awarded", { player_name = player_name, item_id = item_id, item_link = item_link } )
-    notify_subscribers( "LootFrameDeselect" )
 
     local data = roll_tracker.get()
 
     if data.status and data.status.type == S.Preview and data.item_count > 0 then
       new_preview( data.item, data.item_count )
       return
+    else
+      notify_subscribers( "LootFrameDeselect" )
     end
 
     process_next_item()
