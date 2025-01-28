@@ -35,8 +35,12 @@ local function cleanse( t, ... )
   local field_names = { ... }
 
   return u.map( strip_functions_and_fields( t, field_names ), function( v )
-    if (v.type == "text" or v.type == "info") and v.value then
-      v.value = u.decolorize( v.value ) or v.value
+    if v.comment then
+      v.comment = u.decolorize( v.comment ) or v.comment
+    end
+
+    if v.comment_tooltip then
+      v.comment_tooltip = u.map( v.comment_tooltip, function( c ) return u.decolorize( c ) or c end )
     end
 
     return v

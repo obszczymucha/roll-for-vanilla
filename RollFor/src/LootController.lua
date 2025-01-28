@@ -4,6 +4,8 @@ local m = RollFor
 if m.LootController then return end
 
 local getn = table.getn
+local red = m.colors.red
+local orange = m.colors.orange
 
 local M = m.Module.new( "LootController" )
 
@@ -36,16 +38,41 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
     roll_controller.preview( item, count == sr_player_count and count or 1 )
   end
 
+  ---@param items (DroppedItem|Coin)[]
+  local function get_entries( items )
+    local result = {}
+
+    for _, item in ipairs( items ) do
+      if item.type == "Coin" then
+        table.insert( result, { item = item } )
+      elseif softres.is_item_hardressed( item.id ) then
+        table.insert( result, { item = item, comment = red( "HR" ) } )
+      else
+        local sr_players = softres.get( item.id )
+        local sr_player_count = getn( sr_players )
+
+        if sr_player_count > 0 then
+          table.insert( result, { item = item, comment = orange( "SR" ) } )
+        else
+          table.insert( result, { item = item } )
+        end
+      end
+    end
+
+    return result
+  end
+
   local function update()
     M.debug.add( "update" )
 
     local items = loot_list.get_items() ---@type (DroppedItem|Coin)[]
+    local entries = get_entries( items )
+
     ---@type LootFrameItem[]
     local result = {}
 
-    local index = 1
-
-    for _, item in pairs( items ) do
+    for index, entry in ipairs( entries ) do
+      local item = entry.item
       local is_coin = item.type == "Coin"
       local item_to_select = item
 
@@ -64,11 +91,9 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
         is_enabled = not selected_item_name or selected_item_name == item.name or false,
         slot = loot_list.get_slot( is_coin and "Coin" or item.id ),
         tooltip_link = item.tooltip_link,
-        comment = nil,
-        comment_tooltip = nil
+        comment = entry.comment,
+        comment_tooltip = entry.comment_tooltip
       } )
-
-      index = index + 1
     end
 
     loot_frame.update( result )

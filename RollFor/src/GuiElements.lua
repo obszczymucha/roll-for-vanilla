@@ -3,8 +3,6 @@ local m = RollFor
 
 if m.GuiElements then return end
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 local hl = m.colors.hl
 
 ---@class GuiElements
@@ -529,17 +527,14 @@ function M.dropped_item( parent, text )
 
   container.comment:SetScript( "OnEnter", function()
     if not item then return end
-    if not item.sr_players or getn( item.sr_players ) == 0 then return end
+    if not item.comment_tooltip then return end
 
     ---@diagnostic disable-next-line: undefined-global
     local self = this
     self.tooltip_scale = m.api.GameTooltip:GetScale()
     m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
-    m.api.GameTooltip:AddLine( m.colors.blue( "Soft-ressed by" ), 1, 1, 1 )
-
-    for _, player in ipairs( item.sr_players ) do
-      local rolls = player.rolls and player.rolls > 1 and m.colors.hl( string.format( " [%s rolls]", player.rolls ) ) or ""
-      m.api.GameTooltip:AddLine( string.format( "%s%s", m.colorize_player_by_class( player.name, player.class ), m.colors.white( rolls ) ) )
+    for _, line in ipairs( item.comment_tooltip ) do
+      m.api.GameTooltip:AddLine( line, 1, 1, 1 )
     end
 
     m.api.GameTooltip:SetScale( 0.75 )

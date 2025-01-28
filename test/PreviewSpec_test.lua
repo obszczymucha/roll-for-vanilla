@@ -646,7 +646,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
 
   -- Then
   loot_frame.should_display(
-    { index = 1, is_enabled = true, is_selected = false, name = "Hearthstone" },
+    { index = 1, is_enabled = true, is_selected = false, name = "Hearthstone", comment = "SR" },
     { index = 2, is_enabled = true, is_selected = false, name = "Bag" }
   )
   chat.party( "Princess Kenny dropped 2 items:" )
@@ -661,7 +661,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
   -- Then
   loot_frame.should_be_visible()
   loot_frame.should_display(
-    { index = 1, is_enabled = true, is_selected = true, name = "Hearthstone" },
+    { index = 1, is_enabled = true, is_selected = true, name = "Hearthstone", comment = "SR" },
     { index = 2, is_enabled = false, is_selected = false, name = "Bag" }
   )
   rolling_popup.should_be_visible()
@@ -708,8 +708,8 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
   -- Then
   loot_frame.should_be_visible()
   loot_frame.should_display(
-    { index = 1, is_enabled = true, is_selected = false, name = "Hearthstone" },
-    { index = 2, is_enabled = true, is_selected = false, name = "Hearthstone" }
+    { index = 1, is_enabled = true, is_selected = false, name = "Hearthstone", comment = "SR" },
+    { index = 2, is_enabled = true, is_selected = false, name = "Hearthstone", comment = "SR" }
   )
   chat.party( "Princess Kenny dropped 2 items:" )
   chat.party( "1. [Hearthstone] (SR by Obszczymucha)" )
@@ -722,8 +722,8 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
   -- Then
   loot_frame.should_be_visible()
   loot_frame.should_display(
-    { index = 1, is_enabled = true, is_selected = true, name = "Hearthstone" },
-    { index = 2, is_enabled = true, is_selected = true, name = "Hearthstone" }
+    { index = 1, is_enabled = true, is_selected = true, name = "Hearthstone", comment = "SR" },
+    { index = 2, is_enabled = true, is_selected = true, name = "Hearthstone", comment = "SR" }
   )
   award_popup.should_be_hidden()
   rolling_popup.should_be_visible()
@@ -752,7 +752,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
   chat.console( "RollFor: Obszczymucha received [Hearthstone]." )
   loot_frame.should_be_visible()
   loot_frame.should_display(
-    { index = 1, is_enabled = true, is_selected = true, name = "Hearthstone" }
+    { index = 1, is_enabled = true, is_selected = true, name = "Hearthstone", comment = "SR" }
   )
   award_popup.should_be_hidden()
   rolling_popup.should_be_visible()

@@ -15,7 +15,13 @@ return function( items )
     local looting = false
 
     local function get_items()
-      return m_items or {}
+      local result = {}
+
+      for _, item in pairs( m_items or {} ) do
+        table.insert( result, item )
+      end
+
+      return result
     end
 
     local function get_source_guid()
