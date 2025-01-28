@@ -623,12 +623,12 @@ end
 function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_the_winner_when_confirmed()
   -- Given
   local loot_facade, chat               = mock_loot_facade(), mock_chat()
-  local item, p1, p2                    = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local item, item2, p1, p2             = i( "Hearthstone", 123 ), i( "Bag", 69 ), p( "Psikutas" ), p( "Obszczymucha" )
   local loot_frame, rolling_popup, deps = New()
       :loot_facade( loot_facade )
       :chat( chat )
       :roster( p1, p2 )
-      :loot_list( item )
+      :loot_list( item, item2 )
       :soft_res_data( sr( p1.name, 123 ), sr( p1.name, 123 ) )
       :build()
   u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
@@ -645,8 +645,13 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
   loot_facade.notify( "LootOpened" )
 
   -- Then
-  chat.party( "Princess Kenny dropped 1 item:" )
+  loot_frame.should_display(
+    { index = 1, is_enabled = true, is_selected = false, name = "Hearthstone" },
+    { index = 2, is_enabled = true, is_selected = false, name = "Bag" }
+  )
+  chat.party( "Princess Kenny dropped 2 items:" )
   chat.party( "1. [Hearthstone] (SR by Psikutas)" )
+  chat.party( "2. [Bag]" )
   loot_frame.should_be_visible()
   rolling_popup.should_be_hidden()
 
@@ -655,6 +660,10 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
 
   -- Then
   loot_frame.should_be_visible()
+  loot_frame.should_display(
+    { index = 1, is_enabled = true, is_selected = true, name = "Hearthstone" },
+    { index = 2, is_enabled = false, is_selected = false, name = "Bag" }
+  )
   rolling_popup.should_be_visible()
   rolling_popup.should_display( table.unpack( rolling_popup_content ) )
 
@@ -671,6 +680,9 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
 
   -- Then
   chat.console( "RollFor: Psikutas received [Hearthstone]." )
+  loot_frame.should_display(
+    { index = 1, is_enabled = true, is_selected = false, name = "Bag" }
+  )
   award_popup.should_be_hidden()
   rolling_popup.should_be_hidden()
 end

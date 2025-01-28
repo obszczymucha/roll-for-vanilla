@@ -64,12 +64,12 @@ function M.new()
     end
 
     if given.type == expected.type and given.message ~= expected.message then
-      error( string.format( "Expected: %s  Was: %s", expected.message, given.message ), 3 )
+      error( string.format( "Expected: \"%s\"  Was: \"%s\"", expected.message, given.message ), 3 )
       return
     end
 
     if given.message ~= expected.message then
-      error( string.format( "Expected %s: %s  Was %s: %s", expected.type, expected.message, given.type, given.message ), 3 )
+      error( string.format( "Expected %s: \"%s\"  Was %s: \"%s\"", expected.type, expected.message, given.type, given.message ), 3 )
       return
     end
 
