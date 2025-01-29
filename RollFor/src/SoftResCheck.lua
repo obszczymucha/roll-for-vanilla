@@ -187,7 +187,12 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
 
     local colorize = function( player )
       local c = group_roster.is_player_in_my_group( player.name ) and colors.white or colors.red
-      return player.rolls > 1 and string.format( "%s (%s)", c( player.name ), player.rolls ) or string.format( "%s", c( player.name ) )
+      -- add support for player.note
+      if player.note == "" then
+        return player.rolls > 1 and string.format( "%s (%s)", c( player.name ), player.rolls) or string.format( "%s", c( player.name ))
+      else
+        return player.rolls > 1 and string.format( "%s (%s %s)", c( player.name ), player.rolls, player.note ) or string.format( "%s (%s)", c( player.name ), player.note )
+      end
     end
 
     if item_count > 0 then

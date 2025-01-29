@@ -35,14 +35,14 @@ function M.transform( data )
       if item_id then
         result[ item_id ] = result[ item_id ] or {
           soft_ressed = true,
-          quality = item.quality,
+          quality = item.quality or 4,
           players = {}
         }
 
         local player = find_player( player_name, result[ item_id ].players )
 
         if not player then
-          table.insert( result[ item_id ].players, { name = player_name, rolls = 1 } )
+          table.insert( result[ item_id ].players, { name = player_name, rolls = 1, note = item.note or "" } ) -- added in a note function which will be added to item drop announcements for each player
         else
           player.rolls = player.rolls + 1
         end
