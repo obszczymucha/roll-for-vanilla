@@ -150,7 +150,7 @@ function M.new( announce, ace_timer, group_roster, sr_players, item, count, seco
       if getn( sr_players ) == count then return player.name end
       local roll_count = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
       -- add support for player.note
-      local note = player.note != "" and string.format( " (%s)", player.note ) or ""
+      local note = player.note ~= "" and string.format( " (%s)", player.note ) or ""
       return string.format( "%s%s%s", player.name, note, roll_count )
     end
 

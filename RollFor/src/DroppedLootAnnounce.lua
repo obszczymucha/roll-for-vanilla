@@ -62,7 +62,7 @@ local function stringify( announcements )
     return function( player )
       local rolls = show_rolls and player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
       -- add support for player.note
-      local note = player.note != "" and string.format( " (%s)", player.note ) or ""
+      local note = player.note ~= "" and string.format( " (%s)", player.note ) or ""
       return string.format( "%s%s%s", player.name, note, rolls )
     end
   end
