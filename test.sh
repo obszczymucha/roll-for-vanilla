@@ -47,7 +47,7 @@ run_all_tests() {
     run_test "$file" "$@"
 
     if [[ $TEST_FAILED -ne 0 ]]; then
-      return
+      return $TEST_FAILED
     fi
   }; done
 
