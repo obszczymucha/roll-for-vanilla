@@ -308,7 +308,7 @@ local function create_components()
   M.args_parser = m.ArgsParser.new( m.ItemUtils, M.config )
 
   -- TODO: Add type.
-  M.roll_result_announcer = m.RollResultAnnouncer.new( M.chat, M.roll_controller, M.config )
+  M.roll_result_announcer = m.RollResultAnnouncer.new( M.chat, M.roll_controller, M.config, M.softres )
 
   M.loot_facade_listener = m.LootFacadeListener.new(
     M.loot_facade,

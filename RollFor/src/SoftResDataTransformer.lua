@@ -72,8 +72,10 @@ function M.transform( data )
 
         local roller = find_roller( roller_name, sr_result[ item_id ].rollers )
 
-        if not roller then
-          table.insert( sr_result[ item_id ].rollers, make_roller( roller_name, 1 ) )
+        if not roller then          
+          local roller = make_roller( roller_name, 1 )
+          roller.note = item.note and item.note ~= "" and item.note
+          table.insert( sr_result[ item_id ].rollers, roller )
         else
           roller.rolls = roller.rolls + 1
         end

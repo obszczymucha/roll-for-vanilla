@@ -14,7 +14,7 @@ local getn = table.getn
 ---@param chat Chat
 ---@param roll_controller RollController
 ---@param config Config
-function M.new( chat, roll_controller, config )
+function M.new( chat, roll_controller, config, softres )
   ---@param winners Winner[]
   ---@param top_roll boolean
   local announce_winner = function( winners, top_roll )
@@ -28,6 +28,21 @@ function M.new( chat, roll_controller, config )
     local roll_type_str = roll_type == RT.MainSpec and "" or string.format( " (%s)", m.roll_type_abbrev_chat( roll_type ) )
     local rerolling = winners[ 1 ].rerolling
     local item = winners[ 1 ].item
+ 
+    local sr_players = softres.get( item.id )
+    local sr_player
+    for _, v in ipairs( sr_players ) do
+      if v.name == winners[ 1 ].name then sr_player=v end
+    end
+
+    if sr_player and sr_player.note and sr_player.note ~= "" then
+      local sr = string.match( sr_player.note, "SR%+(%d+)")
+      if sr then
+        sr = tonumber(sr)
+        roll_value = roll_value - sr
+        roll_value = string.format( "%s+%s=%s", roll_value, sr, hl( roll_value+sr ))
+      end
+    end
 
     local function message( rollers, f )
       return string.format(
