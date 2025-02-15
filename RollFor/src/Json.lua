@@ -185,19 +185,17 @@ local function decode_error( str, idx, msg )
 end
 
 local function codepoint_to_utf8( n )
-  ---@diagnostic disable-next-line: undefined-field
-  local mod = math.mod
   -- http://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&id=iws-appendixa
   local f = math.floor
   if n <= tonumber( "7f", 16 ) then
     return string.char( n )
   elseif n <= tonumber( "7ff", 16 ) then
-    return string.char( f( n / 64 ) + 192, mod( n, 64 ) + 128 )
+    return string.char( f( n / 64 ) + 192, n % 64 + 128 )
   elseif n <= tonumber( "ffff", 16 ) then
-    return string.char( f( n / 4096 ) + 224, f( mod( n, 4096 ) / 64 ) + 128, mod( n, 64 ) + 128 )
+    return string.char( f( n / 4096 ) + 224, f( n % 4096 / 64 ) + 128, n % 64 + 128 )
   elseif n <= tonumber( "10ffff", 16 ) then
-    return string.char( f( n / 262144 ) + 240, f( mod( n, 262144 ) / 4096 ) + 128,
-      f( mod( n, 4096 ) / 64 ) + 128, mod( n, 64 ) + 128 )
+    return string.char( f( n / 262144 ) + 240, f( n % 262144 / 4096 ) + 128,
+      f( n % 4096 / 64 ) + 128, n % 64 + 128 )
   end
   error( string.format( "invalid unicode codepoint '%x'", n ) )
 end

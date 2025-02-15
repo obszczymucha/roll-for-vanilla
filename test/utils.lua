@@ -33,13 +33,6 @@ if not lua50 then
       return t[ i ], unpack( t, i + 1, j )
     end
   end
-
-
-  if not math.mod then
-    math.mod = function( a, b )
-      return a % b
-    end
-  end
 end
 
 M.debug_enabled = true

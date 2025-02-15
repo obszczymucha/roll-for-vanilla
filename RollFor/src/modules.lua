@@ -459,9 +459,6 @@ function M.colorize_player_by_class( name, class )
 end
 
 local base64_chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/' -- You will need this for encoding/decoding
-----@diagnostic disable-next-line: undefined-field
----@diagnostic disable-next-line: undefined-field
-local mod = math.mod
 
 function M.decode_base64( data )
   if not data then return nil end
@@ -471,7 +468,7 @@ function M.decode_base64( data )
     if (x == '=') then return '' end
     ---@diagnostic disable-next-line: undefined-field
     local r, f = '', (string.find( base64_chars, x ) - 1)
-    for i = 6, 1, -1 do r = r .. (mod( f, 2 ^ i ) - mod( f, 2 ^ (i - 1) ) > 0 and '1' or '0') end
+    for i = 6, 1, -1 do r = r .. (f % (2 ^ i) - f % (2 ^ (i - 1)) > 0 and '1' or '0') end
     return r;
   end ), '%d%d%d?%d?%d?%d?%d?%d?', function( x )
     if (string.len( x ) ~= 8) then return '' end
@@ -484,14 +481,14 @@ end
 function M.encode_base64( data )
   return (string.gsub( string.gsub( data, '.', function( x )
     local r, byte = '', string.byte( x )
-    for i = 8, 1, -1 do r = r .. (mod( byte, 2 ^ i ) - mod( byte, 2 ^ (i - 1) ) > 0 and '1' or '0') end
+    for i = 8, 1, -1 do r = r .. (byte % (2 ^ i) - (byte % (2 ^ (i - 1))) > 0 and '1' or '0') end
     return r;
   end ) .. '0000', '%d%d%d?%d?%d?%d?', function( x )
     if (string.len( x ) < 6) then return '' end
     local c = 0
     for i = 1, 6 do c = c + (string.sub( x, i, i ) == '1' and 2 ^ (6 - i) or 0) end
     return string.sub( base64_chars, c + 1, c + 1 )
-  end ) .. ({ '', '==', '=' })[ mod( string.len( data ), 3 ) + 1 ])
+  end ) .. ({ '', '==', '=' })[ string.len( data ) % 3 + 1 ])
 end
 
 function M.get_addon_version()

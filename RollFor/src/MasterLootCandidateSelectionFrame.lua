@@ -11,9 +11,6 @@ local button_height = 16
 local horizontal_padding = 3
 local vertical_padding = 5
 
----@diagnostic disable-next-line: undefined-field
-local mod = math.mod
-
 local function highlight( frame )
   frame:SetBackdropColor( frame.color.r, frame.color.g, frame.color.b, 0.3 )
 end
@@ -66,7 +63,7 @@ end
 
 local function position_button( button, parent, index, rows )
   local width = 5 + horizontal_padding + m.api.math.floor( (index - 1) / rows ) * (button_width + horizontal_padding)
-  local height = -5 - vertical_padding - (mod( index - 1, rows ) * (button_height + vertical_padding))
+  local height = -5 - vertical_padding - (((index - 1) % rows) * (button_height + vertical_padding))
   button:ClearAllPoints()
   button:SetPoint( "TOPLEFT", parent, "TOPLEFT", width, height )
 end
