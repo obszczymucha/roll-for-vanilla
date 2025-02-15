@@ -5,6 +5,7 @@ if m.NameManualMatcher then return end
 
 local M = {}
 
+local getn = m.getn
 local clone = m.clone
 local negate = m.negate
 local filter = m.filter
@@ -13,9 +14,6 @@ local merge = m.merge
 local colors = m.colors
 local p = m.pretty_print
 local map = m.map
-
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 function M.new( db, api, absent_unfiltered_softres, name_matcher, softres_status_changed )
   db.manual_matches = db.manual_matches or {}

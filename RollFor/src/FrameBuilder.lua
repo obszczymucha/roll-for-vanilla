@@ -3,14 +3,13 @@ local m = RollFor
 
 if m.FrameBuilder then return end
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 local M = {}
 
-M.interface = {
+local getn = m.getn
 
+M.interface = {
 }
+
 ---@class Frame
 ---@field add_line fun( line_type: string, modify_fn: function, padding: number ): table
 ---@field clear fun()
@@ -81,7 +80,8 @@ function M.new()
     end
 
     local function create_main_frame( anchor )
-      local frame = m.api.CreateFrame( "Frame", options.name, m.api.UIParent )
+      local frame = m.create_backdrop_frame( m.api, "Frame", options.name, m.api.UIParent )
+
       frame:Hide()
       frame:SetWidth( options.width or 280 )
       frame:SetHeight( options.height or 100 )
@@ -111,7 +111,7 @@ function M.new()
           edgeFile = "Interface\\Buttons\\WHITE8X8",
           tile = false,
           tileSize = 0,
-          edgeSize = 1,
+          edgeSize = 0.8,
           insets = { left = 0, right = 0, top = 0, bottom = 0 }
         } )
       else
@@ -143,7 +143,12 @@ function M.new()
     local function configure_main_frame( frame, anchor )
       if options.sound then
         frame:SetScript( "OnShow", function()
-          m.api.PlaySound( "igMainMenuOpen" )
+          if m.vanilla then
+            m.api.PlaySound( "igMainMenuOpen" )
+          else
+            m.api.PlaySound( m.api.SOUNDKIT.IG_MAINMENU_OPEN )
+          end
+
           if options.on_show then options.on_show() end
         end )
 
@@ -153,7 +158,12 @@ function M.new()
             f:StopMovingOrSizing()
           end
 
-          m.api.PlaySound( "igMainMenuClose" )
+          if m.vanilla then
+            m.api.PlaySound( "igMainMenuClose" )
+          else
+            m.api.PlaySound( m.api.SOUNDKIT.IG_MAINMENU_CLOSE )
+          end
+
           if options.on_hide then options.on_hide() end
         end )
       end
@@ -237,11 +247,12 @@ function M.new()
       frame.clear = function()
         for _, line in ipairs( lines ) do
           line.frame:Hide()
+
           line.frame.is_used = false
         end
 
         m.clear_table( lines )
-        lines.n = 0
+        if m.vanilla then lines.n = 0 end
       end
 
       frame.backdrop_color = function( _, r, g, b, a )

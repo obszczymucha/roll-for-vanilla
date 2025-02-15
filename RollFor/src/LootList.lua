@@ -3,9 +3,10 @@ local m = RollFor
 if m.LootList then return end
 
 local M = m.Module.new( "LootList" )
+
+local getn = m.getn
 local interface = m.Interface
 local clear = m.clear_table
-local getn = table.getn
 
 ---@class LootList
 ---@field get_items fun(): DroppedItem[]

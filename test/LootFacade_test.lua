@@ -1,5 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;./../RollFor/?.lua;../RollFor/libs/?.lua"
 
+require( "src/bcc/compat" )
 local utils = require( "test/utils" )
 local lu, eq = utils.luaunit( "assertEquals" )
 local m = require( "src/modules" )
@@ -37,14 +38,7 @@ local function mock_api()
       }
     end,
     fire_event = function( event_name, _arg1, _arg2 )
-      if not on_event_callback then return end
-      ---@diagnostic disable-next-line: lowercase-global
-      event = event_name
-      ---@diagnostic disable-next-line: lowercase-global
-      arg1 = _arg1
-      ---@diagnostic disable-next-line: lowercase-global
-      arg2 = _arg2
-      on_event_callback()
+      on_event_callback( nil, event_name, _arg1, _arg2 )
     end,
     get_registered_event_names = function() return registered_event_names end
   }
@@ -175,7 +169,7 @@ function LootFacadeSpec.should_return_source_guid()
   local facade = m.LootFacade.new( event_frame, loot_api )
 
   -- When
-  loot_api.UnitName = target( "PrincessKenny" )
+  loot_api.UnitGUID = target( "PrincessKenny" )
 
   -- Then
   eq( facade.get_source_guid(), "PrincessKenny" )
@@ -216,7 +210,7 @@ function LootFacadeSpec.should_return_item_info()
   -- When
   loot_api.GetLootSlotInfo = function( slot )
     if slot ~= 1 then return nil end
-    return "texture", "name", 69, LootQuality.Epic
+    return "texture", "name", 69, nil, LootQuality.Epic
   end
   local result = facade.get_info( 1 )
 
@@ -248,24 +242,26 @@ function LootFacadeSpec.should_return_whether_a_slot_is_an_item()
   local frame_api, loot_api = mock_api()
   local event_frame = m.EventFrame.new( frame_api )
   local facade = m.LootFacade.new( event_frame, loot_api )
+  loot_api.LOOT_SLOT_ITEM = 1
+  loot_api.LOOT_SLOT_MONEY = 2
 
   -- When
   ---@diagnostic disable-next-line: duplicate-set-field
-  loot_api.LootSlotIsItem = function() return 1 end
+  loot_api.GetLootSlotType = function() return loot_api.LOOT_SLOT_ITEM end
 
   -- Then
   eq( facade.is_item(), true )
 
   -- And When
   ---@diagnostic disable-next-line: duplicate-set-field
-  loot_api.LootSlotIsItem = function() return 0 end
+  loot_api.GetLootSlotType = function() return loot_api.LOOT_SLOT_MONEY end
 
   -- Then
   eq( facade.is_item(), false )
 
   -- And When
   ---@diagnostic disable-next-line: duplicate-set-field
-  loot_api.LootSlotIsItem = function() return nil end
+  loot_api.GetLootSlotType = function() return nil end
 
   -- Then
   eq( facade.is_item(), false )
@@ -276,17 +272,19 @@ function LootFacadeSpec.should_return_whether_a_slot_is_a_coin()
   local frame_api, loot_api = mock_api()
   local event_frame = m.EventFrame.new( frame_api )
   local facade = m.LootFacade.new( event_frame, loot_api )
+  loot_api.LOOT_SLOT_ITEM = 1
+  loot_api.LOOT_SLOT_MONEY = 2
 
   -- When
   ---@diagnostic disable-next-line: duplicate-set-field
-  loot_api.LootSlotIsCoin = function() return 1 end
+  loot_api.GetLootSlotType = function() return loot_api.LOOT_SLOT_MONEY end
 
   -- Then
   eq( facade.is_coin(), true )
 
   -- And When
   ---@diagnostic disable-next-line: duplicate-set-field
-  loot_api.LootSlotIsCoin = function() return 0 end
+  loot_api.GetLootSlotType = function() return loot_api.LOOT_SLOT_ITEM end
 
   -- Then
   eq( facade.is_coin(), false )

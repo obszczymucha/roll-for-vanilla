@@ -4,6 +4,8 @@ local m = RollFor
 if m.SoftResRollingLogic then return end
 
 local M = {}
+
+local getn = m.getn
 local map = m.map
 local take = m.take
 local hl = m.colors.hl
@@ -12,9 +14,6 @@ local strategy = m.Types.RollingStrategy.SoftResRoll
 
 ---@type MakeRollFn
 local make_roll = m.Types.make_roll
-
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 local State = { AfterRoll = 1, TimerStopped = 2, ManualStop = 3 }
 

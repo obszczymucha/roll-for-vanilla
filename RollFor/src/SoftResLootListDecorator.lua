@@ -4,11 +4,9 @@ if m.SoftResLootListDecorator then return end
 
 local M = {}
 
+local getn = m.getn
 ---@type LT
 local LT = m.ItemUtils.LootType
-
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 ---@type MakeSoftRessedDroppedItemFn
 local make_softres_dropped_item = m.ItemUtils.make_softres_dropped_item

@@ -8,14 +8,12 @@ if m.RollTracker then return end
 -- Then there's either a winner or a tie.
 -- For each tie we have a new iteration, because a tie can result in another tie.
 local M = m.Module.new( "RollTracker" )
+local getn = m.getn
 
 local clear_table = m.clear_table
 local RS = m.Types.RollingStrategy
 local RT = m.Types.RollType
 local S = m.Types.RollingStatus
-
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 ---@class RollData
 ---@field player_name string
@@ -75,7 +73,7 @@ function M.new( item_on_roll )
 
   local function lua50_clear_table( t )
     clear_table( t )
-    t.n = 0
+    if m.vanilla then t.n = 0 end
   end
 
   local function update_roll( rolls, data )

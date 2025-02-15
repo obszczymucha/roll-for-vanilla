@@ -4,13 +4,12 @@ local m = RollFor
 if m.RollingLogicUtils then return end
 
 local M = {}
+
+local getn = m.getn
 local map = m.map
 
 ---@type MakeRollingPlayerFn
 local make_rolling_player = m.Types.make_rolling_player
-
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 function M.can_roll( rollers, player_name )
   for _, v in ipairs( rollers ) do

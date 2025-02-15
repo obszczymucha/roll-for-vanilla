@@ -32,7 +32,7 @@ local control_backdrop = {
 }
 
 local function create_frame( api, on_import, on_clear, on_cancel, on_dirty )
-  local frame = api().CreateFrame( "Frame", "RollForSoftResLootFrame", UIParent )
+  local frame = m.create_backdrop_frame( api(), "Frame", "RollForSoftResLootFrame", UIParent )
   frame:Hide()
   frame:SetWidth( 565 )
   frame:SetHeight( 300 )
@@ -48,7 +48,7 @@ local function create_frame( api, on_import, on_clear, on_cancel, on_dirty )
   frame:SetMinResize( 400, 200 )
   frame:SetToplevel( true )
 
-  local backdrop = api().CreateFrame( "Frame", nil, frame )
+  local backdrop = m.create_backdrop_frame( api(), "Frame", nil, frame )
   backdrop:SetBackdrop( control_backdrop )
   backdrop:SetBackdropColor( 0, 0, 0 )
   backdrop:SetBackdropBorderColor( 0.4, 0.4, 0.4 )

@@ -4,13 +4,12 @@ local m = RollFor
 if m.DroppedLootAnnounce then return end
 
 local M = {}
+
+local getn = m.getn
 local announce_limit = 6
 local filter = m.filter
 local BindType = m.ItemUtils.BindType
 local ItemQuality = m.Types.ItemQuality
-
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 local function distinct( items )
   local result = {}
@@ -193,7 +192,7 @@ function M.process_dropped_items( loot_list, softres, auto_loot )
   local source_guid = loot_list.get_source_guid()
   local threshold = m.api.GetLootThreshold()
   local items = filter( loot_list.get_items(), function( item )
-    if auto_loot.is_auto_looted(item) or item.id == 29434 then return false end
+    if auto_loot.is_auto_looted( item ) or item.id == 29434 then return false end
 
     local quality = item.quality or 0
 

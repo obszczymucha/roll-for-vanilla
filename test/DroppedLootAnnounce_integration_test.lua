@@ -1,5 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
+require( "src/bcc/compat" )
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
 local _, item_utils = require( "src/modules" ), require( "src/ItemUtils" )

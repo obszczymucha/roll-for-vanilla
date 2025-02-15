@@ -1,5 +1,6 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua"
 
+require( "src/bcc/compat" )
 local u = require( "test/utils" )
 local lu, eq = u.luaunit( "assertEquals" ) ---@diagnostic disable-line: unused-local
 local sr, hr = u.soft_res_item, u.hard_res_item

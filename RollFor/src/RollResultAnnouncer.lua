@@ -4,12 +4,12 @@ local m = RollFor
 if m.RollResultAnnouncer then return end
 
 local M = {}
+local getn = m.getn
 
 local RT = m.Types.RollType
 local RS = m.Types.RollingStrategy
 local hl = m.colors.hl
 local grey = m.colors.grey
-local getn = table.getn
 
 ---@param chat Chat
 ---@param roll_controller RollController

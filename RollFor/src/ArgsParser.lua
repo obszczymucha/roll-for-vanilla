@@ -24,7 +24,7 @@ function M.new( item_utils, config )
       local count = (not item_count or item_count == "") and 1 or tonumber( item_count )
       local id = item_utils.get_item_id( link )
       local name = item_utils.get_item_name( link )
-      local quality, texture = m.get_item_quality_and_texture( id )
+      local quality, texture = m.get_item_quality_and_texture( m.api, id )
 
       local item = make_item( id, name, link, quality, texture )
       local secs = seconds and seconds ~= "" and seconds ~= " " and tonumber( seconds ) or config.default_rolling_time_seconds()

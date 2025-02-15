@@ -4,9 +4,7 @@ local m = RollFor
 if m.DroppedLoot then return end
 
 local M = {}
-
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
+local getn = m.getn
 
 ---@class DroppedLoot
 ---@field get_dropped_item_id fun( item_name: string ): number

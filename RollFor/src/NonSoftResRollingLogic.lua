@@ -5,6 +5,7 @@ if m.NonSoftResRollingLogic then return end
 
 local M = m.Module.new( "NonSoftResRollingLogic" )
 
+local getn = m.getn
 local count_elements = m.count_elements
 local merge = m.merge
 local take = m.take
@@ -14,9 +15,6 @@ local hl = m.colors.hl
 
 ---@type MakeRollFn
 local make_roll = m.Types.make_roll
-
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 ---@param players RollingPlayer[]
 local function have_all_players_rolled( players )

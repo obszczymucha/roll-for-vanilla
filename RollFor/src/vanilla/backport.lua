@@ -15,3 +15,25 @@ string.match = string.match or function( str, pattern )
   local _, _, r1, r2, r3, r4, r5, r6, r7, r8, r9 = string.find( str, pattern )
   return r1, r2, r3, r4, r5, r6, r7, r8, r9
 end
+
+LOOT_SLOT_NONE = 0
+LOOT_SLOT_ITEM = 1
+LOOT_SLOT_MONEY = 2
+
+---@param slot number
+---@return number
+function GetLootSlotType( slot )
+  if LootSlotIsItem( slot ) == 1 then
+    return LOOT_SLOT_ITEM
+  elseif LootSlotIsCoin( slot ) == 1 then
+    return LOOT_SLOT_MONEY
+  else
+    return LOOT_SLOT_NONE
+  end
+end
+
+---@param unit_type string
+---@return boolean
+function UnitIsGroupLeader( unit_type )
+  return UnitIsPartyLeader( unit_type )
+end

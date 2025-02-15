@@ -1,5 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
+require( "src/bcc/compat" )
 local lu = require( "luaunit" )
 local eq = lu.assertEquals
 local u = require( "test/utils" )

@@ -4,14 +4,12 @@ local m = RollFor
 if m.SoftResCheck then return end
 
 local M = {}
+local getn = m.getn
 
 local filter = m.filter
 local negate = m.negate
 local colors = m.colors
 local pretty_print = function( text ) m.pretty_print( text, colors.softres ) end
-
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 local ResultType = {
   NoItemsFound = "NoItemsFound",

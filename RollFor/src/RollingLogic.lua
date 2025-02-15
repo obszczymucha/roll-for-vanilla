@@ -5,7 +5,7 @@ if m.RollingLogic then return end
 
 local M = {}
 
-local getn = table.getn
+local getn = m.getn
 local RS = m.Types.RollingStrategy
 
 ---@alias SoftresRollsAvailableCallback fun( rollers: RollingPlayer[] )
@@ -74,7 +74,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
 
   ---param winning_rolls Roll[]
   local function count_top_rolls( winning_rolls )
-    local roll_count = getn( winning_rolls or {} )
+    local roll_count = winning_rolls and getn( winning_rolls ) or 0
     if roll_count == 0 then return 0 end
 
     local top_roll = winning_rolls[ 1 ].roll

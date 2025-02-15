@@ -4,8 +4,7 @@ local M = RollFor
 ---@diagnostic disable-next-line: undefined-global
 local debugstack = debugstack
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
+local mod, getn = M.mod, M.getn
 
 ---@alias ColorFn fun( text: string ): string
 
@@ -462,9 +461,6 @@ function M.colorize_player_by_class( name, class )
 end
 
 local base64_chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/' -- You will need this for encoding/decoding
-----@diagnostic disable-next-line: undefined-field
----@diagnostic disable-next-line: undefined-field
-local mod = math.mod
 
 function M.decode_base64( data )
   if not data then return nil end
@@ -475,7 +471,7 @@ function M.decode_base64( data )
     ---@diagnostic disable-next-line: undefined-field
     local r, f = '', (string.find( base64_chars, x ) - 1)
     for i = 6, 1, -1 do r = r .. (mod( f, 2 ^ i ) - mod( f, 2 ^ (i - 1) ) > 0 and '1' or '0') end
-    return r;
+    return r
   end ), '%d%d%d?%d?%d?%d?%d?%d?', function( x )
     if (string.len( x ) ~= 8) then return '' end
     local c = 0
@@ -488,7 +484,7 @@ function M.encode_base64( data )
   return (string.gsub( string.gsub( data, '.', function( x )
     local r, byte = '', string.byte( x )
     for i = 8, 1, -1 do r = r .. (mod( byte, 2 ^ i ) - mod( byte, 2 ^ (i - 1) ) > 0 and '1' or '0') end
-    return r;
+    return r
   end ) .. '0000', '%d%d%d?%d?%d?%d?', function( x )
     if (string.len( x ) < 6) then return '' end
     local c = 0
@@ -617,16 +613,6 @@ function M.is_new_version( mine, theirs )
   return false
 end
 
-function M.get_item_texture( item_id )
-  local _, _, _, _, _, _, _, _, texture = M.api.GetItemInfo( item_id )
-  return texture
-end
-
-function M.get_item_quality_and_texture( item_id )
-  local _, _, quality, _, _, _, _, _, texture = M.api.GetItemInfo( item_id )
-  return quality, texture
-end
-
 function M.pdump( o )
   print( "\n" .. M.dump( o ) )
 end
@@ -731,22 +717,6 @@ end
 ---@param coin_name string?
 function M.one_line_coin_name( coin_name )
   return string.gsub( coin_name or "", "\n", ", " )
-end
-
----@param item_link string
-function M.link_item_in_chat( item_link )
-  if M.api.ChatEdit_InsertLink then
-    M.api.ChatEdit_InsertLink( item_link )
-  elseif M.api.ChatFrameEditBox:IsVisible() then
-    M.api.ChatFrameEditBox:Insert( item_link )
-  end
-end
-
----@param slash_command RollSlashCommand
----@param item_link string
-function M.slash_command_in_chat( slash_command, item_link )
-  M.api.ChatFrameEditBox:Show()
-  M.api.ChatFrameEditBox:SetText( string.format( "%s %s ", slash_command, item_link ) )
 end
 
 return M

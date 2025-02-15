@@ -4,6 +4,7 @@ local m = RollFor
 if m.LootAwardPopup then return end
 
 local M = m.Module.new( "LootAwardPopup" )
+local getn = m.getn
 
 local RS = m.Types.RollingStrategy
 local RT = m.Types.RollType
@@ -14,9 +15,6 @@ local c = m.colorize_player_by_class
 local r = m.roll_type_color
 local possesive_case = m.possesive_case
 local article = m.article
-
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 local button_defaults = {
   width = 80,

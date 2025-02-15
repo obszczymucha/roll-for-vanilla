@@ -1,5 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
+require( "src/bcc/compat" )
 local lu = require( "luaunit" )
 require( "test/utils" ) -- Need to load this before modules to load lua50 stuff.
 local mod = require( "src/modules" )

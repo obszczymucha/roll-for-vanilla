@@ -5,6 +5,9 @@ if m.Types then return end
 
 local M = {}
 
+---@class CreateFrameApi
+---@field CreateFrame fun( frame_type: string, name: string?, parent: Frame?, template: string? ): Frame
+
 ---@alias PlayerName string
 ---@alias ItemId number
 

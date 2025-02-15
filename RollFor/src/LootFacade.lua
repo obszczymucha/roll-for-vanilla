@@ -13,7 +13,8 @@ M.interface = {
   get_link = "function",
   get_info = "function",
   is_item = "function",
-  is_coin = "function"
+  is_coin = "function",
+  loot_slot = "function"
 }
 
 ---@class LootSlotInfo
@@ -30,6 +31,7 @@ M.interface = {
 ---@field get_info fun( slot: number ): LootSlotInfo
 ---@field is_item fun( slot: number ): boolean
 ---@field is_coin fun( slot: number ): boolean
+---@field loot_slot fun( slot: number )
 
 ---@alias LootEventName
 ---| "LootOpened"
@@ -61,7 +63,7 @@ function M.new( event_frame, api )
 
   ---@return string?
   local function get_source_guid()
-    return api.UnitName( "target" )
+    return m.UnitGUID( api, "target" )
   end
 
   ---@param slot number
@@ -73,26 +75,44 @@ function M.new( event_frame, api )
   ---@param slot number
   ---@return LootSlotInfo?
   local function get_info( slot )
-    local texture, name, quantity, quality = api.GetLootSlotInfo( slot )
+    if m.vanilla then
+      local texture, name, quantity, quality = api.GetLootSlotInfo( slot )
 
-    return texture and {
-      texture = texture,
-      name = name,
-      quantity = quantity,
-      quality = quality
-    } or nil
+      return texture and {
+        texture = texture,
+        name = name,
+        quantity = quantity,
+        quality = quality
+      } or nil
+    else
+      local texture, name, quantity, _, quality = api.GetLootSlotInfo( slot )
+
+      return texture and {
+        texture = texture,
+        name = name,
+        quantity = quantity,
+        quality = quality
+      } or nil
+    end
   end
 
   ---@param slot number
   ---@return boolean
   local function is_item( slot )
-    return api.LootSlotIsItem( slot ) == 1 or false
+    local slot_type = api.GetLootSlotType( slot )
+    return slot_type == api.LOOT_SLOT_ITEM
   end
 
   ---@param slot number
   ---@return boolean
   local function is_coin( slot )
-    return api.LootSlotIsCoin( slot ) == 1 or false
+    local slot_type = api.GetLootSlotType( slot )
+    return slot_type == api.LOOT_SLOT_MONEY
+  end
+
+  ---@param slot number
+  local function loot_slot( slot )
+    api.LootSlot( slot )
   end
 
   ---@type LootFacade
@@ -103,7 +123,8 @@ function M.new( event_frame, api )
     get_link = get_link,
     get_info = get_info,
     is_item = is_item,
-    is_coin = is_coin
+    is_coin = is_coin,
+    loot_slot = loot_slot
   }
 end
 

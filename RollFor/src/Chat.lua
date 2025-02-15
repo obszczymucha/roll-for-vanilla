@@ -1,7 +1,7 @@
 RollFor = RollFor or {}
 local m = RollFor
 
-if m.chat then return end
+if m.Chat then return end
 
 local M = {}
 

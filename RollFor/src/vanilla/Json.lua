@@ -1,3 +1,6 @@
+RollFor = RollFor or {}
+local m = RollFor
+
 --
 -- json.lua
 --
@@ -27,8 +30,7 @@ local libStub = LibStub
 local json = libStub:NewLibrary( "Json-0.1.2", 1 )
 if not json then return end
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
+local getn = m.getn
 
 -------------------------------------------------------------------------------
 -- Encode

@@ -84,7 +84,7 @@ function M.new( softres, group_roster )
 
   local function start( item_id )
     clear( content )
-    content.n = 0
+    if m.vanilla then content.n = 0 end
 
     populate_rolls( item_id )
   end

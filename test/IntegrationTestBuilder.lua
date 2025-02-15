@@ -1,5 +1,5 @@
 local u = require( "test/utils" )
-local getn, reqsrc = u.getn, u.multi_require_src
+local reqsrc = u.multi_require_src
 local lu, eq = u.luaunit( "assertEquals" ) ---@diagnostic disable-line: unused-local
 local m, T, IU = require( "src/modules" ), require( "src/Types" ), require( "src/ItemUtils" )
 reqsrc( "DebugBuffer", "Module", "Types", "SoftResDataTransformer", "RollingLogicUtils", "RollTracker" )
@@ -105,8 +105,8 @@ function M.i( name, id, sr_players, hard_ressed, quality, bind_type )
     return IU.make_hardres_dropped_item( item )
   end
 
-  if getn( sr_players or {} ) > 0 then
-    return IU.make_softres_dropped_item( item, sr_players or {} )
+  if sr_players and #sr_players > 0 then
+    return IU.make_softres_dropped_item( item, sr_players )
   end
 
   return item
@@ -206,7 +206,7 @@ function M.new_roll_for()
     deps[ "SoftResLootList" ] = loot_list
 
     local ml_candidates_api = deps[ "MasterLootCandidatesApi" ] or require( "mocks/MasterLootCandidatesApi" ).new( group_roster, raw_loot_list )
-    local ml_candidates = require( "src/MasterLootCandidates" ).new( ml_candidates_api, group_roster )
+    local ml_candidates = require( "src/MasterLootCandidates" ).new( ml_candidates_api, group_roster, raw_loot_list )
     deps[ "MasterLootCandidates" ] = ml_candidates
 
     local ace_timer = require( "mocks/AceTimer" ).new()

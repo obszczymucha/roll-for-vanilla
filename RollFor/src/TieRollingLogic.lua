@@ -4,15 +4,14 @@ local m = RollFor
 if m.TieRollingLogic then return end
 
 local M = {}
+
+local getn = m.getn
 local take = m.take
 local RollType = m.Types.RollType
 local hl = m.colors.hl
 
 ---@type MakeRollFn
 local make_roll = m.Types.make_roll
-
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 ---@param chat Chat
 ---@param players RollingPlayer[]

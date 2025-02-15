@@ -7,10 +7,9 @@ local item_utils = m.ItemUtils
 local info = m.pretty_print
 local hl = m.colors.hl
 local grey = m.colors.grey
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 local M = {}
+local getn = m.getn
 
 M.interface = {
   on_loot_opened = "function",
@@ -38,11 +37,20 @@ function M.new( loot_list, api, db, config, player_info )
   local frame
   local items = db.items
 
-  local function find_my_candidate_index()
+  local function find_my_candidate_index( slot )
     for i = 1, 40 do
-      local name = m.api.GetMasterLootCandidate( i )
-      if name == api().UnitName( "player" ) then
-        return i
+      if m.vanilla then
+        local name = m.api.GetMasterLootCandidate( i )
+
+        if name == api().UnitName( "player" ) then
+          return i
+        end
+      else
+        local name = m.api.GetMasterLootCandidate( slot, i )
+
+        if name == api().UnitName( "player" ) then
+          return i
+        end
       end
     end
   end
@@ -55,7 +63,6 @@ function M.new( loot_list, api, db, config, player_info )
     local zone_name = api().GetRealZoneText()
     local item_ids = items[ zone_name ] or {}
     local threshold = api().GetLootThreshold()
-
     local quality = item.quality or 0
 
     if item_ids[ item.id ] then
@@ -97,7 +104,7 @@ function M.new( loot_list, api, db, config, player_info )
 
       if item.id and slot then
         if is_auto_looted( item ) then
-          local index = find_my_candidate_index()
+          local index = find_my_candidate_index( slot )
 
           if index then
             api().GiveMasterLoot( slot, index )

@@ -5,11 +5,9 @@ if rf.NameAutoMatcher then return end
 
 local M = {}
 
+local getn = rf.getn
 local count = rf.count_elements
 local map = rf.map
-
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 local function to_map( t )
   local result = {}

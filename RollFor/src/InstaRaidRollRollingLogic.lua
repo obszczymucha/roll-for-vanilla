@@ -4,6 +4,8 @@ local m = RollFor
 if m.InstaRaidRollRollingLogic then return end
 
 local M = {}
+
+local getn = m.getn
 local hl = m.colors.hl
 local strategy = m.Types.RollingStrategy.InstaRaidRoll
 local roll_type = m.Types.RollType.MainSpec
@@ -11,9 +13,6 @@ local clear_table = m.clear_table
 
 ---@type MakeWinnerFn
 local make_winner = m.Types.make_winner
-
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 -- TODO: Lots of similarity with RaidRollRollingLogic. Perhaps refactor.
 
@@ -36,7 +35,7 @@ function M.new(
 
   local function clear_winners()
     clear_table( m_winners )
-    m_winners.n = 0
+    if m.vanilla then m_winners.n = 0 end
   end
 
   local function start_rolling()

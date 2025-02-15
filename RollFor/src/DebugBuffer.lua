@@ -3,11 +3,11 @@ local m = RollFor
 
 if m.DebugBuffer then return end
 
-local getn = table.getn
-
 local M = {}
 
 M.modules = {}
+
+local getn = m.getn
 
 -- Keeping a global index so we can later reconstruct the order of messages when printing only a subset of modules.
 local message_index = 0

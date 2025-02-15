@@ -36,7 +36,7 @@ NameAutoMatcherSpec = {}
 
 utils.mock_libraries()
 utils.load_real_stuff()
-require( "libs/LibDeflate/LibDeflate" )
-require( "src/Json" )
+require( "libs/bcc/LibDeflate/LibDeflate" )
+require( "src/bcc/Json" )
 
 os.exit( lu.LuaUnit.run() )

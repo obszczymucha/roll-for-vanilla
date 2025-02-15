@@ -3,19 +3,17 @@ local m = RollFor
 
 if m.RollingPopupContentTransformer then return end
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
+local M = m.Module.new( "RollingPopupContentTransformer" )
 
 local RT = m.Types.RollType ---@type RT
 local RS = m.Types.RollingStrategy ---@type RS
 
+local getn = m.getn
 local c = m.colorize_player_by_class
 local blue = m.colors.blue
 local red = m.colors.red
 local r = m.roll_type_color
 local article = m.article
-
-local M = m.Module.new( "RollingPopupContentTransformer" )
 
 ---@param label string
 ---@param width number

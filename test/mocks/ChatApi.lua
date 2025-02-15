@@ -3,8 +3,6 @@ local M = {}
 local u = require( "test/utils" )
 local _, eq = u.luaunit( "assertEquals" )
 
-local getn = table.getn
-
 ---@class ChatApiMock : ChatApi
 ---@field assert fun( ...: ChatMessage[] )
 ---@field assert_no_messages fun()
@@ -51,7 +49,7 @@ function M.new()
 
   ---@param expected ChatMessage
   local function assert_message( expected )
-    if getn( messages ) < last_message_assertion_index + 1 then
+    if #messages < last_message_assertion_index + 1 then
       error( "No chat message found.", 3 )
       return
     end

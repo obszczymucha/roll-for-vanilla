@@ -7,12 +7,10 @@ local version = m.get_addon_version()
 
 local M = {}
 
+local getn = m.getn
 local info = m.pretty_print
 local hl = m.colors.highlight
 local RollSlashCommand = m.Types.RollSlashCommand
-
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 local function clear_data()
   M.softres_gui.clear()
@@ -177,7 +175,7 @@ local function create_components()
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
 
   ---@type MasterLootCandidates
-  M.master_loot_candidates = m.MasterLootCandidates.new( M.api(), M.group_roster ) -- remove group_roster for testing (dummy candidates)
+  M.master_loot_candidates = m.MasterLootCandidates.new( M.api(), M.group_roster, M.raw_loot_list ) -- remove group_roster for testing (dummy candidates)
 
   ---@type MasterLootCandidateSelectionFrame
   M.player_selection_frame = m.MasterLootCandidateSelectionFrame.new( M.config )
@@ -642,7 +640,7 @@ local function setup_slash_commands()
   --M.api().SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
 end
 
-function M.on_first_enter_world()
+function M.on_player_login()
   setup_storage()
   create_components()
   subscribe_for_component_events()

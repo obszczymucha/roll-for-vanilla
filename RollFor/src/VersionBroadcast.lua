@@ -28,7 +28,7 @@ function M.new( db, player_info, my_version )
   end
 
   local function broadcast_version( channel )
-    m.api.SendAddonMessage( ADDON_NAME, "VERSION::" .. my_version, channel )
+    m.SendAddonMessage( m.api, ADDON_NAME, "VERSION::" .. my_version, channel )
   end
 
   local function broadcast_version_to_the_guild()
@@ -68,7 +68,7 @@ function M.new( db, player_info, my_version )
 
   local function on_version_request( channel, requesting_player_name )
     if not channel or not requesting_player_name then return end
-    m.api.SendAddonMessage( ADDON_NAME,
+    m.SendAddonMessage( m.api, ADDON_NAME,
       string.format(
         "VERSION_RESPONSE::%s::%s::%s::%s::%s",
         requesting_player_name,
@@ -85,7 +85,7 @@ function M.new( db, player_info, my_version )
   end
 
   local function version_request( channel )
-    m.api.SendAddonMessage( ADDON_NAME, string.format( "VERSION_REQUEST::%s::%s", channel, player_info.get_name() ), channel )
+    m.SendAddonMessage( m.api, ADDON_NAME, string.format( "VERSION_REQUEST::%s::%s", channel, player_info.get_name() ), channel )
   end
 
   local function group_version_request()

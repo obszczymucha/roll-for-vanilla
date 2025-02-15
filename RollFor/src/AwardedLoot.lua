@@ -5,8 +5,7 @@ if m.AwardedLoot then return end
 
 local M = m.Module.new( "AwardedLoot" )
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
+local getn = m.getn
 
 ---@class AwardedLoot
 ---@field award fun( player_name: string, item_id: number )

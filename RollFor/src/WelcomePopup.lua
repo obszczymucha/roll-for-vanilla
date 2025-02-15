@@ -5,17 +5,15 @@ if m.WelcomePopup then return end
 
 local M = {}
 
+local getn = m.getn
 local hl = m.colors.hl
 local white = m.colors.white
 local blue = m.colors.blue
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 function M.new( frame_builder, ace_timer, db )
   local popup
   local messages = {
-    { text = "Welcome to version 3.",                    color = white },
+    { text = "Welcome to version 4.",                    color = white },
     { text = "Check the minimap icon for new commands.", color = white },
     { text = "  ",                                       color = white },
     { text = "Be a responsible Master Looter.",          color = white },

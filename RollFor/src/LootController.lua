@@ -3,11 +3,11 @@ local m = RollFor
 
 if m.LootController then return end
 
-local getn = table.getn
+local M = m.Module.new( "LootController" )
+
+local getn = m.getn
 local red, orange, blue, hl = m.colors.red, m.colors.orange, m.colors.blue, m.colors.hl
 local item_utils = m.ItemUtils
-
-local M = m.Module.new( "LootController" )
 
 ---@alias SelectedItem { item_id: number, comment: string? }
 
@@ -239,12 +239,25 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
             return
           end
 
+          if m.bcc and (is_coin or item.quality < 2) then
+            local slot = loot_list.get_slot( item.id )
+            if slot then loot_facade.loot_slot( slot ) end
+            return
+          end
+
           if rolling_logic.is_rolling() then
             chat.info( "Cannot select item while rolling is in progress.", m.colors.red )
             return
           end
 
-          if is_coin or selected or not player_info.is_master_looter() then return end
+
+          if is_coin or selected then return end
+
+          if not player_info.is_master_looter() then
+            chat.info( "You are not the master looter.", m.colors.red )
+            return
+          end
+
           select_item( entries, selected_entry.item --[[@as DroppedItem]], selected_entry.hard_ressed, selected_entry.soft_ressed ); update()
         end,
         is_selected = selected or false,

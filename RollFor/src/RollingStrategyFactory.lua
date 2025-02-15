@@ -5,9 +5,9 @@ if m.RollingStrategyFactory then return end
 
 local M = {}
 
+local getn = m.getn
 ---@type MakeRollingPlayerFn
 local make_rolling_player = m.Types.make_rolling_player
-local getn = table.getn
 
 ---@class RollingStrategy
 ---@field start_rolling fun()
@@ -116,7 +116,7 @@ function M.new(
     ---@param roll_controller_facade RollControllerFacade
     return function( item, item_count, roll_controller_facade )
       local slot = loot_list.get_slot( item.id )
-      local candidates = slot and master_loot_candidates.get() or group_roster.get_all_players_in_my_group()
+      local candidates = slot and master_loot_candidates.get( slot ) or group_roster.get_all_players_in_my_group()
       ---@type ItemCandidate[]|Player[]
       local online_candidates = m.filter( candidates, function( c ) return c.online == true end )
 

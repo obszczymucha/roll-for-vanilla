@@ -1,5 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
+require( "src/bcc/compat" )
 local u = require( "test/utils" )
 local lu = u.luaunit()
 local player, leader, is_in_raid = u.player, u.raid_leader, u.is_in_raid

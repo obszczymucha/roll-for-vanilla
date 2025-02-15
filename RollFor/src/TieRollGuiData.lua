@@ -111,7 +111,7 @@ function M.new( group_roster )
 
   local function clear()
     clear_table( tie_roll_iterations )
-    tie_roll_iterations.n = 0
+    if m.vanilla then tie_roll_iterations.n = 0 end
     current_tie_roll_iteration = 0
   end
 
