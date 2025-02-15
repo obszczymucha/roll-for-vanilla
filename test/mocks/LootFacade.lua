@@ -31,6 +31,7 @@ function M.new()
   M.notify = notify
 
   local api = mock( RealLootFacade.interface )
+  api.loot_slot = function( slot ) notify( "LootSlotCleared", slot ) end
   api.subscribe = subscribe
   api.notify = notify
 

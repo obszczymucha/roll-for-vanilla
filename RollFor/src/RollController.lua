@@ -10,7 +10,6 @@ local RS = m.Types.RollingStrategy
 local LAE = m.Types.LootAwardError
 local IU = m.ItemUtils ---@type ItemUtils
 local hl = m.colors.hl
-local getn = table.getn
 
 ---@class RollControllerFacade
 ---@field roll_was_ignored fun( player_name: string, player_class: string?, roll_type: RollType, roll: number, reason: string )
@@ -194,7 +193,7 @@ function M.new(
   -- If the roll is a placeholder, we should not count it as a roll.
   ---@param rolls RollData[]
   local function count_rolls( rolls )
-    if getn( rolls ) == 0 then return 0 end
+    if #rolls == 0 then return 0 end
 
     local count = 0
 
@@ -302,7 +301,8 @@ function M.new(
   ---@param item MasterLootDistributableItem
   ---@param strategy_type RollingStrategyType
   local function show_master_loot_confirmation( player, item, strategy_type )
-    local candidate = ml_candidates.find( player.name )
+    local slot = loot_list.get_slot( item.id )
+    local candidate = slot and ml_candidates.find( slot, player.name )
 
     if not candidate then
       M.debug.add( "Candidate not found: %s", player.name )
@@ -482,7 +482,8 @@ function M.new(
     local winners = m.map( soft_ressers,
       ---@param player RollingPlayer
       function( player )
-        local candidate = ml_candidates.find( player.name )
+        local slot = loot_list.get_slot( item.id )
+        local candidate = slot and ml_candidates.find( slot, player.name )
         local award_callback = candidate and dropped_item and function()
           show_master_loot_confirmation( candidate, dropped_item, RS.SoftResRoll )
         end
@@ -492,7 +493,7 @@ function M.new(
       end
     )
 
-    if getn( winners ) == 1 and winners[ 1 ].award_callback then
+    if #winners == 1 and winners[ 1 ].award_callback then
       add_award_winner_button( buttons, winners[ 1 ].award_callback )
       winners[ 1 ].award_callback = nil
     end
@@ -569,7 +570,7 @@ function M.new(
     local item = data.item
     local buttons = {} ---@type RollingPopupButtonWithCallback[]
     local dropped_item = loot_list.get_by_id( item.id )
-    local candidate_count = getn( candidates )
+    local candidate_count = #candidates
 
     ---@type WinnerWithAwardCallback[]
     local winners = m.map( data.winners,
@@ -577,7 +578,9 @@ function M.new(
       function( player )
         if type( player ) ~= "table" then return end -- Fucking lua50 and its n.
 
-        local candidate = ml_candidates.find( player.name )
+        local slot = loot_list.get_slot( item.id )
+        local candidate = slot and ml_candidates.find( slot, player.name )
+
         local award_callback = candidate and dropped_item and function()
           show_master_loot_confirmation( candidate, dropped_item, strategy_type )
         end
@@ -587,7 +590,7 @@ function M.new(
       end
     )
 
-    if getn( winners ) == 1 and winners[ 1 ].award_callback then
+    if #winners == 1 and winners[ 1 ].award_callback then
       add_award_winner_button( buttons, winners[ 1 ].award_callback )
       winners[ 1 ].award_callback = nil
     end
@@ -622,7 +625,7 @@ function M.new(
     local item = data.item
     local buttons = {} ---@type RollingPopupButtonWithCallback[]
     local dropped_item = loot_list.get_by_id( item.id )
-    local candidate_count = getn( candidates )
+    local candidate_count = #candidates
 
     ---@type WinnerWithAwardCallback[]
     local winners = m.map( data.winners,
@@ -630,7 +633,9 @@ function M.new(
       function( player )
         if type( player ) ~= "table" then return end -- Fucking lua50 and its n.
 
-        local candidate = ml_candidates.find( player.name )
+        local slot = loot_list.get_slot( item.id )
+        local candidate = slot and ml_candidates.find( slot, player.name )
+
         local award_callback = candidate and dropped_item and function()
           show_master_loot_confirmation( candidate, dropped_item, current_iteration.rolling_strategy )
         end
@@ -640,7 +645,7 @@ function M.new(
       end
     )
 
-    if getn( winners ) == 1 and winners[ 1 ].award_callback then
+    if #winners == 1 and winners[ 1 ].award_callback then
       add_award_winner_button( buttons, winners[ 1 ].award_callback )
       winners[ 1 ].award_callback = nil
     end
@@ -681,7 +686,8 @@ function M.new(
 
     if data.status and data.status.type == "Finished" then
       local dropped_item = loot_list.get_by_id( item.id )
-      local candidates = ml_candidates.get()
+      local slot = loot_list.get_slot( item.id )
+      local candidates = slot and ml_candidates.get( slot ) or {}
 
       ---@type WinnerWithAwardCallback[]
       local winners = m.map( data.winners,
@@ -689,7 +695,8 @@ function M.new(
         function( player )
           if type( player ) ~= "table" then return end -- Fucking lua50 and its n.
 
-          local candidate = ml_candidates.find( player.name )
+          local candidate = slot and ml_candidates.find( slot, player.name )
+
           local fuck_lua50 = dropped_item
           local strategy = first_iteration.rolling_strategy
           local award_callback = candidate and fuck_lua50 and function()
@@ -701,7 +708,7 @@ function M.new(
         end
       )
 
-      if getn( winners ) == 1 and winners[ 1 ].award_callback then
+      if #winners == 1 and winners[ 1 ].award_callback then
         add_award_winner_button( buttons, winners[ 1 ].award_callback )
         winners[ 1 ].award_callback = nil
       end
@@ -787,12 +794,15 @@ function M.new(
 
       if data.status and data.status.type == S.Finished then
         currently_displayed_item = data.item
-        refresh_finish_popup_content( ml_candidates.get() )
+        local slot = loot_list.get_slot( item.id )
+        local candidates = slot and ml_candidates.get( slot ) or {}
+        refresh_finish_popup_content( candidates )
         return
       end
     end
 
-    local candidates = ml_candidates.get()
+    local slot = loot_list.get_slot( item.id )
+    local candidates = slot and ml_candidates.get( slot ) or {}
     local soft_ressers = softres.get( item.id )
     local hard_ressed = softres.is_item_hardressed( item.id )
     local roll_tracker = new_roll_tracker( item )
@@ -801,10 +811,10 @@ function M.new(
     local color = get_color( item.quality )
     rolling_popup:border_color( color )
 
-    local sr_count = getn( soft_ressers )
+    local sr_count = #soft_ressers
     local buttons = {} ---@type RollingPopupButtonWithCallback[]
     local dropped_item = loot_list.get_by_id( item.id )
-    local candidate_count = getn( candidates )
+    local candidate_count = #candidates
 
     currently_displayed_item = item
 
@@ -905,8 +915,14 @@ function M.new(
   ---@field roll_tracker_data RollTrackerData
 
   local function finish()
-    local roll_tracker = get_roll_tracker( currently_displayed_item and currently_displayed_item.id )
-    local candidates = ml_candidates.get()
+    local item_id = currently_displayed_item and currently_displayed_item.id
+    if not item_id then
+      error( "WTF" )
+    end
+
+    local roll_tracker = get_roll_tracker( item_id )
+    local slot = loot_list.get_slot( item_id )
+    local candidates = slot and ml_candidates.get( slot ) or {}
     roll_tracker.finish( candidates )
 
     local data = roll_tracker.get()
@@ -1082,12 +1098,12 @@ function M.new(
     end
 
     local strategy_type = current_iteration and current_iteration.rolling_strategy
+    local slot = loot_list.get_slot( item_id )
+    local candidates = slot and ml_candidates.get( slot ) or {}
 
     if strategy_type == "InstaRaidRoll" or strategy_type == "RaidRoll" then
-      local candidates = ml_candidates.get()
       raid_roll_winners( data, candidates, strategy_type )
     elseif strategy_type == "NormalRoll" or strategy_type == "SoftResRoll" then
-      local candidates = ml_candidates.get()
       normal_roll_winners( data, current_iteration, candidates )
     end
 
@@ -1106,7 +1122,8 @@ function M.new(
     local data = roll_tracker.get()
 
     if data.status and data.status.type == "Finished" then
-      refresh_finish_popup_content( ml_candidates.get() )
+      local slot = loot_list.get_slot( item_id )
+      refresh_finish_popup_content( slot and ml_candidates.get( slot ) or {} )
       return
     end
 
@@ -1205,7 +1222,8 @@ function M.new(
 
     if data.status and data.status.type == S.Finished and not currently_displayed_item then
       currently_displayed_item = data.item
-      refresh_finish_popup_content( ml_candidates.get() )
+      local slot = loot_list.get_slot( item_id )
+      refresh_finish_popup_content( slot and ml_candidates.get( slot ) or {} )
       return
     end
 

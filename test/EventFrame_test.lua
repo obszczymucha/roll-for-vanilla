@@ -26,14 +26,7 @@ local function mock_api()
       }
     end,
     fire_event = function( event_name, _arg1, _arg2 )
-      if not on_event_callback then return end
-      ---@diagnostic disable-next-line: lowercase-global
-      event = event_name
-      ---@diagnostic disable-next-line: lowercase-global
-      arg1 = _arg1
-      ---@diagnostic disable-next-line: lowercase-global
-      arg2 = _arg2
-      on_event_callback()
+      on_event_callback( nil, event_name, _arg1, _arg2 )
     end,
     get_registered_event_names = function() return registered_event_names end
   }

@@ -12,9 +12,6 @@ local clear_table = m.clear_table
 ---@type MakeWinnerFn
 local make_winner = m.Types.make_winner
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 -- TODO: Lots of similarity with RaidRollRollingLogic. Perhaps refactor.
 
 ---@param chat Chat
@@ -43,7 +40,7 @@ function M.new(
     clear_winners()
 
     for _ = 1, item_count do
-      local roll = m.lua.math.random( 1, getn( candidates ) )
+      local roll = m.lua.math.random( 1, #candidates )
       table.insert( m_winners, candidates[ roll ] )
     end
 
@@ -62,7 +59,7 @@ function M.new(
   end
 
   local function show_sorted_rolls()
-    if getn( m_winners ) == 0 then
+    if #m_winners == 0 then
       chat.info( "There is no winner yet.", nil, "RaidRoll" )
       return
     end

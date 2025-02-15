@@ -9,21 +9,18 @@ local filter = m.filter
 local BindType = m.ItemUtils.BindType
 local ItemQuality = m.Types.ItemQuality
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 local function distinct( items )
   local result = {}
 
   local function exists( item )
-    for i = 1, getn( result ) do
+    for i = 1, #result do
       if result[ i ].id == item.id then return true end
     end
 
     return false
   end
 
-  for i = 1, getn( items ) do
+  for i = 1, #items do
     local item = items[ i ]
 
     if not exists( item ) then
@@ -37,15 +34,15 @@ end
 local function commify( t, f )
   local result = ""
 
-  if getn( t ) == 0 then
+  if #t == 0 then
     return result
   end
 
-  if getn( t ) == 1 then
+  if #t == 1 then
     return (f and f( t[ 1 ] ) or t[ 1 ])
   end
 
-  for i = 1, getn( t ) - 1 do
+  for i = 1, #t - 1 do
     if result ~= "" then
       result = result .. ", "
     end
@@ -53,7 +50,7 @@ local function commify( t, f )
     result = result .. (f and f( t[ i ] ) or t[ i ])
   end
 
-  result = result .. " and " .. (f and f( t[ getn( t ) ] ) or t[ getn( t ) ])
+  result = result .. " and " .. (f and f( t[ #t ] ) or t[ #t ])
   return result
 end
 
@@ -67,7 +64,7 @@ local function stringify( announcements )
     end
   end
 
-  for i = 1, getn( announcements ) do
+  for i = 1, #announcements do
     local entry = announcements[ i ]
 
     if entry.is_hardressed then
@@ -143,9 +140,9 @@ end
 function M.create_item_announcements( summary )
   local result = {}
 
-  for i = 1, getn( summary ) do
+  for i = 1, #summary do
     local entry = summary[ i ]
-    local softres_count = getn( entry.softressers )
+    local softres_count = #entry.softressers
 
     if entry.is_hardressed then
       table.insert( result, {
@@ -179,7 +176,7 @@ function M.create_item_announcements( summary )
         item_link = entry.item.link,
         item_name = entry.item.name,
         item_quality = entry.item.quality,
-        softres_count = getn( entry.softressers ),
+        softres_count = #entry.softressers,
         how_many_dropped = entry.how_many_dropped,
         softressers = entry.softressers
       } )
@@ -217,18 +214,18 @@ function M.create_item_summary( items, softres )
     ---@diagnostic disable-next-line: redefined-local
     local result = 0
 
-    for i = 1, getn( items ) do
+    for i = 1, #items do
       if items[ i ].id == item_id then result = result + 1 end
     end
 
     return result
   end
 
-  for i = 1, getn( distinct_items ) do
+  for i = 1, #distinct_items do
     local item = distinct_items[ i ]
     local item_count = count_items( item.id )
     local softressers = softres.get( item.id )
-    local softres_count = getn( softressers )
+    local softres_count = #softressers
     table.sort( softressers, function( l, r ) return l.name < r.name end )
     local hardressed = softres.is_item_hardressed( item.id )
 
@@ -294,7 +291,7 @@ function M.new( loot_list, chat, dropped_loot, softres, winner_tracker, player_i
     if was_announced then return end
 
     announcing = true
-    local item_count = getn( items )
+    local item_count = #items
 
     local target = m.api.UnitName( "target" )
     local target_msg = target and not m.api.UnitIsFriend( "player", "target" ) and string.format( "%s dropped ", target ) or ""

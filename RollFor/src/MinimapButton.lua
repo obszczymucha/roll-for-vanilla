@@ -56,31 +56,23 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
     local frame = api().CreateFrame( "Button", "RollForMinimapButton", api().Minimap )
     local was_dragging = false
 
-    function frame.OnClick()
-      ---@diagnostic disable-next-line: undefined-global, redefined-local
-      local self = this
+    function frame.OnClick( self )
       manage_softres_fn()
       self:OnEnter()
       api().GameTooltip:Hide()
     end
 
-    function frame.OnMouseDown()
-      ---@diagnostic disable-next-line: undefined-global, redefined-local
-      local self = this
+    function frame.OnMouseDown( self )
       self.icon:SetTexCoord( 0, 1, 0, 1 )
       was_dragging = false
     end
 
-    function frame.OnMouseUp()
-      ---@diagnostic disable-next-line: undefined-global, redefined-local
-      local self = this
+    function frame.OnMouseUp( self )
       self.icon:SetTexCoord( 0.05, 0.95, 0.05, 0.95 )
       if not was_dragging then self:OnClick() end
     end
 
-    function frame.OnEnter()
-      ---@diagnostic disable-next-line: undefined-global, redefined-local
-      local self = this
+    function frame.OnEnter( self )
       if not self.dragging then
         api().GameTooltip:SetOwner( self, "ANCHOR_LEFT" )
         api().GameTooltip:SetText( blue( "RollFor" ) )
@@ -124,9 +116,7 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
       api().GameTooltip:Hide()
     end
 
-    function frame.OnDragStart()
-      ---@diagnostic disable-next-line: undefined-global, redefined-local
-      local self = this
+    function frame.OnDragStart( self )
       self.dragging = true
       self:LockHighlight()
       self.icon:SetTexCoord( 0, 1, 0, 1 )
@@ -135,27 +125,21 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
       was_dragging = true
     end
 
-    function frame.OnDragStop()
-      ---@diagnostic disable-next-line: undefined-global, redefined-local
-      local self = this
+    function frame.OnDragStop( self )
       self.dragging = nil
       self:SetScript( "OnUpdate", nil )
       self.icon:SetTexCoord( 0.05, 0.95, 0.05, 0.95 )
       self:UnlockHighlight()
     end
 
-    function frame.OnUpdate()
-      ---@diagnostic disable-next-line: undefined-global, redefined-local
-      local self = this
+    function frame.OnUpdate( self )
       local mx, my = api().Minimap:GetCenter()
       local px, py = api().GetCursorPosition()
       local scale = api().Minimap:GetEffectiveScale()
 
       px, py = px / scale, py / scale
 
-      ---@diagnostic disable-next-line: undefined-field
-      ---@diagnostic disable-next-line: deprecated
-      persist_angle( math.mod( math.deg( math.atan2( py - my, px - mx ) ), 360 ) )
+      persist_angle( math.deg( math.atan2( py - my, px - mx ) ) % 360 )
       self:UpdatePosition()
     end
 

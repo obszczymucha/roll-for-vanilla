@@ -5,9 +5,6 @@ if m.PopupBuilder then return end
 
 local M = {}
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 ---@class Popup : Frame
 ---@field resize fun( self: Popup, lines: table )
 
@@ -103,7 +100,7 @@ function M.new( frame_builder )
 
 
     local buttons = m.filter( lines, function( line ) return line.line_type == "button" end )
-    local button_count = getn( buttons )
+    local button_count = #buttons
     local button_width = get_total_width( buttons ) + (button_count - 1) * button_padding
 
     if button_width > max_width then max_width = button_width end
@@ -112,7 +109,7 @@ function M.new( frame_builder )
       height = height + 23
     end
 
-    popup:SetWidth( max_width + 50 )
+    popup:SetWidth( max_width + 35 )
     popup:SetHeight( height + (button_count > 0 and bottom_margin or 23) )
 
     align_buttons( popup, lines )

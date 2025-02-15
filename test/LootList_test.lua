@@ -14,7 +14,6 @@ local LT = ItemUtils.LootType
 require( "src/LootList" )
 require( "src/SoftResLootListDecorator" )
 
-local getn = table.getn
 local LootQuality = utils.LootQuality
 local item_link = utils.item_link
 local mock_value, mock_values = utils.mock_value, utils.mock_values
@@ -54,7 +53,7 @@ function LootListSpec.should_return_a_coin_entry_if_its_the_only_one_that_droppe
   local result = loot_list.get_items()
 
   -- Then
-  eq( getn( result ), 1 )
+  eq( #result, 1 )
   eq( result[ 1 ].type, LT.Coin )
   eq( loot_list.get_slot( result[ 1 ].id ), 1 )
   eq( result[ 1 ].texture, "Interface\\Icons\\INV_Misc_Coin_06" )
@@ -77,7 +76,7 @@ function LootListSpec.should_return_an_item_entry_if_its_the_only_one_that_dropp
   local result = loot_list.get_items()
 
   -- Then
-  eq( getn( result ), 1 )
+  eq( #result, 1 )
   eq( result[ 1 ].type, LT.DroppedItem )
   eq( result[ 1 ].id, 123 )
   eq( result[ 1 ].name, "Big item" )
@@ -105,7 +104,7 @@ function LootListSpec.should_return_a_hard_ressed_item_entry_if_its_the_only_one
   local result = loot_list.get_items()
 
   -- Then
-  eq( getn( result ), 1 )
+  eq( #result, 1 )
   eq( result[ 1 ].type, LT.HardRessedDroppedItem )
   eq( result[ 1 ].id, 123 )
   eq( result[ 1 ].name, "Big item" )
@@ -133,7 +132,7 @@ function LootListSpec.should_return_a_soft_ressed_item_entry_if_its_the_only_one
   local result = loot_list.get_items()
 
   -- Then
-  eq( getn( result ), 1 )
+  eq( #result, 1 )
   eq( result[ 1 ].type, LT.SoftRessedDroppedItem )
   eq( result[ 1 ].id, 123 )
   eq( result[ 1 ].name, "Big item" )
@@ -162,7 +161,7 @@ function LootListSpec.should_sort_the_coin_last()
   local result = loot_list.get_items()
 
   -- Then
-  eq( getn( result ), 2 )
+  eq( #result, 2 )
   eq( result[ 1 ].type, LT.DroppedItem )
   eq( result[ 1 ].id, 123 )
   eq( result[ 1 ].name, "Big item" )
@@ -195,7 +194,7 @@ function LootListSpec.should_sort_the_items_by_quality_and_then_name()
   local result = loot_list.get_items()
 
   -- Then
-  eq( getn( result ), 3 )
+  eq( #result, 3 )
   eq( result[ 1 ].type, LT.DroppedItem )
   eq( result[ 1 ].id, 222 )
   eq( result[ 1 ].name, "Big item" )

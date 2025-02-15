@@ -3,8 +3,6 @@ local m = RollFor
 
 if m.DebugBuffer then return end
 
-local getn = table.getn
-
 local M = {}
 
 M.modules = {}
@@ -155,7 +153,7 @@ end
 
 local function get_colors( module_names )
   local result = {}
-  local color_count = getn( colors )
+  local color_count = #colors
   local color_index = math.random( color_count ) - 1
 
   for _, module_name in ipairs( module_names ) do
@@ -191,7 +189,7 @@ local function show( module_names )
 
   table.sort( result, function( a, b ) return a.index < b.index end )
 
-  if getn( result ) == 0 then
+  if #result == 0 then
     pp( "No debug messages.", m.colors.grey )
     return
   end

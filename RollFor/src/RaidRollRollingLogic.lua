@@ -12,9 +12,6 @@ local clear_table = m.clear_table
 ---@type MakeWinnerFn
 local make_winner = m.Types.make_winner
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 -- TODO: Lots of similarity with InstaRaidRollRollingLogic. Perhaps refactor.
 
 ---@param chat Chat
@@ -64,7 +61,7 @@ function M.new(
 
   local function raid_roll()
     m_rolling = true
-    m.api.RandomRoll( 1, getn( candidates ) )
+    m.api.RandomRoll( 1, #candidates )
   end
 
   local function start_rolling()
@@ -87,10 +84,10 @@ function M.new(
   ---@param max number
   local function on_roll( player, roll, min, max )
     if player.name ~= roller.get_name() then return end
-    if min ~= 1 or max ~= getn( candidates ) then return end
+    if min ~= 1 or max ~= #candidates then return end
 
     table.insert( m_winners, candidates[ roll ] )
-    if getn( m_winners ) < item_count then return end
+    if #m_winners < item_count then return end
 
     local winners = m.map( m_winners,
       ---@param p ItemCandidate|Player
@@ -112,7 +109,7 @@ function M.new(
   end
 
   local function show_sorted_rolls()
-    if getn( m_winners ) == 0 then
+    if #m_winners == 0 then
       chat.info( "There is no winner yet.", nil, "RaidRoll" )
       return
     end

@@ -5,7 +5,6 @@ if m.LootList then return end
 local M = m.Module.new( "LootList" )
 local interface = m.Interface
 local clear = m.clear_table
-local getn = table.getn
 
 ---@class LootList
 ---@field get_items fun(): DroppedItem[]
@@ -37,7 +36,7 @@ function M.new( loot_facade, item_utils, tooltip_reader, dummy_items_fn )
 
   local function add_item( slot, item, item_count )
     local dummy_items = dummy_items_fn and dummy_items_fn() or {}
-    local dummy_item_count = getn( dummy_items )
+    local dummy_item_count = #dummy_items
     local new_item = item_count > dummy_item_count and item or dummy_items[ item_count ]
 
     items[ slot ] = new_item

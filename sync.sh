@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TARGET_DIR="$HOME/.projects/lua/wow-1.12.1-addons.git/master"
+TARGET_DIR="$HOME/.projects/lua/wow-2.5.2-addons.git/master"
 
 function sync() {
   echo "Syncing addons with ${TARGET_DIR}..." >&2

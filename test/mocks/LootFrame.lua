@@ -1,7 +1,6 @@
 ---@diagnostic disable: inject-field
 local M = {}
 
-local getn = table.getn
 local u = require( "test/utils" )
 local _, eq = u.luaunit( "assertEquals" )
 
@@ -78,7 +77,7 @@ function M.new( frame_builder, db, config )
   end
 
   frame.click = function( index )
-    if getn( m_items ) < index then return end
+    if #m_items < index then return end
     local item = m_items[ index ]
 
     if not item.click_fn then

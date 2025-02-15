@@ -4,8 +4,6 @@ local m = RollFor
 if m.AutoGroupLoot then return end
 
 local M = {}
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 local ignore_zones = {
   "Blackwing Lair"
@@ -25,7 +23,7 @@ function M.new( loot_list, config, boss_list, player_info )
 
   local function on_loot_opened()
     m_target_name = m.target_name()
-    m_item_count = getn( loot_list.get_items() )
+    m_item_count = #loot_list.get_items()
   end
 
   local function on_loot_slot_cleared()

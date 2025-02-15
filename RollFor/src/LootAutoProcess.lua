@@ -7,9 +7,6 @@ local M = {}
 
 ---@type LT
 local LT = m.ItemUtils.LootType
-
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 local clear_table = m.clear_table
 
 ---@class LootAutoProcess
@@ -31,7 +28,7 @@ function M.new( config, roll_tracker, loot_list, roll_controller, player_info )
     local threshold = m.api.GetLootThreshold()
     local data = roll_tracker.get()
     local items = loot_list.get_items()
-    local item_count = getn( items )
+    local item_count = #items
 
     if item_count == 0 then return end
 

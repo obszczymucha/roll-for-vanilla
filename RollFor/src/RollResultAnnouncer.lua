@@ -9,7 +9,6 @@ local RT = m.Types.RollType
 local RS = m.Types.RollingStrategy
 local hl = m.colors.hl
 local grey = m.colors.grey
-local getn = table.getn
 
 ---@param chat Chat
 ---@param roll_controller RollController
@@ -50,7 +49,7 @@ function M.new( chat, roll_controller, config )
   ---@param winners Winner[]
   ---@return table<number, Winner[]>
   local function split_winners_by_roll( winners )
-    if getn( winners ) == 0 then return {} end
+    if #winners == 0 then return {} end
     local result = {}
 
     local i = 0
@@ -74,7 +73,7 @@ function M.new( chat, roll_controller, config )
     if not data then return end
 
     local item, item_count, winners, strategy = data.item, data.item_count, data.winners, data.rolling_strategy
-    local winner_count = getn( winners )
+    local winner_count = #winners
 
     if winner_count == 0 then
       return
@@ -142,12 +141,12 @@ function M.new( chat, roll_controller, config )
     local data, iteration = event_data.tracker_data, event_data.iteration
     if not data or not iteration then return end
 
-    local player_count = getn( iteration.rolls )
+    local player_count = #iteration.rolls
     if player_count == 0 then return end
 
     local roll_type = iteration.rolls[ 1 ].roll_type
     local item, item_count, winners = data.item, data.item_count, data.winners
-    local winner_count = getn( winners )
+    local winner_count = #winners
     local count = item_count - winner_count
     local prefix = count > 1 and string.format( "%sx", count ) or ""
     local suffix = count > 1 and string.format( " %s top rolls win.", count ) or ""
@@ -181,7 +180,7 @@ function M.new( chat, roll_controller, config )
     local data = event_data.roll_tracker_data
     if not data or not data.item then return end
 
-    local winner_count = getn( data.winners )
+    local winner_count = #data.winners
 
     if winner_count == 0 then
       local message = string.format( "No one rolled for %s.", data.item.link )

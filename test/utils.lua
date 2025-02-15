@@ -33,23 +33,7 @@ if not lua50 then
       return t[ i ], unpack( t, i + 1, j )
     end
   end
-
-
-  if not table.getn then
-    ---@diagnostic disable-next-line: duplicate-set-field
-    function table.getn( t )
-      return #t
-    end
-  end
-
-  if not math.mod then
-    math.mod = function( a, b )
-      return a % b
-    end
-  end
 end
-
-local getn = table.getn
 
 M.debug_enabled = true
 
@@ -104,16 +88,24 @@ function M.mock_wow_api()
   M.modules().lua.time = os.time
   M.modules().lua.random = math.random
   M.modules().api.UISpecialFrames = {}
+  M.modules().api.InCombatLockdown = function() return false end
   M.modules().api.IsAltKeyDown = function() return false end
   M.modules().api.GetAddOnMetadata = function() return "2.6" end -- version
   M.modules().api.tinsert = table.insert
   M.modules().api.PlaySound = function() end
-  M.modules().api.SendAddonMessage = function() end
+  M.modules().api.C_ChatInfo = {}
+  M.modules().api.C_ChatInfo.SendAddonMessage = function() end
   M.modules().api.IsShiftKeyDown = function() return false end
   M.modules().api.IsControlKeyDown = function() return false end
   M.modules().api.GetItemInfo = function() return nil, nil, 4 end
   M.modules().api.UIFrameFade = function() end
   M.modules().api.UnitIsConnected = function() return true end
+  M.modules().api.UnitGUID = function() return "PrincessKenny" end
+  M.modules().api.LootSlot = function() end
+  M.modules().api.SOUNDKIT = {
+    IG_MAIN_MENU_OPEN = 850,
+    IG_MAIN_MENU_CLOSE = 851
+  }
 
   M.modules().api.CreateFrame = function( _, frame_name )
     local frame = {
@@ -306,13 +298,13 @@ function M.mock_api()
   M.mock( "InCombatLockdown", false )
   M.mock( "UnitName", "Psikutas" )
   M.mock( "UnitClass", "Warrior" )
-  M.mock( "UnitIsPartyLeader", false )
+  M.mock( "GetRealZoneText", "Elwynn Forest" )
+  M.mock( "UnitIsGroupLeader", false )
 
   -- Loot Interface
   M.mock( "GetLootSlotLink" )
   M.mock( "GetLootSlotInfo" )
-  M.mock( "LootSlotIsItem" )
-  M.mock( "LootSlotIsCoin" )
+  M.mock( "GetLootSlotType" )
   M.mock( "GetNumLootItems" )
 
   M.zone_name()
@@ -560,7 +552,7 @@ function M.is_in_party( ... )
   end
 
   M.mock_table_function( "GetRaidRosterInfo", players )
-  M.fire_event( "PARTY_MEMBERS_CHANGED" )
+  M.fire_event( "GROUP_ROSTER_UPDATE" )
 end
 
 function M.add_normal_raider_ranks( players )
@@ -585,7 +577,7 @@ function M.is_in_raid( ... )
   M.mock( "IsInRaid", true )
   M.mock_table_function( "GetRaidRosterInfo", players )
   M.mock_table_function( "GetMasterLootCandidate", players )
-  M.fire_event( "PARTY_MEMBERS_CHANGED" )
+  M.fire_event( "GROUP_ROSTER_UPDATE" )
 end
 
 M.LootQuality = {
@@ -630,7 +622,7 @@ function M.mock_blizzard_loot_buttons()
     } )
   end
 
-  M.mock( "LootSlotIsItem", function() return true end )
+  M.mock( "GetLootSlotType", function() return 1 end )
 end
 
 function M.mock_unit_name()
@@ -1207,7 +1199,7 @@ function M.mock_values( values )
   return function()
     invocation_count = invocation_count + 1
 
-    if invocation_count > getn( values ) then
+    if invocation_count > #values then
       return nil
     end
 
@@ -1222,7 +1214,7 @@ function M.mock_value( v1, v2, v3, v4, v5, v6, v7, v8, v9 )
   return function()
     invocation_count = invocation_count + 1
 
-    if invocation_count > getn( values ) then
+    if invocation_count > #values then
       return nil
     end
 
@@ -1235,8 +1227,6 @@ function M.info( message )
 end
 
 function M.noop() end
-
-M.getn = table.getn
 
 function M.clone( t )
   local result = {}

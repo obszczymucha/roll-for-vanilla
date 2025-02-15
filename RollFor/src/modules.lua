@@ -4,9 +4,6 @@ local M = RollFor
 ---@diagnostic disable-next-line: undefined-global
 local debugstack = debugstack
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 ---@alias ColorFn fun( text: string ): string
 
 M.api = getfenv()
@@ -278,15 +275,15 @@ end
 function M.prettify_table( t, f )
   local result = ""
 
-  if getn( t ) == 0 then
+  if #t == 0 then
     return result
   end
 
-  if getn( t ) == 1 then
+  if #t == 1 then
     return (f and f( t[ 1 ] ) or t[ 1 ])
   end
 
-  for i = 1, getn( t ) - 1 do
+  for i = 1, #t - 1 do
     if result ~= "" then
       result = result .. ", "
     end
@@ -294,7 +291,7 @@ function M.prettify_table( t, f )
     result = result .. (f and f( t[ i ] ) or t[ i ])
   end
 
-  result = result .. " and " .. (f and f( t[ getn( t ) ] ) or t[ getn( t ) ])
+  result = result .. " and " .. (f and f( t[ #t ] ) or t[ #t ])
   return result
 end
 
@@ -304,7 +301,7 @@ function M.filter( t, f, extract_field )
 
   local result = {}
 
-  for i = 1, getn( t ) do
+  for i = 1, #t do
     local v = t[ i ]
     local value = type( v ) == "table" and extract_field and v[ extract_field ] or v
     if f( value ) then table.insert( result, v ) end
@@ -318,7 +315,7 @@ function M.take( t, n )
 
   local result = {}
 
-  for i = 1, getn( t ) do
+  for i = 1, #t do
     if i > n then return result end
     table.insert( result, t[ i ] )
   end
@@ -396,7 +393,7 @@ function M.merge( result, next, p3, p4 )
   if type( result ) ~= "table" then return {} end
   if type( next ) ~= "table" then return result end
 
-  for i = 1, getn( next ) do
+  for i = 1, #next do
     table.insert( result, next[ i ] )
   end
 
@@ -420,7 +417,7 @@ function M.keys( t )
 end
 
 function M.find( value, t, extract_field )
-  if type( t ) ~= "table" or getn( t ) == 0 then return nil end
+  if type( t ) ~= "table" or #t == 0 then return nil end
 
   for _, v in pairs( t ) do
     local val = extract_field and v[ extract_field ] or v
@@ -462,9 +459,6 @@ function M.colorize_player_by_class( name, class )
 end
 
 local base64_chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/' -- You will need this for encoding/decoding
-----@diagnostic disable-next-line: undefined-field
----@diagnostic disable-next-line: undefined-field
-local mod = math.mod
 
 function M.decode_base64( data )
   if not data then return nil end
@@ -474,8 +468,8 @@ function M.decode_base64( data )
     if (x == '=') then return '' end
     ---@diagnostic disable-next-line: undefined-field
     local r, f = '', (string.find( base64_chars, x ) - 1)
-    for i = 6, 1, -1 do r = r .. (mod( f, 2 ^ i ) - mod( f, 2 ^ (i - 1) ) > 0 and '1' or '0') end
-    return r;
+    for i = 6, 1, -1 do r = r .. ((f % (2 ^ i)) - (f % (2 ^ (i - 1))) > 0 and '1' or '0') end
+    return r
   end ), '%d%d%d?%d?%d?%d?%d?%d?', function( x )
     if (string.len( x ) ~= 8) then return '' end
     local c = 0
@@ -487,14 +481,14 @@ end
 function M.encode_base64( data )
   return (string.gsub( string.gsub( data, '.', function( x )
     local r, byte = '', string.byte( x )
-    for i = 8, 1, -1 do r = r .. (mod( byte, 2 ^ i ) - mod( byte, 2 ^ (i - 1) ) > 0 and '1' or '0') end
-    return r;
+    for i = 8, 1, -1 do r = r .. ((byte % (2 ^ i)) - (byte % (2 ^ (i - 1))) > 0 and '1' or '0') end
+    return r
   end ) .. '0000', '%d%d%d?%d?%d?%d?', function( x )
     if (string.len( x ) < 6) then return '' end
     local c = 0
     for i = 1, 6 do c = c + (string.sub( x, i, i ) == '1' and 2 ^ (6 - i) or 0) end
     return string.sub( base64_chars, c + 1, c + 1 )
-  end ) .. ({ '', '==', '=' })[ mod( string.len( data ), 3 ) + 1 ])
+  end ) .. ({ '', '==', '=' })[ (string.len( data ) % 3) + 1 ])
 end
 
 function M.get_addon_version()
@@ -603,7 +597,7 @@ function M.is_new_version( mine, theirs )
   local my_version = parse_version( mine )
   local their_version = parse_version( theirs )
 
-  for i = 1, math.max( getn( my_version ), getn( their_version ) ) do
+  for i = 1, math.max( #my_version, #their_version ) do
     local my_part = my_version[ i ] or 0
     local their_part = their_version[ i ] or 0
 
@@ -618,12 +612,12 @@ function M.is_new_version( mine, theirs )
 end
 
 function M.get_item_texture( item_id )
-  local _, _, _, _, _, _, _, _, texture = M.api.GetItemInfo( item_id )
+  local _, _, _, _, _, _, _, _, _, texture = M.api.GetItemInfo( item_id )
   return texture
 end
 
 function M.get_item_quality_and_texture( item_id )
-  local _, _, quality, _, _, _, _, _, texture = M.api.GetItemInfo( item_id )
+  local _, _, quality, _, _, _, _, _, _, texture = M.api.GetItemInfo( item_id )
   return quality, texture
 end
 
@@ -737,16 +731,21 @@ end
 function M.link_item_in_chat( item_link )
   if M.api.ChatEdit_InsertLink then
     M.api.ChatEdit_InsertLink( item_link )
-  elseif M.api.ChatFrameEditBox:IsVisible() then
-    M.api.ChatFrameEditBox:Insert( item_link )
+  elseif M.api.ChatFrame1EditBox:IsVisible() then
+    M.api.ChatFrame1EditBox:Insert( item_link )
   end
 end
 
 ---@param slash_command RollSlashCommand
 ---@param item_link string
 function M.slash_command_in_chat( slash_command, item_link )
-  M.api.ChatFrameEditBox:Show()
-  M.api.ChatFrameEditBox:SetText( string.format( "%s %s ", slash_command, item_link ) )
+  M.api.ChatFrame1EditBox:Show()
+  M.api.ChatFrame1EditBox:SetText( string.format( "%s %s ", slash_command, item_link ) )
+  M.api.ChatFrame1EditBox:SetFocus()
+end
+
+function M.in_combat()
+  return M.api.InCombatLockdown()
 end
 
 return M

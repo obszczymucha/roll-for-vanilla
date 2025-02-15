@@ -101,18 +101,18 @@ function M.new( frame_builder, db, config )
         :bg_file( "Interface/Buttons/WHITE8x8" )
         :scale( scale )
         :build()
+
+    loot_frame:ClearAllPoints()
+    loot_frame:SetPoint( "TOP", boss_name_frame, "BOTTOM", 0, 1 )
   end
 
-  local function create_frames()
-    if not boss_name_frame then create_boss_name_frame() end
-    if not loot_frame then create_frame() end
-
+  local function update_boss_name_frame()
     boss_name_frame.clear()
     boss_name_frame.add_line( "text", function( type, frame )
       if type == "text" then
         frame:ClearAllPoints()
         frame:SetHeight( 16 )
-        frame:SetPoint( "CENTER", 0, 0 )
+        frame:SetPoint( "CENTER", 1, 0 )
         frame:SetTextColor( 0.125, 0.624, 0.976 )
 
         local name = m.api.UnitName( "target" )
@@ -126,14 +126,11 @@ function M.new( frame_builder, db, config )
         boss_name_width = frame:GetStringWidth() + 30
       end
     end, 0 )
-
-    loot_frame:ClearAllPoints()
-    loot_frame:SetPoint( "TOP", boss_name_frame, "BOTTOM", 0, 1 )
   end
 
   local function show()
     M.debug.add( "show" )
-    create_frames()
+    update_boss_name_frame()
     max_frame_width = nil
     boss_name_frame:Show()
   end

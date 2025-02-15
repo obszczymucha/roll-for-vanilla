@@ -5,9 +5,6 @@ if m.DroppedLoot then return end
 
 local M = {}
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 ---@class DroppedLoot
 ---@field get_dropped_item_id fun( item_name: string ): number
 ---@field get_dropped_item_name fun( item_id: number ): string
@@ -40,7 +37,7 @@ function M.new( db )
   end
 
   local function clear()
-    if getn( db.dropped_items ) == 0 then return end
+    if #db.dropped_items == 0 then return end
     m.clear_table( db.dropped_items )
   end
 

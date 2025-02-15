@@ -5,8 +5,6 @@ if m.RollingPopup then return end
 
 local c = m.colorize_player_by_class
 local blue = m.colors.blue
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 local button_defaults = {
   width = 80,
@@ -71,27 +69,64 @@ function M.new( popup_builder, content_transformer, db, config )
   end
 
   local function create_popup()
-    local function is_out_of_bounds( x, y, frame_width, frame_height, screen_width, screen_height )
-      local width = frame_width / 2
-      local height = frame_height / 2
-      local left = x - width
-      local right = x + width
-      local top = y + height
-      local bottom = y - height
+    local function is_out_of_bounds( point, x, y, frame_width, frame_height, screen_width, screen_height )
+      local abs_x, abs_y
 
-      return left < 0 or
-          right > screen_width or
-          top > 0 or
-          bottom < -screen_height
+      if point == "CENTER" then
+        abs_x = x
+        abs_y = y
+      elseif point == "TOPLEFT" then
+        abs_x = x + frame_width / 2
+        abs_y = y - frame_height / 2
+      elseif point == "TOP" then
+        abs_x = x
+        abs_y = y - frame_height / 2
+      elseif point == "TOPRIGHT" then
+        abs_x = x - frame_width / 2
+        abs_y = y - frame_height / 2
+      elseif point == "RIGHT" then
+        abs_x = x - frame_width / 2
+        abs_y = y
+      elseif point == "BOTTOMRIGHT" then
+        abs_x = x - frame_width / 2
+        abs_y = y + frame_height / 2
+      elseif point == "BOTTOM" then
+        abs_x = x
+        abs_y = y + frame_height / 2
+      elseif point == "BOTTOMLEFT" then
+        abs_x = x + frame_width / 2
+        abs_y = y + frame_height / 2
+      elseif point == "LEFT" then
+        abs_x = x + frame_width / 2
+        abs_y = y
+      else
+        abs_x = x
+        abs_y = y
+      end
+
+      local left = abs_x - frame_width / 2
+      local right = abs_x + frame_width / 2
+      local top = abs_y + frame_height / 2
+      local bottom = abs_y - frame_height / 2
+
+      local screen_left = 0
+      local screen_right = screen_width
+      local screen_top = 0
+      local screen_bottom = -screen_height
+
+      return left < screen_left or
+          right > screen_right or
+          top > screen_top or
+          bottom < screen_bottom
     end
 
     local function on_drag_stop()
       if not popup then return end
       local width, height = popup:GetWidth(), popup:GetHeight()
       local screen_width, screen_height = m.api.GetScreenWidth(), m.api.GetScreenHeight()
-      local _, _, _, x, y = popup:get_anchor_point()
+      local point, _, _, x, y = popup:get_anchor_point()
 
-      if is_out_of_bounds( x, y, width, height, screen_width, screen_height ) then
+      if is_out_of_bounds( point, x, y, width, height, screen_width, screen_height ) then
         db.point = M.center_point
         popup:position( M.center_point )
 
@@ -174,7 +209,7 @@ function M.new( popup_builder, content_transformer, db, config )
   ---@param data RollingPopupData
   local function refresh( _, data )
     M.debug.add( string.format( "refresh( type: %s )", data.type or "nil" ) )
-    M.debug.add( string.format( "buttons: %s", data.buttons and m.prettify_table( data.buttons, function(b) return b.type end ) or "nil" ) )
+    M.debug.add( string.format( "buttons: %s", data.buttons and m.prettify_table( data.buttons, function( b ) return b.type end ) or "nil" ) )
 
     if not popup then popup = create_popup() end
     popup:clear()
@@ -214,6 +249,7 @@ function M.new( popup_builder, content_transformer, db, config )
           frame:SetWidth( v.width or button_defaults.width )
           frame:SetHeight( v.height or button_defaults.height )
           frame:SetText( v.label or "" )
+          frame:ClearAllPoints() -- This fixes a strange visual bug in BCC. Frame is either without label or misaligned without this.
           frame:SetScale( v.scale or button_defaults.scale )
 
           local f = v.on_click and close_button_callback and v.on_click == close_button_callback and function()
@@ -249,7 +285,7 @@ function M.new( popup_builder, content_transformer, db, config )
         end
 
         if type ~= "button" then
-          local count = getn( lines )
+          local count = #lines
 
           if count == 0 then
             local y = -top_padding - (v.padding or 0)
@@ -315,7 +351,7 @@ function M.new( popup_builder, content_transformer, db, config )
   end
 
   local function ping()
-    m.api.PlaySound( "igMainMenuOpen" )
+    m.api.PlaySound( m.api.SOUNDKIT.IG_MAINMENU_OPEN )
   end
 
   ---@type RollingPopup

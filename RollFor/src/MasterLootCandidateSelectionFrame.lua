@@ -11,11 +11,6 @@ local button_height = 16
 local horizontal_padding = 3
 local vertical_padding = 5
 
----@diagnostic disable-next-line: undefined-field
-local mod = math.mod
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 local function highlight( frame )
   frame:SetBackdropColor( frame.color.r, frame.color.g, frame.color.b, 0.3 )
 end
@@ -29,7 +24,7 @@ local function press( frame )
 end
 
 local function create_main_frame()
-  local frame = m.api.CreateFrame( "Frame", "RollForLootFrame" )
+  local frame = m.api.CreateFrame( "Frame", "RollForLootFrame", nil, "BackdropTemplate" )
   frame:Hide()
   frame:SetBackdrop( {
     bgFile = "Interface\\Tooltips\\UI-tooltip-Background",
@@ -49,9 +44,7 @@ local function create_main_frame()
   frame:SetPoint( "CENTER", m.api.UIParent, "Center" )
   frame:EnableMouse( true )
   frame:SetScript( "OnLeave",
-    function()
-      ---@diagnostic disable-next-line: undefined-global
-      local self = this
+    function( self )
       local mouse_x, mouse_y = m.api.GetCursorPosition()
       local x, y = self:GetCenter()
       local width = self:GetWidth()
@@ -68,13 +61,13 @@ end
 
 local function position_button( button, parent, index, rows )
   local width = 5 + horizontal_padding + m.api.math.floor( (index - 1) / rows ) * (button_width + horizontal_padding)
-  local height = -5 - vertical_padding - (mod( index - 1, rows ) * (button_height + vertical_padding))
+  local height = -5 - vertical_padding - (((index - 1) % rows) * (button_height + vertical_padding))
   button:ClearAllPoints()
   button:SetPoint( "TOPLEFT", parent, "TOPLEFT", width, height )
 end
 
 local function create_button( parent, index, rows )
-  local frame = m.api.CreateFrame( "Button", "RollForLootFrameButton" .. index, parent )
+  local frame = m.api.CreateFrame( "Button", "RollForLootFrameButton" .. index, parent, "BackdropTemplate" )
   frame:SetWidth( button_width )
   frame:SetHeight( button_height )
   position_button( frame, parent, index, rows )
@@ -95,31 +88,19 @@ local function create_button( parent, index, rows )
   icon:Hide()
   frame.icon = icon
 
-  frame:SetScript( "OnEnter", function()
-    ---@diagnostic disable-next-line: undefined-global
-    local self = this
+  frame:SetScript( "OnEnter", function( self )
     highlight( self )
   end )
 
-  frame:SetScript( "OnLeave", function()
-    ---@diagnostic disable-next-line: undefined-global
-    local self = this
+  frame:SetScript( "OnLeave", function( self )
     dim( self )
   end )
 
-  frame:SetScript( "OnMouseDown", function()
-    ---@diagnostic disable-next-line: undefined-global
-    local self = this
-    ---@diagnostic disable-next-line: undefined-global
-    local button = arg1
+  frame:SetScript( "OnMouseDown", function( self, button )
     if button == "LeftButton" then press( self ) end
   end )
 
-  frame:SetScript( "OnMouseUp", function()
-    ---@diagnostic disable-next-line: undefined-global
-    local self = this
-    ---@diagnostic disable-next-line: undefined-global
-    local button = arg1
+  frame:SetScript( "OnMouseUp", function(self, button)
     if button == "LeftButton" then
       if m.api.MouseIsOver( self ) then
         highlight( self )
@@ -162,7 +143,7 @@ function M.new( config )
 
   ---@param candidates MasterLootCandidate[]
   local function create_candidate_frames( candidates )
-    local total = getn( candidates )
+    local total = #candidates
     local rows = config.master_loot_frame_rows()
 
     resize_frame( total, rows )

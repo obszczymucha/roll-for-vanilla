@@ -11,9 +11,6 @@ local info = m.pretty_print
 local hl = m.colors.highlight
 local RollSlashCommand = m.Types.RollSlashCommand
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 local function clear_data()
   M.softres_gui.clear()
   M.name_matcher.clear( true )
@@ -41,7 +38,7 @@ local function on_softres_status_changed()
 end
 
 local function trade_complete_callback( recipient_name, items_given, items_received )
-  for i = 1, getn( items_given ) do
+  for i = 1, #items_given do
     local item = items_given[ i ]
     if item then
       local item_id = M.item_utils.get_item_id( item.link )
@@ -53,7 +50,7 @@ local function trade_complete_callback( recipient_name, items_given, items_recei
     end
   end
 
-  for i = 1, getn( items_received ) do
+  for i = 1, #items_received do
     local item = items_received[ i ]
 
     if item then
@@ -177,7 +174,7 @@ local function create_components()
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
 
   ---@type MasterLootCandidates
-  M.master_loot_candidates = m.MasterLootCandidates.new( M.api(), M.group_roster ) -- remove group_roster for testing (dummy candidates)
+  M.master_loot_candidates = m.MasterLootCandidates.new( M.api(), M.group_roster, M.raw_loot_list ) -- remove group_roster for testing (dummy candidates)
 
   ---@type MasterLootCandidateSelectionFrame
   M.player_selection_frame = m.MasterLootCandidateSelectionFrame.new( M.config )
@@ -566,11 +563,11 @@ local function simulate_loot_dropped( args )
 
   m.real_api = m.api
   m.api = m.clone( m.api )
-  M.api()[ "GetNumLootItems" ] = function() return getn( item_links ) end
+  M.api()[ "GetNumLootItems" ] = function() return #item_links end
   M.api()[ "UnitName" ] = function() return tostring( m.lua.time() ) end
   M.api()[ "GetLootThreshold" ] = function() return 4 end
   mock_table_function( "GetLootSlotLink", item_links )
-  mock_table_function( "GetLootSlotInfo", make_loot_slot_info( getn( item_links ), 4 ) )
+  mock_table_function( "GetLootSlotInfo", make_loot_slot_info( #item_links, 4 ) )
 
   M.dropped_loot_announce.on_loot_opened()
 end
@@ -580,7 +577,7 @@ local function show_how_to_roll()
   local ms = M.config.ms_roll_threshold() ~= 100 and string.format( " (%s)", M.config.ms_roll_threshold() or "100" ) or ""
 
   local sr = M.softres.get_all_rollers()
-  local sr_count = getn( sr )
+  local sr_count = #sr
 
   M.chat.announce( string.format( "For main-spec%s, type: /roll%s", sr_count > 0 and " and soft-res" or "", ms ) )
   M.chat.announce( string.format( "For off-spec, type: /roll %s", M.config.os_roll_threshold() ) )
@@ -642,7 +639,7 @@ local function setup_slash_commands()
   --M.api().SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
 end
 
-function M.on_first_enter_world()
+function M.on_player_login()
   setup_storage()
   create_components()
   subscribe_for_component_events()

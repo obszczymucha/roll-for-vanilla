@@ -69,7 +69,7 @@ function M.new( master_loot_candidates, loot_award_callback, loot_list, roll_con
     m_confirmed = { item = item, player = player }
     m_slot_cache[ slot ] = item
 
-    local index = master_loot_candidates.get_index( player.name )
+    local index = master_loot_candidates.get_index( slot, player.name )
 
     if not index then
       err( "Player is not in the loot candidates list." )

@@ -27,9 +27,6 @@ local libStub = LibStub
 local json = libStub:NewLibrary( "Json-0.1.2", 1 )
 if not json then return end
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 -------------------------------------------------------------------------------
 -- Encode
 -------------------------------------------------------------------------------
@@ -53,7 +50,7 @@ end
 
 
 local function escape_char( c )
-  return "\\" .. (escape_char_map[ c ] or string.format( "u%04x", string.byte( c ) ))
+  return "\\" .. (escape_char_map[ c ] or string.format( "u%04x", c:byte() ))
 end
 
 local function encode_nil()
@@ -78,7 +75,7 @@ local function encode_table( val, stack )
       end
       n = n + 1
     end
-    if n ~= getn( val ) then
+    if n ~= #val then
       error( "invalid table: sparse array" )
     end
     -- Encode
@@ -87,6 +84,7 @@ local function encode_table( val, stack )
     end
     stack[ val ] = nil
     return "[" .. table.concat( res, "," ) .. "]"
+
   else
     -- Treat as an object
     for k, v in pairs( val ) do
@@ -101,7 +99,7 @@ local function encode_table( val, stack )
 end
 
 local function encode_string( val )
-  return '"' .. string.gsub( val, '[%z\1-\31\\"]', escape_char ) .. '"'
+  return '"' .. val:gsub( '[%z\1-\31\\"]', escape_char ) .. '"'
 end
 
 local function encode_number( val )
@@ -141,15 +139,11 @@ end
 
 local parse
 
----@diagnostic disable-next-line: unused-vararg
 local function create_set( ... )
   local res = {}
-  local t = { unpack( arg ) }
-
-  for i = 1, getn( t ) do
-    res[ t[ i ] ] = true
+  for i = 1, select( "#", ... ) do
+    res[ select( i, ... ) ] = true
   end
-
   return res
 end
 
@@ -158,7 +152,7 @@ local delim_chars  = create_set( " ", "\t", "\r", "\n", "]", "}", "," )
 local escape_chars = create_set( "\\", "/", '"', "b", "f", "n", "r", "t", "u" )
 local literals     = create_set( "true", "false", "null" )
 
-local literal_map  = {
+local literal_map = {
   [ "true" ] = true,
   [ "false" ] = false,
   [ "null" ] = nil,
@@ -166,12 +160,12 @@ local literal_map  = {
 
 
 local function next_char( str, idx, set, negate )
-  for i = idx, string.len( str ) do
-    if set[ string.sub( str, i, i ) ] ~= negate then
+  for i = idx, #str do
+    if set[ str:sub( i, i ) ] ~= negate then
       return i
     end
   end
-  return string.len( str ) + 1
+  return #str + 1
 end
 
 local function decode_error( str, idx, msg )
@@ -179,7 +173,7 @@ local function decode_error( str, idx, msg )
   local col_count = 1
   for i = 1, idx - 1 do
     col_count = col_count + 1
-    if string.sub( str, i, i ) == "\n" then
+    if str:sub( i, i ) == "\n" then
       line_count = line_count + 1
       col_count = 1
     end
@@ -188,29 +182,27 @@ local function decode_error( str, idx, msg )
 end
 
 local function codepoint_to_utf8( n )
-  ---@diagnostic disable-next-line: undefined-field
-  local mod = math.mod
   -- http://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&id=iws-appendixa
   local f = math.floor
-  if n <= tonumber( "7f", 16 ) then
+  if n <= 0x7f then
     return string.char( n )
-  elseif n <= tonumber( "7ff", 16 ) then
-    return string.char( f( n / 64 ) + 192, mod( n, 64 ) + 128 )
-  elseif n <= tonumber( "ffff", 16 ) then
-    return string.char( f( n / 4096 ) + 224, f( mod( n, 4096 ) / 64 ) + 128, mod( n, 64 ) + 128 )
-  elseif n <= tonumber( "10ffff", 16 ) then
-    return string.char( f( n / 262144 ) + 240, f( mod( n, 262144 ) / 4096 ) + 128,
-      f( mod( n, 4096 ) / 64 ) + 128, mod( n, 64 ) + 128 )
+  elseif n <= 0x7ff then
+    return string.char( f( n / 64 ) + 192, n % 64 + 128 )
+  elseif n <= 0xffff then
+    return string.char( f( n / 4096 ) + 224, f( n % 4096 / 64 ) + 128, n % 64 + 128 )
+  elseif n <= 0x10ffff then
+    return string.char( f( n / 262144 ) + 240, f( n % 262144 / 4096 ) + 128,
+      f( n % 4096 / 64 ) + 128, n % 64 + 128 )
   end
   error( string.format( "invalid unicode codepoint '%x'", n ) )
 end
 
 local function parse_unicode_escape( s )
-  local n1 = tonumber( string.sub( s, 1, 4 ), 16 )
-  local n2 = tonumber( string.sub( s, 7, 10 ), 16 )
+  local n1 = tonumber( s:sub( 1, 4 ), 16 )
+  local n2 = tonumber( s:sub( 7, 10 ), 16 )
   -- Surrogate pair?
   if n2 then
-    return codepoint_to_utf8( (n1 - tonumber( "d800", 16 )) * tonumber( "400", 16 ) + (n2 - tonumber( "dc00", 16 )) + tonumber( "10000", 16 ) )
+    return codepoint_to_utf8( (n1 - 0xd800) * 0x400 + (n2 - 0xdc00) + 0x10000 )
   else
     return codepoint_to_utf8( n1 )
   end
@@ -221,21 +213,22 @@ local function parse_string( str, i )
   local j = i + 1
   local k = j
 
-  while j <= string.len( str ) do
-    local x = string.byte( str, j )
+  while j <= #str do
+    local x = str:byte( j )
 
     if x < 32 then
       decode_error( str, j, "control character in string" )
+
     elseif x == 92 then -- `\`: Escape
-      res = res .. string.sub( str, k, j - 1 )
+      res = res .. str:sub( k, j - 1 )
       j = j + 1
-      local c = string.sub( str, j, j )
+      local c = str:sub( j, j )
       if c == "u" then
-        local hex = string.match( str, "^[dD][89aAbB]%x%x\\u%x%x%x%x", j + 1 )
-            or string.match( str, "^%x%x%x%x", j + 1 )
+        local hex = str:match( "^[dD][89aAbB]%x%x\\u%x%x%x%x", j + 1 )
+            or str:match( "^%x%x%x%x", j + 1 )
             or decode_error( str, j - 1, "invalid unicode escape in string" )
         res = res .. parse_unicode_escape( hex )
-        j = j + getn( hex )
+        j = j + #hex
       else
         if not escape_chars[ c ] then
           decode_error( str, j - 1, "invalid escape char '" .. c .. "' in string" )
@@ -243,8 +236,9 @@ local function parse_string( str, i )
         res = res .. escape_char_map_inv[ c ]
       end
       k = j + 1
+
     elseif x == 34 then -- `"`: End of string
-      res = res .. string.sub( str, k, j - 1 )
+      res = res .. str:sub( k, j - 1 )
       return res, j + 1
     end
 
@@ -256,7 +250,7 @@ end
 
 local function parse_number( str, i )
   local x = next_char( str, i, delim_chars )
-  local s = string.sub( str, i, x - 1 )
+  local s = str:sub( i, x - 1 )
   local n = tonumber( s )
   if not n then
     decode_error( str, i, "invalid number '" .. s .. "'" )
@@ -266,7 +260,7 @@ end
 
 local function parse_literal( str, i )
   local x = next_char( str, i, delim_chars )
-  local word = string.sub( str, i, x - 1 )
+  local word = str:sub( i, x - 1 )
   if not literals[ word ] then
     decode_error( str, i, "invalid literal '" .. word .. "'" )
   end
@@ -281,7 +275,7 @@ local function parse_array( str, i )
     local x
     i = next_char( str, i, space_chars, true )
     -- Empty / end of array?
-    if string.sub( str, i, i ) == "]" then
+    if str:sub( i, i ) == "]" then
       i = i + 1
       break
     end
@@ -291,7 +285,7 @@ local function parse_array( str, i )
     n = n + 1
     -- Next token
     i = next_char( str, i, space_chars, true )
-    local chr = string.sub( str, i, i )
+    local chr = str:sub( i, i )
     i = i + 1
     if chr == "]" then break end
     if chr ~= "," then decode_error( str, i, "expected ']' or ','" ) end
@@ -306,18 +300,18 @@ local function parse_object( str, i )
     local key, val
     i = next_char( str, i, space_chars, true )
     -- Empty / end of object?
-    if string.sub( str, i, i ) == "}" then
+    if str:sub( i, i ) == "}" then
       i = i + 1
       break
     end
     -- Read key
-    if string.sub( str, i, i ) ~= '"' then
+    if str:sub( i, i ) ~= '"' then
       decode_error( str, i, "expected string for key" )
     end
     key, i = parse( str, i )
     -- Read ':' delimiter
     i = next_char( str, i, space_chars, true )
-    if string.sub( str, i, i ) ~= ":" then
+    if str:sub( i, i ) ~= ":" then
       decode_error( str, i, "expected ':' after key" )
     end
     i = next_char( str, i + 1, space_chars, true )
@@ -327,7 +321,7 @@ local function parse_object( str, i )
     res[ key ] = val
     -- Next token
     i = next_char( str, i, space_chars, true )
-    local chr = string.sub( str, i, i )
+    local chr = str:sub( i, i )
     i = i + 1
     if chr == "}" then break end
     if chr ~= "," then decode_error( str, i, "expected '}' or ','" ) end
@@ -356,7 +350,7 @@ local char_func_map = {
 }
 
 parse = function( str, idx )
-  local chr = string.sub( str, idx, idx )
+  local chr = str:sub( idx, idx )
   local f = char_func_map[ chr ]
   if f then
     return f( str, idx )
@@ -370,7 +364,7 @@ function json.decode( str )
   end
   local res, idx = parse( str, next_char( str, 1, space_chars, true ) )
   idx = next_char( str, idx, space_chars, true )
-  if idx <= string.len( str ) then
+  if idx <= #str then
     decode_error( str, idx, "trailing garbage" )
   end
   return res

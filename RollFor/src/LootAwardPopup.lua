@@ -15,9 +15,6 @@ local r = m.roll_type_color
 local possesive_case = m.possesive_case
 local article = m.article
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 local button_defaults = {
   width = 80,
   height = 24,
@@ -126,7 +123,7 @@ function M.new( popup_builder, db, center_point )
   ---@param data MasterLootConfirmationData
   local function make_content( data )
     local content = { { type = "item_link_with_icon", link = data.item.link, texture = data.item.texture } }
-    local winner_count = getn( data.winners )
+    local winner_count = #data.winners
 
     if winner_count > 0 then
       add_winners( content, data )
@@ -183,7 +180,7 @@ function M.new( popup_builder, db, center_point )
         end
 
         if type ~= "button" then
-          local count = getn( lines )
+          local count = #lines
 
           if count == 0 then
             local y = -top_padding - (v.padding or 0)

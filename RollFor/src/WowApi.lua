@@ -10,8 +10,8 @@ M.LootInterface = {
   UnitName = "function",
   GetLootSlotLink = "function",
   GetLootSlotInfo = "function",
-  LootSlotIsItem = "function",
-  LootSlotIsCoin = "function"
+  GetLootSlotType = "function",
+  UnitGUID = "function"
 }
 
 m.WowApi = M

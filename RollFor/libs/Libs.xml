@@ -1,7 +1,6 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
 ..\FrameXML\UI.xsd">
 	<Include file="CallbackHandler-1.0\CallbackHandler-1.0.xml"/>
-	<Include file="AceCore-3.0\AceCore-3.0.xml"/>
 	<Include file="AceTimer-3.0\AceTimer-3.0.xml"/>
-	<!--<Include file="LibDeflate\lib.xml"/>-->
+	<Include file="LibDeflate\lib.xml"/>
 </Ui>

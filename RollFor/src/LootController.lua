@@ -3,7 +3,6 @@ local m = RollFor
 
 if m.LootController then return end
 
-local getn = table.getn
 local red, orange, blue, hl = m.colors.red, m.colors.orange, m.colors.blue, m.colors.hl
 local item_utils = m.ItemUtils
 
@@ -95,7 +94,7 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
 
   ---@return RollingPlayer?
   local function pop_first_item_from_a_table( t )
-    if getn( t ) == 0 then return nil end
+    if #t == 0 then return nil end
 
     local result = t[ 1 ]
     table.remove( t, 1 )
@@ -107,7 +106,7 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
   local function make_comment_tooltip( sr_players )
     local result = { blue( "Soft-ressed by:" ) }
 
-    if getn( sr_players ) == 1 then
+    if #sr_players == 1 then
       local player = sr_players[ 1 ]
       table.insert( result, m.colorize_player_by_class( player.name, player.class ) )
 
@@ -152,7 +151,7 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
         table.insert( result, { item = item, comment = red( "HR" ), hard_ressed = true } )
       else
         local sr_players = softres.get( item.id )
-        local sr_player_count = getn( sr_players )
+        local sr_player_count = #sr_players
         local item_count = loot_list.count( item.id )
 
         if is_already_hr( item.id, result ) then item_count = item_count - 1 end
@@ -239,6 +238,12 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
             return
           end
 
+          if is_coin or item.quality < 2 then
+            local slot = loot_list.get_slot( item.id )
+            if slot then loot_facade.loot_slot( slot ) end
+            return
+          end
+
           if rolling_logic.is_rolling() then
             chat.info( "Cannot select item while rolling is in progress.", m.colors.red )
             return
@@ -292,6 +297,11 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
   end
 
   local function on_loot_opened()
+    -- if m.in_combat() then
+    --   M.debug.add( "loot_opened (combat)" )
+    --   return
+    -- end
+
     M.debug.add( "loot_opened" )
     show()
     update()

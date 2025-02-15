@@ -19,7 +19,7 @@ local hl = m.colors.hl
 local M = {}
 
 local function create_text_in_container( type, parent, container_width, alignment, text, inner_field )
-  local container = m.api.CreateFrame( type or "Button", nil, parent )
+  local container = m.api.CreateFrame( type, nil, parent, "BackdropTemplate" )
   container:SetWidth( container_width )
   local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
 
@@ -116,15 +116,14 @@ function M.item_link_with_icon( parent, text )
 
     container.text:SetText( i.link )
     container.icon:SetTexture( texture )
+    container.icon:SetVertexColor( 1, 1, 1, 1 )
     container.count:SetText( count > 1 and hl( string.format( "%sx", count ) ) or nil )
 
     resize()
   end
 
-  local function on_enter()
+  local function on_enter( self )
     if not tooltip_link then return end
-    ---@diagnostic disable-next-line: undefined-global
-    local self = this
     m.api.GameTooltip:SetOwner( self, "ANCHOR_CURSOR" )
     m.api.GameTooltip:SetHyperlink( tooltip_link )
     m.api.GameTooltip:Show()
@@ -164,11 +163,10 @@ function M.text( parent, text )
 end
 
 function M.icon( parent, show, width, height )
-  local icon = parent:CreateTexture( nil, "BACKGROUND" )
+  local icon = parent:CreateTexture( nil, "ARTWORK" )
   if not show then icon:Hide() end
   icon:SetWidth( width or 16 )
   icon:SetHeight( height or 16 )
-  icon:SetTexture( "Interface\\AddOns\\RollFor\\assets\\icon-white2.tga" )
 
   return icon
 end
@@ -193,7 +191,7 @@ function M.icon_text( parent, text )
 end
 
 function M.roll( parent )
-  local frame = m.api.CreateFrame( "Button", nil, parent )
+  local frame = m.api.CreateFrame( "Button", nil, parent, "BackdropTemplate" )
   frame:SetWidth( 170 )
   frame:SetHeight( 14 )
   frame:SetFrameStrata( "DIALOG" )
@@ -268,9 +266,9 @@ function M.roll( parent )
 end
 
 function M.button( parent )
-  local button = m.api.CreateFrame( "Button", nil, parent, "StaticPopupButtonTemplate" )
+  local button = m.api.CreateFrame( "Button", nil, parent, "UIPanelButtonTemplate" )
   button:SetWidth( 100 )
-  button:SetHeight( 20 )
+  button:SetHeight( 21 )
   button:SetText( "" )
   button:GetFontString():SetPoint( "CENTER", 0, -1 )
 
@@ -278,7 +276,7 @@ function M.button( parent )
 end
 
 function M.award_button( parent )
-  local button = m.api.CreateFrame( "Button", nil, parent, "StaticPopupButtonTemplate" )
+  local button = m.api.CreateFrame( "Button", nil, parent, "UIPanelButtonTemplate" )
   button:SetWidth( 100 )
   button:SetHeight( 20 )
   button:SetText( "" )
@@ -301,9 +299,7 @@ function M.info( parent )
   icon:SetTexture( "Interface\\AddOns\\RollFor\\assets\\info.tga" )
   icon:SetPoint( "CENTER", 0, 0 )
 
-  frame:SetScript( "OnEnter", function()
-    ---@diagnostic disable-next-line: undefined-global
-    local self = this
+  frame:SetScript( "OnEnter", function( self )
     self.tooltip_scale = m.api.GameTooltip:GetScale()
     m.api.GameTooltip:SetOwner( self, "ANCHOR_CURSOR" )
     m.api.GameTooltip:AddLine( frame.tooltip_info, 1, 1, 1 )
@@ -311,9 +307,7 @@ function M.info( parent )
     m.api.GameTooltip:Show()
   end )
 
-  frame:SetScript( "OnLeave", function()
-    ---@diagnostic disable-next-line: undefined-global
-    local self = this
+  frame:SetScript( "OnLeave", function( self )
     m.api.GameTooltip:Hide()
     m.api.GameTooltip:SetScale( self.tooltip_scale or 1 )
   end )
@@ -322,7 +316,7 @@ function M.info( parent )
 end
 
 local function create_icon_in_container( type, parent, w, h, icon_zoom )
-  local result = m.api.CreateFrame( type or "Button", nil, parent )
+  local result = m.api.CreateFrame( type or "Button", nil, parent, "BackdropTemplate" )
   result:SetWidth( w + 1 )
   result:SetHeight( h )
 
@@ -347,7 +341,7 @@ end
 
 ---@param parent Frame
 function M.dropped_item( parent )
-  local container = m.api.CreateFrame( "LootButton", nil, parent )
+  local container = m.api.CreateFrame( "Button", nil, parent, "BackdropTemplate" )
 
   local w = 22
   local h = 22
@@ -373,7 +367,7 @@ function M.dropped_item( parent )
   container.quantity:SetHeight( 16 )
   container.bind = create_text_in_container( "Frame", container, 15, "LEFT", nil, "text" )
   container.bind:SetPoint( "LEFT", container.icon, "RIGHT", 5, 0 )
-  container.comment = create_text_in_container( "Button", container, 20, "CENTER", nil, "text" )
+  container.comment = create_text_in_container( "Frame", container, 20, "CENTER", nil, "text" )
   container.comment:SetPoint( "RIGHT", -4, 0 )
   container.comment:SetHeight( 16 )
 
@@ -489,22 +483,13 @@ function M.dropped_item( parent )
     container.icon:SetScript( "OnClick", v.is_enabled and not v.is_selected and v.click_fn or modifier_fn )
     container.comment:SetScript( "OnClick", v.is_enabled and not v.is_selected and v.click_fn or modifier_fn )
 
-    -- Fucking hell this took forever to figure out. Fuck you Blizzard.
-    -- For looting to work in vanilla, the frame must be of a "LootButton" type and
-    -- then it comes with the SetSlot function that we need to use to set the slot.
-    -- This will probably be a pain in the ass when porting.
-    container:SetSlot( v.slot or 0 )
-
     update()
     resize()
   end
 
-  local function on_enter()
+  local function on_enter( self )
     if not item then return end
     if item.tooltip_link then
-      ---@diagnostic disable-next-line: undefined-global
-      local self = this
-
       m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
       m.api.GameTooltip:SetHyperlink( item.tooltip_link )
       m.api.GameTooltip:Show()
@@ -528,11 +513,9 @@ function M.dropped_item( parent )
     not_hovered_color()
   end
 
-  container.comment:SetScript( "OnEnter", function()
+  container.comment:SetScript( "OnEnter", function( self )
     if not item then return end
     if item.comment_tooltip then
-      ---@diagnostic disable-next-line: undefined-global
-      local self = this
       self.tooltip_scale = m.api.GameTooltip:GetScale()
       m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
 
@@ -552,9 +535,7 @@ function M.dropped_item( parent )
     hovered_color()
   end )
 
-  container.comment:SetScript( "OnLeave", function()
-    ---@diagnostic disable-next-line: undefined-global
-    local self = this
+  container.comment:SetScript( "OnLeave", function( self )
     m.api.GameTooltip:Hide()
     m.api.GameTooltip:SetScale( self.tooltip_scale or 1 )
     mouse_down = false

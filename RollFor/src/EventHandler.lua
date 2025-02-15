@@ -9,9 +9,8 @@ local M = {}
 local lua50 = table.setn and true or false
 
 function M.handle_events( main )
-  local m_first_enter_world
-
-  local function eventHandler( _, _event, _arg1, _arg2, _arg3, _arg4, _arg5 )
+  local init = false
+  local function event_handler( _, _event, _arg1, _arg2, _arg3, _arg4, _arg5 )
     ---@diagnostic disable-next-line: undefined-global
     local event = lua50 and event or _event
     ---@diagnostic disable-next-line: undefined-global
@@ -26,13 +25,14 @@ function M.handle_events( main )
     local arg5 = lua50 and arg5 or _arg5
 
     if event == "PLAYER_LOGIN" then
-      m_first_enter_world = false
-    elseif event == "PLAYER_ENTERING_WORLD" then
-      if not m_first_enter_world then
-        main.on_first_enter_world()
-        m_first_enter_world = true
-      end
-    elseif event == "PARTY_MEMBERS_CHANGED" then
+      main.on_player_login()
+      init = true
+      return
+    end
+
+    if not init then return end
+
+    if event == "GROUP_ROSTER_UPDATE" then
       main.version_broadcast.on_group_changed()
       main.on_group_changed()
       main.new_group_event.on_group_changed()
@@ -86,7 +86,6 @@ function M.handle_events( main )
   local frame = m.api.CreateFrame( "FRAME", "RollForFrame" )
 
   frame:RegisterEvent( "PLAYER_LOGIN" )
-  frame:RegisterEvent( "PLAYER_ENTERING_WORLD" )
   frame:RegisterEvent( "GROUP_JOINED" )
   frame:RegisterEvent( "GROUP_LEFT" )
   frame:RegisterEvent( "GROUP_FORMED" )
@@ -103,13 +102,12 @@ function M.handle_events( main )
   frame:RegisterEvent( "TRADE_CLOSED" )
   frame:RegisterEvent( "TRADE_ACCEPT_UPDATE" )
   frame:RegisterEvent( "TRADE_REQUEST_CANCEL" )
-  frame:RegisterEvent( "PARTY_MEMBERS_CHANGED" )
+  frame:RegisterEvent( "GROUP_ROSTER_UPDATE" )
   frame:RegisterEvent( "UI_ERROR_MESSAGE" )
-  frame:RegisterEvent( "PLAYER_REGEN_DISABLED" )
   frame:RegisterEvent( "PLAYER_TARGET_CHANGED" )
   frame:RegisterEvent( "ZONE_CHANGED" )
   frame:RegisterEvent( "ZONE_CHANGED_NEW_AREA" )
-  frame:SetScript( "OnEvent", eventHandler )
+  frame:SetScript( "OnEvent", event_handler )
 end
 
 m.EventHandler = M

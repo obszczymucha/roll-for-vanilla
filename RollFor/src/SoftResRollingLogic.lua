@@ -13,9 +13,6 @@ local strategy = m.Types.RollingStrategy.SoftResRoll
 ---@type MakeRollFn
 local make_roll = m.Types.make_roll
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 local State = { AfterRoll = 1, TimerStopped = 2, ManualStop = 3 }
 
 local function has_everyone_rolled( rollers, rolls )
@@ -34,7 +31,7 @@ local function players_with_available_rolls( rollers )
 end
 
 local function count_top_roll_winners( rolls, item_count )
-  local roll_count = getn( rolls )
+  local roll_count = #rolls
   if roll_count == 0 then return 0 end
 
   local function split_by_roll()
@@ -46,7 +43,7 @@ local function count_top_roll_winners( rolls, item_count )
         table.insert( result, { roll } )
         last_roll = roll.roll
       else
-        table.insert( result[ getn( result ) ], roll )
+        table.insert( result[ #result ], roll )
       end
     end
 
@@ -56,7 +53,7 @@ local function count_top_roll_winners( rolls, item_count )
   local result = 0
 
   for _, r in ipairs( split_by_roll() ) do
-    result = result + getn( r )
+    result = result + #r
     if result >= item_count then return result end
   end
 
@@ -66,8 +63,8 @@ end
 local function is_the_winner_the_only_player_with_extra_rolls( rollers, rolls, item_count )
   local top_roll_count = count_top_roll_winners( rolls, item_count )
   local rollers_with_remaining_rolls = players_with_available_rolls( rollers )
-  local roller_count = getn( rollers_with_remaining_rolls )
-  local roll_count = getn( rolls )
+  local roller_count = #rollers_with_remaining_rolls
+  local roll_count = #rolls
 
   if top_roll_count > 1 or roller_count == 0 or roller_count > 1 or roll_count == 0 then return false end
 
@@ -108,7 +105,7 @@ function M.new(
   local rolling = false
   local seconds_left = seconds
   local timer
-  local player_count = getn( players )
+  local player_count = #players
 
   local function sort_rolls()
     table.sort( rolls, function( a, b )
@@ -157,7 +154,7 @@ function M.new(
       stop_listening()
     end
 
-    local roll_count = getn( rolls )
+    local roll_count = #rolls
 
     if state == State.TimerStopped and not rolls_exhausted then
       stop_timer()

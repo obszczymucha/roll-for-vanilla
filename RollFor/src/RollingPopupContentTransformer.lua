@@ -3,9 +3,6 @@ local m = RollFor
 
 if m.RollingPopupContentTransformer then return end
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 local RT = m.Types.RollType ---@type RT
 local RS = m.Types.RollingStrategy ---@type RS
 
@@ -97,7 +94,7 @@ function M.new( config )
   local function add_rolls( result, rolls )
     M.debug.add( "rolls_content" )
 
-    for i = 1, getn( rolls ) do
+    for i = 1, #rolls do
       local roll = rolls[ i ]
 
       table.insert( result, {
@@ -259,7 +256,7 @@ function M.new( config )
 
     add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count )
 
-    if not data.seconds_left and getn( data.rolls ) == 0 then
+    if not data.seconds_left and #data.rolls == 0 then
       add_text( content, "Rolling finished. No one rolled.", top_padding )
     else
       add_rolls( content, data.rolls )
@@ -338,7 +335,7 @@ function M.new( config )
 
     if data.roll_data.waiting_for_rolls then
       add_text( content, "Waiting for remaining rolls...", top_padding )
-    elseif getn( data.roll_data.winners ) == 0 then
+    elseif #data.roll_data.winners == 0 then
       add_empty_line( content, 5 )
     end
 

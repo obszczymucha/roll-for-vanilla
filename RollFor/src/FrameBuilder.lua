@@ -3,9 +3,6 @@ local m = RollFor
 
 if m.FrameBuilder then return end
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 local M = {}
 
 M.interface = {
@@ -81,7 +78,8 @@ function M.new()
     end
 
     local function create_main_frame( anchor )
-      local frame = m.api.CreateFrame( "Frame", options.name, m.api.UIParent )
+      local frame = m.api.CreateFrame( "Frame", options.name, m.api.UIParent, "BackdropTemplate" )
+
       frame:Hide()
       frame:SetWidth( options.width or 280 )
       frame:SetHeight( options.height or 100 )
@@ -111,7 +109,7 @@ function M.new()
           edgeFile = "Interface\\Buttons\\WHITE8X8",
           tile = false,
           tileSize = 0,
-          edgeSize = 1,
+          edgeSize = 0.8,
           insets = { left = 0, right = 0, top = 0, bottom = 0 }
         } )
       else
@@ -143,7 +141,7 @@ function M.new()
     local function configure_main_frame( frame, anchor )
       if options.sound then
         frame:SetScript( "OnShow", function()
-          m.api.PlaySound( "igMainMenuOpen" )
+          m.api.PlaySound( m.api.SOUNDKIT.IG_MAINMENU_OPEN )
           if options.on_show then options.on_show() end
         end )
 
@@ -153,7 +151,7 @@ function M.new()
             f:StopMovingOrSizing()
           end
 
-          m.api.PlaySound( "igMainMenuClose" )
+          m.api.PlaySound( m.api.SOUNDKIT.IG_MAINMENU_CLOSE )
           if options.on_hide then options.on_hide() end
         end )
       end
@@ -202,7 +200,7 @@ function M.new()
     local function get_from_cache( line_type )
       frame_cache[ line_type ] = frame_cache[ line_type ] or {}
 
-      for i = getn( frame_cache[ line_type ] ), 1, -1 do
+      for i = #frame_cache[ line_type ], 1, -1 do
         if not frame_cache[ line_type ][ i ].is_used then
           return frame_cache[ line_type ][ i ]
         end
@@ -237,6 +235,7 @@ function M.new()
       frame.clear = function()
         for _, line in ipairs( lines ) do
           line.frame:Hide()
+
           line.frame.is_used = false
         end
 

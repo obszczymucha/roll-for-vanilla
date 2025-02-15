@@ -8,9 +8,6 @@ local M = {}
 local count = rf.count_elements
 local map = rf.map
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 local function to_map( t )
   local result = {}
 
@@ -197,10 +194,10 @@ function M.new( group_roster, softres, top_threshold, bottom_threshold )
     local roller_names = map( softres.get_all_rollers(), get_name )
 
     local present_players_who_did_not_softres = is_in_left_but_not_in_right( player_names, roller_names )
-    if getn( present_players_who_did_not_softres ) == 0 then return end
+    if #present_players_who_did_not_softres == 0 then return end
 
     local absent_players_who_did_softres = is_in_left_but_not_in_right( roller_names, player_names )
-    if getn( absent_players_who_did_softres ) == 0 then return end
+    if #absent_players_who_did_softres == 0 then return end
 
     local predictions = get_similarity_predictions( present_players_who_did_not_softres, absent_players_who_did_softres, improved_descending )
     local matched, matched_below_threshold = assign_predictions( predictions, top_threshold, bottom_threshold )

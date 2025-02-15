@@ -38,7 +38,7 @@ function M.new( api )
   end
 
   local function is_leader()
-    return api.UnitIsPartyLeader( "player" )
+    return api.UnitIsGroupLeader( "player" )
   end
 
   local function is_assistant()

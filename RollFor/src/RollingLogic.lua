@@ -5,7 +5,6 @@ if m.RollingLogic then return end
 
 local M = {}
 
-local getn = table.getn
 local RS = m.Types.RollingStrategy
 
 ---@alias SoftresRollsAvailableCallback fun( rollers: RollingPlayer[] )
@@ -74,7 +73,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
 
   ---param winning_rolls Roll[]
   local function count_top_rolls( winning_rolls )
-    local roll_count = getn( winning_rolls or {} )
+    local roll_count = winning_rolls and #winning_rolls or 0
     if roll_count == 0 then return 0 end
 
     local top_roll = winning_rolls[ 1 ].roll
@@ -130,7 +129,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
         return master_loot_candidates.transform_to_winner( winning_roll.player, item, winning_roll.roll_type, winning_roll.roll, rerolling )
       end )
 
-    local winner_count = getn( winners )
+    local winner_count = #winners
     count = count - winner_count
 
     if winner_count > 0 then
@@ -147,7 +146,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
         return tied_roll.player
       end )
 
-    roll_controller.there_was_a_tie( players, item, count, roll_type, roll_value, rerolling, getn( winning_rolls ) == 0 or false )
+    roll_controller.there_was_a_tie( players, item, count, roll_type, roll_value, rerolling, #winning_rolls == 0 or false )
 
     local strategy = strategy_factory.tie_roll( players, item, count, on_rolling_finished, roll_type, facade )
     if not strategy then return end
@@ -166,7 +165,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
   ---@param rerolling boolean?
   ---@type RollingFinishedCallback
   local function on_rolling_finished( item, item_count, winning_rolls, rerolling )
-    local winning_roll_count = getn( winning_rolls )
+    local winning_roll_count = #winning_rolls
 
     if winning_roll_count == 0 then
       roll_controller.finish()

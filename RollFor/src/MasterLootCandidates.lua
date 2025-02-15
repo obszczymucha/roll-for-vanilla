@@ -31,25 +31,26 @@ local function get_dummy_candidates()
 end
 
 ---@class MasterLootCandidatesApi
----@field GetMasterLootCandidate fun( index: number ): string
+---@field GetMasterLootCandidate fun( slot: number, index: number ): string
 
 ---@class MasterLootCandidates
----@field get fun(): ItemCandidate[]
----@field find fun( player_name: string ): ItemCandidate?
----@field get_index fun( player_name: string ): number?
+---@field get fun( slot: number ): ItemCandidate[]
+---@field find fun( slot: number, player_name: string ): ItemCandidate?
+---@field get_index fun( slot: number, player_name: string ): number?
 ---@field transform_to_winner fun( player: RollingPlayer, item: Item|MasterLootDistributableItem, roll_type: RollType, winning_roll: number?, rerolling: boolean? ): Winner
 
 ---@param api MasterLootCandidatesApi
 ---@param group_roster GroupRoster
-function M.new( api, group_roster )
-  local function get()
+---@param loot_list LootList
+function M.new( api, group_roster, loot_list )
+  local function get( slot )
     if not group_roster then return get_dummy_candidates() end
 
     local result = {}
     local players = group_roster.get_all_players_in_my_group()
 
     for i = 1, 40 do
-      local name = api.GetMasterLootCandidate( i )
+      local name = api.GetMasterLootCandidate( slot, i )
 
       for _, p in ipairs( players ) do
         if name == p.name then
@@ -61,8 +62,8 @@ function M.new( api, group_roster )
     return result
   end
 
-  local function find( player_name )
-    local candidates = get()
+  local function find( slot, player_name )
+    local candidates = get( slot )
 
     return m.find_value_in_table( candidates, player_name, function( v ) return v.name end )
   end
@@ -74,13 +75,14 @@ function M.new( api, group_roster )
   ---@param rerolling boolean?
   ---@return Winner
   local function transform_to_winner( player, item, roll_type, winning_roll, rerolling )
-    local candidate = find( player.name )
+    local slot = loot_list.get_slot( item.id )
+    local candidate = slot and find( slot, player.name )
     return make_winner( player.name, player.class, item, candidate and true or false, roll_type, winning_roll and winning_roll, rerolling )
   end
 
-  local function get_index( player_name )
+  local function get_index( slot, player_name )
     for i = 1, 40 do
-      local name = api.GetMasterLootCandidate( i )
+      local name = api.GetMasterLootCandidate( slot, i )
       if name == player_name then return i end
     end
   end

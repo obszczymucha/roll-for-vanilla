@@ -7,9 +7,6 @@ local M = {}
 ---@type LT
 local LT = m.ItemUtils.LootType
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 ---@type MakeSoftRessedDroppedItemFn
 local make_softres_dropped_item = m.ItemUtils.make_softres_dropped_item
 
@@ -33,8 +30,8 @@ function M.new( loot_list, softres )
     if a.type == LT.Coin and b.type ~= LT.Coin then return false end
     if b.type == LT.Coin and a.type ~= LT.Coin then return true end
 
-    local sr_a = a.sr_players and getn( a.sr_players ) or 0
-    local sr_b = b.sr_players and getn( b.sr_players ) or 0
+    local sr_a = a.sr_players and #a.sr_players or 0
+    local sr_b = b.sr_players and #b.sr_players or 0
     local quality_a = a.quality or 0 -- coin has no quality
     local quality_b = b.quality or 0 -- coin has no quality
     local name_a = a.name or ""
@@ -72,7 +69,7 @@ function M.new( loot_list, softres )
 
       local hr = softres.is_item_hardressed( item.id )
       local sr_players = softres.get( item.id )
-      local sr = getn( sr_players ) > 0
+      local sr = #sr_players > 0
 
       if hr and not hr_map[ item.id ] then
         hr_map[ item.id ] = true

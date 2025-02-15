@@ -7,8 +7,6 @@ local item_utils = m.ItemUtils
 local info = m.pretty_print
 local hl = m.colors.hl
 local grey = m.colors.grey
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 local M = {}
 
@@ -38,9 +36,9 @@ function M.new( loot_list, api, db, config, player_info )
   local frame
   local items = db.items
 
-  local function find_my_candidate_index()
+  local function find_my_candidate_index( slot )
     for i = 1, 40 do
-      local name = m.api.GetMasterLootCandidate( i )
+      local name = m.api.GetMasterLootCandidate( slot, i )
       if name == api().UnitName( "player" ) then
         return i
       end
@@ -55,7 +53,6 @@ function M.new( loot_list, api, db, config, player_info )
     local zone_name = api().GetRealZoneText()
     local item_ids = items[ zone_name ] or {}
     local threshold = api().GetLootThreshold()
-
     local quality = item.quality or 0
 
     if item_ids[ item.id ] then
@@ -84,7 +81,7 @@ function M.new( loot_list, api, db, config, player_info )
       -- Looting coins is hidden under a secure button and cannot be done
       -- through vanilla API. If the user has the SuperWoW mod, we can call an
       -- extra function instead.
-      if api().SUPERWOW_VERSION and item.type == item_utils.LootType.Coin then
+      if item.type == item_utils.LootType.Coin then
         api().LootSlot( slot, 1 )
 
         local coin = item --[[@as Coin]]
@@ -97,7 +94,7 @@ function M.new( loot_list, api, db, config, player_info )
 
       if item.id and slot then
         if is_auto_looted( item ) then
-          local index = find_my_candidate_index()
+          local index = find_my_candidate_index( slot )
 
           if index then
             api().GiveMasterLoot( slot, index )
@@ -128,7 +125,7 @@ function M.new( loot_list, api, db, config, player_info )
       local zone_name = api().GetRealZoneText()
       local item_ids = items[ zone_name ]
 
-      if not item_ids or getn( item_ids ) == 0 then
+      if not item_ids or #item_ids == 0 then
         frame:Hide()
       else
         frame:Show()

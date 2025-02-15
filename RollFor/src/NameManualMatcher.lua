@@ -14,34 +14,31 @@ local colors = m.colors
 local p = m.pretty_print
 local map = m.map
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 function M.new( db, api, absent_unfiltered_softres, name_matcher, softres_status_changed )
   db.manual_matches = db.manual_matches or {}
   local manual_match_options = nil
 
   local function show_manual_matches( matches, absent_players )
-    if getn( matches ) == 0 and getn( absent_players ) == 0 then
+    if #matches == 0 and #absent_players == 0 then
       p( "There are no players that can be manually matched." )
       return
     end
 
     local index = 1
 
-    if getn( matches ) > 0 then
+    if #matches > 0 then
       p( string.format( "To unmatch, clear your target and type: %s", colors.hl( "/sro <number>" ) ) )
 
-      for i = 1, getn( matches ) do
+      for i = 1, #matches do
         p( string.format( "[%s]: %s (manually matched with %s)", colors.green( index ), colors.hl( matches[ i ] ), colors.hl( db.manual_matches[ matches[ i ] ] ) ) )
         index = index + 1
       end
     end
 
-    if getn( absent_players ) > 0 then
+    if #absent_players > 0 then
       p( string.format( "To match, target a player and type: %s", colors.hl( "/sro <number>" ) ) )
 
-      for i = 1, getn( absent_players ) do
+      for i = 1, #absent_players do
         p( string.format( "[%s]: %s", colors.green( index ), colors.red( absent_players[ i ] ) ) )
         index = index + 1
       end
@@ -73,7 +70,7 @@ function M.new( db, api, absent_unfiltered_softres, name_matcher, softres_status
       return
     end
 
-    local count = getn( manual_match_options )
+    local count = #manual_match_options
     local target = api().UnitName( "target" )
     local index = parse_number( args )
 
