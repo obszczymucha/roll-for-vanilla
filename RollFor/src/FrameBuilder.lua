@@ -3,9 +3,6 @@ local m = RollFor
 
 if m.FrameBuilder then return end
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 local M = {}
 
 M.interface = {
@@ -202,7 +199,7 @@ function M.new()
     local function get_from_cache( line_type )
       frame_cache[ line_type ] = frame_cache[ line_type ] or {}
 
-      for i = getn( frame_cache[ line_type ] ), 1, -1 do
+      for i = #frame_cache[ line_type ], 1, -1 do
         if not frame_cache[ line_type ][ i ].is_used then
           return frame_cache[ line_type ][ i ]
         end

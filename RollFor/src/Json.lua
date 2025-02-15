@@ -27,9 +27,6 @@ local libStub = LibStub
 local json = libStub:NewLibrary( "Json-0.1.2", 1 )
 if not json then return end
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 -------------------------------------------------------------------------------
 -- Encode
 -------------------------------------------------------------------------------
@@ -78,7 +75,7 @@ local function encode_table( val, stack )
       end
       n = n + 1
     end
-    if n ~= getn( val ) then
+    if n ~= #val then
       error( "invalid table: sparse array" )
     end
     -- Encode
@@ -146,7 +143,7 @@ local function create_set( ... )
   local res = {}
   local t = { unpack( arg ) }
 
-  for i = 1, getn( t ) do
+  for i = 1, #t do
     res[ t[ i ] ] = true
   end
 
@@ -235,7 +232,7 @@ local function parse_string( str, i )
             or string.match( str, "^%x%x%x%x", j + 1 )
             or decode_error( str, j - 1, "invalid unicode escape in string" )
         res = res .. parse_unicode_escape( hex )
-        j = j + getn( hex )
+        j = j + #hex
       else
         if not escape_chars[ c ] then
           decode_error( str, j - 1, "invalid escape char '" .. c .. "' in string" )

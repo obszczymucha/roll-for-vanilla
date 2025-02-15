@@ -1,7 +1,5 @@
 local M = {}
 
-local getn = table.getn
-
 M.player_unit = "player"
 M.party_units = {
   [ M.player_unit ] = 1,
@@ -14,7 +12,7 @@ M.party_units = {
 ---@param players Player[]?
 ---@param in_raid boolean?
 function M.new( players, in_raid )
-  local function count_players() return players and getn( players ) or 0 end
+  local function count_players() return players and #players or 0 end
 
   local function is_in_party()
     local count = count_players()

@@ -1,4 +1,4 @@
-## Interface: 11200
+## Interface: 20502
 ## Title: RollFor
 ## Author: Obszczymucha
 ## Version: 4.1.4
@@ -9,7 +9,6 @@
 libs\LibStub\LibStub.lua
 libs\Libs.xml
 
-src\Backport.lua
 settings.lua
 src\modules.lua
 src\DebugBuffer.lua

@@ -35,21 +35,12 @@ if not lua50 then
   end
 
 
-  if not table.getn then
-    ---@diagnostic disable-next-line: duplicate-set-field
-    function table.getn( t )
-      return #t
-    end
-  end
-
   if not math.mod then
     math.mod = function( a, b )
       return a % b
     end
   end
 end
-
-local getn = table.getn
 
 M.debug_enabled = true
 
@@ -1198,7 +1189,7 @@ function M.mock_values( values )
   return function()
     invocation_count = invocation_count + 1
 
-    if invocation_count > getn( values ) then
+    if invocation_count > #values then
       return nil
     end
 
@@ -1213,7 +1204,7 @@ function M.mock_value( v1, v2, v3, v4, v5, v6, v7, v8, v9 )
   return function()
     invocation_count = invocation_count + 1
 
-    if invocation_count > getn( values ) then
+    if invocation_count > #values then
       return nil
     end
 
@@ -1226,8 +1217,6 @@ function M.info( message )
 end
 
 function M.noop() end
-
-M.getn = table.getn
 
 function M.clone( t )
   local result = {}

@@ -5,8 +5,6 @@ if m.RollingPopup then return end
 
 local c = m.colorize_player_by_class
 local blue = m.colors.blue
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 local button_defaults = {
   width = 80,
@@ -174,7 +172,7 @@ function M.new( popup_builder, content_transformer, db, config )
   ---@param data RollingPopupData
   local function refresh( _, data )
     M.debug.add( string.format( "refresh( type: %s )", data.type or "nil" ) )
-    M.debug.add( string.format( "buttons: %s", data.buttons and m.prettify_table( data.buttons, function(b) return b.type end ) or "nil" ) )
+    M.debug.add( string.format( "buttons: %s", data.buttons and m.prettify_table( data.buttons, function( b ) return b.type end ) or "nil" ) )
 
     if not popup then popup = create_popup() end
     popup:clear()
@@ -249,7 +247,7 @@ function M.new( popup_builder, content_transformer, db, config )
         end
 
         if type ~= "button" then
-          local count = getn( lines )
+          local count = #lines
 
           if count == 0 then
             local y = -top_padding - (v.padding or 0)

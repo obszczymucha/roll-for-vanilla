@@ -11,9 +11,6 @@ local hl = m.colors.hl
 ---@type MakeRollFn
 local make_roll = m.Types.make_roll
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 ---@param chat Chat
 ---@param players RollingPlayer[]
 ---@param item Item
@@ -25,7 +22,7 @@ local getn = table.getn
 function M.new( chat, players, item, item_count, on_rolling_finished, roll_type, config, controller )
   local rolls = {}
   local rolling = false
-  local player_count = getn( players )
+  local player_count = #players
 
   ---@param player_name string
   local function find_player( player_name )
@@ -49,7 +46,7 @@ function M.new( chat, players, item, item_count, on_rolling_finished, roll_type,
   end
 
   local function have_all_rolls_been_exhausted()
-    local roll_count = getn( rolls )
+    local roll_count = #rolls
 
     if player_count == item_count and player_count == roll_count then
       return true
@@ -66,7 +63,7 @@ function M.new( chat, players, item, item_count, on_rolling_finished, roll_type,
     stop_listening()
     sort_rolls()
 
-    local roll_count = getn( rolls )
+    local roll_count = #rolls
 
     if roll_count == 0 then
       controller.finish()
@@ -85,7 +82,7 @@ function M.new( chat, players, item, item_count, on_rolling_finished, roll_type,
             table.insert( result, { roll } )
             last_roll = roll.roll
           else
-            table.insert( result[ getn( result ) ], roll )
+            table.insert( result[ #result ], roll )
           end
         end
 
@@ -95,7 +92,7 @@ function M.new( chat, players, item, item_count, on_rolling_finished, roll_type,
       local result = 0
 
       for _, r in ipairs( split_by_roll() ) do
-        result = result + getn( r )
+        result = result + #r
         if result >= item_count then return result end
       end
 

@@ -7,7 +7,6 @@ local M = {}
 
 ---@type MakeRollingPlayerFn
 local make_rolling_player = m.Types.make_rolling_player
-local getn = table.getn
 
 ---@class RollingStrategy
 ---@field start_rolling fun()
@@ -90,7 +89,7 @@ function M.new(
     ---@type RollingPlayer[]
     local softressing_players = softres.get( item.id )
 
-    if getn( softressing_players ) == 0 then
+    if #softressing_players == 0 then
       return normal_roll( item, item_count or 1, message, seconds, on_rolling_finished, roll_controller_facade )
     end
 
@@ -120,7 +119,7 @@ function M.new(
       ---@type ItemCandidate[]|Player[]
       local online_candidates = m.filter( candidates, function( c ) return c.online == true end )
 
-      if slot and getn( online_candidates ) == 0 then
+      if slot and #online_candidates == 0 then
         m.pretty_print( "Game API didn't return any loot candidates.", m.colors.red )
         return
       end

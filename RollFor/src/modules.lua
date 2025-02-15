@@ -4,9 +4,6 @@ local M = RollFor
 ---@diagnostic disable-next-line: undefined-global
 local debugstack = debugstack
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 ---@alias ColorFn fun( text: string ): string
 
 M.api = getfenv()
@@ -278,15 +275,15 @@ end
 function M.prettify_table( t, f )
   local result = ""
 
-  if getn( t ) == 0 then
+  if #t == 0 then
     return result
   end
 
-  if getn( t ) == 1 then
+  if #t == 1 then
     return (f and f( t[ 1 ] ) or t[ 1 ])
   end
 
-  for i = 1, getn( t ) - 1 do
+  for i = 1, #t - 1 do
     if result ~= "" then
       result = result .. ", "
     end
@@ -294,7 +291,7 @@ function M.prettify_table( t, f )
     result = result .. (f and f( t[ i ] ) or t[ i ])
   end
 
-  result = result .. " and " .. (f and f( t[ getn( t ) ] ) or t[ getn( t ) ])
+  result = result .. " and " .. (f and f( t[ #t ] ) or t[ #t ])
   return result
 end
 
@@ -304,7 +301,7 @@ function M.filter( t, f, extract_field )
 
   local result = {}
 
-  for i = 1, getn( t ) do
+  for i = 1, #t do
     local v = t[ i ]
     local value = type( v ) == "table" and extract_field and v[ extract_field ] or v
     if f( value ) then table.insert( result, v ) end
@@ -318,7 +315,7 @@ function M.take( t, n )
 
   local result = {}
 
-  for i = 1, getn( t ) do
+  for i = 1, #t do
     if i > n then return result end
     table.insert( result, t[ i ] )
   end
@@ -396,7 +393,7 @@ function M.merge( result, next, p3, p4 )
   if type( result ) ~= "table" then return {} end
   if type( next ) ~= "table" then return result end
 
-  for i = 1, getn( next ) do
+  for i = 1, #next do
     table.insert( result, next[ i ] )
   end
 
@@ -420,7 +417,7 @@ function M.keys( t )
 end
 
 function M.find( value, t, extract_field )
-  if type( t ) ~= "table" or getn( t ) == 0 then return nil end
+  if type( t ) ~= "table" or #t == 0 then return nil end
 
   for _, v in pairs( t ) do
     local val = extract_field and v[ extract_field ] or v
@@ -603,7 +600,7 @@ function M.is_new_version( mine, theirs )
   local my_version = parse_version( mine )
   local their_version = parse_version( theirs )
 
-  for i = 1, math.max( getn( my_version ), getn( their_version ) ) do
+  for i = 1, math.max( #my_version, #their_version ) do
     local my_part = my_version[ i ] or 0
     local their_part = their_version[ i ] or 0
 

@@ -7,8 +7,6 @@ local item_utils = m.ItemUtils
 local info = m.pretty_print
 local hl = m.colors.hl
 local grey = m.colors.grey
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 local M = {}
 local button_visible = false
@@ -93,7 +91,7 @@ function M.new( loot_list, api, db, config, player_info )
       local zone_name = api().GetRealZoneText()
       local item_ids = items[ zone_name ]
 
-      if not item_ids or getn( item_ids ) == 0 then
+      if not item_ids or #item_ids == 0 then
         frame:Hide()
       else
         frame:Show()

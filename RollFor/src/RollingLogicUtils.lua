@@ -9,9 +9,6 @@ local map = m.map
 ---@type MakeRollingPlayerFn
 local make_rolling_player = m.Types.make_rolling_player
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 function M.can_roll( rollers, player_name )
   for _, v in ipairs( rollers ) do
     if v.name == player_name then return true end
@@ -46,7 +43,7 @@ function M.all_present_players( group_roster )
 end
 
 function M.have_all_players_rolled( rollers )
-  if getn( rollers ) == 0 then return false end
+  if #rollers == 0 then return false end
 
   for _, v in pairs( rollers ) do
     if v.rolls > 0 then return false end

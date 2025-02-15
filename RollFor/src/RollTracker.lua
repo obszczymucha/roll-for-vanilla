@@ -14,9 +14,6 @@ local RS = m.Types.RollingStrategy
 local RT = m.Types.RollType
 local S = m.Types.RollingStatus
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 ---@class RollData
 ---@field player_name string
 ---@field player_class string
@@ -155,7 +152,7 @@ function M.new( item_on_roll )
     status = { type = S.Preview }
     item_on_roll_count = count
 
-    local soft_ressed = getn( soft_ressers ) > 0
+    local soft_ressed = #soft_ressers > 0
     local ressed_item = soft_ressed or hard_ressed
 
     table.insert( iterations, {

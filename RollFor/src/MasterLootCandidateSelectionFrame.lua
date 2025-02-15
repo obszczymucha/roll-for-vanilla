@@ -13,8 +13,6 @@ local vertical_padding = 5
 
 ---@diagnostic disable-next-line: undefined-field
 local mod = math.mod
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
 
 local function highlight( frame )
   frame:SetBackdropColor( frame.color.r, frame.color.g, frame.color.b, 0.3 )
@@ -162,7 +160,7 @@ function M.new( config )
 
   ---@param candidates MasterLootCandidate[]
   local function create_candidate_frames( candidates )
-    local total = getn( candidates )
+    local total = #candidates
     local rows = config.master_loot_frame_rows()
 
     resize_frame( total, rows )

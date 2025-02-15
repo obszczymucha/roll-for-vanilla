@@ -10,9 +10,6 @@ local negate = m.negate
 local colors = m.colors
 local pretty_print = function( text ) m.pretty_print( text, colors.softres ) end
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 local ResultType = {
   NoItemsFound = "NoItemsFound",
   SomeoneIsNotSoftRessing = "SomeoneIsNotSoftRessing",
@@ -26,7 +23,7 @@ local function show( players )
 
   local buffer = ""
 
-  for i = 1, getn( players ) do
+  for i = 1, #players do
     local separator = ""
 
     if buffer ~= "" then
@@ -60,7 +57,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
       end
       ) )
 
-    if getn( not_softressing ) == 0 then
+    if #not_softressing == 0 then
       if silent ~= true then m.pretty_print( "All players in the group are soft-ressing.", colors.green ) end
       return ResultType.Ok
     end
@@ -78,7 +75,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
 
     local rollers = softres.get_all_rollers()
 
-    if getn( rollers ) == 0 then
+    if #rollers == 0 then
       if silent ~= true then pretty_print( "No soft-res items found." ) end
       return ResultType.NoItemsFound
     end
@@ -173,7 +170,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
       return
     end
 
-    local absent_softres_players_count = getn( absent_softres( softres ).get_all_rollers() )
+    local absent_softres_players_count = #absent_softres( softres ).get_all_rollers()
 
     local item_count = m.count_elements( items )
     local unavailable_item_count = m.count_elements( unavailable_items )

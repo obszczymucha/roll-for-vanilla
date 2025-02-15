@@ -5,9 +5,6 @@ if m.AwardedLoot then return end
 
 local M = m.Module.new( "AwardedLoot" )
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 ---@class AwardedLoot
 ---@field award fun( player_name: string, item_id: number )
 ---@field unaward fun( player_name: string, item_id: number )
@@ -55,7 +52,7 @@ function M.new( db )
   ---@param item_id number
   local function unaward( player_name, item_id )
     M.debug.add( "unaward" )
-    for i = getn( db.awarded_items ), 1, -1 do
+    for i = #db.awarded_items, 1, -1 do
       local awarded_item = db.awarded_items[ i ]
 
       if awarded_item.player_name == player_name and awarded_item.item_id == item_id then

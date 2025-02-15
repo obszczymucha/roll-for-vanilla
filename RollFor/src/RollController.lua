@@ -10,7 +10,6 @@ local RS = m.Types.RollingStrategy
 local LAE = m.Types.LootAwardError
 local IU = m.ItemUtils ---@type ItemUtils
 local hl = m.colors.hl
-local getn = table.getn
 
 ---@class RollControllerFacade
 ---@field roll_was_ignored fun( player_name: string, player_class: string?, roll_type: RollType, roll: number, reason: string )
@@ -194,7 +193,7 @@ function M.new(
   -- If the roll is a placeholder, we should not count it as a roll.
   ---@param rolls RollData[]
   local function count_rolls( rolls )
-    if getn( rolls ) == 0 then return 0 end
+    if #rolls == 0 then return 0 end
 
     local count = 0
 
@@ -488,7 +487,7 @@ function M.new(
       end
     )
 
-    if getn( winners ) == 1 and winners[ 1 ].award_callback then
+    if #winners == 1 and winners[ 1 ].award_callback then
       add_award_winner_button( buttons, winners[ 1 ].award_callback )
       winners[ 1 ].award_callback = nil
     end
@@ -565,7 +564,7 @@ function M.new(
     local item = data.item
     local buttons = {} ---@type RollingPopupButtonWithCallback[]
     local dropped_item = loot_list.get_by_id( item.id )
-    local candidate_count = getn( candidates )
+    local candidate_count = #candidates
 
     ---@type WinnerWithAwardCallback[]
     local winners = m.map( data.winners,
@@ -583,7 +582,7 @@ function M.new(
       end
     )
 
-    if getn( winners ) == 1 and winners[ 1 ].award_callback then
+    if #winners == 1 and winners[ 1 ].award_callback then
       add_award_winner_button( buttons, winners[ 1 ].award_callback )
       winners[ 1 ].award_callback = nil
     end
@@ -618,7 +617,7 @@ function M.new(
     local item = data.item
     local buttons = {} ---@type RollingPopupButtonWithCallback[]
     local dropped_item = loot_list.get_by_id( item.id )
-    local candidate_count = getn( candidates )
+    local candidate_count = #candidates
 
     ---@type WinnerWithAwardCallback[]
     local winners = m.map( data.winners,
@@ -636,7 +635,7 @@ function M.new(
       end
     )
 
-    if getn( winners ) == 1 and winners[ 1 ].award_callback then
+    if #winners == 1 and winners[ 1 ].award_callback then
       add_award_winner_button( buttons, winners[ 1 ].award_callback )
       winners[ 1 ].award_callback = nil
     end
@@ -697,7 +696,7 @@ function M.new(
         end
       )
 
-      if getn( winners ) == 1 and winners[ 1 ].award_callback then
+      if #winners == 1 and winners[ 1 ].award_callback then
         add_award_winner_button( buttons, winners[ 1 ].award_callback )
         winners[ 1 ].award_callback = nil
       end
@@ -797,10 +796,10 @@ function M.new(
     local color = get_color( item.quality )
     rolling_popup:border_color( color )
 
-    local sr_count = getn( soft_ressers )
+    local sr_count = #soft_ressers
     local buttons = {} ---@type RollingPopupButtonWithCallback[]
     local dropped_item = loot_list.get_by_id( item.id )
-    local candidate_count = getn( candidates )
+    local candidate_count = #candidates
 
     currently_displayed_item = item
 

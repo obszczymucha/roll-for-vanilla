@@ -1,5 +1,5 @@
 local u = require( "test/utils" )
-local getn, reqsrc = u.getn, u.multi_require_src
+local reqsrc = u.multi_require_src
 local lu, eq = u.luaunit( "assertEquals" ) ---@diagnostic disable-line: unused-local
 local m, T, IU = require( "src/modules" ), require( "src/Types" ), require( "src/ItemUtils" )
 reqsrc( "DebugBuffer", "Module", "Types", "SoftResDataTransformer", "RollingLogicUtils", "RollTracker" )
@@ -102,8 +102,8 @@ function M.i( name, id, sr_players, hard_ressed, quality )
     return IU.make_hardres_dropped_item( item )
   end
 
-  if getn( sr_players or {} ) > 0 then
-    return IU.make_softres_dropped_item( item, sr_players or {} )
+  if sr_players and #sr_players > 0 then
+    return IU.make_softres_dropped_item( item, sr_players )
   end
 
   return item

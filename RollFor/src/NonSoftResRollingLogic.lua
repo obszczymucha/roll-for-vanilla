@@ -15,9 +15,6 @@ local hl = m.colors.hl
 ---@type MakeRollFn
 local make_roll = m.Types.make_roll
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 ---@param players RollingPlayer[]
 local function have_all_players_rolled( players )
   for _, v in ipairs( players ) do
@@ -80,14 +77,14 @@ function M.new(
   end
 
   local function have_all_rolls_been_exhausted()
-    local mainspec_roll_count = getn( mainspec_rolls )
-    local offspec_roll_count = getn( offspec_rolls )
-    local tmog_roll_count = getn( tmog_rolls )
+    local mainspec_roll_count = #mainspec_rolls
+    local offspec_roll_count = #offspec_rolls
+    local tmog_roll_count = #tmog_rolls
     local total_roll_count = mainspec_roll_count + offspec_roll_count + tmog_roll_count
 
-    if item_count == getn( tmog_rollers ) and have_all_players_rolled( tmog_rollers ) or
-        item_count == getn( offspec_rollers ) and have_all_players_rolled( offspec_rollers ) or
-        item_count == getn( mainspec_rollers ) and total_roll_count == getn( mainspec_rollers ) then
+    if item_count == #tmog_rollers and have_all_players_rolled( tmog_rollers ) or
+        item_count == #offspec_rollers and have_all_players_rolled( offspec_rollers ) or
+        item_count == #mainspec_rollers and total_roll_count == #mainspec_rollers then
       return true
     end
 
@@ -127,7 +124,7 @@ function M.new(
 
     ---@type Roll[]
     local all_rolls = merge( {}, mainspec_rolls, offspec_rolls, tmog_rolls )
-    local roll_count = getn( all_rolls )
+    local roll_count = #all_rolls
 
     local function count_top_roll_winners()
       if roll_count == 0 then return 0 end
@@ -141,7 +138,7 @@ function M.new(
             table.insert( result, { roll } )
             last_roll = roll.roll
           else
-            table.insert( result[ getn( result ) ], roll )
+            table.insert( result[ #result ], roll )
           end
         end
 
@@ -151,7 +148,7 @@ function M.new(
       local result = 0
 
       for _, rolls in ipairs( split_by_roll() ) do
-        result = result + getn( rolls )
+        result = result + #rolls
         if result >= item_count then return result end
       end
 
@@ -226,7 +223,7 @@ function M.new(
 
   local function show_sorted_rolls( limit )
     local function show( prefix, sorted_rolls )
-      if getn( sorted_rolls ) == 0 then return end
+      if #sorted_rolls == 0 then return end
 
       chat.info( string.format( "%s rolls:", prefix ) )
       local i = 0

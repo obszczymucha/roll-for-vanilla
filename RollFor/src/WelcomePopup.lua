@@ -9,9 +9,6 @@ local hl = m.colors.hl
 local white = m.colors.white
 local blue = m.colors.blue
 
----@diagnostic disable-next-line: deprecated
-local getn = table.getn
-
 function M.new( frame_builder, ace_timer, db )
   local popup
   local messages = {
@@ -112,7 +109,7 @@ function M.new( frame_builder, ace_timer, db )
       message = messages[ line ]
       letters = 0
 
-      if line <= getn( messages ) then
+      if line <= #messages then
         popup:new_line()
       else
         ace_timer.ScheduleTimer( M, function()
