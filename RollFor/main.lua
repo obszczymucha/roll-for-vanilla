@@ -246,7 +246,7 @@ local function create_components()
   M.master_loot_warning = m.MasterLootWarning.new( M.api, M.config, m.BossList.zones, M.player_info )
 
   -- TODO: Add type.
-  M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, db( "auto_loot" ), M.config )
+  M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, db( "auto_loot" ), M.config, M.player_info )
 
   -- TODO: Add type.
   M.new_group_event = m.NewGroupEvent.new( M.group_roster )
@@ -308,7 +308,7 @@ local function create_components()
   M.args_parser = m.ArgsParser.new( m.ItemUtils, M.config )
 
   -- TODO: Add type.
-  M.roll_result_announcer = m.RollResultAnnouncer.new( M.chat, M.roll_controller, M.config )
+  M.roll_result_announcer = m.RollResultAnnouncer.new( M.chat, M.roll_controller,  M.softres, M.config )
 
   M.loot_facade_listener = m.LootFacadeListener.new(
     M.loot_facade,

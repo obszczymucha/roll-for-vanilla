@@ -25,7 +25,7 @@ local _G = getfenv( 0 )
 ---@param api table
 ---@param db table
 ---@param config Config
-function M.new( loot_list, api, db, config )
+function M.new( loot_list, api, db, config, player_info )
   db.items = db.items or {}
 
   local frame
@@ -41,6 +41,10 @@ function M.new( loot_list, api, db, config )
   end
 
   local function on_auto_loot()
+    if not player_info.is_master_looter() then
+      return
+    end
+
     local zone_name = api().GetRealZoneText()
     local item_ids = items[ zone_name ] or {}
     local threshold = m.api.GetLootThreshold()
@@ -48,6 +52,17 @@ function M.new( loot_list, api, db, config )
     for _, item in ipairs( loot_list.get_items() ) do
       local quality = item.quality or 0
       local slot = loot_list.get_slot( item.id )
+
+      -- Looting coins is hidden under a secure button and cannot be done
+      -- through vanilla API. If the user has the SuperWoW mod, we can call an
+      -- extra function instead.
+      if api().SUPERWOW_VERSION and item.type == item_utils.LootType.Coin then
+        api().LootSlot( slot, 1 )
+
+        local coin = item --[[@as Coin]]
+        local amount = string.gsub( string.gsub( coin.amount_text, "\n", " " ), " $", "" )
+        info( string.format( "Auto-looting %s", grey( amount ) ) )
+      end
 
       if item.id and slot then
         if quality < threshold or config.auto_loot() and item_ids[ item.id ] then

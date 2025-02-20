@@ -39,6 +39,12 @@ end
 
 ---@param player Player
 ---@param padding number?
+function M.tmog_roll( player, roll, padding )
+  return { type = "roll", player_name = player.name, player_class = player.class, roll_type = RT.Transmog, roll = roll, padding = padding }
+end
+
+---@param player Player
+---@param padding number?
 function M.softres_roll( player, roll, padding )
   return { type = "roll", player_name = player.name, player_class = player.class, roll_type = RT.SoftRes, roll = roll, padding = padding }
 end

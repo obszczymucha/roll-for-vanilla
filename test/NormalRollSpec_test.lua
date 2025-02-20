@@ -9,6 +9,7 @@ local gui = require( "test/gui_helpers" )
 local item_link, text, buttons, empty_line = gui.item_link, gui.text, gui.buttons, gui.empty_line
 local enabled_item, disabled_item, selected_item = gui.enabled_item, gui.disabled_item, gui.selected_item
 local mainspec_roll, offspec_roll, roll_placeholder = gui.mainspec_roll, gui.offspec_roll, gui.roll_placeholder
+local tmog_roll = gui.tmog_roll
 local individual_award_button = gui.individual_award_button
 
 NoOneRollsSpec = {}
@@ -1429,6 +1430,113 @@ function NormalTieRollSpec:should_display_tie_rolls()
   -- Then
   rf.confirmation_popup.should_be_hidden()
   chat.console( "RollFor: Psikutas received [Bag]." )
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Hearthstone" )
+  )
+end
+
+function NormalTieRollSpec:should_not_consider_ms_and_tm_rolls_tie()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, item2, p1, p2, p3 = i( "Hearthstone", 123 ), i( "Bag", 69 ), p( "Psikutas" ), p( "Obszczymucha" ), p( "Ponpon" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2, p3 )
+      :chat( chat )
+      :build()
+  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+
+  -- Then
+  rf.loot_frame.should_be_hidden()
+
+  -- When
+  loot_facade.notify( "LootOpened", item, item2 )
+
+  -- Then
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Bag" ),
+    enabled_item( 2, "Hearthstone" )
+  )
+  chat.raid( "Princess Kenny dropped 2 items:" )
+  chat.raid( "1. [Bag]" )
+  chat.raid( "2. [Hearthstone]" )
+  rf.rolling_popup.should_be_hidden()
+
+  -- When
+  rf.loot_frame.click( 1 )
+
+  -- Then
+  rf.loot_frame.should_display(
+    selected_item( 1, "Bag" ),
+    disabled_item( 2, "Hearthstone" )
+  )
+  rf.rolling_popup.should_display(
+    item_link( item2, 1 ),
+    buttons( "Roll", "InstaRaidRoll", "AwardOther", "Close" )
+  )
+
+  -- When
+  rf.rolling_popup.click( "Roll" )
+
+  -- Then
+  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  rf.rolling_popup.should_display(
+    item_link( item2, 1 ),
+    text( "Rolling ends in 8 seconds.", 11 ),
+    buttons( "Cancel" )
+  )
+
+  -- When
+  rf.roll( p3, 42, 1, 100 )
+  rf.roll( p2, 93, 1, 100 )
+  rf.ace_timer.repeating_tick( 5 )
+
+  -- Then
+  chat.raid( "Stopping rolls in 3" )
+
+  -- When
+  rf.ace_timer.repeating_tick()
+
+  -- Then
+  chat.raid( "2" )
+
+  -- When
+  rf.roll( p1, 93, 1, 98 )
+  rf.ace_timer.repeating_tick( 1 )
+
+  -- Then
+  chat.raid( "1" )
+
+  -- When
+  rf.ace_timer.repeating_tick( 1 )
+
+  -- Then
+  chat.console( "RollFor: Obszczymucha rolled the highest (93) for [Bag]." )
+  chat.raid( "Obszczymucha rolled the highest (93) for [Bag]." )
+  chat.console( "RollFor: Rolling for [Bag] finished." )
+  rf.rolling_popup.should_display(
+    item_link( item2, 1 ),
+    mainspec_roll( p2, 93, 11 ),
+    mainspec_roll( p3, 42 ),
+    tmog_roll( p1, 93 ),
+    text( "Obszczymucha wins the main-spec roll with a 93.", 11 ),
+    buttons( "AwardWinner", "RaidRoll", "AwardOther", "Close" )
+  )
+  rf.confirmation_popup.should_be_hidden()
+
+  -- When
+  rf.rolling_popup.click( "AwardWinner" )
+
+  -- Then
+  rf.confirmation_popup.should_be_visible()
+  rf.rolling_popup.should_be_hidden()
+
+  -- When
+  rf.confirmation_popup.confirm()
+
+  -- Then
+  rf.confirmation_popup.should_be_hidden()
+  chat.console( "RollFor: Obszczymucha received [Bag]." )
   rf.loot_frame.should_display(
     enabled_item( 1, "Hearthstone" )
   )

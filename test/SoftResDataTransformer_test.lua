@@ -79,4 +79,32 @@ function SoftResDataTransformerSpec:should_split_sr_and_hr_items()
   } )
 end
 
+function SoftResDataTransformerSpec:should_transform_soft_ressed_plus_values()
+  -- Given
+  local data = make_data( sr( "Psikutas", 123, nil, "40" ), sr( "Psikutas", 123 ), sr( "Obszczymucha", 69, 2, 50 ), sr( "Obszczymucha", 123, nil, 60 ) )
+
+  -- When
+  local sr_result, hr_result = mod.transform( data )
+
+  -- Then
+  eq( sr_result,
+    {
+      [ 123 ] = {
+        rollers = {
+          { name = "Psikutas",     rolls = 2, type = "Roller", sr_plus = 40 },
+          { name = "Obszczymucha", rolls = 1, type = "Roller", sr_plus = 60 }
+        },
+        quality = 4
+      },
+      [ 69 ] = {
+        rollers = {
+          { name = "Obszczymucha", rolls = 1, type = "Roller", sr_plus = 50 }
+        },
+        quality = 2
+      }
+    } )
+  eq( hr_result, {} )
+end
+
+
 os.exit( lu.LuaUnit.run() )

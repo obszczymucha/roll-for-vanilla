@@ -205,6 +205,10 @@ function M.new(
       return
     end
 
+    if player.sr_plus then
+      roll = roll + player.sr_plus
+    end
+
     player.rolls = player.rolls - 1
     table.insert( rolls, make_roll( player, roll_type, roll ) )
     controller.roll_was_accepted( player.name, player.class, roll_type, roll )
@@ -236,7 +240,8 @@ function M.new(
   local function format_name_with_rolls( player )
     if player_count == item_count then return player.name end
     local roll_count = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
-    return string.format( "%s%s", player.name, roll_count )
+    local sr_plus = player.sr_plus and string.format( " (+%d)", player.sr_plus ) or ""
+    return string.format( "%s%s%s", player.name, roll_count, sr_plus )
   end
 
   local function start_rolling()

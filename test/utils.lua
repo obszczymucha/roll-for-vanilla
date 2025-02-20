@@ -928,7 +928,7 @@ function M.create_softres_data( ... )
 
       entry.name = item.player
       entry.items = entry.items or {}
-      table.insert( entry.items, { id = item.item_id, quality = item.quality } )
+      table.insert( entry.items, { id = item.item_id, quality = item.quality, sr_plus = item.sr_plus } )
     else
       table.insert( hardreserves, { id = item.item_id, quality = item.quality } )
     end
@@ -949,8 +949,8 @@ function M.soft_res( ... )
   return M.import_soft_res( M.create_softres_data( ... ) )
 end
 
-function M.soft_res_item( player, item_id, quality )
-  return { soft_res = true, player = player, item_id = item_id, quality = quality or 4 }
+function M.soft_res_item( player, item_id, quality, sr_plus )
+  return { soft_res = true, player = player, item_id = item_id, quality = quality or 4, sr_plus = sr_plus }
 end
 
 function M.hard_res_item( item_id, quality )

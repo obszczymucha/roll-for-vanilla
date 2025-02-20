@@ -29,6 +29,7 @@ local make_roller = m.Types.make_roller
 ---@class RaidResSoftRessedItem
 ---@field id number
 ---@field quality ItemQuality
+---@field sr_plus number
 
 ---@class SoftRessedItem
 ---@field rollers Roller[]
@@ -71,9 +72,10 @@ function M.transform( data )
         }
 
         local roller = find_roller( roller_name, sr_result[ item_id ].rollers )
-
         if not roller then
-          table.insert( sr_result[ item_id ].rollers, make_roller( roller_name, 1 ) )
+          roller = make_roller( roller_name, 1 )
+          roller.sr_plus = tonumber( item.sr_plus )
+          table.insert( sr_result[ item_id ].rollers, roller )
         else
           roller.rolls = roller.rolls + 1
         end

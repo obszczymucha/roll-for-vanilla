@@ -722,4 +722,109 @@ function SoftResTieRollSpec:should_display_tie_rolls()
   )
 end
 
+SoftResPlusSpec = {}
+
+function SoftResPlusSpec:should_use_sr_plus_values()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, item2, p1, p2 = i( "Hearthstone", 123 ), i( "Bag", 69 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, 69, nil, 30 ), sr( p2.name, 69 ) )
+      :build()
+  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+
+  -- Then
+  rf.loot_frame.should_be_hidden()
+
+  -- When
+  loot_facade.notify( "LootOpened", item, item2 )
+
+  -- Then
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas" } ),
+    enabled_item( 2, "Hearthstone" )
+  )
+  chat.raid( "Princess Kenny dropped 2 items:" )
+  chat.raid( "1. [Bag] (SR by Obszczymucha and Psikutas (+30))" )
+  chat.raid( "2. [Hearthstone]" )
+  rf.rolling_popup.should_be_hidden()
+
+  -- When
+  rf.loot_frame.click( 1 )
+
+  -- Then
+  rf.loot_frame.should_display(
+    selected_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas" } ),
+    disabled_item( 2, "Hearthstone" )
+  )
+  rf.rolling_popup.should_display(
+    item_link( item2, 1 ),
+    roll_placeholder( p2, 11 ),
+    roll_placeholder( p1 ),
+    buttons( "Roll", "AwardOther", "Close" )
+  )
+
+  -- When
+  rf.rolling_popup.click( "Roll" )
+
+  -- Then
+  chat.raid_warning( "Roll for [Bag]: SR by Obszczymucha and Psikutas (+30)" )
+  rf.rolling_popup.should_display(
+    item_link( item2, 1 ),
+    roll_placeholder( p2, 11 ),
+    roll_placeholder( p1 ),
+    text( "Rolling ends in 8 seconds.", 11 ),
+    buttons( "Cancel" )
+  )
+
+  -- When
+  rf.roll( p1, 89, 1, 100 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item2, 1 ),
+    softres_roll( p1, 119, 11 ),
+    roll_placeholder( p2 ),
+    text( "Rolling ends in 8 seconds.", 11 ),
+    buttons( "FinishEarly", "Cancel" )
+  )
+
+  -- When
+  rf.roll( p2, 99, 1, 100 )
+
+  -- Then
+  chat.console( "RollFor: Psikutas rolled the highest (89+30=119) for [Bag] (SR)." )
+  chat.raid( "Psikutas rolled the highest (89+30=119) for [Bag] (SR)." )
+  chat.console( "RollFor: Rolling for [Bag] finished." )
+  rf.rolling_popup.should_display(
+    item_link( item2, 1 ),
+    softres_roll( p1, 119, 11 ),
+    softres_roll( p2, 99 ),
+    text( "Psikutas wins the soft-res roll with an 119.", 11 ),
+    buttons( "AwardWinner", "RaidRoll", "AwardOther", "Close" )
+  )
+  rf.confirmation_popup.should_be_hidden()
+
+  -- When
+  rf.rolling_popup.click( "AwardWinner" )
+
+  -- Then
+  rf.rolling_popup.should_be_hidden()
+  rf.confirmation_popup.should_be_visible()
+
+  -- When
+  rf.confirmation_popup.confirm()
+
+  -- Then
+  chat.console( "RollFor: Psikutas received [Bag]." )
+  rf.confirmation_popup.should_be_hidden()
+  rf.rolling_popup.should_be_hidden()
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Hearthstone" )
+  )
+end
+
 os.exit( lu.LuaUnit.run() )

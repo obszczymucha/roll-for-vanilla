@@ -1,7 +1,7 @@
 ## Interface: 11200
 ## Title: RollFor
 ## Author: Obszczymucha
-## Version: 4.1.1
+## Version: 4.3.0
 ## Notes: An automated item roller with soft ressing support via raidres.fly.dev.
 ## SavedVariables: RollForDb
 ## SavedVariablesPerCharacter: RollForCharDb

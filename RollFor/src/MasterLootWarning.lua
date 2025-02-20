@@ -42,7 +42,7 @@ function M.new( api, config, boss_list, player_info )
   local is_visible = false
 
   local function show()
-    if not frame or is_visible or config.ml_warning_disabled() then return end
+    if not frame or is_visible or not config.show_ml_warning() then return end
 
     api().UIFrameFadeRemoveFrame( frame )
     frame:SetAlpha( 1 )

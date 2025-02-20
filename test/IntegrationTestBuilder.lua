@@ -268,7 +268,7 @@ function M.new_roll_for()
     local rolling_popup_content = require( "src/RollingPopupContentTransformer" ).new( config )
     deps[ "RollingPopupContent" ] = rolling_popup_content
 
-    require( "src/RollResultAnnouncer" ).new( chat, roll_controller, config )
+    require( "src/RollResultAnnouncer" ).new( chat, roll_controller, softres, config )
     local auto_loot = require( "mocks/AutoLoot" ).new()
     local dropped_loot = require( "src/DroppedLoot" ).new( db( "dummy" ) )
     local dropped_loot_announce = require( "src/DroppedLootAnnounce" ).new( loot_list, chat, dropped_loot, softres, winner_tracker, player_info )
