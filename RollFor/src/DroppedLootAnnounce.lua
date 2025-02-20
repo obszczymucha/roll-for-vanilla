@@ -6,6 +6,8 @@ if m.DroppedLootAnnounce then return end
 local M = {}
 local announce_limit = 6
 local filter = m.filter
+local BindType = m.ItemUtils.BindType
+local ItemQuality = m.Types.ItemQuality
 
 ---@diagnostic disable-next-line: deprecated
 local getn = table.getn
@@ -187,12 +189,19 @@ function M.create_item_announcements( summary )
   return stringify( sort( result ) )
 end
 
-function M.process_dropped_items( loot_list, softres )
+function M.process_dropped_items( loot_list, softres, auto_loot )
   local source_guid = loot_list.get_source_guid()
   local threshold = m.api.GetLootThreshold()
   local items = filter( loot_list.get_items(), function( item )
+    if auto_loot.is_auto_looted(item) or item.id == 29434 then return false end
+
     local quality = item.quality or 0
-    return quality >= threshold and item.id ~= 29434
+
+    if item.bind == BindType.BindOnPickup and quality >= ItemQuality.Uncommon then
+      return true
+    end
+
+    return quality >= threshold
   end )
 
   local summary = M.create_item_summary( items, softres )
@@ -265,7 +274,7 @@ end
 ---@param softres GroupAwareSoftRes
 ---@param winner_tracker WinnerTracker
 ---@param player_info PlayerInfo
-function M.new( loot_list, chat, dropped_loot, softres, winner_tracker, player_info )
+function M.new( loot_list, chat, dropped_loot, softres, winner_tracker, player_info, auto_loot )
   local announcing = false
   local announced_source_ids = {}
 
@@ -280,7 +289,7 @@ function M.new( loot_list, chat, dropped_loot, softres, winner_tracker, player_i
       return
     end
 
-    local source_guid, items, announcements = M.process_dropped_items( loot_list, softres )
+    local source_guid, items, announcements = M.process_dropped_items( loot_list, softres, auto_loot )
     local was_announced = announced_source_ids[ source_guid ]
     if was_announced then return end
 

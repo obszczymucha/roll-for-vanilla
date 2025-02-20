@@ -97,6 +97,9 @@ local function create_components()
   ---@type ItemUtils
   M.item_utils = m.ItemUtils
 
+  ---@type TooltipReader
+  M.tooltip_reader = m.TooltipReader.new( M.api() )
+
   -- TODO: Add type.
   M.version_broadcast = m.VersionBroadcast.new( db( "version_broadcast" ), M.player_info, version.str )
 
@@ -151,12 +154,13 @@ local function create_components()
     local result = {}
     ---@type MakeDroppedItemFn
     local make_dropped_item = m.ItemUtils.make_dropped_item
+    local boe = m.ItemUtils.BindType.BindOnEquip
 
     ---@diagnostic disable-next-line: unused-local
     for i, item_id in ipairs( ids ) do
       local name, tooltip_link, quality, _, _, _, _, _, texture = m.api.GetItemInfo( item_id )
       local link = item_link( name, item_id, quality )
-      local item = make_dropped_item( item_id, name, link, tooltip_link, quality, 1, texture )
+      local item = make_dropped_item( item_id, name, link, tooltip_link, quality, 1, texture, boe )
 
       table.insert( result, item )
     end
@@ -167,13 +171,10 @@ local function create_components()
   end
 
   ---@type LootList
-  M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils ) --, get_dummy_items )
+  M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils, M.tooltip_reader ) --, get_dummy_items )
 
   ---@type SoftResLootList
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
-
-  ---@type DroppedLootAnnounce
-  M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.loot_list, M.chat, M.dropped_loot, M.softres, M.winner_tracker, M.player_info )
 
   ---@type MasterLootCandidates
   M.master_loot_candidates = m.MasterLootCandidates.new( M.api(), M.group_roster ) -- remove group_roster for testing (dummy candidates)
@@ -230,6 +231,12 @@ local function create_components()
     M.roll_controller
   )
 
+  ---@type AutoLoot
+  M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, db( "auto_loot" ), M.config, M.player_info )
+
+  ---@type DroppedLootAnnounce
+  M.dropped_loot_announce = m.DroppedLootAnnounce.new( M.loot_list, M.chat, M.dropped_loot, M.softres, M.winner_tracker, M.player_info, M.auto_loot )
+
   -- TODO: Add type.
   M.softres_gui = m.SoftResGui.new( M.api, M.import_encoded_softres_data, M.softres_check, M.softres, clear_data, M.dropped_loot_announce.reset )
 
@@ -244,9 +251,6 @@ local function create_components()
 
   -- TODO: Add type.
   M.master_loot_warning = m.MasterLootWarning.new( M.api, M.config, m.BossList.zones, M.player_info )
-
-  -- TODO: Add type.
-  M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, db( "auto_loot" ), M.config, M.player_info )
 
   -- TODO: Add type.
   M.new_group_event = m.NewGroupEvent.new( M.group_roster )

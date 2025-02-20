@@ -159,6 +159,7 @@ function M.new( frame_builder, db, config )
   ---@field tooltip_link TooltipItemLink?
   ---@field comment string?
   ---@field comment_tooltip string[]?
+  ---@field bind string?
 
   ---@param items LootFrameItem[]
   local function update( items )

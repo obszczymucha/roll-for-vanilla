@@ -5,6 +5,7 @@ if m.LootController then return end
 
 local getn = table.getn
 local red, orange, blue, hl = m.colors.red, m.colors.orange, m.colors.blue, m.colors.hl
+local item_utils = m.ItemUtils
 
 local M = m.Module.new( "LootController" )
 
@@ -251,7 +252,8 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
         slot = loot_list.get_slot( is_coin and "Coin" or item.id ),
         tooltip_link = item.tooltip_link,
         comment = entry.comment,
-        comment_tooltip = entry.comment_tooltip
+        comment_tooltip = entry.comment_tooltip,
+        bind = item_utils.bind_abbrev( item.bind )
       } )
     end
 

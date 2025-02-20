@@ -18,6 +18,7 @@ local getn = table.getn
 local LootQuality = utils.LootQuality
 local item_link = utils.item_link
 local mock_value, mock_values = utils.mock_value, utils.mock_values
+local tooltip_reader = require( "src/TooltipReader" ).new( utils.mock_wow_api() )
 
 LootListSpec = {}
 
@@ -45,7 +46,7 @@ function LootListSpec.should_return_a_coin_entry_if_its_the_only_one_that_droppe
   loot_facade.get_item_count = mock_value( 1 )
   loot_facade.is_coin = mock_value( true )
   loot_facade.get_info = mock_value( { texture = "Interface\\Icons\\INV_Misc_Coin_06", name = "64 Copper", quantity = 0, quality = 0 } )
-  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils, tooltip_reader )
   local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, new_softres() )
 
   -- When
@@ -68,7 +69,7 @@ function LootListSpec.should_return_an_item_entry_if_its_the_only_one_that_dropp
   local link = item_link( "Big item", 123 )
   loot_facade.get_link = mock_value( link )
   loot_facade.get_info = mock_value( { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Epic } )
-  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils, tooltip_reader )
   local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, new_softres() )
 
   -- When
@@ -94,7 +95,7 @@ function LootListSpec.should_return_a_hard_ressed_item_entry_if_its_the_only_one
   local link = item_link( "Big item", 123 )
   loot_facade.get_link = mock_value( link )
   loot_facade.get_info = mock_value( { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Epic } )
-  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils, tooltip_reader )
   local softres = new_softres()
   softres.is_item_hardressed = mock_value( true )
   local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, softres )
@@ -122,7 +123,7 @@ function LootListSpec.should_return_a_soft_ressed_item_entry_if_its_the_only_one
   local link = item_link( "Big item", 123 )
   loot_facade.get_link = mock_value( link )
   loot_facade.get_info = mock_value( { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Epic } )
-  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils, tooltip_reader )
   local softres = new_softres()
   softres.get = mock_value( { { name = "player1" } } )
   local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, softres )
@@ -153,7 +154,7 @@ function LootListSpec.should_sort_the_coin_last()
     { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Epic },
     { texture = "coin texture", name = "1337 Copper", quantity = 0, quality = 0 }
   )
-  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils, tooltip_reader )
   local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, new_softres() )
 
   -- When
@@ -186,7 +187,7 @@ function LootListSpec.should_sort_the_items_by_quality_and_then_name()
     { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Epic },
     { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Rare }
   )
-  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils, tooltip_reader )
   local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, new_softres() )
 
   -- When
@@ -229,7 +230,7 @@ function LootListSpec.should_count_items_properly_if_one_gets_removed()
     { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Epic },
     { texture = "tex", name = "item", quantity = 1, quality = LootQuality.Rare }
   )
-  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils )
+  local raw_loot_list = m.LootList.new( loot_facade, m.ItemUtils, tooltip_reader )
   local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, new_softres() )
 
   -- When

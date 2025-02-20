@@ -2,6 +2,7 @@ package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../Roll
 
 local lu = require( "luaunit" )
 local utils = require( "test/utils" )
+local _, item_utils = require( "src/modules" ), require( "src/ItemUtils" )
 
 local player = utils.player
 local leader = utils.raid_leader
@@ -9,6 +10,7 @@ local is_in_raid = utils.is_in_raid
 local loot_threshold = utils.loot_threshold
 local mock_blizzard_loot_buttons = utils.mock_blizzard_loot_buttons
 local LootQuality = utils.LootQuality
+local BindType = item_utils.BindType
 local r = utils.raid_message
 local master_looter = utils.master_looter
 local item = utils.item
@@ -113,6 +115,30 @@ function DroppedLootAnnounceIntegrationSpec:should_not_announce_badges_of_justic
     r( "Netherspite dropped 2 items:" ),
     r( "1. [Hearthstone]" ),
     r( "2. [Some item]" )
+  )
+end
+
+function DroppedLootAnnounceIntegrationSpec:should_announce_bop_items_even_below_threshold()
+  -- Given
+  master_looter( "Psikutas" )
+  targetting_enemy( "Netherspite" )
+  is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
+  utils.mock( "UnitGUID", "PrincessKenny_123" )
+  loot_threshold( LootQuality.Epic )
+  mock_blizzard_loot_buttons()
+
+  -- When
+  loot(
+    item( "Hearthstone", 123, LootQuality.Epic, BindType.BindOnPickup ),
+    item( "Breadstick of Annihilation", 222, LootQuality.Rare, BindType.BindOnPickup ),
+    item( "Breadstick of Slight Annoyance", 333, LootQuality.Common, BindType.BindOnPickup )
+  )
+
+  -- Then
+  m.chat.assert(
+    r( "Netherspite dropped 2 items:" ),
+    r( "1. [Hearthstone]" ),
+    r( "2. [Breadstick of Annihilation]" )
   )
 end
 

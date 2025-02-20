@@ -47,6 +47,7 @@ function M.mock_config( configuration )
   local config = configuration
 
   return {
+    auto_loot = function() return config and config.auto_loot end,
     auto_raid_roll = function() return config and config.auto_raid_roll end,
     raid_roll_again = function() return config and config.raid_roll_again end,
     rolling_popup_lock = function() return config and config.rolling_popup_lock end,
@@ -92,11 +93,12 @@ end
 ---@param sr_players RollingPlayer[]?
 ---@param hard_ressed boolean?
 ---@param quality number?
+---@param bind_type BindType?
 ---@return MasterLootDistributableItem
-function M.i( name, id, sr_players, hard_ressed, quality )
+function M.i( name, id, sr_players, hard_ressed, quality, bind_type )
   local l = u.item_link( name, id )
   local tooltip_link = IU.get_tooltip_link( l )
-  local item = IU.make_dropped_item( id or 123, name, l, tooltip_link, quality or 4 )
+  local item = IU.make_dropped_item( id or 123, name, l, tooltip_link, quality or 4, nil, nil, bind_type )
 
   if hard_ressed then
     return IU.make_hardres_dropped_item( item )
@@ -112,9 +114,10 @@ end
 ---@param name string
 ---@param id number?
 ---@param quality number?
+---@param bind_type BindType?
 ---@return MasterLootDistributableItem
-function M.qi( name, id, quality )
-  return M.i( name, id, nil, nil, quality )
+function M.qi( name, id, quality, bind_type )
+  return M.i( name, id, nil, nil, quality, bind_type )
 end
 
 function M.new_roll_for()
@@ -160,7 +163,14 @@ function M.new_roll_for()
     return self
   end
 
+  ---@param threshold number
+  function builder.loot_threshold( self, threshold )
+    u.loot_threshold( threshold )
+    return self
+  end
+
   function builder.build()
+    u.zone_name()
     u.loot_threshold( 2 )
     u.targetting_enemy( "Princess Kenny" )
 
@@ -268,10 +278,12 @@ function M.new_roll_for()
     local rolling_popup_content = require( "src/RollingPopupContentTransformer" ).new( config )
     deps[ "RollingPopupContent" ] = rolling_popup_content
 
+    local auto_loot = require( "mocks/AutoLoot" ).new( loot_list, u.modules().api, db( "auto_loot" ), config, player_info )
+    deps[ "AutoLoot" ] = auto_loot
+
     require( "src/RollResultAnnouncer" ).new( chat, roll_controller, config )
-    local auto_loot = require( "mocks/AutoLoot" ).new()
     local dropped_loot = require( "src/DroppedLoot" ).new( db( "dummy" ) )
-    local dropped_loot_announce = require( "src/DroppedLootAnnounce" ).new( loot_list, chat, dropped_loot, softres, winner_tracker, player_info )
+    local dropped_loot_announce = require( "src/DroppedLootAnnounce" ).new( loot_list, chat, dropped_loot, softres, winner_tracker, player_info, auto_loot )
     local auto_group_loot = require( "mocks/AutoGroupLoot" ).new()
     local loot_facade_listener = require( "src/LootFacadeListener" ).new(
       loot_facade,
@@ -293,6 +305,7 @@ function M.new_roll_for()
       confirmation_popup = confirmation_popup,
       player_selection = player_selection_frame,
       loot_list = loot_list, ---@type LootList
+      auto_loot = auto_loot, ---@type AutoLoot
       ace_timer = ace_timer,
       roll = rolling_logic.on_roll,
       reset_announcements = dropped_loot_announce.reset,

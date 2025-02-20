@@ -154,6 +154,7 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
       px, py = px / scale, py / scale
 
       ---@diagnostic disable-next-line: undefined-field
+      ---@diagnostic disable-next-line: deprecated
       persist_angle( math.mod( math.deg( math.atan2( py - my, px - mx ) ), 360 ) )
       self:UpdatePosition()
     end

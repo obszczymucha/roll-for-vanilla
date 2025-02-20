@@ -35,6 +35,10 @@ local function cleanse( t, ... )
   local field_names = { ... }
 
   return u.map( strip_functions_and_fields( t, field_names ), function( v )
+    if v.bind then
+      v.bind = u.decolorize( v.bind ) or v.bind
+    end
+
     if v.comment then
       v.comment = u.decolorize( v.comment ) or v.comment
     end

@@ -11,10 +11,17 @@ local grey = m.colors.grey
 local getn = table.getn
 
 local M = {}
+
+M.interface = {
+  on_loot_opened = "function",
+  loot_item = "function"
+}
+
 local button_visible = false
 local _G = getfenv( 0 )
 
 ---@class AutoLoot
+---@field is_auto_looted fun( item: DroppedItem ): boolean
 ---@field on_loot_opened fun()
 ---@field add fun( item_link: string )
 ---@field remove fun( item_link: string )
@@ -22,7 +29,7 @@ local _G = getfenv( 0 )
 ---@field loot_item fun( slot: number )
 
 ---@param loot_list LootList
----@param api table
+---@param api function
 ---@param db table
 ---@param config Config
 function M.new( loot_list, api, db, config, player_info )
@@ -40,17 +47,38 @@ function M.new( loot_list, api, db, config, player_info )
     end
   end
 
-  local function on_auto_loot()
-    if not player_info.is_master_looter() then
-      return
+  local function is_auto_looted( item )
+    if not config.auto_loot() then
+      return false
     end
 
     local zone_name = api().GetRealZoneText()
     local item_ids = items[ zone_name ] or {}
-    local threshold = m.api.GetLootThreshold()
+    local threshold = api().GetLootThreshold()
+
+    local quality = item.quality or 0
+
+    if item_ids[ item.id ] then
+      return true
+    end
+
+    if item.bind == item_utils.BindType.BindOnPickup or item.bind == item_utils.BindType.Quest then
+      return false
+    end
+
+    if quality < threshold then
+      return true
+    end
+
+    return false
+  end
+
+  local function on_auto_loot()
+    if not player_info.is_master_looter() or not config.auto_loot() then
+      return
+    end
 
     for _, item in ipairs( loot_list.get_items() ) do
-      local quality = item.quality or 0
       local slot = loot_list.get_slot( item.id )
 
       -- Looting coins is hidden under a secure button and cannot be done
@@ -65,11 +93,12 @@ function M.new( loot_list, api, db, config, player_info )
       end
 
       if item.id and slot then
-        if quality < threshold or config.auto_loot() and item_ids[ item.id ] then
+        if is_auto_looted( item ) then
           local index = find_my_candidate_index()
 
           if index then
             api().GiveMasterLoot( slot, index )
+            info( string.format( "Auto-looting %s.", item.link ) )
           end
         end
       end
@@ -177,6 +206,7 @@ function M.new( loot_list, api, db, config, player_info )
 
   ---@type AutoLoot
   return {
+    is_auto_looted = is_auto_looted,
     on_loot_opened = on_loot_opened,
     add = add,
     remove = remove,

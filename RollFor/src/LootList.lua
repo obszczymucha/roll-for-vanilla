@@ -17,8 +17,9 @@ local getn = table.getn
 
 ---@param loot_facade LootFacade
 ---@param item_utils ItemUtils
+---@param tooltip_reader TooltipReader
 ---@return LootList
-function M.new( loot_facade, item_utils, dummy_items_fn )
+function M.new( loot_facade, item_utils, tooltip_reader, dummy_items_fn )
   interface.validate( loot_facade, m.LootFacade.interface )
   interface.validate( item_utils, m.ItemUtils.interface )
 
@@ -63,6 +64,7 @@ function M.new( loot_facade, item_utils, dummy_items_fn )
         local item_id = link and item_utils.get_item_id( link )
         local item_name = link and item_utils.get_item_name( link )
         local tooltip_link = link and item_utils.get_tooltip_link( link )
+        local bind_type = slot and tooltip_reader.get_slot_bind_type( slot )
 
         if item_id and item_name then
           add_item( slot,
@@ -73,7 +75,8 @@ function M.new( loot_facade, item_utils, dummy_items_fn )
               tooltip_link,
               info and info.quality,
               info and info.quantity,
-              info and info.texture
+              info and info.texture,
+              bind_type
             ), item_count )
 
           item_count = item_count + 1

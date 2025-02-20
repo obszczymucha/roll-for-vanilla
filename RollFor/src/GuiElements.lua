@@ -365,6 +365,8 @@ function M.dropped_item( parent, text )
   container.quantity = create_text_in_container( "Frame", container.icon, 20, "CENTER", nil, "text" )
   container.quantity:SetPoint( "BOTTOMRIGHT", -2, -1 )
   container.quantity:SetHeight( 16 )
+  container.bind = create_text_in_container( "Frame", container, 15, "LEFT", nil, "text" )
+  container.bind:SetPoint( "LEFT", container.icon, "RIGHT", 5, 0 )
   container.comment = create_text_in_container( "Button", container, 20, "CENTER", nil, "text" )
   container.comment:SetPoint( "RIGHT", -4, 0 )
   container.comment:SetHeight( 16 )
@@ -379,7 +381,7 @@ function M.dropped_item( parent, text )
     container.text:SetJustifyH( "LEFT" )
 
     local comment_width = container.comment:IsVisible() and container.comment:GetWidth() + 7 or 0
-    container:SetWidth( container.index:GetWidth() + container.icon:GetWidth() + spacing + container.text:GetWidth() + 7 + comment_width )
+    container:SetWidth( container.index:GetWidth() + container.icon:GetWidth() + spacing + container.bind:GetWidth() + spacing + container.text:GetWidth() + 7 + comment_width )
     container:SetPoint( "LEFT", 0, 0 )
     container:SetPoint( "RIGHT", 0, 0 )
   end
@@ -436,17 +438,23 @@ function M.dropped_item( parent, text )
     container.index.text:SetText( v.index )
     container.icon.texture:SetTexture( v.texture )
     container.text:SetText( m.colorize_item_by_quality( v.name, v.quality ) )
+    container.text:ClearAllPoints()
+
+    if v.bind then
+      container.bind.text:SetText( v.bind )
+      container.bind:Show()
+      container.text:SetPoint( "LEFT", container.bind, "RIGHT", spacing, 0 )
+    else
+      container.bind:Hide()
+      container.text:SetPoint( "LEFT", container.icon, "RIGHT", spacing, 0 )
+    end
 
     if v.comment then
       container.comment.text:SetText( v.comment )
       container.comment:Show()
-      container.text:ClearAllPoints()
-      container.text:SetPoint( "LEFT", container.icon, "RIGHT", spacing, 0 )
       container.text:SetPoint( "RIGHT", container.comment, "LEFT", 0, 0 )
     else
       container.comment:Hide()
-      container.text:ClearAllPoints()
-      container.text:SetPoint( "LEFT", container.icon, "RIGHT", spacing, 0 )
       container.text:SetPoint( "RIGHT", container, "RIGHT", 0, 0 )
     end
 

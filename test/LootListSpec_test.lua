@@ -9,6 +9,8 @@ local gui = require( "test/gui_helpers" )
 local item_link, text, buttons = gui.item_link, gui.text, gui.buttons
 local enabled_item, disabled_item, selected_item = gui.enabled_item, gui.disabled_item, gui.selected_item
 local sr, hr = u.soft_res_item, u.hard_res_item
+local ItemUtils = require( "src/ItemUtils" )
+local boe, bop, quest = ItemUtils.BindType.BindOnEquip, ItemUtils.BindType.BindOnPickup, ItemUtils.BindType.Quest
 local individual_award_button = gui.individual_award_button
 local mock_random = u.mock_multiple_math_random
 
@@ -35,6 +37,61 @@ function LootListSpec:should_display_sr_tooltip()
   rf.loot_frame.should_display(
     enabled_item( 1, "Bag", "HR" ),
     enabled_item( 2, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas" } )
+  )
+end
+
+function LootListSpec:should_display_item_bind_type()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local p1, p2 = p( "Psikutas" ), p( "Obszczymucha" )
+  local boe_item = qi( "Bag", 123, 1, boe )
+  local bop_item = qi( "Dagger", 222, 1, bop )
+  local quest_item = qi( "Piece of Text", 400, 1, quest )
+
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2 )
+      :chat( chat )
+      :build()
+
+  -- Then
+  rf.loot_frame.should_be_hidden()
+
+  -- When
+  loot_facade.notify( "LootOpened", boe_item, bop_item, quest_item, coin_item )
+
+  -- Then
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Bag", nil, nil, "BoE" ),
+    enabled_item( 2, "Dagger", nil, nil, "BoP" ),
+    enabled_item( 3, "Piece of Text", nil, nil, "BoP" )
+  )
+end
+
+function LootListSpec:should_display_sr_tooltip_and_item_bind_type()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local p1, p2 = p( "Psikutas" ), p( "Obszczymucha" )
+  local i1 = qi( "Bag", 123, 1, bop )
+  local i2 = qi( "Sword", 222, 1, bop )
+
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2 )
+      :chat( chat )
+      :soft_res_data( hr( 222 ), sr( p1.name, 123 ), sr( p2.name, 123 ) )
+      :build()
+
+  -- Then
+  rf.loot_frame.should_be_hidden()
+
+  -- When
+  loot_facade.notify( "LootOpened", i1, i2 )
+
+  -- Then
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas" }, "BoP" ),
+    enabled_item( 2, "Sword", "HR", nil, "BoP" )
   )
 end
 

@@ -149,6 +149,7 @@ function M.mock_wow_api()
       SetBackdropBorderColor = function() end,
       SetFrameStrata = function() end,
       SetFrameLevel = function() end,
+      SetOwner = function() end,
       RegisterForClicks = function() end,
       RegisterForDrag = function() end,
       SetHighlightTexture = function() end,
@@ -191,6 +192,8 @@ function M.mock_wow_api()
       SetAutoFocus = function() end,
       SetFontObject = function() end,
       UpdateScrollChildRect = function() end,
+      ClearLines = function() end,
+      NumLines = function() return 0 end,
       SetText = function( self, text )
         self.text = text
         if self.OnTextChangedCallback then self.OnTextChangedCallback() end
@@ -216,7 +219,8 @@ function M.mock_wow_api()
       end,
       Click = function( self )
         if self.OnClickCallback then self:OnClickCallback() end
-      end
+      end,
+      SetLootItem = function() end,
     }
 
     if frame_name then _G[ frame_name ] = frame end
@@ -302,7 +306,6 @@ function M.mock_api()
   M.mock( "InCombatLockdown", false )
   M.mock( "UnitName", "Psikutas" )
   M.mock( "UnitClass", "Warrior" )
-  M.mock( "GetRealZoneText", "Elwynn Forest" )
   M.mock( "UnitIsPartyLeader", false )
 
   -- Loot Interface
@@ -312,6 +315,7 @@ function M.mock_api()
   M.mock( "LootSlotIsCoin" )
   M.mock( "GetNumLootItems" )
 
+  M.zone_name()
   M.loot_threshold( 2 )
   M.mock_loot_frame()
 end
@@ -597,6 +601,10 @@ function M.loot_threshold( threshold )
   M.mock( "GetLootThreshold", threshold )
 end
 
+function M.zone_name( zone )
+  M.mock( "GetRealZoneText", zone or "Elwynn Forest" )
+end
+
 function M.mock_blizzard_loot_buttons()
   for i = 1, M.modules().api.LOOTFRAME_NUMBUTTONS do
     local name = "LootButton" .. i
@@ -869,6 +877,7 @@ function M.load_real_stuff( req )
   r( "src/ArgsParser" )
   r( "src/RollResultAnnouncer" )
   r( "src/LootFacadeListener" )
+  r( "src/TooltipReader" )
   -- r( "Libs/LibDeflate/LibDeflate" )
   r( "src/Json" )
   r( "main" )
@@ -878,8 +887,8 @@ function M.rolling_finished()
   return M.console_message( string.format( "RollFor: Rolling for [%s] finished.", m_rolling_item_name ) )
 end
 
-function M.item( name, id, quality )
-  return { name = name, id = id, source_id = 123, quality = quality or 4, link = M.item_link( name, id ) }
+function M.item( name, id, quality, bind_type )
+  return { name = name, id = id, source_id = 123, quality = quality or 4, link = M.item_link( name, id ), bind = bind_type }
 end
 
 function M.targetting_enemy( name )

@@ -60,24 +60,27 @@ function M.empty_line( height ) return { type = "empty_line", height = height } 
 ---@param name string
 ---@param comment string?
 ---@param comment_tooltip string[]?
-function M.enabled_item( index, name, comment, comment_tooltip )
-  return { index = index, is_enabled = true, is_selected = false, name = name, comment = comment, comment_tooltip = comment_tooltip }
+---@param bind string?
+function M.enabled_item( index, name, comment, comment_tooltip, bind )
+  return { index = index, is_enabled = true, is_selected = false, name = name, comment = comment, comment_tooltip = comment_tooltip, bind = bind }
 end
 
 ---@param index number
 ---@param name string
 ---@param comment string?
 ---@param comment_tooltip string[]?
-function M.disabled_item( index, name, comment, comment_tooltip )
-  return { index = index, is_enabled = false, is_selected = false, name = name, comment = comment, comment_tooltip = comment_tooltip }
+---@param bind string?
+function M.disabled_item( index, name, comment, comment_tooltip, bind )
+  return { index = index, is_enabled = false, is_selected = false, name = name, comment = comment, comment_tooltip = comment_tooltip, bind = bind }
 end
 
 ---@param index number
 ---@param name string
 ---@param comment string?
 ---@param comment_tooltip string[]?
-function M.selected_item( index, name, comment, comment_tooltip )
-  return { index = index, is_enabled = true, is_selected = true, name = name, comment = comment, comment_tooltip = comment_tooltip }
+---@param bind string?
+function M.selected_item( index, name, comment, comment_tooltip, bind )
+  return { index = index, is_enabled = true, is_selected = true, name = name, comment = comment, comment_tooltip = comment_tooltip, bind = bind }
 end
 
 ---@param ... RollingPopupButtonType
