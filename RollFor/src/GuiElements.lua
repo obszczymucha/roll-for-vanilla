@@ -351,6 +351,7 @@ function M.dropped_item( parent, text )
   local w = 22
   local h = 22
   local spacing = 6
+  local bind_spacing = 3
   local mouse_down = false
   local icon_zoom = 1
 
@@ -381,7 +382,17 @@ function M.dropped_item( parent, text )
     container.text:SetJustifyH( "LEFT" )
 
     local comment_width = container.comment:IsVisible() and container.comment:GetWidth() + 7 or 0
-    container:SetWidth( container.index:GetWidth() + container.icon:GetWidth() + spacing + container.bind:GetWidth() + spacing + container.text:GetWidth() + 7 + comment_width )
+    local total_width = container.index:GetWidth() +
+        container.icon:GetWidth() + spacing +
+        container.bind:GetWidth() + spacing +
+        container.text:GetWidth() + 7 +
+        comment_width
+
+    if item.bind then
+      total_width = total_width + bind_spacing
+    end
+
+    container:SetWidth( total_width )
     container:SetPoint( "LEFT", 0, 0 )
     container:SetPoint( "RIGHT", 0, 0 )
   end
@@ -443,7 +454,7 @@ function M.dropped_item( parent, text )
     if v.bind then
       container.bind.text:SetText( v.bind )
       container.bind:Show()
-      container.text:SetPoint( "LEFT", container.bind, "RIGHT", spacing, 0 )
+      container.text:SetPoint( "LEFT", container.bind, "RIGHT", spacing + bind_spacing, 0 )
     else
       container.bind:Hide()
       container.text:SetPoint( "LEFT", container.icon, "RIGHT", spacing, 0 )

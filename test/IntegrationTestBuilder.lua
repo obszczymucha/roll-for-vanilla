@@ -13,6 +13,7 @@ local c, r, pm = u.console_message, u.raid_message, u.party_message ---@diagnost
 local cr, rw = u.console_and_raid_message, u.raid_warning ---@diagnostic disable-line: unused-local
 local C, RT, RS = T.PlayerClass, T.RollType, T.RollingStrategy ---@diagnostic disable-line: unused-local
 local make_player = T.make_player
+local BindType = IU.BindType
 
 u.mock_wow_api()
 
@@ -98,7 +99,7 @@ end
 function M.i( name, id, sr_players, hard_ressed, quality, bind_type )
   local l = u.item_link( name, id )
   local tooltip_link = IU.get_tooltip_link( l )
-  local item = IU.make_dropped_item( id or 123, name, l, tooltip_link, quality or 4, nil, nil, bind_type )
+  local item = IU.make_dropped_item( id or 123, name, l, tooltip_link, quality or 4, nil, nil, bind_type or BindType.None )
 
   if hard_ressed then
     return IU.make_hardres_dropped_item( item )

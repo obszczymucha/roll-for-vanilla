@@ -2,6 +2,7 @@ package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../Roll
 
 local u = require( "test/utils" )
 local lu, eq = u.luaunit( "assertEquals" )
+require( "src/modules" )
 local player, leader = u.player, u.raid_leader
 local is_in_raid = u.is_in_raid
 local c, r = u.console_message, u.raid_message
@@ -9,7 +10,7 @@ local cr, rw = u.console_and_raid_message, u.raid_warning
 local rolling_finished, rolling_not_in_progress = u.rolling_finished, u.rolling_not_in_progress
 local roll_for, roll, finish_rolling = u.roll_for, u.roll, u.finish_rolling
 local repeating_tick = u.repeating_tick
-local m, t, i = require( "src/modules" ), require( "src/Types" ), require( "src/ItemUtils" )
+local t, i = require( "src/Types" ), require( "src/ItemUtils" )
 local make_item_candidate, make_dropped_item = t.make_item_candidate, i.make_dropped_item
 local C = t.PlayerClass
 
