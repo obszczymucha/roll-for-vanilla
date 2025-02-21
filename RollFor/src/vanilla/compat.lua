@@ -36,10 +36,7 @@ end
 ---@return ItemQuality
 ---@return ItemTexture
 function M.get_item_quality_and_texture( api, item_id )
-  print("chuj")
   local _, _, quality, _, _, _, _, _, texture = api.GetItemInfo( item_id )
-  print(quality or "nil")
-  print(texture or "nil")
   return quality, texture
 end
 
@@ -70,4 +67,18 @@ end
 ---@param channel string
 function M.SendAddonMessage( api, prefix, message, channel )
   api.SendAddonMessage( prefix, message, channel )
+end
+
+---@param api table
+---@param f function
+function M.in_group_check( api, f )
+  ---@diagnostic disable-next-line: unused-vararg
+  return function( ... )
+    if not api.IsInGroup() then
+      M.chat.info( "Not in a group." )
+      return
+    end
+
+    f( unpack( arg ) )
+  end
 end

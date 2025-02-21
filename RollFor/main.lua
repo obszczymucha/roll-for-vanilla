@@ -447,15 +447,7 @@ local function is_rolling_check( f )
 end
 
 local function in_group_check( f )
-  ---@diagnostic disable-next-line: unused-vararg
-  return function( ... )
-    if not M.api().IsInGroup() then
-      M.chat.info( "Not in a group." )
-      return
-    end
-
-    f( unpack( arg ) )
-  end
+  return m.in_group_check( M.api(), f )
 end
 
 local function setup_storage()
