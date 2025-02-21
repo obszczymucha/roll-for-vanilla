@@ -182,6 +182,7 @@ end
 ---@field class string
 ---@field online boolean
 ---@field rolls number
+---@field sr_plus number
 ---@field type "RollingPlayer"
 
 ---@alias MakeRollingPlayerFn fun(
