@@ -87,5 +87,8 @@ src\LootFacadeListener.lua
 src\LootController.lua
 src\TooltipReader.lua
 src\UiReloadPopup.lua
+src\Sandbox.lua
+src\ModernLootFrameSkin.lua
+src\OgLootFrameSkin.lua
 
 main.lua

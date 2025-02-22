@@ -4,6 +4,8 @@ function M.new()
   ---@type FrameBuilder
   local builder = {
     name = function( self ) return self end,
+    type = function( self ) return self end,
+    parent = function( self ) return self end,
     height = function( self ) return self end,
     width = function( self ) return self end,
     point = function( self ) return self end,
@@ -17,6 +19,7 @@ function M.new()
     frame_style = function( self ) return self end,
     self_centered_anchor = function( self ) return self end,
     bg_file = function( self ) return self end,
+    edge_file = function( self ) return self end,
     backdrop_color = function( self ) return self end,
     movable = function( self ) return self end,
     on_drag_stop = function( self ) return self end,
@@ -50,7 +53,12 @@ function M.new()
         ClearAllPoints = function() end,
         IsVisible = function( self ) return self.visible end,
         resize = function() end,
-        GetName = function() return "PrincessKenny" end
+        GetName = function() return "PrincessKenny" end,
+        SetFrameStrata = function() end,
+        CreateTexture = function() return {} end,
+        SetNormalTexture = function() end,
+        SetPushedTexture = function() end,
+        CreateFontString = function() return {} end,
       }
     end
   }
