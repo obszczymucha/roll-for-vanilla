@@ -4,6 +4,8 @@ function M.new()
   ---@type FrameBuilder
   local builder = {
     name = function( self ) return self end,
+    type = function( self ) return self end,
+    parent = function( self ) return self end,
     height = function( self ) return self end,
     width = function( self ) return self end,
     point = function( self ) return self end,
@@ -17,6 +19,7 @@ function M.new()
     frame_style = function( self ) return self end,
     self_centered_anchor = function( self ) return self end,
     bg_file = function( self ) return self end,
+    edge_file = function( self ) return self end,
     backdrop_color = function( self ) return self end,
     movable = function( self ) return self end,
     on_drag_stop = function( self ) return self end,
@@ -26,6 +29,9 @@ function M.new()
     frame_level = function( self ) return self end,
     on_show = function( self ) return self end,
     scale = function( self ) return self end,
+    enable_mouse = function( self ) return self end,
+    strata = function( self ) return self end,
+    hidden = function( self ) return self end,
     build = function()
       ---@type Frame
       return {
@@ -38,6 +44,7 @@ function M.new()
         position = function() end,
         get_anchor_center = function() return {} end,
         get_anchor_point = function() return {} end,
+        get_point = function() return {} end,
         anchor = function() end,
         Show = function( self ) self.visible = true end,
         Hide = function( self ) self.visible = false end,
@@ -50,12 +57,26 @@ function M.new()
         ClearAllPoints = function() end,
         IsVisible = function( self ) return self.visible end,
         resize = function() end,
-        GetName = function() return "PrincessKenny" end
+        GetName = function() return "PrincessKenny" end,
+        SetFrameStrata = function() end,
+        CreateTexture = function() return {} end,
+        SetNormalTexture = function() end,
+        SetPushedTexture = function() end,
+        CreateFontString = function() return {} end,
+        SetScript = function() end,
+        GetTop = function() return 1 end,
+        GetBottom = function() return 1 end,
+        GetLeft = function() return 1 end,
+        GetRight = function() return 1 end,
+        SetHighlightTexture = function() end,
       }
     end
   }
 
   return builder
 end
+
+M.modern = M.new
+M.classic = M.new
 
 return M

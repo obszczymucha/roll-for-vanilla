@@ -11,8 +11,38 @@ local roll_for, roll = u.roll_for, u.roll
 local tick, repeating_tick = u.tick, u.repeating_tick
 local finish_rolling = u.finish_rolling
 
+local function mock_config()
+  return {
+    new = function()
+      return {
+        auto_raid_roll = function() return false end,
+        minimap_button_hidden = function() return false end,
+        minimap_button_locked = function() return false end,
+        subscribe = function() end,
+        rolling_popup_lock = function() return true end,
+        ms_roll_threshold = function() return 100 end,
+        os_roll_threshold = function() return 99 end,
+        tmog_roll_threshold = function() return 98 end,
+        roll_threshold = function()
+          return {
+            value = 100,
+            str = "/roll"
+          }
+        end,
+        auto_loot = function() return true end,
+        tmog_rolling_enabled = function() return true end,
+        rolling_popup = function() return true end,
+        raid_roll_again = function() return false end,
+        default_rolling_time_seconds = function() return 8 end,
+        classic_look = function() return true end
+      }
+    end
+  }
+end
+
 ---@type ModuleRegistry
 local module_registry = {
+  { module_name = "Config",  mock = mock_config },
   { module_name = "ChatApi", mock = "mocks/ChatApi", variable_name = "chat" }
 }
 

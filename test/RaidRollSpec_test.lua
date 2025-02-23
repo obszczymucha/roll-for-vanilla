@@ -76,7 +76,7 @@ function SingleWinnerRaidRollSpec:should_auto_raid_roll_if_no_one_rolled()
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     text( "Raid rolling...", 11 ),
-    empty_line( 5 )
+    empty_line( 0, -2 )
   )
 
   -- When
@@ -182,7 +182,7 @@ function SingleWinnerRaidRollSpec:should_raid_roll_if_no_one_rolled()
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     text( "Raid rolling...", 11 ),
-    empty_line( 5 )
+    empty_line( 0, -2 )
   )
 end
 
@@ -266,7 +266,7 @@ function SingleWinnerRaidRollSpec:should_auto_raid_roll_if_no_one_rolled_and_rep
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     text( "Raid rolling...", 11 ),
-    empty_line( 5 )
+    empty_line( 0, -2 )
   )
 
   -- When

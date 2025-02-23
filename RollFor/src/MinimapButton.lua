@@ -1,4 +1,3 @@
----@diagnostic disable-next-line: undefined-global
 RollFor = RollFor or {}
 local m = RollFor
 

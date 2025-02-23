@@ -157,7 +157,9 @@ function M.mock_wow_api()
           SetPoint = function() end,
           SetTexCoord = function() end,
           Show = function() end,
-          Hide = function() end
+          Hide = function() end,
+          SetBlendMode = function() end,
+          SetAllPoints = function() end,
         }
       end,
       SetWidth = function() end,
@@ -166,6 +168,7 @@ function M.mock_wow_api()
       GetHeight = function() return 100 end,
       SetScale = function() end,
       GetScale = function() return 1 end,
+      GetScript = function() end,
       GetFontString = function()
         return {
           SetPoint = function() end,
@@ -179,6 +182,7 @@ function M.mock_wow_api()
       SetMinResize = function() end,
       SetToplevel = function() end,
       EnableMouse = function() end,
+      SetAllPoints = function() end,
       SetNormalTexture = function() end,
       SetScrollChild = function() end,
       SetMultiLine = function() end,
@@ -188,6 +192,7 @@ function M.mock_wow_api()
       UpdateScrollChildRect = function() end,
       ClearLines = function() end,
       NumLines = function() return 0 end,
+      SetPushedTexture = function() end,
       SetText = function( self, text )
         self.text = text
         if self.OnTextChangedCallback then self.OnTextChangedCallback() end
@@ -208,7 +213,11 @@ function M.mock_wow_api()
           GetWidth = function() return 100 end,
           GetHeight = function() return 20 end,
           GetText = function() return "Font string text" end,
-          SetWidth = function() end
+          SetWidth = function() end,
+          SetNonSpaceWrap = function() end,
+          SetHeight = function() end,
+          SetJustifyH = function() end,
+          SetScale = function() end,
         }
       end,
       Click = function( self )
@@ -811,6 +820,7 @@ function M.load_real_stuff( req )
   r( "src/EventFrame" )
   r( "src/WowApi" )
   r( "src/PlayerInfo" )
+  r( "src/EventBus" )
   r( "src/ChatApi" )
   r( "src/Chat" )
   r( "src/Config" )
@@ -873,6 +883,11 @@ function M.load_real_stuff( req )
   r( "src/RollResultAnnouncer" )
   r( "src/LootFacadeListener" )
   r( "src/TooltipReader" )
+  r( "src/UiReloadPopup" )
+  r( "src/Sandbox" )
+  r( "src/GuiElements" )
+  r( "src/ModernLootFrameSkin" )
+  r( "src/OgLootFrameSkin" )
   -- r( "Libs/LibDeflate/LibDeflate" )
   r( "src/bcc/Json" )
   r( "main" )

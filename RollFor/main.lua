@@ -70,8 +70,26 @@ local function create_components()
 
   local db = m.Db.new( M.char_db )
 
+  ---@type EventBus
+  M.config_event_bus = m.EventBus.new()
+
   ---@type Config
-  M.config = m.Config.new( db( "config" ) )
+  M.config = m.Config.new( db( "config" ), M.config_event_bus )
+
+  local classic = M.config.classic_look()
+  local popup_bottom_margin, popup_bottom_button_margin = classic and 37 or 24, classic and 14 or 7
+  local popup_side_margin = classic and 50 or 35
+  local popup_builder_factory = classic and m.PopupBuilder.classic or m.PopupBuilder.modern
+
+  ---@type fun(): PopupBuilder
+  ---@param bottom_margin number?
+  ---@param side_margin number?
+  local function popup_builder( bottom_margin, side_margin )
+    return popup_builder_factory( m.FrameBuilder, bottom_margin or popup_bottom_margin, popup_bottom_button_margin, side_margin or popup_side_margin )
+  end
+
+  ---@type UiReloadPopup
+  M.ui_reload_popup = m.UiReloadPopup.new( popup_builder( classic and 37 or 27 ), M.config )
 
   M.api = function() return m.api end
 
@@ -156,7 +174,14 @@ local function create_components()
 
     ---@diagnostic disable-next-line: unused-local
     for i, item_id in ipairs( ids ) do
-      local name, tooltip_link, quality, _, _, _, _, _, texture = m.api.GetItemInfo( item_id )
+      local name, tooltip_link, quality, texture
+
+      if m.vanilla then
+        name, tooltip_link, quality, _, _, _, _, _, texture = m.api.GetItemInfo( item_id )
+      else
+        name, tooltip_link, quality, _, _, _, _, _, _, texture = m.api.GetItemInfo( item_id )
+      end
+
       local link = item_link( name, item_id, quality )
       local item = make_dropped_item( item_id, name, link, tooltip_link, quality, 1, texture, boe )
 
@@ -168,8 +193,11 @@ local function create_components()
     return result
   end
 
+  -- Enable this for testing in game. It will replace dropped items with the above.
+  local mock_items = false
+
   ---@type LootList
-  M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils, M.tooltip_reader ) --, get_dummy_items )
+  M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils, M.tooltip_reader, mock_items and get_dummy_items or nil )
 
   ---@type SoftResLootList
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
@@ -178,7 +206,7 @@ local function create_components()
   M.master_loot_candidates = m.MasterLootCandidates.new( M.api(), M.group_roster, M.raw_loot_list ) -- remove group_roster for testing (dummy candidates)
 
   ---@type MasterLootCandidateSelectionFrame
-  M.player_selection_frame = m.MasterLootCandidateSelectionFrame.new( M.config )
+  M.player_selection_frame = m.MasterLootCandidateSelectionFrame.new( m.FrameBuilder, M.config )
 
   local rolling_popup_db = db( "rolling_popup" )
 
@@ -187,24 +215,27 @@ local function create_components()
 
   ---@type RollingPopup
   M.rolling_popup = m.RollingPopup.new(
-    m.PopupBuilder.new( m.FrameBuilder ),
+    popup_builder(),
     rolling_popup_content_transformer,
     rolling_popup_db,
     M.config
   )
 
+  ---@type LootFrameSkin
+  local skin = M.config.classic_look() and m.OgLootFrameSkin.new( m.FrameBuilder ) or m.ModernLootFrameSkin.new( m.FrameBuilder )
+
   ---@type LootFrame
   M.loot_frame = m.LootFrame.new(
-    m.FrameBuilder,
+    skin,
     db( "loot_frame" ),
     M.config
   )
 
   ---@type LootAwardPopup
   M.loot_award_popup = m.LootAwardPopup.new(
-    m.PopupBuilder.new( m.FrameBuilder ),
-    rolling_popup_db,
-    m.RollingPopup.center_point
+    popup_builder( classic and 38 or 30, classic and 65 or 55 ),
+    M.config,
+    M.rolling_popup
   )
 
   ---@type RollController
@@ -330,6 +361,8 @@ local function create_components()
     M.roll_controller,
     M.player_info
   )
+
+  M.sandbox = m.Sandbox.new()
 end
 
 local function subscribe_for_component_events()
@@ -344,6 +377,10 @@ local function subscribe_for_component_events()
   M.new_group_event.subscribe( function()
     M.awarded_loot.clear()
     M.dropped_loot.clear()
+  end )
+
+  M.config_event_bus.subscribe( "config_change_requires_ui_reload", function()
+    M.ui_reload_popup.show()
   end )
 end
 
@@ -593,16 +630,6 @@ local function on_reset_dropped_loot_announce_command()
   M.dropped_loot_announce.reset()
 end
 
-local function test()
-  -- local f = M.raw_loot_list.get_items
-  local g = m.api.UnitName
-  m.api.UnitName = function( t ) return t == "target" and "Princess Kenny" or g( t ) end
-
-  M.loot_frame.show()
-  -- M.raw_loot_list.get_items = f
-  m.api.UnitName = g
-end
-
 local function setup_slash_commands()
   -- Roll For commands
   SLASH_RF1 = RollSlashCommand.NormalRoll
@@ -635,7 +662,7 @@ local function setup_slash_commands()
   M.api().SlashCmdList[ "SRO" ] = M.name_matcher.manual_match
 
   SLASH_RFT1 = "/rft"
-  M.api().SlashCmdList[ "RFT" ] = test
+  M.api().SlashCmdList[ "RFT" ] = M.sandbox.run
 
   --SLASH_DROPPED1 = "/DROPPED"
   --M.api().SlashCmdList[ "DROPPED" ] = simulate_loot_dropped

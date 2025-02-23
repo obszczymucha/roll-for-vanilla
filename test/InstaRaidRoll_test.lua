@@ -30,11 +30,11 @@ local function mock_config()
           }
         end,
         auto_loot = function() return true end,
-        show_rolling_tip = function() return true end,
         tmog_rolling_enabled = function() return true end,
         rolling_popup = function() return true end,
         raid_roll_again = function() return false end,
-        default_rolling_time_seconds = function() return 8 end
+        default_rolling_time_seconds = function() return 8 end,
+        classic_look = function() return false end
       }
     end
   }

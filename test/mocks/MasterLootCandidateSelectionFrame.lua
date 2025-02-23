@@ -9,10 +9,12 @@ local m = require( "src/modules" )
 ---@field should_be_hidden fun()
 ---@field should_display fun( ...: string )
 
-function M.new( config )
+---@param frame_builder FrameBuilderFactory
+---@param config Config
+function M.new( frame_builder, config )
   local m_candidates = nil ---@type MasterLootCandidate[]?
 
-  local real_frame = require( "src/MasterLootCandidateSelectionFrame" ).new( config )
+  local real_frame = require( "src/MasterLootCandidateSelectionFrame" ).new( frame_builder, config )
 
   ---@param candidates MasterLootCandidate[]
   local function show( candidates )

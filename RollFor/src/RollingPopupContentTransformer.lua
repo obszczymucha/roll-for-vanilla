@@ -65,8 +65,9 @@ function M.new( config )
 
   ---@param content table
   ---@param height number
-  local function add_empty_line( content, height )
-    table.insert( content, { type = "empty_line", height = height } )
+  ---@param padding number?
+  local function add_empty_line( content, height, padding )
+    table.insert( content, { type = "empty_line", height = height, padding = padding } )
   end
 
   ---@param content table
@@ -80,7 +81,8 @@ function M.new( config )
       link = item_link,
       tooltip_link = item_tooltip_link,
       texture = item_texture,
-      count = item_count
+      count = item_count,
+      padding = 5
     } )
   end
 
@@ -307,7 +309,7 @@ function M.new( config )
 
     add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count )
     add_text( content, "Raid rolling...", top_padding )
-    add_empty_line( content, 5 )
+    add_empty_line( content, config.classic_look() and 11 or 0, config.classic_look() and 0 or -2 )
 
     return content
   end

@@ -48,12 +48,12 @@ local mock_config = function( config )
           }
         end,
         auto_loot = function() return true end,
-        show_rolling_tip = function() return true end,
         tmog_rolling_enabled = function() return true end,
         rolling_popup = function() return true end,
         default_rolling_time_seconds = function() return 8 end,
         master_loot_frame_rows = function() return 5 end,
-        superwow_auto_loot_coins = function() return true end
+        superwow_auto_loot_coins = function() return true end,
+        classic_look = function() return false end,
       }
     end
   }

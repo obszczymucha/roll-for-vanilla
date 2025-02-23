@@ -53,7 +53,7 @@ function M.new( frame_builder, ace_timer, db )
         :width( 260 )
         :height( 28 )
         :bg_file( "Interface/Buttons/WHITE8x8" )
-        :frame_style( "PrincessKenny" )
+        :frame_style( "Modern" )
         :border_color( 0.125, 0.623, 0.976, 0.2 )
         :backdrop_color( 0, 0, 0, 0.7 )
 

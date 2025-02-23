@@ -5,6 +5,10 @@ if m.EventBus then return end
 
 local M = {}
 
+---@class EventBus
+---@field subscribe fun( event_name: string, callback: function )
+---@field notify fun( event_name: string, data: any? )
+
 function M.new()
   local subscribers = {}
 
@@ -23,6 +27,7 @@ function M.new()
     end
   end
 
+  ---@type EventBus
   return {
     subscribe = subscribe,
     notify = notify

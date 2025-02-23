@@ -66,6 +66,7 @@ function M.mock_config( configuration )
         str = "/roll"
       }
     end,
+    classic_look = function() return false end
   }
 end
 
@@ -216,14 +217,15 @@ function M.new_roll_for()
     deps[ "WinnerTracker" ] = winner_tracker
 
     local frame_builder = require( "mocks/FrameBuilder" )
-    local loot_frame = require( "mocks/LootFrame" ).new( frame_builder, db( "loot_frame" ), config )
+    local loot_frame_skin = require( "mocks/MockedLootFrameSkin" ).new( frame_builder )
+    local loot_frame = require( "mocks/LootFrame" ).new( loot_frame_skin, db( "loot_frame" ), config )
     local popup_builder = require( "mocks/PopupBuilder" )
     local rolling_popup = require( "mocks/RollingPopup" ).new( popup_builder.new(), db( "dummy" ), config )
 
     local confirmation_popup = require( "mocks/LootAwardPopup" ).new( nil )
     deps[ "LootAwardPopup" ] = confirmation_popup
 
-    local player_selection_frame = require( "mocks/MasterLootCandidateSelectionFrame" ).new( config )
+    local player_selection_frame = require( "mocks/MasterLootCandidateSelectionFrame" ).new( frame_builder, config )
     deps[ "PlayerSelectionFrame" ] = player_selection_frame
 
     local roll_controller = require( "src/RollController" ).new(

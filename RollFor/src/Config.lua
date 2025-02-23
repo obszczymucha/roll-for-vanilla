@@ -12,9 +12,15 @@ local RollType = m.Types.RollType
 
 local M = {}
 
+---@alias Expansion
+---| "Vanilla"
+---| "BCC"
+
 ---@alias Config table
 
-function M.new( db )
+---@param db table
+---@param event_bus EventBus
+function M.new( db, event_bus )
   local callbacks = {}
   local toggles = {
     [ "auto_loot" ] = { cmd = "auto-loot", display = "Auto-loot", help = "toggle auto-loot" },
@@ -27,6 +33,7 @@ function M.new( db )
     [ "auto_master_loot" ] = { cmd = "auto-master-loot", display = "Auto master loot", help = "toggle auto master loot" },
     [ "rolling_popup_lock" ] = { cmd = "rolling-popup-lock", display = "Rolling popup lock", help = "toggle rolling popup lock" },
     [ "raid_roll_again" ] = { cmd = "raid-roll-again", display = string.format( "%s button", hl( "Raid roll again" ) ), help = string.format( "toggle %s button", hl( "Raid roll again" ) ) },
+    [ "classic_look" ] = { cmd = "classic-look", display = "Classic look", help = "toggle classic look", requires_reload = true },
   }
 
   local function notify_subscribers( event, value )
@@ -69,6 +76,10 @@ function M.new( db )
       end
 
       print( toggle_key )
+
+      if toggles[ toggle_key ].requires_reload then
+        event_bus.notify( "config_change_requires_ui_reload", { key = toggle_key } )
+      end
     end
   end
 
@@ -92,6 +103,7 @@ function M.new( db )
   end
 
   local function print_transmog_rolling_setting( show_threshold )
+    if m.bcc then return end
     local tmog_rolling_enabled = db.tmog_rolling_enabled
     local threshold = show_threshold and tmog_rolling_enabled and string.format( " (%s)", hl( db.tmog_roll_threshold ) ) or ""
     info( string.format( "Transmog rolling is %s%s.", tmog_rolling_enabled and m.msg.enabled or m.msg.disabled, threshold ) )
@@ -222,8 +234,11 @@ function M.new( db )
     m.print( string.format( "%s %s - set MS rolling threshold ", rfc( "ms" ), v( "threshold" ) ) )
     m.print( string.format( "%s - show OS rolling threshold ", rfc( "os" ) ) )
     m.print( string.format( "%s %s - set OS rolling threshold ", rfc( "os" ), v( "threshold" ) ) )
-    m.print( string.format( "%s - toggle TMOG rolling", rfc( "tmog" ) ) )
-    m.print( string.format( "%s %s - set TMOG rolling threshold", rfc( "tmog" ), v( "threshold" ) ) )
+
+    if m.vanilla then
+      m.print( string.format( "%s - toggle TMOG rolling", rfc( "tmog" ) ) )
+      m.print( string.format( "%s %s - set TMOG rolling threshold", rfc( "tmog" ), v( "threshold" ) ) )
+    end
 
     for _, setting in pairs( toggles ) do
       if not setting.hidden then
@@ -352,7 +367,21 @@ function M.new( db )
 
   init()
 
-  local function get( setting_key ) return function() return db[ setting_key ] end end
+  ---@param setting_key string
+  ---@param expansion Expansion?
+  ---@param not_available_value any?
+  local function get( setting_key, expansion, not_available_value )
+    if expansion and (expansion == "Vanilla" and m.bcc or expansion == "BCC" and m.vanilla) then
+      return function()
+        return not_available_value
+      end
+    end
+
+    return function()
+      return db[ setting_key ]
+    end
+  end
+
   local function printfn( setting_key ) return function() print( setting_key ) end end
 
   local config = {
@@ -375,7 +404,7 @@ function M.new( db )
     show_minimap_button = show_minimap_button,
     subscribe = subscribe,
     tmog_roll_threshold = get( "tmog_roll_threshold" ),
-    tmog_rolling_enabled = get( "tmog_rolling_enabled" ),
+    tmog_rolling_enabled = get( "tmog_rolling_enabled", "Vanilla", false ),
     unlock_minimap_button = unlock_minimap_button,
     default_rolling_time_seconds = get( "default_rolling_time_seconds" ),
     master_loot_frame_rows = get( "master_loot_frame_rows" ),

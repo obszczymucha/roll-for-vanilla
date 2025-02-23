@@ -12,15 +12,45 @@ local roll_for, roll_for_raw         = u.roll_for, u.roll_for_raw
 local cancel_rolling, finish_rolling = u.cancel_rolling, u.finish_rolling
 local item_link                      = u.item_link
 
+local function mock_config()
+  return {
+    new = function()
+      return {
+        auto_raid_roll = function() return false end,
+        minimap_button_hidden = function() return false end,
+        minimap_button_locked = function() return false end,
+        subscribe = function() end,
+        rolling_popup_lock = function() return true end,
+        ms_roll_threshold = function() return 100 end,
+        os_roll_threshold = function() return 99 end,
+        tmog_roll_threshold = function() return 98 end,
+        roll_threshold = function()
+          return {
+            value = 100,
+            str = "/roll"
+          }
+        end,
+        auto_loot = function() return true end,
+        tmog_rolling_enabled = function() return true end,
+        rolling_popup = function() return true end,
+        raid_roll_again = function() return false end,
+        default_rolling_time_seconds = function() return 8 end,
+        classic_look = function() return true end
+      }
+    end
+  }
+end
+
 ---@type ModuleRegistry
-local module_registry                = {
+local module_registry = {
+  { module_name = "Config",  mock = mock_config },
   { module_name = "ChatApi", mock = "mocks/ChatApi", variable_name = "chat" }
 }
 
 -- The modules will be injected here using the above module_registry.
-local m                              = {}
+local m               = {}
 
-GenericSpec                          = {}
+GenericSpec           = {}
 
 function GenericSpec:should_load_roll_for()
   -- When

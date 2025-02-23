@@ -21,7 +21,7 @@ local getn = m.getn
 ---@field bg_file fun( self: PopupBuilder, bg_file: string ): PopupBuilder
 ---@field esc fun( self: PopupBuilder ): PopupBuilder
 ---@field gui_elements fun( self: PopupBuilder, gui_elements: table ): PopupBuilder
----@field frame_style fun( self: PopupBuilder, frame_style: string ): PopupBuilder
+---@field frame_style fun( self: PopupBuilder, frame_style: FrameStyle ): PopupBuilder
 ---@field on_drag_stop fun( self: PopupBuilder, callback: function ): PopupBuilder
 ---@field movable fun( self: PopupBuilder ): PopupBuilder
 ---@field border_size fun( self: PopupBuilder, border_size: number ): PopupBuilder
@@ -30,17 +30,23 @@ local getn = m.getn
 ---@field border_color fun( self: PopupBuilder, r: number, g: number, b: number, a: number ): PopupBuilder
 ---@field self_centered_anchor fun( self: PopupBuilder ): PopupBuilder
 ---@field scale fun( self: PopupBuilder, scale: number ): PopupBuilder
+---@field strata fun( self: PopupBuilder, strata: FrameStrata ): PopupBuilder
 ---@field build fun( self: PopupBuilder ): Popup
 
 ---@param frame_builder FrameBuilderFactory
-function M.new( frame_builder )
-  local button_padding = 10
-  local bottom_margin = 30
+---@param bottom_margin number?
+---@param bottom_button_margin number?
+---@param side_margin number?
+local function new( frame_builder, bottom_margin, bottom_button_margin, side_margin )
+  local m_button_padding = 10
+  local m_bottom_button_margin = bottom_button_margin or 8
+  local m_bottom_margin = bottom_margin or (30 + m_bottom_button_margin)
+  local m_side_margin = side_margin or 35
 
   local function align_buttons( popup, lines )
     if not popup.buttons_frame then
       local frame = m.api.CreateFrame( "Frame", nil, popup )
-      frame:SetPoint( "BOTTOM", 0, 8 )
+      frame:SetPoint( "BOTTOM", 0, m_bottom_button_margin )
       popup.buttons_frame = frame
     end
 
@@ -61,8 +67,8 @@ function M.new( frame_builder )
       if not last_anchor then
         frame:SetPoint( "LEFT", popup.buttons_frame, "LEFT", 0, 0 )
       else
-        frame:SetPoint( "LEFT", last_anchor, "RIGHT", button_padding, 0 )
-        total_width = total_width + (button_padding * scale)
+        frame:SetPoint( "LEFT", last_anchor, "RIGHT", m_button_padding, 0 )
+        total_width = total_width + (m_button_padding * scale)
       end
 
       total_width = total_width + (width * scale)
@@ -103,7 +109,7 @@ function M.new( frame_builder )
 
     local buttons = m.filter( lines, function( line ) return line.line_type == "button" end )
     local button_count = getn( buttons )
-    local button_width = get_total_width( buttons ) + (button_count - 1) * button_padding
+    local button_width = get_total_width( buttons ) + (button_count - 1) * m_button_padding
 
     if button_width > max_width then max_width = button_width end
 
@@ -111,8 +117,10 @@ function M.new( frame_builder )
       height = height + 23
     end
 
-    popup:SetWidth( max_width + 35 )
-    popup:SetHeight( height + (button_count > 0 and bottom_margin or 23) )
+    popup:SetWidth( max_width + m_side_margin )
+
+
+    popup:SetHeight( height + (button_count > 0 and m_bottom_margin or 23) )
 
     align_buttons( popup, lines )
   end
@@ -129,6 +137,30 @@ function M.new( frame_builder )
   end
 
   return decoratee
+end
+
+---@param frame_builder FrameBuilderFactory
+---@param bottom_margin number?
+---@param bottom_button_margin number?
+---@param side_margin number?
+function M.modern( frame_builder, bottom_margin, bottom_button_margin, side_margin )
+  local builder = new( frame_builder, bottom_margin, bottom_button_margin, side_margin )
+      :frame_style( "Modern" )
+      :backdrop_color( 0, 0, 0, 0.6 )
+
+  return builder
+end
+
+---@param frame_builder FrameBuilderFactory
+---@param bottom_margin number?
+---@param bottom_button_margin number?
+---@param side_margin number?
+function M.classic( frame_builder, bottom_margin, bottom_button_margin, side_margin )
+  local builder = new( frame_builder, bottom_margin, bottom_button_margin, side_margin )
+      :frame_style( "Classic" )
+      :border_size( 25 )
+
+  return builder
 end
 
 m.PopupBuilder = M

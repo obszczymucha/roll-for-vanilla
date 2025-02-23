@@ -8,8 +8,9 @@ local RT = T.RollType
 
 ---@param item DroppedItem
 ---@param item_count number
-function M.item_link( item, item_count )
-  return { type = "item_link_with_icon", link = item.link, tooltip_link = item.tooltip_link, count = item_count }
+---@param padding number?
+function M.item_link( item, item_count, padding )
+  return { type = "item_link_with_icon", link = item.link, tooltip_link = item.tooltip_link, count = item_count, padding = padding or 5 }
 end
 
 ---@param player Player
@@ -54,7 +55,8 @@ end
 function M.text( message, padding ) return { type = "text", value = message, padding = padding } end
 
 ---@param height number
-function M.empty_line( height ) return { type = "empty_line", height = height } end
+---@param padding number?
+function M.empty_line( height, padding ) return { type = "empty_line", height = height, padding = padding } end
 
 ---@param index number
 ---@param name string

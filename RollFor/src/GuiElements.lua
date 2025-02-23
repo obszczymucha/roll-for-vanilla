@@ -18,10 +18,10 @@ local hl = m.colors.hl
 
 local M = {}
 
-local function create_text_in_container( type, parent, container_width, alignment, text, inner_field )
+function M.create_text_in_container( type, parent, container_width, alignment, text, inner_field, font_type )
   local container = m.create_backdrop_frame( m.api, type, nil, parent )
   container:SetWidth( container_width )
-  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+  local label = container:CreateFontString( nil, "ARTWORK", font_type or "GameFontNormalSmall" )
 
   label:SetTextColor( 1, 1, 1 )
   if text then label:SetText( text ) end
@@ -46,7 +46,7 @@ function M.empty_line( parent )
 end
 
 function M.item_link_with_icon( parent, text )
-  local container = create_text_in_container( "Button", parent, 20, nil, nil, "text" )
+  local container = M.create_text_in_container( "Button", parent, 20, nil, nil, "text" )
 
   local w = 14
   local h = 14
@@ -174,7 +174,7 @@ function M.icon( parent, show, width, height )
 end
 
 function M.icon_text( parent, text )
-  local container = create_text_in_container( "Button", parent, 20, nil, nil, "text" )
+  local container = M.create_text_in_container( "Button", parent, 20, nil, nil, "text" )
 
   container:SetPoint( "CENTER", 0, 0 )
   container.icon = M.icon( container, true )
@@ -245,7 +245,7 @@ function M.roll( parent )
 
   frame:EnableMouse( true )
 
-  local roll_container = create_text_in_container( "Button", frame, 35, "RIGHT" )
+  local roll_container = M.create_text_in_container( "Button", frame, 35, "RIGHT" )
   roll_container:SetPoint( "LEFT", 0, 0 )
   frame.roll = roll_container.inner
 
@@ -260,7 +260,7 @@ function M.roll( parent )
   player_name:SetPoint( "CENTER", frame, "CENTER", 0, 0 )
   frame.player_name = player_name
 
-  local roll_type_container = create_text_in_container( "Button", frame, 37, "LEFT" )
+  local roll_type_container = M.create_text_in_container( "Button", frame, 37, "LEFT" )
   roll_type_container:SetPoint( "RIGHT", 0, 0 )
   frame.roll_type = roll_type_container.inner
 
@@ -327,7 +327,7 @@ function M.info( parent )
   return frame
 end
 
-local function create_icon_in_container( type, parent, w, h, icon_zoom )
+function M.create_icon_in_container( type, parent, w, h, icon_zoom )
   local result = m.create_backdrop_frame( m.api, type or "Button", nil, parent )
   result:SetWidth( w + 1 )
   result:SetHeight( h )
@@ -349,258 +349,6 @@ local function create_icon_in_container( type, parent, w, h, icon_zoom )
   result.texture:SetTexCoord( icon_zoom / w, (w - icon_zoom) / w, icon_zoom / h, (h - icon_zoom) / h )
 
   return result
-end
-
----@param parent Frame
-function M.dropped_item( parent )
-  local container = m.create_loot_button( m.api, parent )
-
-  local w = 22
-  local h = 22
-  local spacing = 6
-  local bind_spacing = 3
-  local mouse_down = false
-  local icon_zoom = 2
-
-  local item
-
-  container:SetHeight( h )
-  container.name = create_text_in_container( "Frame", container, 20, "LEFT", nil, "text" )
-  container.name.text:SetJustifyH( "LEFT" )
-  container.name.text:SetTextColor( 1, 1, 1 )
-  container.index = create_text_in_container( "Frame", container, 20, "CENTER", nil, "text" )
-  container.index:SetPoint( "LEFT", 1, 0 )
-  container.index:SetWidth( 16 )
-  container.index:SetHeight( h )
-  container.icon = create_icon_in_container( "Button", container, w, h, icon_zoom )
-  container.icon:SetPoint( "LEFT", container.index, "RIGHT", 2, 0 )
-  container.quantity = create_text_in_container( "Frame", container.icon, 20, "CENTER", nil, "text" )
-  container.quantity:SetPoint( "BOTTOMRIGHT", -2, -1 )
-  container.quantity:SetHeight( 16 )
-  container.bind = create_text_in_container( "Frame", container, 15, "LEFT", nil, "text" )
-  container.bind:SetPoint( "LEFT", container.icon, "RIGHT", 5, 0 )
-  container.comment = create_text_in_container( "Button", container, 20, "CENTER", nil, "text" )
-  container.comment:SetPoint( "RIGHT", -4, 0 )
-  container.comment:SetHeight( 16 )
-
-  local function resize()
-    container.icon:Show()
-
-    local index_width = container.index:GetWidth() + 1
-    local icon_width = container.icon:GetWidth() + spacing
-    local bind_width = item.bind and (container.bind:GetWidth() + bind_spacing) or 0
-    local text_width = container.name.text:GetStringWidth() + spacing + 1
-    local comment_width = container.comment:IsVisible() and container.comment:GetWidth() + spacing or 0
-
-    local total_width = index_width + icon_width + bind_width + text_width + comment_width
-
-    container:SetWidth( total_width )
-    container:SetPoint( "LEFT", 0, 0 )
-    container:SetPoint( "RIGHT", 0, 0 )
-  end
-
-  local function get_color( multiplier )
-    local mult = multiplier or 1
-    local color = m.api.ITEM_QUALITY_COLORS[ item.quality or 0 ]
-    return color.r * mult, color.g * mult, color.b * mult
-  end
-
-  local function hovered_color()
-    if not item then return end
-    if item.is_selected then return end
-    local r, g, b = get_color()
-    container:SetBackdropColor( r, g, b, 0.3 )
-  end
-
-  local function clicked_color()
-    local r, g, b = get_color()
-    container:SetBackdropColor( r, g, b, 0.4 )
-  end
-
-  local function selected_color()
-    if not item then return end
-    local r, g, b = get_color()
-    container:SetBackdropColor( r, g, b, 0.3 )
-  end
-
-  local function not_hovered_color()
-    if not item or item.is_selected then return end
-    container:SetBackdropColor( 0, 0, 0, 0.1 )
-  end
-
-  local function update()
-    if not item then return end
-
-    if not item.is_enabled then
-      container:SetAlpha( 0.6 )
-      return
-    end
-
-    if item.is_selected then
-      selected_color()
-    else
-      not_hovered_color()
-    end
-
-    container:SetAlpha( 1 )
-  end
-
-  ---@param v LootFrameItem
-  container.SetItem = function( _, v )
-    item = v
-    container.index.text:SetText( v.index )
-    container.icon.texture:SetTexture( v.texture )
-    container.name.text:SetText( m.colorize_item_by_quality( v.name, v.quality ) )
-
-    if v.bind then
-      container.bind.text:SetText( v.bind )
-      container.bind:SetWidth( container.bind.text:GetStringWidth() )
-      container.bind:Show()
-      container.name:SetPoint( "LEFT", container.bind, "RIGHT", bind_spacing, 0 )
-    else
-      container.bind:Hide()
-      container.name:SetPoint( "LEFT", container.icon, "RIGHT", spacing, 0 )
-    end
-
-    if v.comment then
-      container.comment.text:SetText( v.comment )
-      container.comment:Show()
-      container.name:SetPoint( "RIGHT", container.comment, "LEFT", 0, 0 )
-    else
-      container.comment:Hide()
-      container.name:SetPoint( "RIGHT", container, "RIGHT", 0, 0 )
-    end
-
-    if v.quantity and v.quantity > 1 then
-      container.quantity:Show()
-      container.quantity.text:SetText( v.quantity )
-      container.quantity:SetWidth( container.quantity.text:GetStringWidth() )
-    else
-      container.quantity:Hide()
-    end
-
-    local function modifier_fn()
-      if m.is_ctrl_key_down() then
-        m.api.DressUpItemLink( v.link )
-        return
-      end
-
-      if m.is_shift_key_down() then
-        m.link_item_in_chat( v.link )
-        return
-      end
-    end
-
-    container:SetScript( "OnClick", v.is_enabled and not v.is_selected and v.click_fn or modifier_fn )
-    container.icon:SetScript( "OnClick", v.is_enabled and not v.is_selected and v.click_fn or modifier_fn )
-    container.comment:SetScript( "OnClick", v.is_enabled and not v.is_selected and v.click_fn or modifier_fn )
-
-    if m.vanilla then
-      -- Fucking hell this took forever to figure out. Fuck you Blizzard.
-      -- For looting to work in vanilla, the frame must be of a "LootButton" type and
-      -- then it comes with the SetSlot function that we need to use to set the slot.
-      -- This will probably be a pain in the ass when porting.
-      container:SetSlot( v.slot or 0 )
-    end
-
-    update()
-    resize()
-  end
-
-  local function on_enter( self )
-    if m.vanilla then self = this end
-
-    if not item then return end
-    if item.tooltip_link then
-      m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
-      m.api.GameTooltip:SetHyperlink( item.tooltip_link )
-      m.api.GameTooltip:Show()
-    end
-
-    if not item.is_enabled then return end
-    hovered_color()
-  end
-
-  container:SetBackdrop( {
-    bgFile = "Interface/Buttons/WHITE8x8",
-    tile = false,
-    tileSize = 0,
-  } )
-
-  not_hovered_color()
-
-  local function on_leave()
-    m.api.GameTooltip:Hide()
-    mouse_down = false
-    not_hovered_color()
-  end
-
-  container.comment:SetScript( "OnEnter", function( self )
-    if not item then return end
-    if item.comment_tooltip then
-      if m.vanilla then self = this end
-
-      self.tooltip_scale = m.api.GameTooltip:GetScale()
-      m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
-
-      local result = ""
-
-      for _, line in ipairs( item.comment_tooltip ) do
-        if result ~= "" then result = result .. "\n" end
-        result = result .. line
-      end
-
-      m.api.GameTooltip:AddLine( result, 1, 1, 1 )
-      m.api.GameTooltip:SetScale( 0.9 )
-      m.api.GameTooltip:Show()
-    end
-
-    if not item.is_enabled then return end
-    hovered_color()
-  end )
-
-  container.comment:SetScript( "OnLeave", function( self )
-    if m.vanilla then self = this end
-
-    m.api.GameTooltip:Hide()
-    m.api.GameTooltip:SetScale( self.tooltip_scale or 1 )
-    mouse_down = false
-
-    not_hovered_color()
-  end )
-
-  container.icon:SetScript( "OnEnter", on_enter )
-  container.icon:SetScript( "OnLeave", on_leave )
-
-  container:SetScript( "OnEnter", on_enter )
-  container:SetScript( "OnLeave", on_leave )
-
-  local function on_mouse_down()
-    if not item then return end
-    if not item.is_enabled or item.is_selected then return end
-
-    mouse_down = true
-    clicked_color()
-  end
-
-  local function on_mouse_up()
-    if not item then return end
-    if not item.is_enabled or item.is_selected then return end
-
-    if not mouse_down then return end
-    hovered_color()
-  end
-
-  container:SetScript( "OnMouseUp", on_mouse_up )
-  container:SetScript( "OnMouseDown", on_mouse_down )
-  container.icon:SetScript( "OnMouseUp", on_mouse_up )
-  container.icon:SetScript( "OnMouseDown", on_mouse_down )
-
-  container:SetScript( "OnShow", function()
-    mouse_down = false
-  end )
-
-  return container
 end
 
 m.GuiElements = M

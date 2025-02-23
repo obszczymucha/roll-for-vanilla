@@ -48,7 +48,7 @@ function PreviewNotSoftRessedItemSpec:should_display_close_button_that_closes_th
     disabled_item( 2, "Hearthstone" )
   )
   rf.rolling_popup.should_display(
-    item_link( item2, 1 ),
+    item_link( item2, 1, 5 ),
     buttons( "Roll", "InstaRaidRoll", "AwardOther", "Close" )
   )
 
@@ -286,7 +286,7 @@ function PreviewSoftResWinnersSpec:should_display_close_button_that_closes_the_p
   chat.party( "Princess Kenny dropped 1 item:" )
   chat.party( "1. [Hearthstone] (SR by Psikutas)" )
   rf.loot_frame.should_display(
-    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   rf.rolling_popup.should_be_hidden()
 
@@ -295,7 +295,7 @@ function PreviewSoftResWinnersSpec:should_display_close_button_that_closes_the_p
 
   -- Then
   rf.loot_frame.should_display(
-    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   rf.rolling_popup.should_display(
     item_link( item, 1 ),
@@ -309,7 +309,7 @@ function PreviewSoftResWinnersSpec:should_display_close_button_that_closes_the_p
   -- Then
   rf.rolling_popup.should_be_hidden()
   rf.loot_frame.should_display(
-    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
 end
 
@@ -337,7 +337,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_displa
   chat.party( "Princess Kenny dropped 1 item:" )
   chat.party( "1. [Hearthstone] (SR by Psikutas)" )
   rf.loot_frame.should_display(
-    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   rf.rolling_popup.should_be_hidden()
 
@@ -346,7 +346,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_displa
 
   -- Then
   rf.loot_frame.should_display(
-    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   rf.rolling_popup.should_display( table.unpack( rolling_popup_content ) )
 
@@ -388,7 +388,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } ),
+    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } ),
     enabled_item( 2, "Bag" )
   )
   chat.party( "Princess Kenny dropped 2 items:" )
@@ -401,7 +401,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
 
   -- Then
   rf.loot_frame.should_display(
-    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } ),
+    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } ),
     disabled_item( 2, "Bag" )
   )
   rf.rolling_popup.should_display( table.unpack( rolling_popup_content ) )
@@ -443,8 +443,8 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-    enabled_item( 2, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+    enabled_item( 2, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   chat.party( "Princess Kenny dropped 2 items:" )
   chat.party( "1. [Hearthstone] (SR by Obszczymucha)" )
@@ -456,8 +456,8 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
 
   -- Then
   rf.loot_frame.should_display(
-    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-    selected_item( 2, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+    selected_item( 2, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   rf.confirmation_popup.should_be_hidden()
   rf.rolling_popup.should_display(
@@ -483,7 +483,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
   -- Then
   chat.console( "RollFor: Obszczymucha received [Hearthstone]." )
   rf.loot_frame.should_display(
-    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   rf.confirmation_popup.should_be_hidden()
   rf.rolling_popup.should_display(
@@ -526,8 +526,8 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-    enabled_item( 2, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+    enabled_item( 2, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   chat.party( "Princess Kenny dropped 2 items:" )
   chat.party( "1. [Hearthstone] (SR by Obszczymucha)" )
@@ -539,8 +539,8 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
 
   -- Then
   rf.loot_frame.should_display(
-    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-    selected_item( 2, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+    selected_item( 2, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   rf.confirmation_popup.should_be_hidden()
   rf.rolling_popup.should_display(
@@ -566,7 +566,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
   -- Then
   chat.console( "RollFor: Obszczymucha received [Hearthstone]." )
   rf.loot_frame.should_display(
-    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   rf.confirmation_popup.should_be_hidden()
   rf.rolling_popup.should_display(
@@ -581,7 +581,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
   -- Then
   rf.rolling_popup.should_be_hidden()
   rf.loot_frame.should_display(
-    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
 
   -- When
@@ -589,7 +589,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_buttons_and_award
 
   -- Then
   rf.loot_frame.should_display(
-    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   rf.confirmation_popup.should_be_hidden()
   rf.rolling_popup.should_display(
@@ -632,8 +632,8 @@ function PreviewSoftResWinnersSpec:should_display_award_other_button_and_award_j
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-    enabled_item( 2, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+    enabled_item( 2, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   chat.party( "Princess Kenny dropped 2 items:" )
   chat.party( "1. [Hearthstone] (SR by Obszczymucha)" )
@@ -645,8 +645,8 @@ function PreviewSoftResWinnersSpec:should_display_award_other_button_and_award_j
 
   -- Then
   rf.loot_frame.should_display(
-    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-    selected_item( 2, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+    selected_item( 2, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   rf.confirmation_popup.should_be_hidden()
   rf.rolling_popup.should_display(
@@ -714,7 +714,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   chat.party( "Princess Kenny dropped 1 item:" )
   chat.party( "1. [Hearthstone] (SR by Psikutas)" )
@@ -725,7 +725,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
 
   -- Then
   rf.loot_frame.should_display(
-    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   rf.confirmation_popup.should_be_hidden()
   rf.rolling_popup.should_display( table.unpack( rolling_popup_content ) )
@@ -765,7 +765,7 @@ function PreviewSoftRessedItemSpec:should_display_close_button_that_closes_the_p
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas [2 rolls]" } )
+    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas [2 rolls]" } )
   )
   chat.party( "Princess Kenny dropped 1 item:" )
   chat.party( "1. [Hearthstone] (SR by Obszczymucha and Psikutas [2 rolls])" )
@@ -776,7 +776,7 @@ function PreviewSoftRessedItemSpec:should_display_close_button_that_closes_the_p
 
   -- Then
   rf.loot_frame.should_display(
-    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas [2 rolls]" } )
+    selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas [2 rolls]" } )
   )
   rf.confirmation_popup.should_be_hidden()
   rf.rolling_popup.should_display(
@@ -793,7 +793,7 @@ function PreviewSoftRessedItemSpec:should_display_close_button_that_closes_the_p
   -- Then
   rf.rolling_popup.should_be_hidden()
   rf.loot_frame.should_display(
-    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas [2 rolls]" } )
+    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas [2 rolls]" } )
   )
 end
 
@@ -813,7 +813,7 @@ function PreviewSoftRessedItemSpec:should_display_roll_button_that_starts_rollin
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas [2 rolls]" } )
+    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas [2 rolls]" } )
   )
   chat.party( "Princess Kenny dropped 1 item:" )
   chat.party( "1. [Hearthstone] (SR by Obszczymucha and Psikutas [2 rolls])" )
@@ -855,7 +855,7 @@ function PreviewSoftRessedItemSpec:should_display_roll_button_that_starts_rollin
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas [2 rolls]" } )
+    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas [2 rolls]" } )
   )
   chat.raid( "Princess Kenny dropped 1 item:" )
   chat.raid( "1. [Hearthstone] (SR by Obszczymucha and Psikutas [2 rolls])" )
@@ -897,8 +897,8 @@ function PreviewSoftRessedItemSpec:should_reset_the_preview_if_loot_was_closed_a
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-    enabled_item( 2, "Hearthstone", "SR", { "Soft-ressed by:", "Psikutas" } )
+    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+    enabled_item( 2, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   chat.raid( "Princess Kenny dropped 2 items:" )
   chat.raid( "1. [Hearthstone] (SR by Obszczymucha)" )
@@ -925,7 +925,7 @@ function PreviewSoftRessedItemSpec:should_reset_the_preview_if_loot_was_closed_a
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas [2 rolls]" } )
+    enabled_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas [2 rolls]" } )
   )
   rf.rolling_popup.should_be_hidden()
 

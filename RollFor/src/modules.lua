@@ -719,4 +719,36 @@ function M.one_line_coin_name( coin_name )
   return string.gsub( coin_name or "", "\n", ", " )
 end
 
+---@param color RgbaColor
+---@param value number
+function M.brighten( color, value )
+  local function clamp( v )
+    return math.min( 255, math.max( 0, v ) )
+  end
+
+  return { r = clamp( color.r + value ), g = clamp( color.g + value ), b = clamp( color.b + value ), color.a }
+end
+
+---@return RgbaColor
+function M.get_popup_border_color( quality )
+  local color = M.api.ITEM_QUALITY_COLORS[ quality ] or { r = 0, g = 0, b = 0, a = 1 }
+
+  local multiplier = 0.5
+  local alpha = 0.6
+  local c = { r = color.r * multiplier, g = color.g * multiplier, b = color.b * multiplier, a = alpha }
+
+  return c
+end
+
+---@param frame Frame
+function M.is_frame_out_of_bounds( frame )
+  local scale = M.api.UIParent:GetScale()
+  local screen_width, screen_height = M.api.GetScreenWidth() * scale, M.api.GetScreenHeight() * scale
+
+  return frame:GetTop() > screen_height or
+      frame:GetBottom() < 0 or
+      frame:GetLeft() < 0 or
+      frame:GetRight() > screen_width or false
+end
+
 return M

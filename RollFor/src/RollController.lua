@@ -105,17 +105,6 @@ function M.new(
   ---@field b number
   ---@field a number
 
-  ---@return RgbaColor
-  local function get_color( quality )
-    local color = m.api.ITEM_QUALITY_COLORS[ quality ] or { r = 0, g = 0, b = 0, a = 1 }
-
-    local multiplier = 0.5
-    local alpha = 0.6
-    local c = { r = color.r * multiplier, g = color.g * multiplier, b = color.b * multiplier, a = alpha }
-
-    return c
-  end
-
   ---@class AwardConfirmedData
   ---@field player ItemCandidate|Winner
   ---@field item MasterLootDistributableItem
@@ -371,7 +360,8 @@ function M.new(
         player_selection_frame.show( players )
         local frame = player_selection_frame.get_frame()
         frame:ClearAllPoints()
-        frame:SetPoint( "TOP", rolling_popup.get_frame(), "BOTTOM", 0, -5 )
+        local margin = config.classic_look() and 0 or -5
+        frame:SetPoint( "TOP", rolling_popup.get_frame(), "BOTTOM", 0, margin )
       end, should_display_callback ) )
   end
 
@@ -809,7 +799,7 @@ function M.new(
     local roll_tracker = new_roll_tracker( item )
     roll_tracker.preview( item_count, candidates, soft_ressers, hard_ressed )
 
-    local color = get_color( item.quality )
+    local color = m.get_popup_border_color( item.quality )
     rolling_popup:border_color( color )
 
     local sr_count = getn( soft_ressers )
@@ -948,7 +938,7 @@ function M.new(
     roll_tracker.start( strategy_type, item_count, seconds, message, rolling_players )
 
     local _, _, quality = m.api.GetItemInfo( string.format( "item:%s:0:0:0", item.id ) )
-    local color = get_color( quality )
+    local color = m.get_popup_border_color( quality )
 
     rolling_popup:border_color( color )
 

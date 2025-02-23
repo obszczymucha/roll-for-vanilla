@@ -26,45 +26,47 @@ local button_defaults = {
 ---@field show fun( data: MasterLootConfirmationData )
 ---@field hide fun()
 
----@param popup_builder table
----@param db table
----@param center_point table
-function M.new( popup_builder, db, center_point )
+---@param popup_builder PopupBuilder
+---@param config Config
+---@param rolling_popup RollingPopup
+function M.new( popup_builder, config, rolling_popup )
   local popup
-  local top_padding = 14
+  local top_padding = config.classic_look() and 18 or 14
   local on_hide ---@type fun()?
 
   local function create_popup()
-    local frame = popup_builder
+    local builder = popup_builder
         :name( "RollForLootAssignmentFrame" )
         :width( 280 )
         :height( 100 )
         :sound()
-        :border_size( 16 )
         :esc()
         :gui_elements( m.GuiElements )
-        :frame_style( "PrincessKenny" )
         :on_hide( function()
           if on_hide then
             on_hide()
           end
         end )
         :self_centered_anchor()
-        :build()
+        :strata( "DIALOG" )
 
-    frame:SetFrameStrata( "DIALOG" )
+    local anchor = rolling_popup.get_anchor_point()
+
+    if anchor then
+      builder = builder:point( anchor )
+    end
+
+    local frame = builder:build()
 
     return frame
   end
 
   local function border_color( item_id )
     local _, _, quality = m.api.GetItemInfo( string.format( "item:%s:0:0:0", item_id ) )
-    local color = m.api.ITEM_QUALITY_COLORS[ quality ] or { r = 0, g = 0, b = 0, a = 1 }
+    local color = m.get_popup_border_color( quality or 0 )
+    local col = config.classic_look() and m.brighten( color, 0.5 ) or color
 
-    local multiplier = 0.5
-    local alpha = 0.6
-
-    popup:border_color( color.r * multiplier, color.g * multiplier, color.b * multiplier, alpha )
+    popup:border_color( col.r, col.g, col.b, col.a )
   end
 
   ---@param content table
@@ -198,14 +200,8 @@ function M.new( popup_builder, db, center_point )
 
     border_color( data.item.id )
 
-    local point = db.point or center_point
-    ---@diagnostic disable-next-line: undefined-global
-    local anchor = UIParent
-    if point.point == "CENTER" and point.relative_point == "CENTER" then
-      popup:SetPoint( point.point, anchor, point.relative_point, point.x, point.y )
-    else
-      popup:SetPoint( point.point, anchor, point.relative_point, point.x - popup:GetWidth() / 2, point.y + popup:GetHeight() / 2 )
-    end
+    popup:ClearAllPoints()
+    popup:SetPoint( "CENTER", rolling_popup.get_frame(), "CENTER", 0, 0 )
 
     popup:Show()
   end

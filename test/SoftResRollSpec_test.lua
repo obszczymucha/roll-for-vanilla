@@ -35,7 +35,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas" } ),
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas" } ),
     enabled_item( 2, "Hearthstone" )
   )
   chat.raid( "Princess Kenny dropped 2 items:" )
@@ -48,7 +48,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
 
   -- Then
   rf.loot_frame.should_display(
-    selected_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas" } ),
+    selected_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas" } ),
     disabled_item( 2, "Hearthstone" )
   )
   rf.rolling_popup.should_display(
@@ -214,7 +214,7 @@ function WaitForRemainingRollsSpec:should_cancel_rolling_and_display_initial_set
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas" } ),
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas" } ),
     enabled_item( 2, "Hearthstone" )
   )
   chat.raid( "Princess Kenny dropped 2 items:" )
@@ -227,7 +227,7 @@ function WaitForRemainingRollsSpec:should_cancel_rolling_and_display_initial_set
 
   -- Then
   rf.loot_frame.should_display(
-    selected_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas" } ),
+    selected_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas" } ),
     disabled_item( 2, "Hearthstone" )
   )
   rf.rolling_popup.should_display(
@@ -294,8 +294,8 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Bag", "SR", { "Soft-ressed by:", "Jimmy", "Obszczymucha", "Psikutas" } ),
-    enabled_item( 2, "Bag", "SR", { "Soft-ressed by:", "Jimmy", "Obszczymucha", "Psikutas" } ),
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Jimmy", "Obszczymucha", "Psikutas" } ),
+    enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Jimmy", "Obszczymucha", "Psikutas" } ),
     enabled_item( 3, "Hearthstone" )
   )
   chat.raid( "Princess Kenny dropped 3 items:" )
@@ -308,8 +308,8 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
 
   -- Then
   rf.loot_frame.should_display(
-    selected_item( 1, "Bag", "SR", { "Soft-ressed by:", "Jimmy", "Obszczymucha", "Psikutas" } ),
-    selected_item( 2, "Bag", "SR", { "Soft-ressed by:", "Jimmy", "Obszczymucha", "Psikutas" } ),
+    selected_item( 1, "Bag", "SR", { "Soft-ressed by", "Jimmy", "Obszczymucha", "Psikutas" } ),
+    selected_item( 2, "Bag", "SR", { "Soft-ressed by", "Jimmy", "Obszczymucha", "Psikutas" } ),
     disabled_item( 3, "Hearthstone" )
   )
   rf.rolling_popup.should_display(
@@ -465,7 +465,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
   rf.confirmation_popup.should_be_hidden()
   chat.console( "RollFor: Obszczymucha received [Bag]." )
   rf.loot_frame.should_display(
-    selected_item( 1, "Bag", "SR", { "Soft-ressed by:", "Jimmy", "Obszczymucha", "Psikutas" } ),
+    selected_item( 1, "Bag", "SR", { "Soft-ressed by", "Jimmy", "Obszczymucha", "Psikutas" } ),
     disabled_item( 2, "Hearthstone" )
   )
   rf.rolling_popup.should_display(
@@ -505,7 +505,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Bag", "SR", { "Soft-ressed by:", "Psikutas" } ),
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Psikutas" } ),
     enabled_item( 2, "Hearthstone" )
   )
   chat.raid( "Princess Kenny dropped 2 items:" )
@@ -518,7 +518,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
 
   -- Then
   rf.loot_frame.should_display(
-    selected_item( 1, "Bag", "SR", { "Soft-ressed by:", "Psikutas" } ),
+    selected_item( 1, "Bag", "SR", { "Soft-ressed by", "Psikutas" } ),
     disabled_item( 2, "Hearthstone" )
   )
   rf.rolling_popup.should_display(
@@ -550,7 +550,7 @@ function SoftResTieRollSpec:should_display_tie_rolls()
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas" } ),
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas" } ),
     enabled_item( 2, "Hearthstone" )
   )
   chat.raid( "Princess Kenny dropped 2 items:" )
@@ -563,7 +563,7 @@ function SoftResTieRollSpec:should_display_tie_rolls()
 
   -- Then
   rf.loot_frame.should_display(
-    selected_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas" } ),
+    selected_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas" } ),
     disabled_item( 2, "Hearthstone" )
   )
   rf.rolling_popup.should_display(
@@ -745,7 +745,7 @@ function SoftResPlusSpec:should_use_sr_plus_values()
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas" } ),
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas" } ),
     enabled_item( 2, "Hearthstone" )
   )
   chat.raid( "Princess Kenny dropped 2 items:" )
@@ -758,7 +758,7 @@ function SoftResPlusSpec:should_use_sr_plus_values()
 
   -- Then
   rf.loot_frame.should_display(
-    selected_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas" } ),
+    selected_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas" } ),
     disabled_item( 2, "Hearthstone" )
   )
   rf.rolling_popup.should_display(

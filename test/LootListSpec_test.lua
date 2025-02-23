@@ -37,7 +37,7 @@ function LootListSpec:should_display_sr_tooltip()
   -- Then
   rf.loot_frame.should_display(
     enabled_item( 1, "Bag", "HR" ),
-    enabled_item( 2, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas" } )
+    enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas" } )
   )
 end
 
@@ -91,7 +91,7 @@ function LootListSpec:should_display_sr_tooltip_and_item_bind_type()
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha", "Psikutas" }, "BoP" ),
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas" }, "BoP" ),
     enabled_item( 2, "Sword", "HR", nil, "BoP" )
   )
 end
@@ -116,8 +116,8 @@ function LootListSpec:should_select_hr_item_if_clicked_on_any_item_of_that_id()
   -- Then
   rf.loot_frame.should_display(
     enabled_item( 1, "Bag", "HR" ),
-    enabled_item( 2, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-    enabled_item( 3, "Bag", "SR", { "Soft-ressed by:", "Psikutas" } ),
+    enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+    enabled_item( 3, "Bag", "SR", { "Soft-ressed by", "Psikutas" } ),
     enabled_item( 4, "Bag" ),
     enabled_item( 5, "Bag" ),
     enabled_item( 6, "Hearthstone" )
@@ -138,8 +138,8 @@ function LootListSpec:should_select_hr_item_if_clicked_on_any_item_of_that_id()
     -- Then
     rf.loot_frame.should_display(
       selected_item( 1, "Bag", "HR" ),
-      disabled_item( 2, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-      disabled_item( 3, "Bag", "SR", { "Soft-ressed by:", "Psikutas" } ),
+      disabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+      disabled_item( 3, "Bag", "SR", { "Soft-ressed by", "Psikutas" } ),
       disabled_item( 4, "Bag" ),
       disabled_item( 5, "Bag" ),
       disabled_item( 6, "Hearthstone" )
@@ -156,8 +156,8 @@ function LootListSpec:should_select_hr_item_if_clicked_on_any_item_of_that_id()
     -- Then
     rf.loot_frame.should_display(
       enabled_item( 1, "Bag", "HR" ),
-      enabled_item( 2, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-      enabled_item( 3, "Bag", "SR", { "Soft-ressed by:", "Psikutas" } ),
+      enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+      enabled_item( 3, "Bag", "SR", { "Soft-ressed by", "Psikutas" } ),
       enabled_item( 4, "Bag" ),
       enabled_item( 5, "Bag" ),
       enabled_item( 6, "Hearthstone" )
@@ -176,8 +176,8 @@ function LootListSpec:should_select_hr_item_if_clicked_on_any_item_of_that_id()
   -- Then
   rf.loot_frame.should_display(
     disabled_item( 1, "Bag", "HR" ),
-    disabled_item( 2, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-    disabled_item( 3, "Bag", "SR", { "Soft-ressed by:", "Psikutas" } ),
+    disabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+    disabled_item( 3, "Bag", "SR", { "Soft-ressed by", "Psikutas" } ),
     disabled_item( 4, "Bag" ),
     disabled_item( 5, "Bag" ),
     selected_item( 6, "Hearthstone" )
@@ -194,8 +194,8 @@ function LootListSpec:should_select_hr_item_if_clicked_on_any_item_of_that_id()
   rf.rolling_popup.should_be_hidden()
   rf.loot_frame.should_display(
     enabled_item( 1, "Bag", "HR" ),
-    enabled_item( 2, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-    enabled_item( 3, "Bag", "SR", { "Soft-ressed by:", "Psikutas" } ),
+    enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+    enabled_item( 3, "Bag", "SR", { "Soft-ressed by", "Psikutas" } ),
     enabled_item( 4, "Bag" ),
     enabled_item( 5, "Bag" ),
     enabled_item( 6, "Hearthstone" )
@@ -221,8 +221,8 @@ function LootListSpec:should_select_both_sr_items_if_clicked_on_any_item_of_that
 
   -- Then
   rf.loot_frame.should_display(
-    enabled_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-    enabled_item( 2, "Bag", "SR", { "Soft-ressed by:", "Psikutas" } ),
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+    enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Psikutas" } ),
     enabled_item( 3, "Bag" ),
     enabled_item( 4, "Bag" ),
     enabled_item( 5, "Hearthstone" )
@@ -241,8 +241,8 @@ function LootListSpec:should_select_both_sr_items_if_clicked_on_any_item_of_that
 
     -- Then
     rf.loot_frame.should_display(
-      selected_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-      selected_item( 2, "Bag", "SR", { "Soft-ressed by:", "Psikutas" } ),
+      selected_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+      selected_item( 2, "Bag", "SR", { "Soft-ressed by", "Psikutas" } ),
       disabled_item( 3, "Bag" ),
       disabled_item( 4, "Bag" ),
       disabled_item( 5, "Hearthstone" )
@@ -261,8 +261,8 @@ function LootListSpec:should_select_both_sr_items_if_clicked_on_any_item_of_that
 
     -- Then
     rf.loot_frame.should_display(
-      enabled_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-      enabled_item( 2, "Bag", "SR", { "Soft-ressed by:", "Psikutas" } ),
+      enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+      enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Psikutas" } ),
       enabled_item( 3, "Bag" ),
       enabled_item( 4, "Bag" ),
       enabled_item( 5, "Hearthstone" )
@@ -279,8 +279,8 @@ function LootListSpec:should_select_both_sr_items_if_clicked_on_any_item_of_that
 
   -- Then
   rf.loot_frame.should_display(
-    disabled_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-    disabled_item( 2, "Bag", "SR", { "Soft-ressed by:", "Psikutas" } ),
+    disabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+    disabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Psikutas" } ),
     disabled_item( 3, "Bag" ),
     disabled_item( 4, "Bag" ),
     selected_item( 5, "Hearthstone" )
@@ -296,8 +296,8 @@ function LootListSpec:should_select_both_sr_items_if_clicked_on_any_item_of_that
   -- Then
   rf.rolling_popup.should_be_hidden()
   rf.loot_frame.should_display(
-    enabled_item( 1, "Bag", "SR", { "Soft-ressed by:", "Obszczymucha" } ),
-    enabled_item( 2, "Bag", "SR", { "Soft-ressed by:", "Psikutas" } ),
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha" } ),
+    enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Psikutas" } ),
     enabled_item( 3, "Bag" ),
     enabled_item( 4, "Bag" ),
     enabled_item( 5, "Hearthstone" )

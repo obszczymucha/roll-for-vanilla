@@ -8,6 +8,8 @@ local M = {}
 local icon_width = 16
 local button_width = 85 + icon_width
 local button_height = 16
+local vertical_margin = 5
+local horizontal_margin = 5
 local horizontal_padding = 3
 local vertical_padding = 5
 
@@ -25,27 +27,31 @@ local function press( frame )
   frame:SetBackdropColor( frame.color.r, frame.color.g, frame.color.b, 0.7 )
 end
 
-local function create_main_frame()
-  local frame = m.create_backdrop_frame( m.api, "Frame", "RollForLootFrame", nil )
+---@param frame_builder FrameBuilderFactory
+---@param config Config
+local function create_main_frame( frame_builder, config )
+  local builder = config.classic_look() and
+      frame_builder.classic() or
+      frame_builder.modern()
+      :backdrop_color( 0, 0, 0, 0.8 )
+      :border_color( 0.851, 0.553, 0.341, 0.3 )
 
-  frame:Hide()
-  frame:SetBackdrop( {
-    bgFile = "Interface\\Tooltips\\UI-tooltip-Background",
-    edgeFile = "Interface\\Buttons\\WHITE8X8",
-    tile = false,
-    tileSize = 0,
-    edgeSize = 1,
-    insets = { left = 0, right = 0, top = 0, bottom = 0 }
-  } )
+  builder = builder
+      :name( "RollForPlayerSelectionFrame" )
+      :width( 100 )
+      :height( 100 )
+      :point( { point = "CENTER", relative_frame = m.api.UIParent, relative_point = "CENTER" } )
+      :enable_mouse()
+      :strata( "DIALOG" )
+      :hidden()
 
-  frame:SetBackdropColor( 0, 0, 0, 0.8 )
-  frame:SetFrameStrata( "DIALOG" )
-  frame:SetBackdropBorderColor( 0.851, 0.553, 0.341, 0.3 )
+  if config.classic_look() then
+    vertical_margin = 9
+    horizontal_margin = 10
+  end
 
-  frame:SetWidth( 100 )
-  frame:SetHeight( 100 )
-  frame:SetPoint( "CENTER", m.api.UIParent, "Center" )
-  frame:EnableMouse( true )
+  local frame = builder:build()
+
   frame:SetScript( "OnLeave",
     function( self )
       if m.vanilla then self = this end
@@ -54,9 +60,13 @@ local function create_main_frame()
       local x, y = self:GetCenter()
       local width = self:GetWidth()
       local height = self:GetHeight()
-
-      local is_over = mouse_x >= x - width / 2 and mouse_x <= x + width / 2 and mouse_y >= y - height / 2 and
-          mouse_y <= y + height / 2
+      local half_width = width / 2
+      local half_height = height / 2
+      local left = x - half_width
+      local right = x + half_width
+      local top = y + half_height
+      local bottom = y - half_height
+      local is_over = mouse_x >= left and mouse_x <= right and mouse_y >= bottom and mouse_y <= top
 
       if not is_over then self:Hide() end
     end )
@@ -65,14 +75,14 @@ local function create_main_frame()
 end
 
 local function position_button( button, parent, index, rows )
-  local width = 5 + horizontal_padding + m.api.math.floor( (index - 1) / rows ) * (button_width + horizontal_padding)
-  local height = -5 - vertical_padding - (mod( index - 1, rows ) * (button_height + vertical_padding))
+  local width = horizontal_margin + horizontal_padding + m.api.math.floor( (index - 1) / rows ) * (button_width + horizontal_padding)
+  local height = (-vertical_margin) - vertical_padding - (mod( index - 1, rows ) * (button_height + vertical_padding))
   button:ClearAllPoints()
   button:SetPoint( "TOPLEFT", parent, "TOPLEFT", width, height )
 end
 
 local function create_button( parent, index, rows )
-  local frame = m.create_backdrop_frame( m.api, "Button", "RollForLootFrameButton" .. index, parent )
+  local frame = m.create_backdrop_frame( m.api, "Button", nil, parent )
 
   frame:SetWidth( button_width )
   frame:SetHeight( button_height )
@@ -148,8 +158,9 @@ end
 ---@field hide fun()
 ---@field get_frame fun(): Frame
 
+---@param frame_builder FrameBuilderFactory
 ---@param config Config
-function M.new( config )
+function M.new( frame_builder, config )
   local m_frame
   local m_buttons = {}
 
@@ -157,8 +168,8 @@ function M.new( config )
     local columns = m.api.math.ceil( total / rows )
     local total_rows = total < 5 and total or rows
 
-    m_frame:SetWidth( (button_width + horizontal_padding) * columns + horizontal_padding + 11 )
-    m_frame:SetHeight( (button_height + vertical_padding) * total_rows + vertical_padding + 9 )
+    m_frame:SetWidth( (button_width + horizontal_padding) * columns + horizontal_padding + horizontal_margin * 2 )
+    m_frame:SetHeight( (button_height + vertical_padding) * total_rows + vertical_padding + vertical_margin * 2 )
   end
 
   ---@param candidates MasterLootCandidate[]
@@ -211,7 +222,7 @@ function M.new( config )
 
   ---@param candidates MasterLootCandidate[]
   local function show( candidates )
-    if not m_frame then m_frame = create_main_frame() end
+    if not m_frame then m_frame = create_main_frame( frame_builder, config ) end
 
     create_candidate_frames( candidates )
     m_frame:Show()

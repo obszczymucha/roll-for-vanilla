@@ -23,6 +23,7 @@ local button_defaults = {
 ---@field backdrop_color fun( _, color: RgbaColor )
 ---@field get_frame fun(): table
 ---@field ping fun()
+---@field get_anchor_point fun(): Point?
 
 local M = m.Module.new( "RollingPopup" )
 
@@ -37,7 +38,7 @@ function M.new( popup_builder, content_transformer, db, config )
   local popup
   db.point = db.point or M.center_point
 
-  local top_padding = 14
+  local top_padding = config.classic_look() and 14 or 8
   local on_hide ---@type fun()?
 
   ---@param frame_name string?
@@ -70,83 +71,23 @@ function M.new( popup_builder, content_transformer, db, config )
   end
 
   local function create_popup()
-    local function is_out_of_bounds( point, x, y, frame_width, frame_height, screen_width, screen_height )
-      local abs_x, abs_y
-
-      if point == "CENTER" then
-        abs_x = x
-        abs_y = y
-      elseif point == "TOPLEFT" then
-        abs_x = x + frame_width / 2
-        abs_y = y - frame_height / 2
-      elseif point == "TOP" then
-        abs_x = x
-        abs_y = y - frame_height / 2
-      elseif point == "TOPRIGHT" then
-        abs_x = x - frame_width / 2
-        abs_y = y - frame_height / 2
-      elseif point == "RIGHT" then
-        abs_x = x - frame_width / 2
-        abs_y = y
-      elseif point == "BOTTOMRIGHT" then
-        abs_x = x - frame_width / 2
-        abs_y = y + frame_height / 2
-      elseif point == "BOTTOM" then
-        abs_x = x
-        abs_y = y + frame_height / 2
-      elseif point == "BOTTOMLEFT" then
-        abs_x = x + frame_width / 2
-        abs_y = y + frame_height / 2
-      elseif point == "LEFT" then
-        abs_x = x + frame_width / 2
-        abs_y = y
-      else
-        abs_x = x
-        abs_y = y
-      end
-
-      local left = abs_x - frame_width / 2
-      local right = abs_x + frame_width / 2
-      local top = abs_y + frame_height / 2
-      local bottom = abs_y - frame_height / 2
-
-      local screen_left = 0
-      local screen_right = screen_width
-      local screen_top = 0
-      local screen_bottom = -screen_height
-
-      return left < screen_left or
-          right > screen_right or
-          top > screen_top or
-          bottom < screen_bottom
-    end
-
     local function on_drag_stop()
       if not popup then return end
-      local width, height = popup:GetWidth(), popup:GetHeight()
-      local screen_width, screen_height = m.api.GetScreenWidth(), m.api.GetScreenHeight()
-      local point, _, _, x, y = popup:get_anchor_point()
 
-      if is_out_of_bounds( point, x, y, width, height, screen_width, screen_height ) then
+      if m.is_frame_out_of_bounds( popup ) then
         db.point = M.center_point
         popup:position( M.center_point )
 
         return
       end
 
-      local anchor_point, _, anchor_relative_point, anchor_x, anchor_y = popup:get_anchor_point()
-      db.point = { point = anchor_point, relative_point = anchor_relative_point, x = anchor_x, y = anchor_y }
+      local anchor = popup:get_anchor_point()
+      db.point = { point = anchor.point, relative_point = anchor.relative_point, x = anchor.x, y = anchor.y }
     end
 
     local function get_point()
-      if popup then
-        local width, height = popup:GetWidth(), popup:GetHeight()
-        local screen_width, screen_height = m.api.GetScreenWidth(), m.api.GetScreenHeight()
-        local x, y = popup:get_anchor_center()
-
-        if is_out_of_bounds( x, y, width, height, screen_width, screen_height ) then
-          return M.center_point
-        end
+      if popup and m.is_frame_out_of_bounds( popup ) then
+        return M.center_point
       elseif db.point then
         return db.point
       else
@@ -159,11 +100,8 @@ function M.new( popup_builder, content_transformer, db, config )
         :width( 180 )
         :height( 100 )
         :point( get_point() )
-        :bg_file( "Interface/Buttons/WHITE8x8" )
         :sound()
-        :backdrop_color( 0, 0, 0, 0.6 )
         :gui_elements( m.GuiElements )
-        :frame_style( "PrincessKenny" )
         :movable()
         :on_drag_stop( on_drag_stop )
         :on_hide( function()
@@ -320,7 +258,8 @@ function M.new( popup_builder, content_transformer, db, config )
       popup = create_popup()
     end
 
-    popup:border_color( color.r, color.g, color.b, color.a )
+    local col = config.classic_look() and m.brighten( color, 0.5 ) or color
+    popup:border_color( col.r, col.g, col.b, col.a )
   end
 
   ---@param color RgbaColor
@@ -348,6 +287,10 @@ function M.new( popup_builder, content_transformer, db, config )
     end
   end
 
+  local function get_anchor_point()
+    return popup and popup.get_anchor_point()
+  end
+
   ---@type RollingPopup
   return {
     show = show,
@@ -356,7 +299,8 @@ function M.new( popup_builder, content_transformer, db, config )
     border_color = border_color,
     backdrop_color = backdrop_color,
     get_frame = get_frame,
-    ping = ping
+    ping = ping,
+    get_anchor_point = get_anchor_point
   }
 end
 

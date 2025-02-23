@@ -6,7 +6,7 @@ if m.LootController then return end
 local M = m.Module.new( "LootController" )
 
 local getn = m.getn
-local red, orange, blue, hl = m.colors.red, m.colors.orange, m.colors.blue, m.colors.hl
+local red, orange, hl = m.colors.red, m.colors.orange, m.colors.hl
 local item_utils = m.ItemUtils
 
 ---@alias SelectedItem { item_id: number, comment: string? }
@@ -105,7 +105,7 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
 
   ---@param sr_players RollingPlayer[]
   local function make_comment_tooltip( sr_players )
-    local result = { blue( "Soft-ressed by:" ) }
+    local result = { orange( "Soft-ressed by" ) }
 
     if getn( sr_players ) == 1 then
       local player = sr_players[ 1 ]
