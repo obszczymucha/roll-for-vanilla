@@ -70,8 +70,11 @@ local function create_components()
 
   local db = m.Db.new( M.char_db )
 
+  ---@type UiReloadPopup
+  M.ui_reload_popup = m.UiReloadPopup.new( m.PopupBuilder.new( m.FrameBuilder ) )
+
   ---@type Config
-  M.config = m.Config.new( db( "config" ) )
+  M.config = m.Config.new( db( "config" ), M.ui_reload_popup )
 
   M.api = function() return m.api end
 

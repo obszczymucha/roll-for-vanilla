@@ -14,7 +14,9 @@ local M = {}
 
 ---@alias Config table
 
-function M.new( db )
+---@param db table
+---@param ui_reload_popup UiReloadPopup
+function M.new( db, ui_reload_popup )
   local callbacks = {}
   local toggles = {
     [ "auto_loot" ] = { cmd = "auto-loot", display = "Auto-loot", help = "toggle auto-loot" },
@@ -69,6 +71,10 @@ function M.new( db )
       end
 
       print( toggle_key )
+
+      if toggles[ toggle_key ].requires_reload then
+        ui_reload_popup.show()
+      end
     end
   end
 
