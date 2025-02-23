@@ -14,7 +14,9 @@ local M = {}
 
 ---@alias Config table
 
-function M.new( db )
+---@param db table
+---@param ui_reload_popup UiReloadPopup
+function M.new( db, ui_reload_popup )
   local callbacks = {}
   local toggles = {
     [ "auto_loot" ] = { cmd = "auto-loot", display = "Auto-loot", help = "toggle auto-loot" },
@@ -27,6 +29,7 @@ function M.new( db )
     [ "auto_master_loot" ] = { cmd = "auto-master-loot", display = "Auto master loot", help = "toggle auto master loot" },
     [ "rolling_popup_lock" ] = { cmd = "rolling-popup-lock", display = "Rolling popup lock", help = "toggle rolling popup lock" },
     [ "raid_roll_again" ] = { cmd = "raid-roll-again", display = string.format( "%s button", hl( "Raid roll again" ) ), help = string.format( "toggle %s button", hl( "Raid roll again" ) ) },
+    [ "og_skin" ] = { cmd = "og-skin", display = "OG skin", help = "toggle OG skin", requires_reload = true },
   }
 
   local function notify_subscribers( event, value )
@@ -69,6 +72,10 @@ function M.new( db )
       end
 
       print( toggle_key )
+
+      if toggles[ toggle_key ].requires_reload then
+        ui_reload_popup.show()
+      end
     end
   end
 

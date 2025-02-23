@@ -207,7 +207,10 @@ function M.mock_wow_api()
           GetWidth = function() return 100 end,
           GetHeight = function() return 20 end,
           GetText = function() return "Font string text" end,
-          SetWidth = function() end
+          SetWidth = function() end,
+          SetNonSpaceWrap = function() end,
+          SetHeight = function() end,
+          SetJustifyH = function() end,
         }
       end,
       Click = function( self )
@@ -872,6 +875,11 @@ function M.load_real_stuff( req )
   r( "src/RollResultAnnouncer" )
   r( "src/LootFacadeListener" )
   r( "src/TooltipReader" )
+  r( "src/UiReloadPopup" )
+  r( "src/Sandbox" )
+  r( "src/GuiElements" )
+  r( "src/ModernLootFrameSkin" )
+  r( "src/OgLootFrameSkin" )
   -- r( "Libs/LibDeflate/LibDeflate" )
   r( "src/bcc/Json" )
   r( "main" )

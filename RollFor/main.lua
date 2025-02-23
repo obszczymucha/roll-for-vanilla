@@ -70,8 +70,11 @@ local function create_components()
 
   local db = m.Db.new( M.char_db )
 
+  ---@type UiReloadPopup
+  M.ui_reload_popup = m.UiReloadPopup.new( m.PopupBuilder.new( m.FrameBuilder ) )
+
   ---@type Config
-  M.config = m.Config.new( db( "config" ) )
+  M.config = m.Config.new( db( "config" ), M.ui_reload_popup )
 
   M.api = function() return m.api end
 
@@ -193,9 +196,12 @@ local function create_components()
     M.config
   )
 
+  ---@type LootFrameSkin
+  local skin = M.config.og_skin() and m.OgLootFrameSkin.new( m.FrameBuilder ) or m.ModernLootFrameSkin.new( m.FrameBuilder )
+
   ---@type LootFrame
   M.loot_frame = m.LootFrame.new(
-    m.FrameBuilder,
+    skin,
     db( "loot_frame" ),
     M.config
   )
@@ -330,6 +336,8 @@ local function create_components()
     M.roll_controller,
     M.player_info
   )
+
+  M.sandbox = m.Sandbox.new()
 end
 
 local function subscribe_for_component_events()
@@ -593,16 +601,6 @@ local function on_reset_dropped_loot_announce_command()
   M.dropped_loot_announce.reset()
 end
 
-local function test()
-  -- local f = M.raw_loot_list.get_items
-  local g = m.api.UnitName
-  m.api.UnitName = function( t ) return t == "target" and "Princess Kenny" or g( t ) end
-
-  M.loot_frame.show()
-  -- M.raw_loot_list.get_items = f
-  m.api.UnitName = g
-end
-
 local function setup_slash_commands()
   -- Roll For commands
   SLASH_RF1 = RollSlashCommand.NormalRoll
@@ -635,7 +633,7 @@ local function setup_slash_commands()
   M.api().SlashCmdList[ "SRO" ] = M.name_matcher.manual_match
 
   SLASH_RFT1 = "/rft"
-  M.api().SlashCmdList[ "RFT" ] = test
+  M.api().SlashCmdList[ "RFT" ] = M.sandbox.run
 
   --SLASH_DROPPED1 = "/DROPPED"
   --M.api().SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
@@ -658,7 +656,7 @@ function M.on_player_login()
   end
 
   ---@diagnostic disable-next-line: undefined-global
-  LootFrame:UnregisterAllEvents()
+  -- LootFrame:UnregisterAllEvents()
   ---@diagnostic disable-next-line: undefined-global
   if pfLootFrame then pfLootFrame:UnregisterAllEvents() end
 end

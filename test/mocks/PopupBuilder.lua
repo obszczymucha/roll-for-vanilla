@@ -50,7 +50,12 @@ function M.new()
         ClearAllPoints = function() end,
         IsVisible = function( self ) return self.visible end,
         resize = function() end,
-        GetName = function() return "PrincessKenny" end
+        GetName = function() return "PrincessKenny" end,
+        SetFrameStrata = function() end,
+        CreateTexture = function() return {} end,
+        SetNormalTexture = function() end,
+        SetPushedTexture = function() end,
+        CreateFontString = function() return {} end,
       }
     end
   }

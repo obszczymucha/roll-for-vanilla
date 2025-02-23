@@ -26,7 +26,7 @@ local button_defaults = {
 ---@field show fun( data: MasterLootConfirmationData )
 ---@field hide fun()
 
----@param popup_builder table
+---@param popup_builder PopupBuilder
 ---@param db table
 ---@param center_point table
 function M.new( popup_builder, db, center_point )
@@ -43,7 +43,7 @@ function M.new( popup_builder, db, center_point )
         :border_size( 16 )
         :esc()
         :gui_elements( m.GuiElements )
-        :frame_style( "PrincessKenny" )
+        :frame_style( "Modern" )
         :on_hide( function()
           if on_hide then
             on_hide()

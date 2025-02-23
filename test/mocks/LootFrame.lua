@@ -50,8 +50,8 @@ local function cleanse( t, ... )
   end )
 end
 
-function M.new( frame_builder, db, config )
-  local frame = require( "src/LootFrame" ).new( frame_builder, db, config )
+function M.new( loot_frame_skin, db, config )
+  local frame = require( "src/LootFrame" ).new( loot_frame_skin, db, config )
   local m_items
 
   local original_update = frame.update
