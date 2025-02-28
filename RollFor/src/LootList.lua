@@ -66,6 +66,7 @@ function M.new( loot_facade, item_utils, tooltip_reader, dummy_items_fn )
         local item_name = link and item_utils.get_item_name( link )
         local tooltip_link = link and item_utils.get_tooltip_link( link )
         local bind_type = tooltip_reader.get_slot_bind_type( slot )
+        local classes = tooltip_reader.get_slot_classes( slot )
 
         if item_id and item_name then
           add_item( slot,
@@ -77,7 +78,8 @@ function M.new( loot_facade, item_utils, tooltip_reader, dummy_items_fn )
               info and info.quality,
               info and info.quantity,
               info and info.texture,
-              bind_type
+              bind_type,
+              classes
             ), item_count )
 
           item_count = item_count + 1

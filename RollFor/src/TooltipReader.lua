@@ -17,6 +17,7 @@ end
 
 ---@class TooltipReader
 ---@field get_slot_bind_type fun( slot: number ): BindType
+---@field get_slot_classes fun( slot: number ): table<number, PlayerClass>|nil
 
 ---@param api table
 function M.new( api )
@@ -56,15 +57,42 @@ function M.new( api )
     end
   end
 
+  ---@return table<number, PlayerClass>|nil
+  local function get_item_classes_from_tooltip()
+    local num_lines = m_frame:NumLines()
+
+    for i = 1, num_lines do
+      local line = _G[ "RollForTooltipFrameTextLeft" .. i ]:GetText()
+
+      for classes in string.gmatch( line, "Classes: (.+)" ) do
+        local result = {}
+
+        for class in string.gmatch( classes, "([^, ]+)" ) do
+          table.insert( result, class )
+        end
+
+        return result
+      end
+    end
+    return nil
+  end
+
   local function get_slot_bind_type( slot )
     set_loot_slot( slot )
 
     return get_item_type_from_tooltip()
   end
 
+  local function get_slot_classes( slot )
+    set_loot_slot( slot )
+
+    return get_item_classes_from_tooltip()
+  end
+
   ---@type TooltipReader
   return {
-    get_slot_bind_type = get_slot_bind_type
+    get_slot_bind_type = get_slot_bind_type,
+    get_slot_classes = get_slot_classes
   }
 end
 
