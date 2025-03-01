@@ -208,7 +208,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
       roll_controller.winners_found( item, item_count, winners, strategy )
 
       m.map( winners, function( winner )
-        winner_tracker.track( winner.name, item.link, winner.roll_type, winner.roll, strategy ) -- TODO: remove from here and subscribe to the event.
+        winner_tracker.track( winner.name, item.link, winner.roll_type, winner.winning_roll, strategy ) -- TODO: remove from here and subscribe to the event.
       end )
 
       roll_controller.finish()

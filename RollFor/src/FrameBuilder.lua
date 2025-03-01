@@ -13,6 +13,7 @@ M.interface = {
 ---@alias FrameStyle
 ---| "Modern"
 ---| "Classic"
+---| "None"
 
 ---@class Vector2
 ---@field x number
@@ -57,6 +58,8 @@ M.interface = {
 ---@field GetWidth fun(): number
 ---@field GetHeight fun(): number
 ---@field ClearAllPoints fun()
+---@field SetAllPoints fun( frame: Frame, relativeTo?: Frame|string, doResize?: boolean )
+---@field SetScript fun( frame: Frame, scriptTypeName: string, script: function|nil )
 ---@field IsVisible fun( self ): boolean
 ---@field GetName fun(): string?
 ---@field SetFrameStrata fun( self: Frame, strata: string )
@@ -103,6 +106,7 @@ M.interface = {
 ---| "TOOLTIP"
 
 ---@class FrameBuilder
+---@field parent fun( self: FrameBuilder, parent: Frame ): FrameBuilder
 ---@field name fun( self: FrameBuilder, name: string ): FrameBuilder
 ---@field type fun( self: FrameBuilder, name: string ): FrameBuilder
 ---@field parent fun( self: FrameBuilder, parent: Frame ): FrameBuilder
@@ -119,6 +123,8 @@ M.interface = {
 ---@field frame_style fun( self: FrameBuilder, frame_style: FrameStyle ): FrameBuilder
 ---@field on_drag_stop fun( self: FrameBuilder, callback: function ): FrameBuilder
 ---@field movable fun( self: FrameBuilder ): FrameBuilder
+---@field resizable fun( self ): FrameBuilder
+---@field on_resize fun( self: FrameBuilder, callback: function ): FrameBuilder
 ---@field enable_mouse fun( self: FrameBuilder ): FrameBuilder
 ---@field border_size fun( self: FrameBuilder, border_size: number ): FrameBuilder
 ---@field on_show fun( self: FrameBuilder, on_show: function ): FrameBuilder
@@ -288,6 +294,16 @@ function M.new()
         end )
       else
         frame:SetMovable( false )
+      end
+
+      if options.resizable then
+        frame:SetResizable( true )
+
+        if options.on_resize and frame:IsResizable() then
+          frame:SetScript( "OnSizeChanged", options.on_resize )
+        end
+      else
+        frame:SetResizable( false )
       end
 
       frame:EnableMouse( true )
@@ -498,6 +514,16 @@ function M.new()
     return self
   end
 
+  local function resizable( self )
+    options.resizable = true
+    return self
+  end
+
+  local function on_resize( self, callback )
+    options.on_resize = callback
+    return self
+  end
+
   local function border_size( self, v )
     options.border_size = v
     return self
@@ -561,6 +587,8 @@ function M.new()
     frame_style = frame_style,
     on_drag_stop = on_drag_stop,
     movable = movable,
+    resizable = resizable,
+    on_resize = on_resize,
     border_size = border_size,
     on_show = on_show,
     on_hide = on_hide,

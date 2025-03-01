@@ -50,6 +50,7 @@ local hl = m.colors.hl
 ---@field cancel_rolling fun()
 ---@field rolling_started fun( rolling_strategy: RollingStrategyType, item: Item, count: number, seconds: number?, message: string?, rolling_players: RollingPlayer[]? )
 ---@field award_confirmed fun( player: ItemCandidate|Winner, item: MasterLootDistributableItem )
+---@field get_roll_tracker fun( item_id: number ): RollTracker
 ---@field update fun( item_id: ItemId )
 
 ---@param ml_candidates MasterLootCandidates
@@ -1254,6 +1255,7 @@ function M.new(
     cancel_rolling = cancel_rolling,
     rolling_started = rolling_started,
     award_confirmed = award_confirmed,
+    get_roll_tracker = get_roll_tracker,
     update = update
   }
 end

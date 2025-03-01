@@ -25,6 +25,8 @@ local getn = m.getn
 ---@field frame_style fun( self: PopupBuilder, frame_style: FrameStyle ): PopupBuilder
 ---@field on_drag_stop fun( self: PopupBuilder, callback: function ): PopupBuilder
 ---@field movable fun( self: PopupBuilder ): PopupBuilder
+---@field resizable fun( self ): PopupBuilder
+---@field on_resize fun( self: PopupBuilder, callback: function ): PopupBuilder
 ---@field border_size fun( self: PopupBuilder, border_size: number ): PopupBuilder
 ---@field on_show fun( self: PopupBuilder, on_show: function ): PopupBuilder
 ---@field on_hide fun( self: PopupBuilder, on_hide: function ): PopupBuilder

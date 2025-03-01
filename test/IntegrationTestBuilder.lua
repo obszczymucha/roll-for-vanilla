@@ -196,7 +196,7 @@ function M.new_roll_for()
     local loot_facade = deps[ "LootFacade" ] or M.mock_loot_facade()
     deps[ "LootFacade" ] = loot_facade
 
-    local awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ) )
+    local awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ), group_roster, config )
     local softres = deps[ "SoftResData" ] and group_aware_softres( group_roster, awarded_loot, deps[ "SoftResData" ] ) or
         group_aware_softres( group_roster, awarded_loot )
     deps[ "SoftRes" ] = softres
@@ -238,7 +238,7 @@ function M.new_roll_for()
       player_selection_frame
     )
 
-    local loot_award_callback = require( "src/LootAwardCallback" ).new( awarded_loot, roll_controller, winner_tracker, group_roster )
+    local loot_award_callback = require( "src/LootAwardCallback" ).new( awarded_loot, roll_controller, winner_tracker, group_roster, softres )
     local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, loot_list, roll_controller )
     deps[ "MasterLoot" ] = master_loot
 

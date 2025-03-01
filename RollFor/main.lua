@@ -38,6 +38,21 @@ local function on_softres_status_changed()
   update_minimap_icon()
 end
 
+local function on_raid_trade( giver_name, recipient_name, item_name )
+  local item_id = M.dropped_loot.get_dropped_item_id( item_name )
+
+  if item_id then
+    local quality, _ = m.get_item_quality_and_texture( m.api, item_id )
+    local item_link = m.fetch_item_link( item_id, quality )
+
+    M.loot_award_callback.on_loot_awarded( item_id, item_link, recipient_name, nil, true )
+    if item_id and M.awarded_loot.has_item_been_awarded( giver_name, item_id ) then
+      info( string.format( "%s traded %s to %s.", hl( giver_name ), item_link, hl( recipient_name ) ) )
+      M.awarded_loot.unaward( giver_name, item_id )
+    end
+  end
+end
+
 local function trade_complete_callback( recipient_name, items_given, items_received )
   for i = 1, getn( items_given ) do
     local item = items_given[ i ]
@@ -120,7 +135,7 @@ local function create_components()
   M.version_broadcast = m.VersionBroadcast.new( db( "version_broadcast" ), M.player_info, version.str )
 
   ---@type AwardedLoot
-  M.awarded_loot = m.AwardedLoot.new( db( "awarded_loot" ) )
+  M.awarded_loot = m.AwardedLoot.new( db( "awarded_loot" ), M.group_roster, M.config )
 
   -- TODO: Add type.
   M.softres_db = db( "softres" )
@@ -250,7 +265,7 @@ local function create_components()
   )
 
   ---@type LootAwardCallback
-  M.loot_award_callback = m.LootAwardCallback.new( M.awarded_loot, M.roll_controller, M.winner_tracker, M.group_roster )
+  M.loot_award_callback = m.LootAwardCallback.new( M.awarded_loot, M.roll_controller, M.winner_tracker, M.group_roster, M.softres )
 
   ---@type MasterLoot
   M.master_loot = m.MasterLoot.new(
@@ -275,6 +290,16 @@ local function create_components()
     M.config
   )
 
+  ---@type WinnersPopup
+  M.winners_popup = m.WinnersPopup.new(
+    popup_builder (),
+    m.FrameBuilder,
+    db( "winners_popup" ),
+    M.awarded_loot,
+    M.roll_controller,
+    M.config
+  )
+
   -- TODO: Add type.
   M.softres_gui = m.SoftResGui.new( M.api, M.import_encoded_softres_data, M.softres_check, M.softres, clear_data, M.dropped_loot_announce.reset )
 
@@ -285,7 +310,7 @@ local function create_components()
   M.usage_printer = m.UsagePrinter.new( M.chat )
 
   -- TODO: Add type.
-  M.minimap_button = m.MinimapButton.new( M.api, db( "minimap_button" ), M.softres_gui.toggle, M.softres_check, M.config )
+  M.minimap_button = m.MinimapButton.new( M.api, db( "minimap_button" ), M.softres_gui.toggle, M.winners_popup.toggle, M.softres_check, M.config )
 
   -- TODO: Add type.
   M.master_loot_warning = m.MasterLootWarning.new( M.api, M.config, m.BossList.zones, M.player_info )
@@ -557,6 +582,11 @@ function M.on_chat_msg_system( message )
     on_master_looter_changed( player_name )
     return
   end
+
+  for giver_name, item_name, recipient_name in string.gmatch( message, "([^%s]+) trades item (.+) to ([^%s]+)%." ) do
+    on_raid_trade( giver_name, recipient_name, item_name )
+    return
+  end
 end
 
 -- TODO: this can now be replaced by mocking LootList
@@ -661,6 +691,8 @@ local function setup_slash_commands()
   SLASH_SRO1 = "/sro"
   M.api().SlashCmdList[ "SRO" ] = M.name_matcher.manual_match
 
+  SLASH_RFW1 = "/rfw"
+  M.api().SlashCmdList[ "RFW" ] = M.winners_popup.show
   SLASH_RFT1 = "/rft"
   M.api().SlashCmdList[ "RFT" ] = M.sandbox.run
 
