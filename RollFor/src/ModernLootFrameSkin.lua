@@ -35,6 +35,7 @@ function M.new( frame_builder )
     container.index:SetHeight( h )
     container.icon = gui.create_icon_in_container( "Button", container, w, h, icon_zoom )
     container.icon:SetPoint( "LEFT", container.index, "RIGHT", 2, 0 )
+    container.icon:EnableMouse( false )
     container.quantity = gui.create_text_in_container( "Frame", container.icon, 20, "CENTER", nil, "text", "NumberFontNormalSmall" )
     container.quantity:SetPoint( "BOTTOMRIGHT", 1, -2 )
     container.quantity:SetHeight( 16 )
@@ -153,7 +154,6 @@ function M.new( frame_builder )
       end
 
       container:SetScript( "OnClick", v.is_enabled and not v.is_selected and v.click_fn or modifier_fn )
-      container.icon:SetScript( "OnClick", v.is_enabled and not v.is_selected and v.click_fn or modifier_fn )
       container.comment:SetScript( "OnClick", v.is_enabled and not v.is_selected and v.click_fn or modifier_fn )
 
       if m.vanilla then
@@ -230,9 +230,6 @@ function M.new( frame_builder )
       not_hovered_color()
     end )
 
-    container.icon:SetScript( "OnEnter", on_enter )
-    container.icon:SetScript( "OnLeave", on_leave )
-
     container:SetScript( "OnEnter", on_enter )
     container:SetScript( "OnLeave", on_leave )
 
@@ -254,8 +251,6 @@ function M.new( frame_builder )
 
     container:SetScript( "OnMouseUp", on_mouse_up )
     container:SetScript( "OnMouseDown", on_mouse_down )
-    container.icon:SetScript( "OnMouseUp", on_mouse_up )
-    container.icon:SetScript( "OnMouseDown", on_mouse_down )
 
     container:SetScript( "OnShow", function()
       mouse_down = false

@@ -66,7 +66,8 @@ function M.mock_config( configuration )
         str = "/roll"
       }
     end,
-    classic_look = function() return false end
+    classic_look = function() return false end,
+    auto_class_announce = function() return true end
   }
 end
 
@@ -96,11 +97,12 @@ end
 ---@param hard_ressed boolean?
 ---@param quality number?
 ---@param bind_type BindType?
+---@param classes table<number, PlayerClass>?
 ---@return MasterLootDistributableItem
-function M.i( name, id, sr_players, hard_ressed, quality, bind_type )
+function M.i( name, id, sr_players, hard_ressed, quality, bind_type, classes )
   local l = u.item_link( name, id )
   local tooltip_link = IU.get_tooltip_link( l )
-  local item = IU.make_dropped_item( id or 123, name, l, tooltip_link, quality or 4, nil, nil, bind_type or BindType.None )
+  local item = IU.make_dropped_item( id or 123, name, l, tooltip_link, quality or 4, nil, nil, bind_type or BindType.None, classes )
 
   if hard_ressed then
     return IU.make_hardres_dropped_item( item )

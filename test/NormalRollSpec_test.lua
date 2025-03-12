@@ -1633,4 +1633,107 @@ function NoOneRollsSpec:should_show_award_button_when_looting_the_corpse_again_i
   )
 end
 
+ClassAnnounceSpec = {}
+
+function ClassAnnounceSpec:should_show_class_on_roll()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item = i( "Hearthstone", 123, nil, nil, nil, nil, { "Mage", "Hunter", "Warrior" } )
+  local item2 = i( "Bag", 69, nil, nil, nil, nil, { "Mage" } )
+  local item3 = i( "Earthstrike", 21180, nil, nil, nil, nil, { "Hunter", "Priest" } )
+  local p1, p2 = p( "Sica" ), p( "Obszczymucha" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2 )
+      :chat( chat )
+      :build()
+  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+
+  -- Then
+  rf.loot_frame.should_be_hidden()
+
+  -- When
+  loot_facade.notify( "LootOpened", item, item2, item3 )
+
+  -- Then
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Bag" ),    
+    enabled_item( 2, "Earthstrike" ),
+    enabled_item( 3, "Hearthstone" )
+  )
+  chat.raid( "Princess Kenny dropped 3 items:" )
+  chat.raid( "1. [Bag]" )
+  chat.raid( "2. [Earthstrike]" )
+  chat.raid( "3. [Hearthstone]" )
+  rf.rolling_popup.should_be_hidden()
+
+  -- When
+  rf.loot_frame.click( 1 )
+
+  -- Then
+  rf.loot_frame.should_display(
+    selected_item( 1, "Bag" ),
+    disabled_item( 2, "Earthstrike" ),
+    disabled_item( 3, "Hearthstone" )
+  )
+  rf.rolling_popup.should_display(
+    item_link( item2, 1 ),
+    buttons( "Roll", "RaidRoll", "AwardOther", "Close" )
+  )
+
+  -- When
+  rf.rolling_popup.click( "Roll" )
+
+  -- Then
+  chat.raid_warning( "Roll for [Bag]: Mages" )
+
+  -- When
+  rf.rolling_popup.click( "Cancel" )
+
+  -- Then
+  chat.console( "RollFor: Rolling for [Bag] was canceled." )
+  chat.raid( "Rolling for [Bag] was canceled." )
+
+  -- When
+  rf.rolling_popup.click( "Close" )
+  rf.rolling_popup.click( "Close" )
+  rf.loot_frame.click( 2 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item3, 1 ),
+    buttons( "Roll", "RaidRoll", "AwardOther", "Close" )
+  )
+
+  -- When
+  rf.rolling_popup.click( "Roll" )
+
+  -- Then
+  chat.raid_warning( "Roll for [Earthstrike]: Hunters and Priests" )
+
+  -- When
+  rf.rolling_popup.click( "Cancel" )
+
+  -- Then
+  chat.console( "RollFor: Rolling for [Earthstrike] was canceled." )
+  chat.raid( "Rolling for [Earthstrike] was canceled." )
+
+   -- When
+  rf.rolling_popup.click( "Close" )
+  rf.rolling_popup.click( "Close" )
+  rf.loot_frame.click( 3 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item, 1 ),
+    buttons( "Roll", "RaidRoll", "AwardOther", "Close" )
+  )
+
+  -- When
+  rf.rolling_popup.click( "Roll" )
+
+  -- Then
+  chat.raid_warning( "Roll for [Hearthstone]: Mages, Hunters and Warriors" )
+end
+
 os.exit( lu.LuaUnit.run() )
