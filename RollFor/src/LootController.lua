@@ -239,7 +239,9 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
             return
           end
 
-          if m.bcc and (is_coin or item.quality < 2) then
+          local master_loot = m.is_master_loot()
+
+          if m.bcc and (not master_loot or is_coin or item.quality < 2) then
             local slot = loot_list.get_slot( item.id )
             if slot then loot_facade.loot_slot( slot ) end
             return
@@ -249,8 +251,6 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
             chat.info( "Cannot select item while rolling is in progress.", m.colors.red )
             return
           end
-
-          local master_loot = m.is_master_loot()
 
           if is_coin or selected or not master_loot then return end
 
