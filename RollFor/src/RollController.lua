@@ -946,6 +946,7 @@ function M.new(
     local rolls = current_iteration and current_iteration.rolls or {}
 
     if strategy_type == "NormalRoll" or strategy_type == "SoftResRoll" then
+      notify_subscribers( "roll_started", { item = item, seconds = seconds, strategy_type = strategy_type } )
       roll_content( item, item_count, seconds, roll_in_progress_buttons( current_iteration.rolls ), rolls, {}, strategy_type )
       return
     end
@@ -1025,6 +1026,8 @@ function M.new(
 
     local data, current_iteration = roll_tracker.get()
     local strategy_type = current_iteration and current_iteration.rolling_strategy
+
+    notify_subscribers( "waiting_for_rolls" )
 
     if strategy_type == "NormalRoll" or strategy_type == "SoftResRoll" then
       roll_content( data.item, data.item_count, nil, roll_in_progress_buttons( current_iteration.rolls ), current_iteration.rolls, {}, strategy_type, true )

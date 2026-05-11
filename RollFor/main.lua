@@ -363,6 +363,8 @@ local function create_components()
   )
 
   M.sandbox = m.Sandbox.new()
+
+  M.gargul_bridge = m.GargulBridge.new( M.player_info, M.roll_controller, M.config, function() return M.softres_db.data end, M.softres )
 end
 
 local function subscribe_for_component_events()
@@ -404,7 +406,10 @@ function M.import_encoded_softres_data( data, data_loaded_callback )
   M.import_softres_data( softres_data )
 
   info( "Soft-res data loaded successfully!" )
-  if data_loaded_callback then data_loaded_callback( softres_data ) end
+  if data_loaded_callback then
+    data_loaded_callback( softres_data )
+    if M.gargul_bridge then M.gargul_bridge.broadcast_softres( data ) end
+  end
 
   update_minimap_icon()
 end
