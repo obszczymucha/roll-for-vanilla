@@ -34,6 +34,7 @@ local function mock_config()
           }
         end,
         auto_loot = function() return true end,
+        superwow_auto_loot_coins = function() return false end,
         tmog_rolling_enabled = function() return true end,
         rolling_popup = function() return true end,
         raid_roll_again = function() return false end,
@@ -199,6 +200,8 @@ function MainspecRollsSpec:should_only_record_loot_that_we_are_awarding()
 
   -- Then
   m.chat.assert(
+    r( "1 item dropped:" ),
+    r( "1. [Hearthstone]" ),
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished()
@@ -222,6 +225,8 @@ function MainspecRollsSpec:should_only_record_loot_that_we_are_awarding()
   -- Then
   eq( awarded_loot.has_item_been_awarded( "Psikutas", item.id ), true )
   m.chat.assert(
+    r( "1 item dropped:" ),
+    r( "1. [Hearthstone]" ),
     rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished(),

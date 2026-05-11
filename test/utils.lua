@@ -91,6 +91,7 @@ function M.mock_wow_api()
   M.modules().api.InCombatLockdown = function() return false end
   M.modules().api.IsAltKeyDown = function() return false end
   M.modules().api.GetAddOnMetadata = function() return "2.6" end -- version
+  M.modules().api.C_AddOns = { GetAddOnMetadata = function() return "2.6" end }
   M.modules().api.tinsert = table.insert
   M.modules().api.PlaySound = function() end
   M.modules().api.C_ChatInfo = {}
@@ -103,6 +104,7 @@ function M.mock_wow_api()
   M.modules().api.UnitGUID = function() return "PrincessKenny" end
   M.modules().api.LootSlot = function() end
   M.modules().api.GetLootMethod = function() return "master" end
+  M.modules().api.C_PartyInfo = { GetLootMethod = function() return 2, 0 end }
   M.modules().api.IsInGroup = function() return true end
   M.modules().api.SOUNDKIT = {
     IG_MAIN_MENU_OPEN = 850,

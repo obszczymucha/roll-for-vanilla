@@ -123,7 +123,7 @@ function M.item_link_with_icon( parent, text )
 
   local function on_enter( self )
     if not tooltip_link then return end
-    if m.vanilla then self = this end
+    if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
     m.api.GameTooltip:SetOwner( self, "ANCHOR_CURSOR" )
     m.api.GameTooltip:SetHyperlink( tooltip_link )
@@ -308,7 +308,7 @@ function M.info( parent )
   icon:SetPoint( "CENTER", 0, 0 )
 
   frame:SetScript( "OnEnter", function( self )
-    if m.vanilla then self = this end
+    if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
     self.tooltip_scale = m.api.GameTooltip:GetScale()
     m.api.GameTooltip:SetOwner( self, "ANCHOR_CURSOR" )
@@ -318,7 +318,7 @@ function M.info( parent )
   end )
 
   frame:SetScript( "OnLeave", function( self )
-    if m.vanilla then self = this end
+    if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
     m.api.GameTooltip:Hide()
     m.api.GameTooltip:SetScale( self.tooltip_scale or 1 )

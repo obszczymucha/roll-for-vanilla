@@ -3,7 +3,7 @@ local m = RollFor
 
 if m.ChatApi then return end
 
-local _G = getfenv( 0 )
+local _G = getfenv( 0 ) ---@diagnostic disable-line: deprecated
 local M = {}
 
 ---@class ChatApi

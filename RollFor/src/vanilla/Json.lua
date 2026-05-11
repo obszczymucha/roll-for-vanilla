@@ -146,7 +146,7 @@ local parse
 ---@diagnostic disable-next-line: unused-vararg
 local function create_set( ... )
   local res = {}
-  local t = { unpack( arg ) }
+  local t = { unpack( arg ) } ---@diagnostic disable-line: deprecated
 
   for i = 1, getn( t ) do
     res[ t[ i ] ] = true

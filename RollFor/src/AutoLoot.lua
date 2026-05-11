@@ -17,7 +17,7 @@ M.interface = {
 }
 
 local button_visible = false
-local _G = getfenv( 0 )
+local _G = getfenv( 0 ) ---@diagnostic disable-line: deprecated
 
 ---@class AutoLoot
 ---@field is_auto_looted fun( item: DroppedItem ): boolean

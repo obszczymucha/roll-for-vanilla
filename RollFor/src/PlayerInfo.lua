@@ -25,8 +25,8 @@ function M.new( api )
   local function is_master_looter()
     if not api.IsInGroup() then return false end
 
-    local loot_method, id = api.GetLootMethod()
-    if loot_method ~= "master" or not id then return false end
+    local loot_method, id = api.C_PartyInfo.GetLootMethod()
+    if loot_method ~= 2 or not id then return false end
     if id == 0 then return true end
 
     if api.IsInRaid() then

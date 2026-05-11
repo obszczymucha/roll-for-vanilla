@@ -45,7 +45,11 @@ local function create_frame( api, on_import, on_clear, on_cancel, on_dirty )
   frame:SetBackdrop( frame_backdrop )
   frame:SetBackdropColor( 0, 0, 0, 1 )
 
-  frame:SetMinResize( 400, 200 )
+  if frame.SetMinResize then
+    frame:SetMinResize( 400, 200 )
+  elseif frame.SetResizeBounds then
+    frame:SetResizeBounds( 400, 200 )
+  end
   frame:SetToplevel( true )
 
   local backdrop = m.create_backdrop_frame( api(), "Frame", nil, frame )

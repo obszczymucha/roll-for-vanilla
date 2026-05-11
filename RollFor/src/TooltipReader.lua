@@ -5,7 +5,7 @@ if m.TooltipReader then return end
 
 
 local M = {}
-local _G = getfenv( 0 )
+local _G = getfenv( 0 ) ---@diagnostic disable-line: deprecated
 local BindType = m.ItemUtils.BindType
 
 local function create_tooltip_frame()

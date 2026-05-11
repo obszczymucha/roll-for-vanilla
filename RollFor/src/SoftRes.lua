@@ -53,7 +53,7 @@ function M.new( db )
     end
 
     if m.bcc then
-      data = LibStub( "LibDeflate" ):DecompressZlib( data )
+      data = LibStub( "LibDeflate" ):DecompressZlib( data ) ---@diagnostic disable-line: undefined-global
 
       if not data then
         m.pretty_print( "Couldn't decompress softres data!", m.colors.red )

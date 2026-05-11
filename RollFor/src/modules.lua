@@ -8,7 +8,7 @@ local mod, getn = M.mod, M.getn
 
 ---@alias ColorFn fun( text: string ): string
 
-M.api = getfenv()
+M.api = getfenv() ---@diagnostic disable-line: deprecated
 M.lua = {
   ---@diagnostic disable-next-line: undefined-global
   format = format,
@@ -216,7 +216,7 @@ function M.clone( t )
 end
 
 function M.is_master_loot()
-  return M.api.IsInGroup() and M.api.GetLootMethod() == "master"
+  return M.api.IsInGroup() and M.api.C_PartyInfo.GetLootMethod() == 2
 end
 
 function M.target_name()
@@ -498,7 +498,7 @@ function M.encode_base64( data )
 end
 
 function M.get_addon_version()
-  local version = M.api.GetAddOnMetadata( "RollFor", "Version" )
+  local version = M.api.C_AddOns.GetAddOnMetadata( "RollFor", "Version" )
   local major, minor = string.match( version, "(%d+)%.(%d+)" )
 
   local result = {

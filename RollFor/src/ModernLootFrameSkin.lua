@@ -169,7 +169,7 @@ function M.new( frame_builder )
     end
 
     local function on_enter( self )
-      if m.vanilla then self = this end
+      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
       if not item then return end
       if item.tooltip_link then
@@ -199,7 +199,7 @@ function M.new( frame_builder )
     container.comment:SetScript( "OnEnter", function( self )
       if not item then return end
       if item.comment_tooltip then
-        if m.vanilla then self = this end
+        if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
         self.tooltip_scale = m.api.GameTooltip:GetScale()
         m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
@@ -221,7 +221,7 @@ function M.new( frame_builder )
     end )
 
     container.comment:SetScript( "OnLeave", function( self )
-      if m.vanilla then self = this end
+      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
       m.api.GameTooltip:Hide()
       m.api.GameTooltip:SetScale( self.tooltip_scale or 1 )

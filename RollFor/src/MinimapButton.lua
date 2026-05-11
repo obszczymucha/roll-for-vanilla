@@ -56,7 +56,7 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
     local was_dragging = false
 
     function frame.OnClick( self )
-      if m.vanilla then self = this end
+      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
       manage_softres_fn()
       self:OnEnter()
@@ -64,21 +64,21 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
     end
 
     function frame.OnMouseDown( self )
-      if m.vanilla then self = this end
+      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
       self.icon:SetTexCoord( 0, 1, 0, 1 )
       was_dragging = false
     end
 
     function frame.OnMouseUp( self )
-      if m.vanilla then self = this end
+      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
       self.icon:SetTexCoord( 0.05, 0.95, 0.05, 0.95 )
       if m.vanilla and not was_dragging then self:OnClick() end
     end
 
     function frame.OnEnter( self )
-      if m.vanilla then self = this end
+      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
       if not self.dragging then
         api().GameTooltip:SetOwner( self, "ANCHOR_LEFT" )
@@ -124,7 +124,7 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
     end
 
     function frame.OnDragStart( self )
-      if m.vanilla then self = this end
+      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
       self.dragging = true
       self:LockHighlight()
@@ -135,7 +135,7 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
     end
 
     function frame.OnDragStop( self )
-      if m.vanilla then self = this end
+      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
       self.dragging = nil
       self:SetScript( "OnUpdate", nil )
@@ -144,7 +144,7 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
     end
 
     function frame.OnUpdate( self )
-      if m.vanilla then self = this end
+      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
       local mx, my = api().Minimap:GetCenter()
       local px, py = api().GetCursorPosition()
@@ -152,7 +152,7 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
 
       px, py = px / scale, py / scale
 
-      persist_angle( m.mod( math.deg( math.atan2( py - my, px - mx ) ), 360 ) )
+      persist_angle( m.mod( math.deg( math.atan2( py - my, px - mx ) ), 360 ) ) ---@diagnostic disable-line: deprecated
       self:UpdatePosition()
     end
 
@@ -161,7 +161,7 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
     --I suck at trig, so I"m not going to bother figuring it out
     ---@diagnostic disable-next-line: redefined-local
     function frame.UpdatePosition( self )
-      if m.vanilla then self = this end
+      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
       local angle = math.rad( get_angle() or m.lua.random( 0, 360 ) )
       local cos = math.cos( angle )

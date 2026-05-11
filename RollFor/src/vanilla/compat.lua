@@ -80,6 +80,6 @@ function M.in_group_check( api, chat, f )
       return
     end
 
-    f( unpack( arg ) )
+    f( unpack( arg ) ) ---@diagnostic disable-line: deprecated
   end
 end

@@ -488,7 +488,7 @@ local function is_rolling_check( f )
       return
     end
 
-    f( unpack( arg ) )
+    f( unpack( arg ) ) ---@diagnostic disable-line: deprecated
   end
 end
 

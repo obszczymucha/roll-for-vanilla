@@ -54,7 +54,7 @@ local function create_main_frame( frame_builder, config )
 
   frame:SetScript( "OnLeave",
     function( self )
-      if m.vanilla then self = this end
+      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
       local mouse_x, mouse_y = m.api.GetCursorPosition()
       local x, y = self:GetCenter()
@@ -105,21 +105,21 @@ local function create_button( parent, index, rows )
   frame.icon = icon
 
   frame:SetScript( "OnEnter", function( self )
-    if m.vanilla then self = this end
+    if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
     highlight( self )
   end )
 
   frame:SetScript( "OnLeave", function( self )
-    if m.vanilla then self = this end
+    if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
     dim( self )
   end )
 
   frame:SetScript( "OnMouseDown", function( self, button )
     if m.vanilla then
-      self = this
-      button = arg1
+      self = this ---@diagnostic disable-line: undefined-global
+      button = arg1 ---@diagnostic disable-line: undefined-global
     end
 
     if button == "LeftButton" then press( self ) end
@@ -127,8 +127,8 @@ local function create_button( parent, index, rows )
 
   frame:SetScript( "OnMouseUp", function( self, button )
     if m.vanilla then
-      self = this
-      button = arg1
+      self = this ---@diagnostic disable-line: undefined-global
+      button = arg1 ---@diagnostic disable-line: undefined-global
     end
 
     if button == "LeftButton" then
