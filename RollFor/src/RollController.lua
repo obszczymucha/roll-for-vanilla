@@ -674,6 +674,7 @@ function M.new(
     local waiting = data.status.type == "Waiting" or false
 
     local buttons = waiting and roll_in_progress_buttons( first_iteration.rolls ) or {}
+    local mapped_winners = {} ---@type WinnerWithAwardCallback[]
 
     if data.status and data.status.type == "Finished" then
       local dropped_item = loot_list.get_by_id( item.id )
@@ -698,6 +699,8 @@ function M.new(
           return { name = player.name, class = player.class, roll_type = player.roll_type, roll = player.winning_roll, award_callback = award_callback }
         end
       )
+
+      mapped_winners = winners
 
       if getn( winners ) == 1 and winners[ 1 ].award_callback then
         add_award_winner_button( buttons, winners[ 1 ].award_callback )
@@ -732,7 +735,7 @@ function M.new(
         item_texture = item.texture,
         item_count = data.item_count,
         rolls = first_iteration.rolls,
-        winners = data.winners,
+        winners = mapped_winners,
         strategy_type = first_iteration.rolling_strategy,
         buttons = buttons,
         waiting_for_rolls = waiting or false,

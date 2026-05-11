@@ -676,6 +676,7 @@ function SoftResTieRollSpec:should_display_tie_rolls()
     text( "There was a tie (42):", 11 ),
     softres_roll( p1, 2, 11 ),
     softres_roll( p2, 1 ),
+    text( "Psikutas wins the soft-res roll with 2.", 11 ),
     buttons( "AwardWinner", "RaidRoll", "AwardOther", "Close" )
   )
   rf.confirmation_popup.should_be_hidden()
@@ -702,6 +703,7 @@ function SoftResTieRollSpec:should_display_tie_rolls()
     text( "There was a tie (42):", 11 ),
     softres_roll( p1, 2, 11 ),
     softres_roll( p2, 1 ),
+    text( "Psikutas wins the soft-res roll with 2.", 11 ),
     buttons( "AwardWinner", "RaidRoll", "AwardOther", "Close" )
   )
 

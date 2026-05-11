@@ -1388,6 +1388,7 @@ function NormalTieRollSpec:should_display_tie_rolls()
     text( "There was a tie (42):", 11 ),
     mainspec_roll( p1, 2, 11 ),
     mainspec_roll( p2, 1 ),
+    text( "Psikutas wins the main-spec roll with 2.", 11 ),
     buttons( "AwardWinner", "RaidRoll", "AwardOther", "Close" )
   )
   rf.confirmation_popup.should_be_hidden()
@@ -1414,6 +1415,7 @@ function NormalTieRollSpec:should_display_tie_rolls()
     text( "There was a tie (42):", 11 ),
     mainspec_roll( p1, 2, 11 ),
     mainspec_roll( p2, 1 ),
+    text( "Psikutas wins the main-spec roll with 2.", 11 ),
     buttons( "AwardWinner", "RaidRoll", "AwardOther", "Close" )
   )
 

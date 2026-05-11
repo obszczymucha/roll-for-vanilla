@@ -341,6 +341,8 @@ function M.new( config )
       add_text( content, "Waiting for remaining rolls...", top_padding )
     elseif getn( data.roll_data.winners ) == 0 then
       add_empty_line( content, 5 )
+    else
+      add_winners( content, data.roll_data.winners, data.roll_data.strategy_type )
     end
 
     add_buttons( content, data.roll_data.buttons )
