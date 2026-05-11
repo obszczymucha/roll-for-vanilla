@@ -1078,12 +1078,12 @@ function M.new(
     if data.item_count == 0 then
       notify_subscribers( "LootFrameDeselect", { item_id = item_id } )
 
-      if currently_displayed_item then
+      if currently_displayed_item and currently_displayed_item.id == item_id then
         rolling_popup_data[ currently_displayed_item.id ] = nil
         currently_displayed_item = nil
+        rolling_popup.hide()
       end
 
-      rolling_popup.hide()
       notify_subscribers( "LootFrameClearSelectionCache", item_id )
       return
     end
