@@ -34,7 +34,9 @@ local function mock_config()
         rolling_popup = function() return true end,
         raid_roll_again = function() return false end,
         default_rolling_time_seconds = function() return 8 end,
-        classic_look = function() return true end
+        classic_look = function() return true end,
+        award_filter = function() return {} end,
+        keep_award_data = function() return false end
       }
     end
   }

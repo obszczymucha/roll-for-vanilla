@@ -15,6 +15,8 @@ local hl = m.colors.hl
 ---@field button fun( parent: Frame ): Frame
 ---@field info fun( parent: Frame ): Frame
 ---@field dropped_item fun( parent: Frame, text: string ): Frame
+---@field tiny_button fun( parent: Frame, text: string?, tooltip: string?, color: table?, font-size: number?):Frame
+---@field titlebar fun( parent: Frame, title: string, on_close: function )
 
 local M = {}
 
@@ -291,6 +293,232 @@ function M.award_button( parent )
   button:GetFontString():SetPoint( "CENTER", 0, -1 )
 
   return button
+end
+
+---@param parent Frame
+---@param text string?
+---@param tooltip string?
+---@param color string|table?
+---@param font_size number?
+function M.tiny_button( parent, text, tooltip, color, font_size )
+  local font_x, font_y
+  local button = m.api.CreateFrame( "Button", nil, parent )
+  if not text then text = 'X' end
+
+  if type( color ) == "string" and color ~= "" then
+    local str_color = color
+    color = {}
+    color.r, color.g, color.b, color.a = m.hex_to_rgba( str_color )
+  end
+
+  if m.classic then
+    if not color then color = { r = .9, g = .8, b = .25 } end
+    button:SetWidth( 18 )
+    button:SetHeight( 18 )
+
+    local highlight_texture = button:CreateTexture( nil, "HIGHLIGHT" )
+    highlight_texture:SetTexture( "Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight" )
+    highlight_texture:SetTexCoord( .1875, .78125, .21875, .78125 )
+    highlight_texture:SetBlendMode( "ADD" )
+    highlight_texture:SetAllPoints( button )
+
+    if text == 'X' then
+      button:SetNormalTexture( "Interface\\Buttons\\UI-Panel-MinimizeButton-Up" )
+      button:SetPushedTexture( "Interface\\Buttons\\UI-Panel-MinimizeButton-Down" )
+    else
+      button:SetNormalTexture( "Interface\\AddOns\\RollFor\\assets\\tiny-button-up.tga" )
+      button:SetPushedTexture( "Interface\\AddOns\\RollFor\\assets\\tiny-button-down.tga" )
+    end
+    button:GetNormalTexture():SetTexCoord( .1875, .78125, .21875, .78125 )
+    button:GetPushedTexture():SetTexCoord( .1875, .78125, .21875, .78125 )
+
+    if text ~= 'X' then
+      button:SetText( text )
+      button:SetPushedTextOffset( -1.5, -1.5 )
+
+      if string.upper( text ) == text then
+        font_x, font_y = 0, 0
+        font_size = font_size or 13
+      else
+        font_x, font_y = -1, 2
+        font_size = font_size or 15
+      end
+    end
+  else
+    if not color then color = { r = 1, g = .25, b = .25 } end
+    button:SetBackdrop( {
+      bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+      edgeFile = "Interface\\Buttons\\WHITE8X8",
+      tile = false,
+      tileSize = 0,
+      edgeSize = 0.5,
+      insets = { left = 0, right = 0, top = 0, bottom = 0 }
+    } )
+    button:SetBackdropColor( 0, 0, 0, 1 )
+    button:SetBackdropBorderColor( .2, .2, .2, 1 )
+    button:SetHeight( 13 )
+    button:SetWidth( 13 )
+    button:SetText( text )
+    button:SetPushedTextOffset( 0, 0 )
+
+    if string.upper( text ) == text then
+      font_x = text == "?" and -.5 or 0
+      font_y = 0.5
+      font_size = font_size or 10
+    else
+      font_x, font_y = -.5, 1.5
+      font_size = font_size or 14
+    end
+  end
+
+  if not m.classic or text ~= "X" then
+    button:GetFontString():SetFont( "FONTS\\FRIZQT__.TTF", font_size )
+    button:GetFontString():SetTextColor( color.r, color.g, color.b, color.a or 1 )
+    button:GetFontString():SetPoint( "CENTER", font_x, font_y )
+  end
+
+  button:SetScript( "OnEnter", function()
+    local self = button
+    self:SetBackdropBorderColor( color.r, color.g, color.b, color.a or 1 )
+    if tooltip then
+      m.api.GameTooltip:SetOwner( button, "ANCHOR_RIGHT" )
+      m.api.GameTooltip:SetText( tooltip )
+      m.api.GameTooltip:SetScale( 0.8 )
+      m.api.GameTooltip:Show()
+    end
+  end )
+  button:SetScript( "OnLeave", function()
+    local self = button
+    if not self.active then
+      self:SetBackdropBorderColor( .2, .2, .2, 1 )
+    end
+    if tooltip and m.api.GameTooltip:IsVisible() then
+      m.api.GameTooltip:SetScale( 1 )
+      m.api.GameTooltip:Hide()
+    end
+  end )
+
+  return button
+end
+
+---@param parent Frame
+---@param on_start function
+---@param on_end function
+function M.resize_grip( parent, on_start, on_end )
+  local button = m.api.CreateFrame( "Button", nil, parent )
+  button:SetWidth( 16 )
+  button:SetHeight( 16 )
+  button:SetNormalTexture( "Interface\\AddOns\\RollFor\\assets\\resize-grip.tga", "ARTWORK" )
+  button:GetNormalTexture():SetAllPoints( button )
+
+  button:SetScript( "OnEnter", function()
+    button:GetNormalTexture():SetBlendMode( "ADD" )
+  end )
+  button:SetScript( "OnLeave", function()
+    button:GetNormalTexture():SetBlendMode( "BLEND" )
+  end )
+  button:SetScript( "OnMouseDown", function()
+    parent:StartSizing( "BOTTOMRIGHT" )
+    if on_start then on_start( parent ) end
+  end )
+  button:SetScript( "OnMouseUp", function()
+    parent:StopMovingOrSizing()
+    if on_end then on_end( parent ) end
+  end )
+
+  return button
+end
+
+function M.checkbox( parent, text, on_change )
+  local frame = m.api.CreateFrame( "Frame", nil, parent )
+  frame:SetPoint( "LEFT", 5, 0 )
+  frame:SetHeight( 14 )
+
+  local cb = m.api.CreateFrame( "CheckButton", nil, frame, "UICheckButtonTemplate" )
+  cb:SetWidth( 14 )
+  cb:SetHeight( 14 )
+  cb:SetPoint( "LEFT", 2, 0 )
+  cb:SetNormalTexture( nil )
+  cb:SetPushedTexture( nil )
+  cb:SetHighlightTexture( nil )
+  cb:SetBackdrop( {
+    bgFile = "Interface/Buttons/WHITE8x8",
+    edgeFile = "Interface/Buttons/WHITE8x8",
+    edgeSize = 0.5,
+    insets = { left = 0, right = 0, top = 0, bottom = 0 }
+  } )
+  cb:SetBackdropColor( 0, 0, 0, 1 )
+  cb:SetBackdropBorderColor( .2, .2, .2, 1 )
+  cb:SetScript( "OnClick", function()
+    if on_change then on_change( cb:GetChecked() ) end
+  end )
+  frame.checkbox = cb
+
+  local label = M.create_text_in_container( "Button", frame, 1, "LEFT", text )
+  label.inner:SetJustifyH( "LEFT" )
+  label:SetWidth( label.inner:GetWidth() )
+  label:SetPoint( "LEFT", cb, "RIGHT", 5, 0 )
+  label:SetScript( "OnClick", function()
+    cb:SetChecked( not cb:GetChecked() )
+    if on_change then on_change( cb:GetChecked() ) end
+  end )
+
+  frame:SetWidth( cb:GetWidth() + label:GetWidth() + 5 )
+
+  return frame
+end
+
+---@param parent Frame
+---@param title string
+---@param on_close function
+function M.titlebar( parent, title, on_close )
+  local frame = m.api.CreateFrame( "Frame", nil, parent )
+  frame:SetHeight( 32 )
+  if not m.classic then
+    frame:SetPoint( "TOPLEFT", 0, 5 )
+    frame:SetPoint( "RIGHT", 0, 0 )
+  else
+    frame:SetPoint( "TOPLEFT", 3, 2 )
+    frame:SetPoint( "RIGHT", -3, 2 )
+    frame:SetBackdrop( {
+      bgFile = "Interface\\AddOns\\RollFor\\assets\\titlebar-top.tga",
+      tile = true,
+      tileSize = 32,
+      edgeSize = 0,
+      insets = { left = 30, right = 30, top = 0, bottom = 0 }
+    } )
+
+    local topLeft = frame:CreateTexture( nil, "BORDER" )
+    topLeft:SetTexture( "Interface\\AddOns\\RollFor\\assets\\titlebar-topleft.tga" )
+    topLeft:SetPoint( "TOPLEFT", frame, "TOPLEFT", 0, 0 )
+    topLeft:SetWidth( 64 )
+    topLeft:SetHeight( 32 )
+
+    local topRight = frame:CreateTexture( nil, "BORDER" )
+    topRight:SetTexture( "Interface\\AddOns\\RollFor\\assets\\titlebar-topright.tga" )
+    topRight:SetPoint( "TOPRIGHT", frame, "TOPRIGHT", 0, 0 )
+    topRight:SetWidth( 64 )
+    topRight:SetHeight( 32 )
+  end
+
+  local label = frame:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+  label:SetPoint( "TOPLEFT", 0, -12 )
+  label:SetPoint( "RIGHT", m.classic and -19 or 0, 0 )
+  label:SetJustifyH( "CENTER" )
+  label:SetTextColor( 1, 1, 1 )
+  label:SetText( title )
+
+  local btn_close = M.tiny_button( parent, "X", "Close Window" )
+  btn_close:SetPoint( "TOPRIGHT", m.classic and -7 or -5, m.classic and -5 or -5 )
+  btn_close:SetScript( "OnClick", function()
+    if on_close then
+      on_close()
+    else
+      if parent then parent:Hide() end
+    end
+  end )
+
+  return frame
 end
 
 function M.info( parent )
