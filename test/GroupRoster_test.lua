@@ -27,7 +27,7 @@ local function make_warriors( players )
   local result = {}
 
   for _, name in ipairs( players ) do
-    table.insert( result, packed_value( { name, nil, nil, nil, "Warrior" } ) )
+    table.insert( result, packed_value( { name, "Officer", 1, 60, "Warrior", "Stormwind", "Online" } ) )
   end
 
   return result
