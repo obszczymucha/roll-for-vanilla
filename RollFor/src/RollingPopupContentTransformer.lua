@@ -29,7 +29,9 @@ M.button_definitions = {
   [ "InstaRaidRoll" ] = button_definition( "Raid roll", 90 ),
   [ "RaidRoll" ] = button_definition( "Raid roll", 90 ),
   [ "RaidRollAgain" ] = button_definition( "Raid roll again", 130 ),
-  [ "Roll" ] = button_definition( "Roll", 60 )
+  [ "Roll" ] = button_definition( "Roll", 60 ),
+  [ "MS" ] = button_definition( "MS", 50 ),
+  [ "OS" ] = button_definition( "OS", 50 )
 }
 
 local top_padding = 11

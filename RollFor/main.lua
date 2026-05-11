@@ -365,6 +365,9 @@ local function create_components()
   M.sandbox = m.Sandbox.new()
 
   M.gargul_bridge = m.GargulBridge.new( M.player_info, M.roll_controller, M.config, function() return M.softres_db.data end, M.softres )
+
+  M.roll_for_broadcast = m.RollForBroadcast.new( M.roll_controller, M.config )
+  M.roll_for_receiver = m.RollForReceiver.new( M.rolling_popup, db( "receiver" ) )
 end
 
 local function subscribe_for_component_events()
@@ -449,6 +452,7 @@ local function on_roll_command( roll_slash_command )
     local item, count, seconds, message = M.args_parser.parse( args )
 
     if not item then
+      if M.roll_for_receiver.show() then return end
       M.usage_printer.print_usage( roll_slash_command )
       return
     end

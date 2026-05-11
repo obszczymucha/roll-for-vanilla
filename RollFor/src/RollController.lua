@@ -831,6 +831,7 @@ function M.new(
     M.debug.add( string.format( "on_roll( %s, %s, %s, %s )", player_name, player_class, roll_type, roll ) )
     local roll_tracker = get_roll_tracker( currently_displayed_item and currently_displayed_item.id )
     roll_tracker.add( player_name, player_class, roll_type, roll )
+    notify_subscribers( "roll", { player_name = player_name, player_class = player_class, roll_type = roll_type, roll = roll } )
 
     local data, current_iteration = roll_tracker.get()
     local strategy_type = current_iteration and current_iteration.rolling_strategy
@@ -946,7 +947,7 @@ function M.new(
     local rolls = current_iteration and current_iteration.rolls or {}
 
     if strategy_type == "NormalRoll" or strategy_type == "SoftResRoll" then
-      notify_subscribers( "roll_started", { item = item, seconds = seconds, strategy_type = strategy_type } )
+      notify_subscribers( "roll_started", { item = item, item_count = item_count, seconds = seconds, strategy_type = strategy_type, rolls = rolls } )
       roll_content( item, item_count, seconds, roll_in_progress_buttons( current_iteration.rolls ), rolls, {}, strategy_type )
       return
     end

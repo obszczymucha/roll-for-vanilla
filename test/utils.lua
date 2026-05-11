@@ -771,6 +771,20 @@ function M.mock_libraries()
   m_repeating_tick_fn = nil
   M.mock_wow_api()
   M.mock_library( "AceTimer-3.0", M.mock_ace_timer() )
+  M.mock_library( "AceComm-3.0", {
+    RegisterComm = function() end,
+    SendCommMessage = function() end,
+  } )
+  M.mock_library( "LibSerialize", {
+    Serialize = function( _, data ) return tostring( data ) end,
+    Deserialize = function( _, data ) return true, data end,
+  } )
+  M.mock_library( "LibDeflate", {
+    CompressDeflate = function( _, data ) return data end,
+    DecompressDeflate = function( _, data ) return data end,
+    EncodeForWoWAddonChannel = function( _, data ) return data end,
+    DecodeForWoWAddonChannel = function( _, data ) return data end,
+  } )
 end
 
 ---@alias ModuleRegistryEntry { module_name: string, variable_name: string, mock: (string|function)? }
@@ -890,6 +904,8 @@ function M.load_real_stuff( req )
   r( "src/GuiElements" )
   r( "src/ModernLootFrameSkin" )
   r( "src/OgLootFrameSkin" )
+  r( "src/RollForBroadcast" )
+  r( "src/RollForReceiver" )
   r( "src/GargulBridge" )
   -- r( "Libs/LibDeflate/LibDeflate" )
   r( "src/bcc/Json" )

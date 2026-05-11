@@ -76,41 +76,6 @@ function M.new( item_on_roll )
     if m.vanilla then t.n = 0 end
   end
 
-  local function update_roll( rolls, data )
-    M.debug.add( "update_roll" )
-
-    for _, line in ipairs( rolls ) do
-      if line.player_name == data.player_name and not line.roll then
-        line.roll = data.roll
-        return
-      end
-    end
-  end
-
-  local function sort( rolls )
-    table.sort( rolls, function( a, b )
-      if a.roll_type ~= b.roll_type then return a.roll_type < b.roll_type end
-
-      if a.roll and b.roll then
-        if a.roll == b.roll then
-          return a.player_name < b.player_name
-        end
-
-        return a.roll > b.roll
-      end
-
-      if a.roll then
-        return true
-      end
-
-      if b.roll then
-        return false
-      end
-
-      return a.player_name < b.player_name
-    end )
-  end
-
   local function add( player_name, player_class, roll_type, roll )
     if current_iteration == 0 then return end
     M.debug.add( "add" )
@@ -120,12 +85,12 @@ function M.new( item_on_roll )
     local iteration = iterations[ current_iteration ]
 
     if roll and (iteration.rolling_strategy == RS.SoftResRoll or iteration.rolling_strategy == RS.TieRoll) then
-      update_roll( iteration.rolls, data )
+      m.RollingLogicUtils.update_roll( iteration.rolls, data )
     else
       table.insert( iteration.rolls, data )
     end
 
-    sort( iteration.rolls )
+    m.RollingLogicUtils.sort_roll_data( iteration.rolls )
   end
 
   ---@param players RollingPlayer[]

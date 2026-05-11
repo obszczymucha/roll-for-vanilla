@@ -104,6 +104,34 @@ function M.sort_rolls( rolls, roll_type )
   return map( sorted_rolls, function( v ) return rollmap[ v ] end )
 end
 
+---@param rolls RollData[]
+---@param data RollData
+function M.update_roll( rolls, data )
+  for _, line in ipairs( rolls ) do
+    if line.player_name == data.player_name and not line.roll then
+      line.roll = data.roll
+      return
+    end
+  end
+end
+
+---@param rolls RollData[]
+function M.sort_roll_data( rolls )
+  table.sort( rolls, function( a, b )
+    if a.roll_type ~= b.roll_type then return a.roll_type < b.roll_type end
+
+    if a.roll and b.roll then
+      if a.roll == b.roll then return a.player_name < b.player_name end
+      return a.roll > b.roll
+    end
+
+    if a.roll then return true end
+    if b.roll then return false end
+
+    return a.player_name < b.player_name
+  end )
+end
+
 function M.has_rolls_left( rollers, player_name )
   for _, v in pairs( rollers ) do
     if v.name == player_name then
