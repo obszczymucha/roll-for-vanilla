@@ -872,4 +872,56 @@ function SrCountEqualsItemCountSpec:should_not_show_sr_placeholders_when_sr_play
   )
 end
 
+TwoSrPlayersThreeItemsSpec = {}
+
+function TwoSrPlayersThreeItemsSpec:should_handle_two_sr_players_with_three_items()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, p1, p2 = i( "Bag", 69 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, 69 ), sr( p2.name, 69 ) )
+      :build()
+
+  -- When (simulating /rf 3x[Bag])
+  rf.roll_controller.start( "SoftResRoll", item, 3, 8 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item, 3 ),
+    text( "Obszczymucha soft-ressed this item.", 11 ),
+    text( "Psikutas soft-ressed this item.", 2 ),
+    buttons( "RaidRoll", "Close" )
+  )
+end
+
+function TwoSrPlayersThreeItemsSpec:should_show_award_buttons_when_looting_and_clicking()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, p1, p2 = i( "Bag", 69 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, 69 ), sr( p2.name, 69 ) )
+      :build()
+  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+
+  -- When
+  loot_facade.notify( "LootOpened", item, item, item )
+  rf.loot_frame.click( 1 )
+
+  -- Then (loot frame groups only 2 bags for the 2 SR players, leaving the 3rd for normal rolling)
+  rf.rolling_popup.should_display(
+    item_link( item, 2 ),
+    text( "Obszczymucha soft-ressed this item.", 11 ),
+    individual_award_button,
+    text( "Psikutas soft-ressed this item.", 8 ),
+    individual_award_button,
+    buttons( "AwardOther", "Close" )
+  )
+end
+
 os.exit( lu.LuaUnit.run() )

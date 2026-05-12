@@ -248,7 +248,7 @@ function M.new(
     local x_rolls_win = item_count > 1 and string.format( ". %d top rolls win.", item_count ) or ""
     local ressed_by = m.prettify_table( map( players, format_name_with_rolls ) )
 
-    if player_count ~= item_count then
+    if player_count > item_count then
       chat.announce( string.format( "Roll for %s%s: SR by %s%s", count_str, item.link, ressed_by, x_rolls_win ), true )
       accept_rolls()
       return
