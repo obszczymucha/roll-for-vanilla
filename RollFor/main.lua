@@ -490,15 +490,7 @@ local function on_show_sorted_rolls_command( args )
 end
 
 local function is_rolling_check( f )
-  ---@diagnostic disable-next-line: unused-vararg
-  return function( ... )
-    if not M.rolling_logic.is_rolling() then
-      M.chat.info( "Rolling not in progress." )
-      return
-    end
-
-    f( unpack( arg ) ) ---@diagnostic disable-line: deprecated
-  end
+  return m.is_rolling_check( M.rolling_logic, M.chat, f )
 end
 
 local function in_group_check( f )

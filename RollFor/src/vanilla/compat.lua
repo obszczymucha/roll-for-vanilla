@@ -83,3 +83,18 @@ function M.in_group_check( api, chat, f )
     f( unpack( arg ) ) ---@diagnostic disable-line: deprecated
   end
 end
+
+---@param rolling_logic table
+---@param chat Chat
+---@param f function
+function M.is_rolling_check( rolling_logic, chat, f )
+  ---@diagnostic disable-next-line: unused-vararg
+  return function( ... )
+    if not rolling_logic.is_rolling() then
+      chat.info( "Rolling not in progress." )
+      return
+    end
+
+    f( unpack( arg ) ) ---@diagnostic disable-line: deprecated
+  end
+end

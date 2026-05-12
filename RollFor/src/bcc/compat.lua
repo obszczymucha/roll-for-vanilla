@@ -89,3 +89,17 @@ function M.in_group_check( api, chat, f )
     f( ... )
   end
 end
+
+---@param rolling_logic table
+---@param chat Chat
+---@param f function
+function M.is_rolling_check( rolling_logic, chat, f )
+  return function( ... )
+    if not rolling_logic.is_rolling() then
+      chat.info( "Rolling not in progress." )
+      return
+    end
+
+    f( ... )
+  end
+end
