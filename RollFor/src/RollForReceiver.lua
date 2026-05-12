@@ -29,7 +29,7 @@ function M.new( rolling_popup, db )
   ---@field seconds_left number?
   ---@field rolls RollData[]
   ---@field winners table[]
-  ---@field strategy_type string
+  ---@field strategy_type string?
   ---@field buttons table[]
   ---@field waiting_for_rolls boolean?
   ---@field tie_iterations table[]?
@@ -80,6 +80,16 @@ function M.new( rolling_popup, db )
     if not state.item_texture then
       state.item_texture = get_texture( state.item_link )
     end
+    if not state.strategy_type then
+      return {
+        type = "Item",
+        item_link = state.item_link,
+        item_tooltip_link = IU.get_tooltip_link( state.item_link ),
+        item_texture = state.item_texture,
+        item_count = state.item_count,
+        buttons = state.buttons
+      }
+    end
     local roll_data = {
       type = "Roll",
       item_link = state.item_link,
@@ -114,19 +124,40 @@ function M.new( rolling_popup, db )
   end
 
   local handlers = {
-    RF_START = function( payload )
+    RF_ITEM = function( payload )
       state = {
         item_link = payload.link,
         item_texture = get_texture( payload.link ),
         item_count = payload.count,
-        seconds_left = payload.seconds,
-        rolls = payload.rolls or {},
+        seconds_left = nil,
+        rolls = {},
         winners = {},
-        strategy_type = payload.strategy,
-        buttons = payload.strategy == "SoftResRoll"
-            and { roll_button( "Roll", payload.ms ), close_button }
-            or { roll_button( "MS", payload.ms ), roll_button( "OS", payload.os_roll ), close_button }
+        strategy_type = nil,
+        buttons = { close_button },
+        waiting_for_rolls = false
       }
+      refresh()
+    end,
+
+    RF_START = function( payload )
+      if not state then
+        state = {
+          item_link = payload.link,
+          item_texture = get_texture( payload.link ),
+          item_count = payload.count,
+          rolls = {},
+          winners = {},
+          buttons = {}
+        }
+      end
+
+      state.seconds_left = payload.seconds
+      state.rolls = payload.rolls or {}
+      state.strategy_type = payload.strategy
+      state.waiting_for_rolls = false
+      state.buttons = payload.strategy == "SoftResRoll"
+          and { roll_button( "Roll", payload.ms ), close_button }
+          or { roll_button( "MS", payload.ms ), roll_button( "OS", payload.os_roll ), close_button }
       refresh()
     end,
 

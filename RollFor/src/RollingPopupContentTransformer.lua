@@ -183,6 +183,22 @@ function M.new( config )
     end
   end
 
+  ---@class RollingPopupItemData
+  ---@field item_link ItemLink
+  ---@field item_tooltip_link TooltipItemLink
+  ---@field item_texture ItemTexture
+  ---@field item_count number
+  ---@field buttons RollingPopupButtonWithCallback[]
+  ---@field type "Item"
+
+  ---@param data RollingPopupItemData
+  local function item_content( data )
+    local content = {}
+    add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count )
+    add_buttons( content, data.buttons )
+    return content
+  end
+
   ---@class RollingPopupPreviewData
   ---@field item_link ItemLink
   ---@field item_tooltip_link TooltipItemLink
@@ -350,8 +366,12 @@ function M.new( config )
     return content
   end
 
-  ---@param data RollingPopupPreviewData|RollingPopupRaidRollData|RollingPopupRollData|RollingPopupRollingCanceledData|RollingPopupRaidRollingData|RollingPopupTieData
+  ---@param data RollingPopupItemData|RollingPopupPreviewData|RollingPopupRaidRollData|RollingPopupRollData|RollingPopupRollingCanceledData|RollingPopupRaidRollingData|RollingPopupTieData
   local function transform( data )
+    if data.type == "Item" then
+      return item_content( data )
+    end
+
     if data.type == "Preview" then
       return preview_content( data )
     end

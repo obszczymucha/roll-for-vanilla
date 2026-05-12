@@ -21,8 +21,10 @@ function M.new( roll_controller, config )
   end
 
   local function group_channel()
-    if m.api.IsInRaid() then return "RAID"
-    elseif m.api.IsInGroup() then return "PARTY"
+    if m.api.IsInRaid() then
+      return "RAID"
+    elseif m.api.IsInGroup() then
+      return "PARTY"
     end
   end
 
@@ -61,7 +63,12 @@ function M.new( roll_controller, config )
   roll_controller.subscribe( "roll_started", function( data )
     if not data or not data.item then return end
     active = true
-    send( { type = "RF_START", strategy = data.strategy_type, link = data.item.link, count = data.item_count, seconds = data.seconds, ms = config.ms_roll_threshold(), os_roll = config.os_roll_threshold(), rolls = data.rolls } )
+    send( { type = "RF_ITEM", link = data.item.link, count = data.item_count } )
+
+    if data.strategy_type ~= "SoftResRoll" or m.getn( data.rolls ) > 0 then
+      send( { type = "RF_START", strategy = data.strategy_type, link = data.item.link, count = data.item_count, seconds = data.seconds, ms = config
+      .ms_roll_threshold(), os_roll = config.os_roll_threshold(), rolls = data.rolls } )
+    end
   end )
 
   roll_controller.subscribe( "roll", function( data )
@@ -77,7 +84,8 @@ function M.new( roll_controller, config )
   roll_controller.subscribe( "winners_found", function( data )
     if not data then return end
     for _, winner in ipairs( data.winners ) do
-      send_if_active( { type = "RF_WIN", strategy = data.rolling_strategy, name = winner.name, class = winner.class, roll_type = winner.roll_type, roll = winner.winning_roll } )
+      send_if_active( { type = "RF_WIN", strategy = data.rolling_strategy, name = winner.name, class = winner.class, roll_type = winner.roll_type, roll = winner
+      .winning_roll } )
     end
   end )
 
