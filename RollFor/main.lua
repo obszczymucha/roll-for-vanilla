@@ -714,6 +714,11 @@ function M.unaward_item( player_name, item_id, item_link )
   info( string.format( "%s returned %s.", hl( player_name ), item_link ) )
 end
 
+function M.on_item_info_received( item_id )
+  M.roll_controller.on_item_info_received( item_id )
+  M.roll_for_receiver.on_item_info_received( item_id )
+end
+
 function M.on_group_changed()
   M.name_matcher.auto_match()
   update_minimap_icon()

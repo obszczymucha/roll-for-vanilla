@@ -91,21 +91,19 @@ function M.item_link_with_icon( parent, text )
       container.text:SetPoint( "LEFT", anchor, "RIGHT", padding, 0 )
       container:SetWidth( container.text:GetWidth() + w + count_width + spacing )
     else
-      local anchor = container
-      local count_width = 0
+      container.icon:Hide()
+      container.text:ClearAllPoints()
 
       if count > 1 then
         container.count:Show()
         container.count:ClearAllPoints()
-        container.count:SetPoint( "LEFT", container.icon, "RIGHT", spacing, 0 )
-        anchor = container.count
-        count_width = container.count:GetWidth()
+        container.count:SetPoint( "LEFT", container, "LEFT", 0, 0 )
+        container.text:SetPoint( "LEFT", container.count, "RIGHT", 0, 0 )
+        container:SetWidth( container.count:GetWidth() + container.text:GetWidth() )
+      else
+        container.text:SetPoint( "LEFT", container, 0, 0 )
+        container:SetWidth( container.text:GetWidth() )
       end
-
-      container.icon:Hide()
-      container.text:ClearAllPoints()
-      container.text:SetPoint( "LEFT", anchor, 0, 0 )
-      container:SetWidth( count_width + container.text:GetWidth() )
     end
   end
 

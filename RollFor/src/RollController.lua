@@ -51,6 +51,7 @@ local hl = m.colors.hl
 ---@field rolling_started fun( rolling_strategy: RollingStrategyType, item: Item, count: number, seconds: number?, message: string?, rolling_players: RollingPlayer[]? )
 ---@field award_confirmed fun( player: ItemCandidate|Winner, item: MasterLootDistributableItem )
 ---@field update fun( item_id: ItemId )
+---@field on_item_info_received fun( item_id: ItemId )
 
 ---@param ml_candidates MasterLootCandidates
 ---@param softres GroupAwareSoftRes
@@ -152,6 +153,7 @@ function M.new(
   ---@param strategy_type RollingStrategyType
   ---@param waiting_for_rolls boolean?
   local function roll_content( item, item_count, seconds, buttons, rolls, winners, strategy_type, waiting_for_rolls )
+    if not item.texture then item.texture = m.get_item_texture( m.api, item.id ) end
     ---@type RollingPopupRollData
     rolling_popup_data[ item.id ] = {
       item_link = item.link,
@@ -1129,6 +1131,17 @@ function M.new(
     rolling_popup:refresh( rolling_popup_data[ currently_displayed_item.id ] )
   end
 
+  ---@param item_id ItemId
+  local function on_item_info_received( item_id )
+    if not currently_displayed_item or currently_displayed_item.id ~= item_id then return end
+    if not rolling_popup_data[ item_id ] then return end
+    local texture = m.get_item_texture( m.api, item_id )
+    if not texture then return end
+    currently_displayed_item.texture = texture
+    rolling_popup_data[ item_id ].item_texture = texture
+    popup_refresh()
+  end
+
   local function loot_opened()
     M.debug.add( "loot_opened" )
     popup_refresh()
@@ -1261,7 +1274,8 @@ function M.new(
     cancel_rolling = cancel_rolling,
     rolling_started = rolling_started,
     award_confirmed = award_confirmed,
-    update = update
+    update = update,
+    on_item_info_received = on_item_info_received
   }
 end
 

@@ -18,7 +18,9 @@ function M.new( rolling_popup, db )
   local lib_serialize = lib_stub and lib_stub( "LibSerialize", true )
   local lib_deflate = lib_stub and lib_stub( "LibDeflate", true )
 
-  if not ace_comm or not lib_serialize or not lib_deflate then return {} end
+  if not ace_comm or not lib_serialize or not lib_deflate then
+    error( "RollForReceiver: required libs (AceComm-3.0, LibSerialize, LibDeflate) are not available." )
+  end
 
   ---@class ReceiverState
   ---@field item_link string
@@ -75,6 +77,9 @@ function M.new( rolling_popup, db )
 
   local function to_popup_data()
     ---@cast state ReceiverState
+    if not state.item_texture then
+      state.item_texture = get_texture( state.item_link )
+    end
     local roll_data = {
       type = "Roll",
       item_link = state.item_link,
@@ -219,6 +224,12 @@ function M.new( rolling_popup, db )
     end
   }
 
+  local function on_item_info_received( item_id )
+    if not state or state.dismissed then return end
+    if IU.get_item_id( state.item_link ) ~= item_id then return end
+    refresh()
+  end
+
   ace_comm:RegisterComm( CHANNEL, function( _, encoded, _, sender )
     if sender == m.api.UnitName( "player" ) then return end
 
@@ -230,7 +241,8 @@ function M.new( rolling_popup, db )
   end )
 
   return {
-    show = show
+    show = show,
+    on_item_info_received = on_item_info_received
   }
 end
 

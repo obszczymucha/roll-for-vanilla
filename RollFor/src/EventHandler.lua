@@ -66,6 +66,8 @@ function M.handle_events( main )
     elseif event == "PLAYER_TARGET_CHANGED" then
       main.master_loot_warning.on_player_target_changed()
       main.auto_master_loot.on_player_target_changed( arg1 )
+    elseif event == "GET_ITEM_INFO_RECEIVED" then
+      main.on_item_info_received( arg1 )
     elseif event == "UI_ERROR_MESSAGE" then
       local message = m.vanilla and arg1 or arg2
 
@@ -108,6 +110,9 @@ function M.handle_events( main )
   frame:RegisterEvent( "TRADE_REQUEST_CANCEL" )
   frame:RegisterEvent( "UI_ERROR_MESSAGE" )
   frame:RegisterEvent( "PLAYER_TARGET_CHANGED" )
+  if not m.vanilla then
+    frame:RegisterEvent( "GET_ITEM_INFO_RECEIVED" )
+  end
   frame:RegisterEvent( "ZONE_CHANGED" )
   frame:RegisterEvent( "ZONE_CHANGED_NEW_AREA" )
 

@@ -16,7 +16,9 @@ function M.new( roll_controller, config )
   local lib_serialize = lib_stub and lib_stub( "LibSerialize", true )
   local lib_deflate = lib_stub and lib_stub( "LibDeflate", true )
 
-  if not ace_comm or not lib_serialize or not lib_deflate then return {} end
+  if not ace_comm or not lib_serialize or not lib_deflate then
+    error( "RollForBroadcast: required libs (AceComm-3.0, LibSerialize, LibDeflate) are not available." )
+  end
 
   local function group_channel()
     if m.api.IsInRaid() then return "RAID"
