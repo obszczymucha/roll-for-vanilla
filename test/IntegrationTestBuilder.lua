@@ -321,6 +321,7 @@ function M.new_roll_for()
       auto_loot = auto_loot, ---@type AutoLoot
       ace_timer = ace_timer,
       roll = rolling_logic.on_roll,
+      roll_controller = roll_controller,
       reset_announcements = dropped_loot_announce.reset,
       enable_debug = enable_debug
     }

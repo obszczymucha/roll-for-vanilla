@@ -260,7 +260,7 @@ function M.new( config )
 
     add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count )
 
-    if not data.seconds_left and getn( data.rolls ) == 0 then
+    if not data.seconds_left and getn( data.rolls ) == 0 and getn( data.winners ) == 0 then
       add_text( content, "Rolling finished. No one rolled.", top_padding )
     else
       add_rolls( content, data.rolls )

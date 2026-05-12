@@ -94,6 +94,7 @@ function M.new(
       return normal_roll( item, item_count or 1, message, seconds, on_rolling_finished, roll_controller_facade )
     end
 
+    local needs_rolling = getn( softressing_players ) ~= item_count
     return m.SoftResRollingLogic.new(
       chat,
       ace_timer,
@@ -107,7 +108,7 @@ function M.new(
       winner_tracker,
       master_loot_candidates,
       roll_controller_facade
-    ), softressing_players
+    ), needs_rolling and softressing_players or nil
   end
 
   local function raid_roll( f )
