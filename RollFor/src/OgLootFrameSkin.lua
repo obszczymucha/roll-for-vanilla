@@ -103,9 +103,12 @@ function M.new( frame_builder )
     container.name = gui.create_text_in_container( "Button", container, 20, "LEFT", nil, "text", "GameFontNormal" )
     container.name.text:SetJustifyH( "LEFT" )
     container.name.text:SetTextColor( 1, 1, 1 )
-    container.name.text:SetWidth( 86 )
+    container.name.text:SetWidth( 100 )
     container.name:SetHeight( h )
     container.name:SetWidth( 102 )
+    local name_base_font, name_base_size, name_base_flags = container.name.text:GetFont()
+    local name_max_width = 145
+    local name_min_size = 10
     local name_texture = container.name:CreateTexture( nil, "BACKGROUND" )
     name_texture:SetTexture( "Interface\\QuestFrame\\UI-QuestItemNameFrame" )
     name_texture:SetWidth( 133 )
@@ -194,6 +197,12 @@ function M.new( frame_builder )
       item = v
       container.icon.texture:SetTexture( v.texture )
       container.name.text:SetText( m.colorize_item_by_quality( v.name, v.quality ) )
+      local font_size = name_base_size
+      container.name.text:SetFont( name_base_font, font_size, name_base_flags )
+      while container.name.text:GetStringWidth() > name_max_width and font_size > name_min_size do
+        font_size = font_size - 1
+        container.name.text:SetFont( name_base_font, font_size, name_base_flags )
+      end
       container.name:SetPoint( "LEFT", container.icon, "RIGHT", spacing + 1, 0 )
 
       if v.quantity and v.quantity > 1 then

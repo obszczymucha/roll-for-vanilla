@@ -64,6 +64,49 @@ local function trade_complete_callback( recipient_name, items_given, items_recei
   end
 end
 
+-- TODO: Add type.
+local function get_dummy_items()
+  ---@diagnostic disable-next-line: unused-function
+  local function item_link( name, id, quality )
+    local color = (quality and m.api.ITEM_QUALITY_COLORS[ quality ] and m.api.ITEM_QUALITY_COLORS[ quality ].hex) or "|cffffffff"
+    return string.format( "%s|Hitem:%s::::::::20:257::::::|h[%s]|h|r", color, id or "3299", name )
+  end
+
+  -- { item_id, quantity, name_override }
+  local ids = {
+    { 30237, 1, "Chestuguard of the Vanquished Ass Defendor of Asses" }, -- Chestguard of the Vanquished Defender
+    { 29988, 1, "The Nexus Keyss" },
+    { 30236, 1 }, -- Chestguard of the Vanquished Champion
+    { 30236, 1 }, -- Chestguard of the Vanquished Champion
+    { 32405, 1 }, -- Verdant Sphere
+    { 32458, 1 }, -- Ashes of Al'ar
+    { 30183, 2 }, -- Nether Vortex
+    { 29994, 1 }, -- Thalassian Wildercloak
+  }
+  local result = {}
+  ---@type MakeDroppedItemFn
+  local make_dropped_item = m.ItemUtils.make_dropped_item
+  local boe = m.ItemUtils.BindType.BindOnEquip
+
+  for _, entry in ipairs( ids ) do
+    local item_id, quantity, name_override = entry[ 1 ], entry[ 2 ], entry[ 3 ]
+    local name, tooltip_link, quality, texture
+
+    local item_info = { m.api.GetItemInfo( item_id ) }
+    name, tooltip_link, quality = item_info[ 1 ], item_info[ 2 ], item_info[ 3 ]
+    texture = item_info[ m.vanilla and 9 or 10 ]
+
+    if name then
+      name = name_override or name
+      local link = item_link( name, item_id, quality )
+      local item = make_dropped_item( item_id, name, link, tooltip_link, quality, quantity, texture, boe )
+      table.insert( result, item )
+    end
+  end
+
+  return result
+end
+
 local function create_components()
   ---@type AceTimer
   M.ace_timer = lib_stub( "AceTimer-3.0" )
@@ -155,43 +198,6 @@ local function create_components()
 
   ---@type LootFacade
   M.loot_facade = m.LootFacade.new( m.EventFrame.new( m.api ), m.api )
-
-  -- TODO: Add type.
-  ---@diagnostic disable-next-line: unused-local, unused-function
-  local function get_dummy_items()
-    ---@diagnostic disable-next-line: unused-function
-    local function item_link( name, id, quality )
-      local color = m.api.ITEM_QUALITY_COLORS[ quality ].hex or "|cffffffff"
-      return string.format( "%s|Hitem:%s::::::::20:257::::::|h[%s]|h|r", color, id or "3299", name )
-    end
-
-    -- local ids = { 17204, 16961, 18842, 16961, 16961, 18842, 16865, 16961, 17109, 16961, 18466, 11980, 12820, 3676 }
-    local ids = { 17109, 17109, 17109, 3676 }
-    local result = {}
-    ---@type MakeDroppedItemFn
-    local make_dropped_item = m.ItemUtils.make_dropped_item
-    local boe = m.ItemUtils.BindType.BindOnEquip
-
-    ---@diagnostic disable-next-line: unused-local
-    for i, item_id in ipairs( ids ) do
-      local name, tooltip_link, quality, texture
-
-      if m.vanilla then
-        name, tooltip_link, quality, _, _, _, _, _, texture = m.api.GetItemInfo( item_id )
-      else
-        name, tooltip_link, quality, _, _, _, _, _, _, texture = m.api.GetItemInfo( item_id )
-      end
-
-      local link = item_link( name, item_id, quality )
-      local item = make_dropped_item( item_id, name, link, tooltip_link, quality, 1, texture, boe )
-
-      table.insert( result, item )
-    end
-
-    table.sort( result, function( a, b ) return a.quality > b.quality end )
-
-    return result
-  end
 
   -- Enable this for testing in game. It will replace dropped items with the above.
   local mock_items = false
@@ -631,6 +637,30 @@ local function on_reset_dropped_loot_announce_command()
   M.dropped_loot_announce.reset()
 end
 
+-- local function on_rftest_command()
+--   local dropped_items = get_dummy_items()
+--   local loot_frame_items = {}
+--
+--   for index, item in ipairs( dropped_items ) do
+--     table.insert( loot_frame_items, {
+--       index = index,
+--       texture = item.texture,
+--       name = item.name,
+--       quality = item.quality or 0,
+--       quantity = item.quantity,
+--       link = item.link,
+--       click_fn = function() end,
+--       is_selected = false,
+--       is_enabled = true,
+--       tooltip_link = item.tooltip_link,
+--       bind = m.ItemUtils.bind_abbrev( item.bind )
+--     } )
+--   end
+--
+--   M.loot_frame.show()
+--   M.loot_frame.update( loot_frame_items )
+-- end
+
 local function setup_slash_commands()
   -- Roll For commands
   SLASH_RF1 = RollSlashCommand.NormalRoll
@@ -664,6 +694,9 @@ local function setup_slash_commands()
 
   SLASH_RFT1 = "/rft"
   M.api().SlashCmdList[ "RFT" ] = M.sandbox.run
+
+  -- SLASH_RFTEST1 = "/rftest"
+  -- M.api().SlashCmdList[ "RFTEST" ] = on_rftest_command
 
   --SLASH_DROPPED1 = "/DROPPED"
   --M.api().SlashCmdList[ "DROPPED" ] = simulate_loot_dropped

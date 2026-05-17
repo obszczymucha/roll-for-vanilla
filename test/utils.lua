@@ -215,6 +215,8 @@ function M.mock_wow_api()
           GetWidth = function() return 100 end,
           GetHeight = function() return 20 end,
           GetText = function() return "Font string text" end,
+          GetFont = function() return "GameFontNormal", 12, "" end,
+          SetFont = function() end,
           SetWidth = function() end,
           SetNonSpaceWrap = function() end,
           SetHeight = function() end,
