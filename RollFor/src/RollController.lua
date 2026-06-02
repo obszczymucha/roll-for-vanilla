@@ -23,7 +23,7 @@ local hl = m.colors.hl
 
 ---@class RollController
 ---@field preview RollControllerPreviewFn
----@field start fun( rolling_strategy: RollingStrategyType, item: Item, count: number, seconds: number?, info: string? )
+---@field start fun( strategy_type: RollingStrategyType, item: Item, item_count: number, item_quantity: number, seconds: number?, message: string? )
 ---@field winners_found fun( item: Item, item_count: number, winners: Winner[], strategy: RollingStrategyType )
 ---@field finish fun()
 ---@field tick fun( seconds_left: number )
@@ -48,7 +48,7 @@ local hl = m.colors.hl
 ---@field loot_list_item_deselected fun()
 ---@field finish_rolling_early fun()
 ---@field cancel_rolling fun()
----@field rolling_started fun( rolling_strategy: RollingStrategyType, item: Item, count: number, seconds: number?, message: string?, rolling_players: RollingPlayer[]? )
+---@field rolling_started fun( strategy_type: RollingStrategyType, item: Item, item_count: number, item_quantity: number, seconds: number?, message: string?, rolling_players: RollingPlayer[]? )
 ---@field award_confirmed fun( player: ItemCandidate|Winner, item: MasterLootDistributableItem )
 ---@field update fun( item_id: ItemId )
 ---@field on_item_info_received fun( item_id: ItemId )
@@ -92,11 +92,37 @@ function M.new(
     return roll_tracker
   end
 
-  local function notify_subscribers( event_type, data )
-    M.debug.add( event_type )
+  ---@alias RollControllerEvent
+  ---| AwardAbortedEvent
+  ---| AwardConfirmedEvent
+  ---| CancelRollingEvent
+  ---| FinishRollingEarlyEvent
+  ---| IgnoredRollEvent
+  ---| LootAwardedEvent
+  ---| LootAwardPopupClosedEvent
+  ---| LootFrameClearSelectionCacheEvent
+  ---| LootFrameDeselectEvent
+  ---| LootFrameUpdateEvent
+  ---| LootListItemDeselectedEvent
+  ---| LootListItemSelectedEvent
+  ---| NotAllItemsAwardedEvent
+  ---| RollEvent
+  ---| RollingFinishedEvent
+  ---| RollingPopupClosedEvent
+  ---| RollingStartedEvent
+  ---| StartEvent
+  ---| ThereWasATieEvent
+  ---| TickEvent
+  ---| TieStartEvent
+  ---| WaitingForRollsEvent
+  ---| WinnersFoundEvent
 
-    for _, callback in ipairs( callbacks[ event_type ] or {} ) do
-      callback( data )
+  ---@param event RollControllerEvent
+  local function notify_subscribers( event )
+    M.debug.add( event.type )
+
+    for _, callback in ipairs( callbacks[ event.type ] or {} ) do
+      callback( event )
     end
   end
 
@@ -106,14 +132,22 @@ function M.new(
   ---@field b number
   ---@field a number
 
-  ---@class AwardConfirmedData
+  ---@class AwardConfirmedEvent
+  ---@field type "award_confirmed"
   ---@field player ItemCandidate|Winner
   ---@field item MasterLootDistributableItem
 
   ---@param player ItemCandidate|Winner
   ---@param item MasterLootDistributableItem
   local function award_confirmed( player, item )
-    notify_subscribers( "award_confirmed", { player = player, item = item } )
+    ---@type AwardConfirmedEvent
+    local event = {
+      type = "award_confirmed",
+      player = player,
+      item = item
+    }
+
+    notify_subscribers( event )
   end
 
   ---@class WinnerWithAwardCallback
@@ -141,18 +175,20 @@ function M.new(
   ---@field strategy_type RollingStrategyType
   ---@field item Item
   ---@field item_count number
+  ---@field item_quantity number
   ---@field message string?
   ---@field seconds number?
 
   ---@param item Item
   ---@param item_count number
+  ---@param item_quantity number
   ---@param seconds number?
   ---@param buttons RollingPopupButtonWithCallback[]
   ---@param rolls RollData[]
   ---@param winners WinnerWithAwardCallback[]
   ---@param strategy_type RollingStrategyType
   ---@param waiting_for_rolls boolean?
-  local function roll_content( item, item_count, seconds, buttons, rolls, winners, strategy_type, waiting_for_rolls )
+  local function roll_content( item, item_count, item_quantity, seconds, buttons, rolls, winners, strategy_type, waiting_for_rolls )
     if not item.texture then item.texture = m.get_item_texture( m.api, item.id ) end
     ---@type RollingPopupRollData
     rolling_popup_data[ item.id ] = {
@@ -160,6 +196,7 @@ function M.new(
       item_tooltip_link = IU.get_tooltip_link( item.link ),
       item_texture = item.texture,
       item_count = item_count,
+      item_quantity = item_quantity,
       seconds_left = seconds,
       rolls = rolls,
       winners = winners,
@@ -173,12 +210,18 @@ function M.new(
     rolling_popup:refresh( rolling_popup_data[ item.id ] )
   end
 
+  ---@class CancelRollingEvent
+  ---@field type "cancel_rolling"
+
   local function cancel_rolling()
-    notify_subscribers( "cancel_rolling" )
+    notify_subscribers( { type = "cancel_rolling" } )
   end
 
+  ---@class FinishRollingEarlyEvent
+  ---@field type "finish_rolling_early"
+
   local function finish_rolling_early()
-    notify_subscribers( "finish_rolling_early" )
+    notify_subscribers( { type = "finish_rolling_early" } )
   end
 
   -- TODO: RollData can be a placeholder for a SR or tie roll.
@@ -212,13 +255,15 @@ function M.new(
 
   ---@param item Item
   ---@param item_count number
-  local function raid_rolling_content( item, item_count )
+  ---@param item_quantity number
+  local function raid_rolling_content( item, item_count, item_quantity )
     ---@type RollingPopupRaidRollingData
     rolling_popup_data[ item.id ] = {
       item_link = item.link,
       item_tooltip_link = IU.get_tooltip_link( item.link ),
       item_texture = item.texture,
       item_count = item_count,
+      item_quantity = item_quantity,
       type = "RaidRolling"
     }
 
@@ -226,12 +271,22 @@ function M.new(
     rolling_popup:refresh( rolling_popup_data[ item.id ] )
   end
 
+  ---@class StartEvent
+  ---@field type "start"
+  ---@field strategy_type RollingStrategyType
+  ---@field item Item
+  ---@field item_count number
+  ---@field item_quantity number
+  ---@field message string?
+  ---@field seconds number?
+
   ---@param strategy_type RollingStrategyType
   ---@param item Item
   ---@param item_count number
+  ---@param item_quantity number
   ---@param seconds number?
   ---@param message string?
-  local function start( strategy_type, item, item_count, seconds, message )
+  local function start( strategy_type, item, item_count, item_quantity, seconds, message )
     if ml_confirmation_data then
       info( "Item award confirmation is in progress. Can't start rolling now." )
       return
@@ -239,12 +294,28 @@ function M.new(
 
     new_roll_tracker( item )
     currently_displayed_item = item
-    notify_subscribers( "start", { strategy_type = strategy_type, item = item, item_count = item_count, message = message, seconds = seconds } )
+
+    ---@type StartEvent
+    local event = {
+      type = "start",
+      strategy_type = strategy_type,
+      item = item,
+      item_count = item_count,
+      item_quantity = item_quantity,
+      message = message,
+      seconds = seconds
+    }
+
+    notify_subscribers( event )
 
     if strategy_type == "RaidRoll" then
-      raid_rolling_content( item, item_count )
+      raid_rolling_content( item, item_count, item_quantity )
     end
   end
+
+  ---@class LootFrameDeselectEvent
+  ---@field type "loot_frame_deselect"
+  ---@field item_id number?
 
   ---@param buttons RollingPopupButtonWithCallback[]
   ---@param status RollingStatus
@@ -261,17 +332,22 @@ function M.new(
       end
 
       rolling_popup.hide()
-      notify_subscribers( "LootFrameDeselect", { item_id = item_id } )
+      notify_subscribers( { type = "loot_frame_deselect", item_id = item_id } )
     end ) )
   end
 
+  ---@class AwardAbortedEvent
+  ---@field type "award_aborted"
+  ---@field item MasterLootDistributableItem
+
+  ---@param item MasterLootDistributableItem
   local function award_aborted( item )
     if ml_confirmation_data then
       ml_confirmation_data = nil
       loot_award_popup.hide()
     end
 
-    notify_subscribers( "award_aborted", { item = item } )
+    notify_subscribers( { type = "award_aborted", item = item } )
 
     if rolling_popup_data[ item.id ] then
       rolling_popup:show()
@@ -371,13 +447,14 @@ function M.new(
   ---@param strategy RollingStrategyType
   ---@param item Item
   ---@param item_count number
-  local function add_roll_button( buttons, strategy, item, item_count )
+  ---@param item_quantity number
+  local function add_roll_button( buttons, strategy, item, item_count, item_quantity )
     table.insert( buttons, button( "Roll", function()
       if m.is_shift_key_down() then
         m.slash_command_in_chat( m.Types.RollSlashCommand.NormalRoll, item.link )
       else
         player_selection_frame.hide()
-        start( strategy, item, item_count, config.default_rolling_time_seconds() )
+        start( strategy, item, item_count, item_quantity, config.default_rolling_time_seconds() )
       end
     end ) )
   end
@@ -386,10 +463,11 @@ function M.new(
   ---@param type "RaidRoll"|"InstaRaidRoll"
   ---@param item Item
   ---@param item_count number
-  local function add_raid_roll_button( buttons, type, item, item_count )
+  ---@param item_quantity number
+  local function add_raid_roll_button( buttons, type, item, item_count, item_quantity )
     table.insert( buttons, button( type, function()
       player_selection_frame.hide()
-      start( type == "RaidRoll" and RS.RaidRoll or RS.InstaRaidRoll, item, item_count )
+      start( type == "RaidRoll" and RS.RaidRoll or RS.InstaRaidRoll, item, item_count, item_quantity )
     end ) )
   end
 
@@ -400,18 +478,21 @@ function M.new(
   ---@param candidate_count number
   ---@param candidates ItemCandidate[]
   local function preview_non_soft_ressed_items( buttons, item, item_count, dropped_item, candidate_count, candidates )
-    add_roll_button( buttons, RS.NormalRoll, item, item_count )
-    add_raid_roll_button( buttons, "InstaRaidRoll", item, item_count )
+    local quantity = dropped_item and dropped_item.quantity or 1
+    add_roll_button( buttons, RS.NormalRoll, item, item_count, quantity )
+    add_raid_roll_button( buttons, "InstaRaidRoll", item, item_count, quantity )
 
     if candidate_count > 0 then add_award_other_button( dropped_item, buttons, candidates, {}, RS.NormalRoll ) end
 
     add_close_button( buttons, S.Preview )
 
+    ---@type RollingPopupPreviewData
     rolling_popup_data[ item.id ] = {
       item_link = item.link,
       item_tooltip_link = IU.get_tooltip_link( item.link ),
       item_texture = item.texture,
       item_count = item_count,
+      item_quantity = dropped_item and dropped_item.quantity or 1,
       hard_ressed = false,
       winners = {},
       rolls = {},
@@ -431,7 +512,8 @@ function M.new(
   ---@param candidate_count number
   ---@param candidates ItemCandidate[]
   local function preview_hard_ressed_item( buttons, item, item_count, dropped_item, candidate_count, candidates )
-    add_roll_button( buttons, RS.SoftResRoll, item, item_count )
+    local quantity = dropped_item and dropped_item.quantity or 1
+    add_roll_button( buttons, RS.SoftResRoll, item, item_count, quantity )
 
     if candidate_count > 0 then add_award_other_button( dropped_item, buttons, candidates, {}, RS.SoftResRoll ) end
 
@@ -442,6 +524,7 @@ function M.new(
       item_tooltip_link = IU.get_tooltip_link( item.link ),
       item_texture = item.texture,
       item_count = item_count,
+      item_quantity = quantity,
       hard_ressed = true,
       winners = {},
       rolls = {},
@@ -494,12 +577,14 @@ function M.new(
     if candidate_count > 0 then add_award_other_button( dropped_item, buttons, candidates, winners, RS.SoftResRoll ) end
 
     add_close_button( buttons, S.Preview )
+    local quantity = dropped_item and dropped_item.quantity or 1
 
     rolling_popup_data[ item.id ] = {
       item_link = item.link,
       item_tooltip_link = IU.get_tooltip_link( item.link ),
       item_texture = item.texture,
       item_count = item_count,
+      item_quantity = quantity,
       hard_ressed = false,
       winners = winners,
       rolls = {},
@@ -520,7 +605,8 @@ function M.new(
   ---@param candidate_count number
   ---@param candidates ItemCandidate[]
   local function preview_sr_items_not_equal_to_item_count( soft_ressers, item, item_count, dropped_item, buttons, candidate_count, candidates )
-    add_roll_button( buttons, RS.SoftResRoll, item, item_count )
+    local quantity = dropped_item and dropped_item.quantity or 1
+    add_roll_button( buttons, RS.SoftResRoll, item, item_count, quantity )
 
     if candidate_count > 0 then add_award_other_button( dropped_item, buttons, candidates, {}, RS.SoftResRoll ) end
 
@@ -533,6 +619,7 @@ function M.new(
       item_tooltip_link = IU.get_tooltip_link( item.link ),
       item_texture = item.texture,
       item_count = item_count,
+      item_quantity = quantity,
       hard_ressed = false,
       winners = {},
       rolls = roll_tracker.create_roll_data( soft_ressers ),
@@ -548,11 +635,12 @@ function M.new(
   ---@param buttons RollingPopupButtonWithCallback[]
   ---@param item Item
   ---@param item_count number
+  ---@param item_quantity number
   ---@param strategy_type RollingStrategyType
-  local function add_raid_roll_again_button( buttons, item, item_count, strategy_type ) ---@diagnostic disable-line: unused-local -- TODO: leaving for now. Maybe we'll need it.
+  local function add_raid_roll_again_button( buttons, item, item_count, item_quantity, strategy_type ) ---@diagnostic disable-line: unused-local -- TODO: leaving for now. Maybe we'll need it.
     table.insert( buttons, button( "RaidRollAgain", function()
       player_selection_frame.hide()
-      start( strategy_type, item, item_count )
+      start( strategy_type, item, item_count, item_quantity )
     end ) )
   end
 
@@ -588,7 +676,9 @@ function M.new(
       winners[ 1 ].award_callback = nil
     end
 
-    add_raid_roll_again_button( buttons, item, data.item_count, strategy_type )
+    local quantity = dropped_item and dropped_item.quantity or 1
+
+    add_raid_roll_again_button( buttons, item, data.item_count, quantity, strategy_type )
 
     if candidate_count > 0 then add_award_other_button( dropped_item, buttons, candidates, winners, strategy_type ) end
 
@@ -602,6 +692,7 @@ function M.new(
       item_tooltip_link = IU.get_tooltip_link( item.link ),
       item_texture = item.texture,
       item_count = data.item_count,
+      item_quantity = quantity,
       buttons = buttons,
       winners = winners,
       type = "RaidRoll"
@@ -643,7 +734,9 @@ function M.new(
       winners[ 1 ].award_callback = nil
     end
 
-    add_raid_roll_button( buttons, "RaidRoll", item, data.item_count )
+    local quantity = dropped_item and dropped_item.quantity or 1
+
+    add_raid_roll_button( buttons, "RaidRoll", item, data.item_count, quantity )
 
     if candidate_count > 0 then add_award_other_button( dropped_item, buttons, candidates, winners, RS.NormalRoll ) end
 
@@ -656,6 +749,7 @@ function M.new(
       item_tooltip_link = IU.get_tooltip_link( item.link ),
       item_texture = item.texture,
       item_count = data.item_count,
+      item_quantity = quantity,
       buttons = buttons,
       rolls = current_iteration.rolls,
       winners = winners,
@@ -677,9 +771,10 @@ function M.new(
 
     local buttons = waiting and roll_in_progress_buttons( first_iteration.rolls ) or {}
     local mapped_winners = {} ---@type WinnerWithAwardCallback[]
+    local dropped_item = loot_list.get_by_id( item.id )
+    local quantity = dropped_item and dropped_item.quantity or 1
 
     if data.status and data.status.type == "Finished" then
-      local dropped_item = loot_list.get_by_id( item.id )
       local slot = loot_list.get_slot( item.id )
       local candidates = slot and ml_candidates.get( slot ) or {}
 
@@ -709,7 +804,7 @@ function M.new(
         winners[ 1 ].award_callback = nil
       end
 
-      add_raid_roll_button( buttons, "RaidRoll", item, data.item_count )
+      add_raid_roll_button( buttons, "RaidRoll", item, data.item_count, quantity )
       add_award_other_button( dropped_item, buttons, candidates, winners, first_iteration.rolling_strategy )
       add_close_button( buttons, "Finished" )
     end
@@ -736,6 +831,7 @@ function M.new(
         item_tooltip_link = IU.get_tooltip_link( item.link ),
         item_texture = item.texture,
         item_count = data.item_count,
+        item_quantity = quantity,
         rolls = first_iteration.rolls,
         winners = mapped_winners,
         strategy_type = first_iteration.rolling_strategy,
@@ -801,15 +897,16 @@ function M.new(
     local candidates = slot and ml_candidates.get( slot ) or {}
     local soft_ressers = softres.get( item.id )
     local hard_ressed = softres.is_item_hardressed( item.id )
+    local dropped_item = loot_list.get_by_id( item.id )
     local roll_tracker = new_roll_tracker( item )
-    roll_tracker.preview( item_count, candidates, soft_ressers, hard_ressed )
+    local quantity = dropped_item and dropped_item.quantity or 1
+    roll_tracker.preview( item_count, quantity, candidates, soft_ressers, hard_ressed )
 
     local color = m.get_popup_border_color( item.quality )
     rolling_popup:border_color( color )
 
     local sr_count = getn( soft_ressers )
     local buttons = {} ---@type RollingPopupButtonWithCallback[]
-    local dropped_item = loot_list.get_by_id( item.id )
     local candidate_count = getn( candidates )
 
     currently_displayed_item = item
@@ -832,11 +929,32 @@ function M.new(
     preview_sr_items_not_equal_to_item_count( soft_ressers, item, item_count, dropped_item, buttons, candidate_count, candidates )
   end
 
+  ---@class RollEvent
+  ---@field type "roll"
+  ---@field player_name string
+  ---@field player_class string
+  ---@field roll_type RollType
+  ---@field roll number
+
+  ---@param player_name string
+  ---@param player_class string
+  ---@param roll_type RollType
+  ---@param roll number
   local function on_roll( player_name, player_class, roll_type, roll )
     M.debug.add( string.format( "on_roll( %s, %s, %s, %s )", player_name, player_class, roll_type, roll ) )
     local roll_tracker = get_roll_tracker( currently_displayed_item and currently_displayed_item.id )
     roll_tracker.add( player_name, player_class, roll_type, roll )
-    notify_subscribers( "roll", { player_name = player_name, player_class = player_class, roll_type = roll_type, roll = roll } )
+
+    ---@type RollEvent
+    local event = {
+      type = "roll",
+      player_name = player_name,
+      player_class = player_class,
+      roll_type = roll_type,
+      roll = roll
+    }
+
+    notify_subscribers( event )
 
     local data, current_iteration = roll_tracker.get()
     local strategy_type = current_iteration and current_iteration.rolling_strategy
@@ -847,6 +965,7 @@ function M.new(
       roll_content(
         data.item,
         data.item_count,
+        data.item_quantity,
         not waiting_for_rolls and data.status.seconds_left or nil,
         roll_in_progress_buttons( current_iteration.rolls ),
         current_iteration.rolls,
@@ -863,35 +982,60 @@ function M.new(
     end
   end
 
+  ---@class IgnoredRollEvent
+  ---@field type "ignored_roll"
+  ---@field player_name string
+  ---@field player_class string
+  ---@field roll_type RollType
+  ---@field roll number
+  ---@field reason string
+
+  ---@param player_name string
+  ---@param player_class string
+  ---@param roll_type RollType
+  ---@param roll number
+  ---@param reason string
   local function add_ignored( player_name, player_class, roll_type, roll, reason )
     local roll_tracker = get_roll_tracker( currently_displayed_item and currently_displayed_item.id )
     roll_tracker.add_ignored( player_name, roll_type, roll, reason )
 
-    notify_subscribers( "ignored_roll", {
+    ---@type IgnoredRollEvent
+    local event = {
+      type = "ignored_roll",
       player_name = player_name,
       player_class = player_class,
       roll_type = roll_type,
       roll = roll,
       reason = reason
-    } )
+    }
+
+    notify_subscribers( event )
   end
+
+  ---@class TickEvent
+  ---@field type "tick"
+  ---@field seconds_left number
 
   ---@param seconds_left number
   local function tick( seconds_left )
     local roll_tracker = get_roll_tracker( currently_displayed_item and currently_displayed_item.id )
     roll_tracker.tick( seconds_left )
 
-    notify_subscribers( "tick", { seconds_left = seconds_left } )
+    ---@type TickEvent
+    local event = { type = "tick", seconds_left = seconds_left }
+    notify_subscribers( event )
 
     local data, current_iteration = roll_tracker.get()
     local strategy_type = current_iteration and current_iteration.rolling_strategy
 
     if strategy_type == "NormalRoll" or strategy_type == "SoftResRoll" then
-      roll_content( data.item, data.item_count, seconds_left, roll_in_progress_buttons( current_iteration.rolls ), current_iteration.rolls, {}, strategy_type )
+      roll_content( data.item, data.item_count, data.item_quantity, seconds_left, roll_in_progress_buttons( current_iteration.rolls ), current_iteration.rolls,
+        {}, strategy_type )
     end
   end
 
-  ---@class WinnersFoundData
+  ---@class WinnersFoundEvent
+  ---@field type "winners_found"
   ---@field item Item
   ---@field item_count number
   ---@field winners Winner[]
@@ -904,11 +1048,21 @@ function M.new(
   local function winners_found( item, item_count, winners, strategy )
     local roll_tracker = get_roll_tracker( item.id )
     roll_tracker.add_winners( winners )
-    notify_subscribers( "winners_found", { item = item, item_count = item_count, winners = winners, rolling_strategy = strategy } )
+
+    ---@type WinnersFoundEvent
+    local event = {
+      type = "winners_found",
+      item = item,
+      item_count = item_count,
+      winners = winners,
+      rolling_strategy = strategy
+    }
+
+    notify_subscribers( event )
   end
 
-
-  ---@class RollingFinishedData
+  ---@class RollingFinishedEvent
+  ---@field type "rolling_finished"
   ---@field roll_tracker_data RollTrackerData
 
   local function finish()
@@ -924,24 +1078,35 @@ function M.new(
 
     local data = roll_tracker.get()
 
-    ---@type RollingFinishedData
-    local event_data = {
+    ---@type RollingFinishedEvent
+    local event = {
+      type = "rolling_finished",
       roll_tracker_data = data
     }
 
-    notify_subscribers( "finish", event_data )
+    notify_subscribers( event )
     refresh_finish_popup_content( candidates )
   end
+
+  ---@class RollingStartedEvent
+  ---@field type "rolling_started"
+  ---@field item Item
+  ---@field item_count number
+  ---@field item_quantity number
+  ---@field seconds number?
+  ---@field strategy_type RollingStrategyType
+  ---@field rolls RollData[]
 
   ---@param strategy_type RollingStrategyType
   ---@param item Item
   ---@param item_count number
+  ---@param item_quantity number
   ---@param seconds number?
   ---@param message string?
   ---@param rolling_players RollingPlayer[]?
-  local function rolling_started( strategy_type, item, item_count, seconds, message, rolling_players )
+  local function rolling_started( strategy_type, item, item_count, item_quantity, seconds, message, rolling_players )
     local roll_tracker = get_roll_tracker( item.id )
-    roll_tracker.start( strategy_type, item_count, seconds, message, rolling_players )
+    roll_tracker.start( strategy_type, item_count, item_quantity, seconds, message, rolling_players )
 
     local _, _, quality = m.api.GetItemInfo( string.format( "item:%s:0:0:0", item.id ) )
     local color = m.get_popup_border_color( quality )
@@ -952,18 +1117,47 @@ function M.new(
     local rolls = current_iteration and current_iteration.rolls or {}
 
     if strategy_type == "NormalRoll" or strategy_type == "SoftResRoll" then
-      notify_subscribers( "roll_started", { item = item, item_count = item_count, seconds = seconds, strategy_type = strategy_type, rolls = rolls } )
-      roll_content( item, item_count, seconds, roll_in_progress_buttons( current_iteration.rolls ), rolls, {}, strategy_type )
+      ---@type RollingStartedEvent
+      local event = {
+        type = "rolling_started",
+        item = item,
+        item_count = item_count,
+        item_quantity = item_quantity,
+        seconds = seconds,
+        strategy_type = strategy_type,
+        rolls = rolls
+      }
+
+      notify_subscribers( event )
+      roll_content( item, item_count, item_quantity, seconds, roll_in_progress_buttons( current_iteration.rolls ), rolls, {}, strategy_type )
       return
     end
-
-    notify_subscribers( "rolling_started" )
   end
 
+  ---@class ThereWasATieEvent
+  ---@field type "there_was_a_tie"
+  ---@field players RollingPlayer[]
+  ---@field item Item
+  ---@field item_count number
+  ---@field roll_type RollType
+  ---@field roll number
+  ---@field rerolling boolean?
+  ---@field top_roll boolean?
+
+  ---@param players RollingPlayer[]
+  ---@param item Item
+  ---@param item_count number
+  ---@param roll_type RollType
+  ---@param roll number
+  ---@param rerolling boolean?
+  ---@param top_roll boolean?
   local function there_was_a_tie( players, item, item_count, roll_type, roll, rerolling, top_roll )
     local roll_tracker = get_roll_tracker( item.id )
     roll_tracker.tie( players, roll_type, roll )
-    notify_subscribers( "there_was_a_tie", {
+
+    ---@type ThereWasATieEvent
+    local event = {
+      type = "there_was_a_tie",
       players = players,
       item = item,
       item_count = item_count,
@@ -971,12 +1165,14 @@ function M.new(
       roll = roll,
       rerolling = rerolling,
       top_roll = top_roll
-    } )
+    }
 
+    notify_subscribers( event )
     tie_content()
   end
 
-  ---@class TieStartData
+  ---@class TieStartEvent
+  ---@field type "tie_start"
   ---@field tracker_data RollTrackerData
   ---@field iteration RollIteration
 
@@ -986,13 +1182,14 @@ function M.new(
 
     local data, iteration = roll_tracker.get()
 
-    ---@type TieStartData
-    local event_data = {
+    ---@type TieStartEvent
+    local event = {
+      type = "tie_start",
       tracker_data = data,
       iteration = iteration
     }
 
-    notify_subscribers( "tie_start", event_data )
+    notify_subscribers( event )
     tie_content()
   end
 
@@ -1013,6 +1210,7 @@ function M.new(
       item_tooltip_link = IU.get_tooltip_link( item.link ),
       item_texture = item.texture,
       item_count = data.item_count,
+      item_quantity = data.item_quantity,
       buttons = buttons,
       type = "RollingCanceled"
     }
@@ -1026,6 +1224,9 @@ function M.new(
     table.insert( callbacks[ event_type ], callback )
   end
 
+  ---@class WaitingForRollsEvent
+  ---@field type "waiting_for_rolls"
+
   local function waiting_for_rolls()
     local roll_tracker = get_roll_tracker( currently_displayed_item and currently_displayed_item.id )
     roll_tracker.waiting_for_rolls()
@@ -1033,10 +1234,20 @@ function M.new(
     local data, current_iteration = roll_tracker.get()
     local strategy_type = current_iteration and current_iteration.rolling_strategy
 
-    notify_subscribers( "waiting_for_rolls" )
+    notify_subscribers( { type = "waiting_for_rolls" } )
 
     if strategy_type == "NormalRoll" or strategy_type == "SoftResRoll" then
-      roll_content( data.item, data.item_count, nil, roll_in_progress_buttons( current_iteration.rolls ), current_iteration.rolls, {}, strategy_type, true )
+      roll_content(
+        data.item,
+        data.item_count,
+        data.item_quantity,
+        nil,
+        roll_in_progress_buttons( current_iteration.rolls ),
+        current_iteration.rolls,
+        {},
+        strategy_type,
+        true
+      )
     end
   end
 
@@ -1046,11 +1257,22 @@ function M.new(
   ---@field is_winner boolean
   ---@field confirm_fn fun()
 
-  ---@class LootAwardedData
+  ---@class LootAwardedEvent
+  ---@field type "loot_awarded"
   ---@field item_id number
   ---@field item_link string
   ---@field player_name string
   ---@field player_class string?
+
+  ---@class LootFrameUpdateEvent
+  ---@field type "loot_frame_update"
+
+  ---@class LootFrameClearSelectionCacheEvent
+  ---@field type "loot_frame_clear_selection_cache"
+  ---@field item_id ItemId
+
+  ---@class NotAllItemsAwardedEvent
+  ---@field type "not_all_items_awarded"
 
   ---@param item_id ItemId
   ---@param item_link string
@@ -1065,27 +1287,28 @@ function M.new(
       loot_award_popup.hide()
     end
 
-    ---@type LootAwardedData
-    local event_data = {
+    ---@type LootAwardedEvent
+    local event = {
+      type = "loot_awarded",
       player_name = player_name,
       player_class = player_class,
       item_id = item_id,
       item_link = item_link
     }
 
-    notify_subscribers( "loot_awarded", event_data )
+    notify_subscribers( event )
 
     local data, current_iteration = roll_tracker.get()
 
     if data.status and data.status.type == S.Preview and data.item_count > 0 then
       rolling_popup_data[ item_id ] = nil
       preview( data.item, data.item_count )
-      notify_subscribers( "LootFrameUpdate" )
+      notify_subscribers( { type = "loot_frame_update" } )
       return
     end
 
     if data.item_count == 0 then
-      notify_subscribers( "LootFrameDeselect", { item_id = item_id } )
+      notify_subscribers( { type = "loot_frame_deselect", item_id = item_id } )
 
       if currently_displayed_item and currently_displayed_item.id == item_id then
         rolling_popup_data[ currently_displayed_item.id ] = nil
@@ -1093,7 +1316,7 @@ function M.new(
         rolling_popup.hide()
       end
 
-      notify_subscribers( "LootFrameClearSelectionCache", item_id )
+      notify_subscribers( { type = "loot_frame_clear_selection_cache", item_id = item_id } )
       return
     end
 
@@ -1107,7 +1330,7 @@ function M.new(
       normal_roll_winners( data, current_iteration, candidates )
     end
 
-    notify_subscribers( "not_all_items_awarded" )
+    notify_subscribers( { type = "not_all_items_awarded" } )
   end
 
   local function popup_refresh()
@@ -1171,7 +1394,7 @@ function M.new(
       end
 
       rolling_popup.hide()
-      notify_subscribers( "LootFrameDeselect", { item_id = item_id } )
+      notify_subscribers( { type = "loot_frame_deselect", item_id = item_id } )
 
       return
     end
@@ -1202,8 +1425,11 @@ function M.new(
     update_loot_confirmation_with_error( LAE.CantAssignItemToThatPlayer )
   end
 
+  ---@class RollingPopupClosedEvent
+  ---@field type "rolling_popup_closed"
+
   local function rolling_popup_closed()
-    notify_subscribers( "rolling_popup_closed" )
+    notify_subscribers( { type = "rolling_popup_closed" } )
 
     -- local data = roll_tracker.get()
     --
@@ -1212,16 +1438,25 @@ function M.new(
     -- end
   end
 
+  ---@class LootAwardPopupClosedEvent
+  ---@field type "loot_award_popup_closed"
+
   local function loot_award_popup_closed()
-    notify_subscribers( "loot_award_popup_closed" )
+    notify_subscribers( { type = "loot_award_popup_closed" } )
   end
+
+  ---@class LootListItemSelectedEvent
+  ---@field type "loot_list_item_selected"
 
   local function loot_list_item_selected()
-    notify_subscribers( "loot_list_item_selected" )
+    notify_subscribers( { type = "loot_list_item_selected" } )
   end
 
+  ---@class LootListItemDeselectedEvent
+  ---@field type "loot_list_item_deselected"
+
   local function loot_list_item_deselected()
-    notify_subscribers( "loot_list_item_deselected" )
+    notify_subscribers( { type = "loot_list_item_deselected" } )
   end
 
   ---@param item_id ItemId

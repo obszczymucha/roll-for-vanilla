@@ -17,11 +17,12 @@ local make_roll = m.Types.make_roll
 ---@param players RollingPlayer[]
 ---@param item Item
 ---@param item_count number
+---@param item_quantity number
 ---@param on_rolling_finished RollingFinishedCallback
 ---@param roll_type RollType
 ---@param config Config
 ---@param controller RollControllerFacade
-function M.new( chat, players, item, item_count, on_rolling_finished, roll_type, config, controller )
+function M.new( chat, players, item, item_count, item_quantity, on_rolling_finished, roll_type, config, controller )
   local rolls = {}
   local rolling = false
   local player_count = getn( players )
@@ -104,7 +105,7 @@ function M.new( chat, players, item, item_count, on_rolling_finished, roll_type,
     local top_roll_winner_count = count_top_roll_winners()
     local winner_rolls = take( rolls, top_roll_winner_count > item_count and top_roll_winner_count or item_count )
 
-    on_rolling_finished( item, item_count, winner_rolls, true )
+    on_rolling_finished( item, item_count, item_quantity, winner_rolls, true )
   end
 
   ---@param roller Player

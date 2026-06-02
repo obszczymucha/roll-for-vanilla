@@ -475,7 +475,7 @@ local function on_roll_command( roll_slash_command )
       return
     end
 
-    M.roll_controller.start( strategy_type, item, count, seconds, message )
+    M.roll_controller.start( strategy_type, item, count, 1, seconds, message )
   end
 end
 
@@ -637,29 +637,29 @@ local function on_reset_dropped_loot_announce_command()
   M.dropped_loot_announce.reset()
 end
 
--- local function on_rftest_command()
---   local dropped_items = get_dummy_items()
---   local loot_frame_items = {}
---
---   for index, item in ipairs( dropped_items ) do
---     table.insert( loot_frame_items, {
---       index = index,
---       texture = item.texture,
---       name = item.name,
---       quality = item.quality or 0,
---       quantity = item.quantity,
---       link = item.link,
---       click_fn = function() end,
---       is_selected = false,
---       is_enabled = true,
---       tooltip_link = item.tooltip_link,
---       bind = m.ItemUtils.bind_abbrev( item.bind )
---     } )
---   end
---
---   M.loot_frame.show()
---   M.loot_frame.update( loot_frame_items )
--- end
+local function on_rftest_command()
+  local dropped_items = get_dummy_items()
+  local loot_frame_items = {}
+
+  for index, item in ipairs( dropped_items ) do
+    table.insert( loot_frame_items, {
+      index = index,
+      texture = item.texture,
+      name = item.name,
+      quality = item.quality or 0,
+      quantity = item.quantity,
+      link = item.link,
+      click_fn = function() M.roll_controller.preview( item, 1) end,
+      is_selected = false,
+      is_enabled = true,
+      tooltip_link = item.tooltip_link,
+      bind = m.ItemUtils.bind_abbrev( item.bind )
+    } )
+  end
+
+  M.loot_frame.show()
+  M.loot_frame.update( loot_frame_items )
+end
 
 local function setup_slash_commands()
   -- Roll For commands
@@ -695,8 +695,8 @@ local function setup_slash_commands()
   SLASH_RFT1 = "/rft"
   M.api().SlashCmdList[ "RFT" ] = M.sandbox.run
 
-  -- SLASH_RFTEST1 = "/rftest"
-  -- M.api().SlashCmdList[ "RFTEST" ] = on_rftest_command
+  SLASH_RFTEST1 = "/rftest"
+  M.api().SlashCmdList[ "RFTEST" ] = on_rftest_command
 
   --SLASH_DROPPED1 = "/DROPPED"
   --M.api().SlashCmdList[ "DROPPED" ] = simulate_loot_dropped

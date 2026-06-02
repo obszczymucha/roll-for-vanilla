@@ -19,11 +19,11 @@ local make_rolling_player = m.Types.make_rolling_player
 ---@field get_type fun(): RollingStrategyType -- TODO: rename to get_type()
 
 ---@class RollingStrategyFactory
----@field normal_roll fun( item: Item, item_count: number, message: string?, seconds: number, on_rolling_finished: RollingFinishedCallback, roll_controller_facade: RollControllerFacade ): RollingStrategy
----@field softres_roll fun( item: Item, item_count: number, message: string?, seconds: number, on_rolling_finished: RollingFinishedCallback, on_softres_rolls_available: SoftresRollsAvailableCallback, roll_controller_facade: RollControllerFacade ): RollingStrategy, RollingPlayer[]
+---@field normal_roll fun( item: Item, item_count: number, item_quantity: number, message: string?, seconds: number, on_rolling_finished: RollingFinishedCallback, roll_controller_facade: RollControllerFacade ): RollingStrategy
+---@field softres_roll fun( item: Item, item_count: number, item_quantity: number, message: string?, seconds: number, on_rolling_finished: RollingFinishedCallback, on_softres_rolls_available: SoftresRollsAvailableCallback, roll_controller_facade: RollControllerFacade ): RollingStrategy, RollingPlayer[]
 ---@field raid_roll fun( item: Item, item_count: number, roll_controller_facade: RollControllerFacade ): RollingStrategy
 ---@field insta_raid_roll fun( item: Item, item_count: number, roll_controller_facade: RollControllerFacade ): RollingStrategy
----@field tie_roll fun( players: RollingPlayer[], item: Item, item_count: number, on_rolling_finished: RollingFinishedCallback, roll_type: RollType, roll_controller_facade: RollControllerFacade ): RollingStrategy
+---@field tie_roll fun( players: RollingPlayer[], item: Item, item_count: number, item_quantity: number, on_rolling_finished: RollingFinishedCallback, roll_type: RollType, roll_controller_facade: RollControllerFacade ): RollingStrategy
 
 ---@param group_roster GroupRoster
 ---@param loot_list SoftResLootList
@@ -47,11 +47,12 @@ function M.new(
 )
   ---@param item Item
   ---@param item_count number
+  ---@param item_quantity number
   ---@param message string?
   ---@param seconds number
   ---@param on_rolling_finished RollingFinishedCallback
   ---@param roll_controller_facade RollControllerFacade
-  local function normal_roll( item, item_count, message, seconds, on_rolling_finished, roll_controller_facade )
+  local function normal_roll( item, item_count, item_quantity, message, seconds, on_rolling_finished, roll_controller_facade )
     local players = group_roster.get_all_players_in_my_group()
     local rollers = m.map( players, function( player )
       return make_rolling_player( player.name, player.class, player.online, 1 )
@@ -63,6 +64,7 @@ function M.new(
       rollers,
       item,
       item_count,
+      item_quantity,
       message,
       seconds,
       on_rolling_finished,
@@ -73,6 +75,7 @@ function M.new(
 
   ---@param item Item
   ---@param item_count number
+  ---@param item_quantity number
   ---@param message string?
   ---@param seconds number
   ---@param on_rolling_finished RollingFinishedCallback
@@ -81,6 +84,7 @@ function M.new(
   local function softres_roll(
       item,
       item_count,
+      item_quantity,
       message,
       seconds,
       on_rolling_finished,
@@ -91,7 +95,7 @@ function M.new(
     local softressing_players = softres.get( item.id )
 
     if getn( softressing_players ) == 0 then
-      return normal_roll( item, item_count or 1, message, seconds, on_rolling_finished, roll_controller_facade )
+      return normal_roll( item, item_count or 1, item_quantity, message, seconds, on_rolling_finished, roll_controller_facade )
     end
 
     local needs_rolling = getn( softressing_players ) > item_count
@@ -101,6 +105,7 @@ function M.new(
       softressing_players,
       item,
       item_count,
+      item_quantity,
       seconds,
       on_rolling_finished,
       on_softres_rolls_available,
@@ -130,7 +135,7 @@ function M.new(
     end
   end
 
-  local function tie_roll( players, item, item_count, on_rolling_finished, roll_type, roll_controller_facade )
+  local function tie_roll( players, item, item_count, item_quantity, on_rolling_finished, roll_type, roll_controller_facade )
     local rollers = m.map( players,
       ---@param player RollingPlayer
       function( player )
@@ -143,6 +148,7 @@ function M.new(
       rollers, -- Trackback: changed player_names to players
       item,
       item_count,
+      item_quantity,
       on_rolling_finished,
       roll_type,
       config,

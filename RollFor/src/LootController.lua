@@ -325,19 +325,19 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
     hide()
   end
 
-  ---@param item_id number
-  local function clear_selection_cache( item_id )
+  ---@param event LootFrameClearSelectionCacheEvent
+  local function clear_selection_cache( event )
     for k, v in pairs( item_selection_cache ) do
-      if v.item_id == item_id then item_selection_cache[ k ] = nil end
+      if v.item_id == event.item_id then item_selection_cache[ k ] = nil end
     end
   end
 
   loot_facade.subscribe( "LootOpened", on_loot_opened )
   loot_facade.subscribe( "LootClosed", on_loot_closed )
   loot_facade.subscribe( "LootSlotCleared", on_loot_slot_cleared )
-  roll_controller.subscribe( "LootFrameDeselect", deselect )
-  roll_controller.subscribe( "LootFrameClearSelectionCache", clear_selection_cache )
-  roll_controller.subscribe( "LootFrameUpdate", update )
+  roll_controller.subscribe( "loot_frame_deselect", deselect )
+  roll_controller.subscribe( "loot_frame_clear_selection_cache", clear_selection_cache )
+  roll_controller.subscribe( "loot_frame_update", update )
 end
 
 m.LootController = M

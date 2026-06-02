@@ -52,6 +52,7 @@ function M.item_link_with_icon( parent, text )
   local h = 14
   local spacing = 10
   local count = 0
+  local quantity = 1
   local texture
   local tooltip_link
 
@@ -60,6 +61,9 @@ function M.item_link_with_icon( parent, text )
   container.icon:SetPoint( "LEFT", 0, 0 )
   container.icon:SetTexCoord( 1 / w, (w - 1) / w, 1 / h, (h - 1) / h )
   container.count = M.text( container )
+  container.quantity = M.text( container )
+  container.quantity:SetPoint( "BOTTOMRIGHT", container.icon, "BOTTOMRIGHT", 5, -3 )
+  container.quantity:SetScale( 0.75 )
   container.text:SetTextColor( 1, 1, 1 )
 
   if text then
@@ -110,11 +114,13 @@ function M.item_link_with_icon( parent, text )
   container.SetItem = function( _, i, tt_link )
     texture = i.texture
     count = i.count or 0
+    quantity = i.quantity or 1
     tooltip_link = tt_link
 
     container.text:SetText( i.link )
     container.icon:SetTexture( texture )
     container.count:SetText( count > 1 and hl( string.format( "%sx", count ) ) or nil )
+    container.quantity:SetText( quantity > 1 and quantity or "" )
 
     resize()
   end

@@ -13,6 +13,7 @@ local RS = m.Types.RollingStrategy
 ---@alias RollingFinishedCallback fun(
 ---  item: Item,
 ---  item_count: number,
+---  item_quantity: number,
 ---  winning_rolls: Roll[],
 ---  rerolling: boolean? )
 
@@ -50,10 +51,11 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
   ---@param strategy RollingStrategy
   ---@param item Item?
   ---@param item_count number?
+  ---@param item_quantity number?
   ---@param seconds number?
   ---@param message string?
   ---@param rolling_players RollingPlayer[]?
-  local function roll( strategy, item, item_count, seconds, message, rolling_players )
+  local function roll( strategy, item, item_count, item_quantity, seconds, message, rolling_players )
     if m_rolling_strategy and m_rolling_strategy.is_rolling() then
       m.err( "Rolling is already in progress." )
       return
@@ -61,8 +63,8 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
 
     m_rolling_strategy = strategy
 
-    if item and item_count then
-      roll_controller.rolling_started( strategy.get_type(), item, item_count, seconds, message, rolling_players )
+    if item and item_count and item_quantity then
+      roll_controller.rolling_started( strategy.get_type(), item, item_count, item_quantity, seconds, message, rolling_players )
     end
 
     m_rolling_strategy.start_rolling()
@@ -72,7 +74,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     return m_rolling_strategy and m_rolling_strategy.is_rolling() or false
   end
 
-  ---param winning_rolls Roll[]
+  ---@param winning_rolls Roll[]
   local function count_top_rolls( winning_rolls )
     local roll_count = winning_rolls and getn( winning_rolls ) or 0
     if roll_count == 0 then return 0 end
@@ -118,9 +120,10 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
 
   ---@param item Item
   ---@param item_count number
+  ---@param item_quantity number
   ---@param rolls Roll[]
   ---@param rerolling boolean
-  local function there_was_a_tie( item, item_count, rolls, rerolling, on_rolling_finished )
+  local function there_was_a_tie( item, item_count, item_quantity, rolls, rerolling, on_rolling_finished )
     local winning_rolls, tied_rolls = split_winners_and_tied_rollers( rolls, item_count )
     local count = item_count
 
@@ -149,7 +152,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
 
     roll_controller.there_was_a_tie( players, item, count, roll_type, roll_value, rerolling, getn( winning_rolls ) == 0 or false )
 
-    local strategy = strategy_factory.tie_roll( players, item, count, on_rolling_finished, roll_type, facade )
+    local strategy = strategy_factory.tie_roll( players, item, count, item_quantity, on_rolling_finished, roll_type, facade )
     if not strategy then return end
 
     ace_timer.ScheduleTimer( M,
@@ -162,10 +165,11 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
 
   ---@param item Item
   ---@param item_count number
+  ---@param item_quantity number
   ---@param winning_rolls Roll[]
   ---@param rerolling boolean?
   ---@type RollingFinishedCallback
-  local function on_rolling_finished( item, item_count, winning_rolls, rerolling )
+  local function on_rolling_finished( item, item_count, item_quantity, winning_rolls, rerolling )
     local winning_roll_count = getn( winning_rolls )
 
     if winning_roll_count == 0 then
@@ -178,7 +182,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
         end
 
         m_rolling_strategy = nil
-        roll_controller.start( "RaidRoll", item, item_count )
+        roll_controller.start( "RaidRoll", item, item_count, item_quantity )
       elseif m_rolling_strategy and not m_rolling_strategy.is_rolling() then
         chat.info( string.format( "Rolling for %s finished.", item.link ) )
       end
@@ -187,7 +191,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     end
 
     if winning_roll_count > item_count then
-      there_was_a_tie( item, item_count, winning_rolls, rerolling or false, on_rolling_finished )
+      there_was_a_tie( item, item_count, item_quantity, winning_rolls, rerolling or false, on_rolling_finished )
       return
     end
 
@@ -257,6 +261,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
         return strategy_factory.softres_roll(
           data.item,
           data.item_count,
+          data.item_quantity,
           data.message,
           seconds,
           on_rolling_finished,
@@ -267,6 +272,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
         return strategy_factory.normal_roll(
           data.item,
           data.item_count,
+          data.item_quantity,
           data.message,
           seconds,
           on_rolling_finished,
@@ -283,7 +289,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     if not strategy then return end
 
     winner_tracker.start_rolling( data.item.link )
-    roll( strategy, data.item, data.item_count, data.seconds, data.message, rolling_players )
+    roll( strategy, data.item, data.item_count, data.item_quantity, data.seconds, data.message, rolling_players )
   end
 
   roll_controller.subscribe( "finish_rolling_early", finish_rolling_early )

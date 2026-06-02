@@ -60,32 +60,94 @@ function M.new( roll_controller, config )
     send( payload )
   end
 
-  roll_controller.subscribe( "roll_started", function( data )
-    if not data or not data.item then return end
+  ---@class SyncEventItem
+  ---@field type "RF_ITEM"
+  ---@field link ItemLink
+  ---@field count number
+  ---@field quantity number
+
+  ---@class SyncEventStart
+  ---@field type "RF_START"
+  ---@field strategy RollingStrategyType
+  ---@field link ItemLink
+  ---@field count number
+  ---@field quantity number
+  ---@field seconds number
+  ---@field ms_threshold number
+  ---@field os_threshold number
+  ---@field rolls RollData[]
+
+  ---@param event RollingStartedEvent
+  local function on_rolling_started( event )
+    if not event or not event.item then return end
     active = true
-    send( { type = "RF_ITEM", link = data.item.link, count = data.item_count } )
 
-    if data.strategy_type ~= "SoftResRoll" or m.getn( data.rolls ) > 0 then
-      send( { type = "RF_START", strategy = data.strategy_type, link = data.item.link, count = data.item_count, seconds = data.seconds, ms = config
-      .ms_roll_threshold(), os_roll = config.os_roll_threshold(), rolls = data.rolls } )
+    ---@type SyncEventItem
+    local item_event = { type = "RF_ITEM", link = event.item.link, count = event.item_count, quantity = event.item_quantity }
+    send( item_event )
+
+    if event.strategy_type ~= "SoftResRoll" or m.getn( event.rolls ) > 0 then
+      ---@type SyncEventStart
+      local start_event = {
+        type = "RF_START",
+        strategy = event.strategy_type,
+        link = event.item.link,
+        count = event.item_count,
+        quantity = event.item_quantity,
+        seconds = event.seconds,
+        ms_threshold = config.ms_roll_threshold(),
+        os_threshold = config.os_roll_threshold(),
+        rolls = event.rolls
+      }
+
+      send( start_event )
     end
-  end )
+  end
 
-  roll_controller.subscribe( "roll", function( data )
+  ---@class SyncEventRoll
+  ---@field type "RF_ROLL"
+  ---@field roll_type RollType
+  ---@field player_name string
+  ---@field player_class string
+  ---@field roll number
+
+  ---@param data RollEvent
+  local function on_roll( data )
     if not data then return end
-    send_if_active( { type = "RF_ROLL", roll_type = data.roll_type, player_name = data.player_name, player_class = data.player_class, roll = data.roll } )
-  end )
 
-  roll_controller.subscribe( "tick", function( data )
+    ---@type SyncEventRoll
+    local event = {
+      type = "RF_ROLL",
+      roll_type = data.roll_type,
+      player_name = data.player_name,
+      player_class = data.player_class,
+      roll = data.roll
+    }
+
+    send_if_active( event )
+  end
+
+  local function on_tick( data )
     if not data then return end
     send_if_active( { type = "RF_TICK", seconds_left = data.seconds_left } )
-  end )
+  end
+
+  roll_controller.subscribe( "rolling_started", on_rolling_started )
+  roll_controller.subscribe( "roll", on_roll )
+  roll_controller.subscribe( "tick", on_tick )
 
   roll_controller.subscribe( "winners_found", function( data )
     if not data then return end
     for _, winner in ipairs( data.winners ) do
-      send_if_active( { type = "RF_WIN", strategy = data.rolling_strategy, name = winner.name, class = winner.class, roll_type = winner.roll_type, roll = winner
-      .winning_roll } )
+      send_if_active( {
+        type = "RF_WIN",
+        strategy = data.rolling_strategy,
+        name = winner.name,
+        class = winner.class,
+        roll_type = winner.roll_type,
+        roll = winner
+            .winning_roll
+      } )
     end
   end )
 
@@ -111,7 +173,7 @@ function M.new( roll_controller, config )
     end
   end )
 
-  roll_controller.subscribe( "finish", function()
+  roll_controller.subscribe( "rolling_finished", function()
     send_if_active( { type = "RF_FINISH" } )
     active = false
   end )

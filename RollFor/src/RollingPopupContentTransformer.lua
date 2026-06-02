@@ -77,13 +77,15 @@ function M.new( config )
   ---@param item_tooltip_link TooltipItemLink
   ---@param item_texture ItemTexture
   ---@param item_count number
-  local function add_item( content, item_link, item_tooltip_link, item_texture, item_count )
+  ---@param item_quantity number
+  local function add_item( content, item_link, item_tooltip_link, item_texture, item_count, item_quantity )
     table.insert( content, {
       type = "item_link_with_icon",
       link = item_link,
       tooltip_link = item_tooltip_link,
       texture = item_texture,
       count = item_count,
+      quantity = item_quantity,
       padding = 5
     } )
   end
@@ -188,13 +190,14 @@ function M.new( config )
   ---@field item_tooltip_link TooltipItemLink
   ---@field item_texture ItemTexture
   ---@field item_count number
+  ---@field item_quantity number
   ---@field buttons RollingPopupButtonWithCallback[]
   ---@field type "Item"
 
   ---@param data RollingPopupItemData
   local function item_content( data )
     local content = {}
-    add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count )
+    add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count, data.item_quantity )
     add_buttons( content, data.buttons )
     return content
   end
@@ -204,6 +207,7 @@ function M.new( config )
   ---@field item_tooltip_link TooltipItemLink
   ---@field item_texture ItemTexture
   ---@field item_count number
+  ---@field item_quantity number
   ---@field hard_ressed boolean
   ---@field winners WinnerWithAwardCallback[]
   ---@field rolls RollData[]
@@ -215,7 +219,7 @@ function M.new( config )
   local function preview_content( data )
     local content = {}
 
-    add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count )
+    add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count, data.item_quantity )
 
     if data.hard_ressed then
       add_hr_info( content )
@@ -234,6 +238,7 @@ function M.new( config )
   ---@field item_tooltip_link TooltipItemLink
   ---@field item_texture ItemTexture
   ---@field item_count number
+  ---@field item_quantity number
   ---@field winners WinnerWithAwardCallback[]
   ---@field buttons RollingPopupButtonWithCallback[]
   ---@field type "RaidRoll"
@@ -242,7 +247,7 @@ function M.new( config )
   local function insta_raid_roll_content( data )
     local content = {}
 
-    add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count )
+    add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count, data.item_quantity )
     add_winners( content, data.winners, "InstaRaidRoll" )
     add_buttons( content, data.buttons )
 
@@ -262,6 +267,7 @@ function M.new( config )
   ---@field item_tooltip_link TooltipItemLink
   ---@field item_texture ItemTexture
   ---@field item_count number
+  ---@field item_quantity number
   ---@field seconds_left number?
   ---@field rolls RollData[]
   ---@field winners WinnerWithAwardCallback[]
@@ -274,7 +280,7 @@ function M.new( config )
   local function roll_content( data )
     local content = {}
 
-    add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count )
+    add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count, data.item_quantity )
 
     if not data.seconds_left and getn( data.rolls ) == 0 and getn( data.winners ) == 0 then
       add_text( content, "Rolling finished. No one rolled.", top_padding )
@@ -300,6 +306,7 @@ function M.new( config )
   ---@field item_tooltip_link TooltipItemLink
   ---@field item_texture ItemTexture
   ---@field item_count number
+  ---@field item_quantity number
   ---@field buttons RollingPopupButtonWithCallback[]
   ---@field type "RollingCanceled"
 
@@ -307,7 +314,7 @@ function M.new( config )
   local function rolling_canceled_content( data )
     local content = {}
 
-    add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count )
+    add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count, data.item_quantity )
     add_text( content, "Rolling was canceled.", top_padding )
     add_buttons( content, data.buttons )
 
@@ -319,13 +326,14 @@ function M.new( config )
   ---@field item_tooltip_link TooltipItemLink
   ---@field item_texture ItemTexture
   ---@field item_count number
+  ---@field item_quantity number
   ---@field type "RaidRolling"
 
   ---@param data RollingPopupRaidRollingData
   local function raid_rolling_content( data )
     local content = {}
 
-    add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count )
+    add_item( content, data.item_link, data.item_tooltip_link, data.item_texture, data.item_count, data.item_quantity )
     add_text( content, "Raid rolling...", top_padding )
     add_empty_line( content, config.classic_look() and 11 or 0, config.classic_look() and 0 or -2 )
 
@@ -345,7 +353,7 @@ function M.new( config )
   local function tie_content( data )
     local content = {}
 
-    add_item( content, data.roll_data.item_link, data.roll_data.item_tooltip_link, data.roll_data.item_texture, data.roll_data.item_count )
+    add_item( content, data.roll_data.item_link, data.roll_data.item_tooltip_link, data.roll_data.item_texture, data.roll_data.item_count, data.roll_data.item_quantity )
     add_rolls( content, data.roll_data.rolls )
 
     for _, iteration in ipairs( data.tie_iterations ) do

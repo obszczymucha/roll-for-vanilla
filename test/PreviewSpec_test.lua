@@ -48,7 +48,7 @@ function PreviewNotSoftRessedItemSpec:should_display_close_button_that_closes_th
     disabled_item( 2, "Hearthstone" )
   )
   rf.rolling_popup.should_display(
-    item_link( item2, 1, 5 ),
+    item_link( item2, 1 ),
     buttons( "Roll", "InstaRaidRoll", "AwardOther", "Close" )
   )
 

@@ -125,7 +125,8 @@ function M.new( popup_builder, config, rolling_popup )
 
   ---@param data MasterLootConfirmationData
   local function make_content( data )
-    local content = { { type = "item_link_with_icon", link = data.item.link, texture = data.item.texture } }
+    local quantity = data.item.quantity or 1
+    local content = { { type = "item_link_with_icon", link = data.item.link, texture = data.item.texture, quantity = quantity } }
     local winner_count = getn( data.winners )
 
     if winner_count > 0 then

@@ -83,7 +83,7 @@ function M.new( chat, roll_controller, softres, config )
     return result
   end
 
-  ---@param data WinnersFoundData
+  ---@param data WinnersFoundEvent
   local function on_winners_found( data )
     if not data then return end
 
@@ -151,9 +151,9 @@ function M.new( chat, roll_controller, softres, config )
     chat.announce( message( top_rollers_str ) )
   end
 
-  ---@param event_data TieStartData
-  local function on_tie_start( event_data )
-    local data, iteration = event_data.tracker_data, event_data.iteration
+  ---@param event TieStartEvent
+  local function on_tie_start( event )
+    local data, iteration = event.tracker_data, event.iteration
     if not data or not iteration then return end
 
     local player_count = getn( iteration.rolls )
@@ -190,9 +190,9 @@ function M.new( chat, roll_controller, softres, config )
     end
   end
 
-  ---@param event_data RollingFinishedData
-  local function on_finish( event_data )
-    local data = event_data.roll_tracker_data
+  ---@param event RollingFinishedEvent
+  local function on_rolling_finished( event )
+    local data = event.roll_tracker_data
     if not data or not data.item then return end
 
     local winner_count = getn( data.winners )
@@ -204,13 +204,13 @@ function M.new( chat, roll_controller, softres, config )
     end
   end
 
-  ---@param data LootAwardedData
+  ---@param data LootAwardedEvent
   local function on_loot_awarded( data )
     local player_name = data.player_class and m.colorize_player_by_class( data.player_name, data.player_class ) or grey( data.player_name )
     chat.info( string.format( "%s received %s.", player_name, data.item_link ) )
   end
 
-  roll_controller.subscribe( "finish", on_finish )
+  roll_controller.subscribe( "rolling_finished", on_rolling_finished )
   roll_controller.subscribe( "winners_found", on_winners_found )
   roll_controller.subscribe( "there_was_a_tie", on_tie )
   roll_controller.subscribe( "tie_start", on_tie_start )

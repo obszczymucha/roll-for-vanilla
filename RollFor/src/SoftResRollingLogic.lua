@@ -82,6 +82,7 @@ end
 ---@param players RollingPlayer[]
 ---@param item Item
 ---@param item_count number
+---@param item_quantity number
 ---@param seconds number
 ---@param on_rolling_finished RollingFinishedCallback
 ---@param on_softres_rolls_available fun( rollers: RollingPlayer[] )
@@ -95,6 +96,7 @@ function M.new(
     players,
     item,
     item_count,
+    item_quantity,
     seconds,
     on_rolling_finished,
     on_softres_rolls_available,
@@ -171,7 +173,7 @@ function M.new(
     local top_roll_winner_count = count_top_roll_winners( rolls, item_count )
     local winner_rolls = take( rolls, top_roll_winner_count > item_count and top_roll_winner_count or item_count )
 
-    on_rolling_finished( item, item_count, winner_rolls )
+    on_rolling_finished( item, item_count, item_quantity, winner_rolls )
   end
 
   ---@param roller Player

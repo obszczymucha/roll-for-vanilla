@@ -10,7 +10,7 @@ local RT = T.RollType
 ---@param item_count number
 ---@param padding number?
 function M.item_link( item, item_count, padding )
-  return { type = "item_link_with_icon", link = item.link, tooltip_link = item.tooltip_link, count = item_count, padding = padding or 5 }
+  return { type = "item_link_with_icon", link = item.link, tooltip_link = item.tooltip_link, count = item_count, quantity = item.quantity or 1, padding = padding or 5 }
 end
 
 ---@param player Player

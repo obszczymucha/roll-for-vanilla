@@ -38,14 +38,15 @@ local S = m.Types.RollingStatus
 ---@alias RollTrackerData {
 ---  item: Item|MasterLootDistributableItem,
 ---  item_count: number,
+---  item_quantity: number,
 ---  status: RollStatus,
 ---  iterations: RollIteration[],
 ---  winners: Winner[],
 ---  ml_candidates: ItemCandidate[] }
 
 ---@class RollTracker
----@field preview fun( count: number, ml_candidates: ItemCandidate[], soft_ressers: RollingPlayer[], hard_ressed: boolean )
----@field start fun( rolling_strategy: RollingStrategyType, count: number, seconds: number?, message: string?, required_rolling_players: RollingPlayer[]? )
+---@field preview fun( count: number, quantity: number, ml_candidates: ItemCandidate[], soft_ressers: RollingPlayer[], hard_ressed: boolean )
+---@field start fun( rolling_strategy: RollingStrategyType, count: number, quantity: number, seconds: number?, message: string?, required_rolling_players: RollingPlayer[]? )
 ---@field waiting_for_rolls fun()
 ---@field add_winners fun( winners: Winner[] )
 ---@field finish fun( ml_candidates: ItemCandidate[] )
@@ -64,6 +65,7 @@ local S = m.Types.RollingStatus
 function M.new( item_on_roll )
   local status
   local item_on_roll_count = 0
+  local item_on_roll_quantity = 0
   local iterations = {}
   local current_iteration = 0
   local master_loot_candidates = {}
@@ -109,14 +111,16 @@ function M.new( item_on_roll )
   end
 
   ---@param count number
+  ---@param quantity number
   ---@param ml_candidates ItemCandidate[]
   ---@param soft_ressers RollingPlayer[]
   ---@param hard_ressed boolean
-  local function preview( count, ml_candidates, soft_ressers, hard_ressed )
+  local function preview( count, quantity, ml_candidates, soft_ressers, hard_ressed )
     M.debug.add( "preview" )
     current_iteration = 1
     status = { type = S.Preview }
     item_on_roll_count = count
+    item_on_roll_quantity = quantity
 
     local soft_ressed = getn( soft_ressers ) > 0
     local ressed_item = soft_ressed or hard_ressed
@@ -144,10 +148,11 @@ function M.new( item_on_roll )
 
   ---@param rolling_strategy RollingStrategyType
   ---@param count number
+  ---@param quantity number
   ---@param seconds number
   ---@param message string
   ---@param required_rolling_players RollingPlayer[]?
-  local function start( rolling_strategy, count, seconds, message, required_rolling_players )
+  local function start( rolling_strategy, count, quantity, seconds, message, required_rolling_players )
     M.debug.add( "start" )
     lua50_clear_table( iterations )
     lua50_clear_table( winners )
@@ -156,6 +161,7 @@ function M.new( item_on_roll )
     status = { type = S.InProgress, seconds_left = seconds }
 
     item_on_roll_count = count
+    item_on_roll_quantity = quantity
 
     table.insert( iterations, {
       rolling_strategy = rolling_strategy,
@@ -228,17 +234,22 @@ function M.new( item_on_roll )
     table.insert( rolls, data )
   end
 
+  ---@return RollTrackerData, RollIteration?
   local function get()
     M.debug.add( "get" )
 
-    return {
+    ---@type RollTrackerData
+    local data = {
       item = item_on_roll,
       item_count = item_on_roll_count,
+      item_quantity = item_on_roll_quantity,
       status = status,
       iterations = iterations,
       winners = winners,
       ml_candidates = master_loot_candidates
-    }, current_iteration > 0 and iterations[ current_iteration ] or nil
+    }
+
+    return data, current_iteration > 0 and iterations[ current_iteration ] or nil
   end
 
   local function tick( seconds_left )

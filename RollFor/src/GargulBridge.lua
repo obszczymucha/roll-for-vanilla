@@ -123,19 +123,20 @@ function M.new( player_info, roll_controller, config, get_import_string, softres
     return rolls
   end
 
-  local function on_roll_started( data )
-    if not data or not data.item or not data.seconds then return end
+  ---@param event RollingStartedEvent
+  local function on_rolling_started( event )
+    if not event or not event.item or not event.seconds then return end
 
     roll_in_progress = true
     local content = {
-      item = data.item.link,
-      time = math.max( math.ceil( data.seconds * 1.7 ), 5 ),
+      item = event.item.link,
+      time = math.max( math.ceil( event.seconds * 1.7 ), 5 ),
       bth = "",
-      SupportedRolls = supported_rolls( data.strategy_type ),
+      SupportedRolls = supported_rolls( event.strategy_type ),
     }
 
-    if data.strategy_type == "SoftResRoll" and softres then
-      for _, roller in ipairs( softres.get( data.item.id ) ) do
+    if event.strategy_type == "SoftResRoll" and softres then
+      for _, roller in ipairs( softres.get( event.item.id ) ) do
         send_to( ACTION_START_ROLL_OFF, content, "WHISPER", roller.name )
       end
     else
@@ -143,15 +144,15 @@ function M.new( player_info, roll_controller, config, get_import_string, softres
     end
   end
 
-  local function on_roll_stopped()
+  local function on_rolling_finished()
     if not roll_in_progress then return end
     roll_in_progress = false
     send( ACTION_STOP_ROLL_OFF, nil )
   end
 
-  roll_controller.subscribe( "roll_started", on_roll_started )
-  roll_controller.subscribe( "finish", on_roll_stopped )
-  roll_controller.subscribe( "cancel_rolling", on_roll_stopped )
+  roll_controller.subscribe( "rolling_started", on_rolling_started )
+  roll_controller.subscribe( "rolling_finished", on_rolling_finished )
+  roll_controller.subscribe( "cancel_rolling", on_rolling_finished )
 
   roll_controller.subscribe( "waiting_for_rolls", function()
     roll_in_progress = false

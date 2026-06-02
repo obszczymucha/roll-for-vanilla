@@ -26,6 +26,7 @@ function M.new( rolling_popup, db )
   ---@field item_link string
   ---@field item_texture string?
   ---@field item_count number
+  ---@field item_quantity number
   ---@field seconds_left number?
   ---@field rolls RollData[]
   ---@field winners table[]
@@ -124,11 +125,13 @@ function M.new( rolling_popup, db )
   end
 
   local handlers = {
-    RF_ITEM = function( payload )
+    ---@param event SyncEventItem
+    RF_ITEM = function( event )
       state = {
-        item_link = payload.link,
-        item_texture = get_texture( payload.link ),
-        item_count = payload.count,
+        item_link = event.link,
+        item_texture = get_texture( event.link ),
+        item_count = event.count,
+        item_quantity = event.quantity,
         seconds_left = nil,
         rolls = {},
         winners = {},
@@ -139,25 +142,27 @@ function M.new( rolling_popup, db )
       refresh()
     end,
 
-    RF_START = function( payload )
+    ---@param event SyncEventStart
+    RF_START = function( event )
       if not state then
         state = {
-          item_link = payload.link,
-          item_texture = get_texture( payload.link ),
-          item_count = payload.count,
+          item_link = event.link,
+          item_texture = get_texture( event.link ),
+          item_count = event.count,
+          item_quantity = event.quantity,
           rolls = {},
           winners = {},
           buttons = {}
         }
       end
 
-      state.seconds_left = payload.seconds
-      state.rolls = payload.rolls or {}
-      state.strategy_type = payload.strategy
+      state.seconds_left = event.seconds
+      state.rolls = event.rolls or {}
+      state.strategy_type = event.strategy
       state.waiting_for_rolls = false
-      state.buttons = payload.strategy == "SoftResRoll"
-          and { roll_button( "Roll", payload.ms ), close_button }
-          or { roll_button( "MS", payload.ms ), roll_button( "OS", payload.os_roll ), close_button }
+      state.buttons = event.strategy == "SoftResRoll"
+          and { roll_button( "Roll", event.ms_threshold ), close_button }
+          or { roll_button( "MS", event.ms_threshold ), roll_button( "OS", event.os_threshold ), close_button }
       refresh()
     end,
 
@@ -248,6 +253,7 @@ function M.new( rolling_popup, db )
           item_tooltip_link = IU.get_tooltip_link( state.item_link ),
           item_texture = state.item_texture,
           item_count = state.item_count,
+          item_quantity = state.item_quantity,
           buttons = { close_button }
         } )
       end
