@@ -106,6 +106,8 @@ function M.new( db, player_info, my_version )
     version_request( "GUILD" )
   end
 
+  m.api.C_ChatInfo.RegisterAddonMessagePrefix( ADDON_NAME )
+
   return {
     on_group_changed = on_group_changed,
     broadcast = broadcast,

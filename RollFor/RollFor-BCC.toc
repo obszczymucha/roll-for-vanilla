@@ -1,7 +1,7 @@
 ## Interface: 20505
 ## Title: RollFor
 ## Author: Obszczymucha
-## Version: 4.6.18
+## Version: 4.6.19
 ## Notes: An automated item roller with soft ressing support via softres.it.
 ## SavedVariables: RollForDb
 ## SavedVariablesPerCharacter: RollForCharDb

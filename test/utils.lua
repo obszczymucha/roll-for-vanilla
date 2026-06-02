@@ -96,6 +96,7 @@ function M.mock_wow_api()
   M.modules().api.PlaySound = function() end
   M.modules().api.C_ChatInfo = {}
   M.modules().api.C_ChatInfo.SendAddonMessage = function() end
+  M.modules().api.C_ChatInfo.RegisterAddonMessagePrefix = function() end
   M.modules().api.IsShiftKeyDown = function() return false end
   M.modules().api.IsControlKeyDown = function() return false end
   M.modules().api.GetItemInfo = function() return nil, nil, 4 end
