@@ -62,7 +62,7 @@ function M.item_link_with_icon( parent, text )
   container.icon:SetTexCoord( 1 / w, (w - 1) / w, 1 / h, (h - 1) / h )
   container.count = M.text( container )
   container.quantity = M.text( container )
-  container.quantity:SetPoint( "BOTTOMRIGHT", container.icon, "BOTTOMRIGHT", 5, -3 )
+  container.quantity:SetPoint( "BOTTOMRIGHT", container.icon, "BOTTOMRIGHT", 4, -2 )
   container.quantity:SetScale( 0.75 )
   container.text:SetTextColor( 1, 1, 1 )
 

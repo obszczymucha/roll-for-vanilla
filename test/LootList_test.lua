@@ -13,6 +13,7 @@ require( "src/Module" )
 local ItemUtils = require( "src/ItemUtils" )
 local LT = ItemUtils.LootType
 require( "src/LootList" )
+require( "src/RfTestLootFacade" )
 require( "src/SoftResLootListDecorator" )
 
 local LootQuality = utils.LootQuality
@@ -246,6 +247,25 @@ function LootListSpec.should_count_items_properly_if_one_gets_removed()
   eq( loot_list.count( 111 ), 0 )
   eq( loot_list.count( 222 ), 1 )
   eq( loot_list.count( 333 ), 1 )
+end
+
+function LootListSpec.should_populate_from_test_facade_when_loot_opens()
+  -- Given
+  local real_facade = LootFacade.new()
+  local test_facade = m.RfTestLootFacade.new( real_facade )
+  local raw_loot_list = m.LootList.new( test_facade, m.ItemUtils, tooltip_reader )
+  local loot_list = m.SoftResLootListDecorator.new( raw_loot_list, new_softres() )
+  local link = item_link( "Nether Vortex", 30183 )
+  local item = m.ItemUtils.make_dropped_item( 30183, "Nether Vortex", link, nil, LootQuality.Epic, 2, "tex", m.ItemUtils.BindType.None )
+
+  -- When
+  test_facade.setup( { item } )
+  test_facade.notify( "LootOpened" )
+
+  -- Then
+  local result = loot_list.get_by_id( 30183 )
+  eq( result.id, 30183 )
+  eq( result.quantity, 2 )
 end
 
 os.exit( lu.LuaUnit.run() )

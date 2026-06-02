@@ -208,7 +208,9 @@ local function show( module_names )
   pp( msg( "start" ) )
 
   for _, message in ipairs( result ) do
-    pp( message.text, m.colors.grey, m.colorize( c[ message.module_name ], message.module_name ) )
+    if message and message.text and message.module_name then
+      pp( message.text, m.colors.grey, m.colorize( c[ message.module_name ], message.module_name ) )
+    end
   end
 
   pp( msg( "end" ) )

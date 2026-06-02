@@ -3,7 +3,7 @@ local m = RollFor
 
 if m.Chat then return end
 
-local M = {}
+local M = m.Module.new( "Chat" )
 
 ---@class Chat
 ---@field announce fun( text: string, use_raid_Warning: boolean? )

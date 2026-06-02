@@ -69,13 +69,13 @@ local function get_dummy_items()
   ---@diagnostic disable-next-line: unused-function
   local function item_link( name, id, quality )
     local color = (quality and m.api.ITEM_QUALITY_COLORS[ quality ] and m.api.ITEM_QUALITY_COLORS[ quality ].hex) or "|cffffffff"
-    return string.format( "%s|Hitem:%s::::::::20:257::::::|h[%s]|h|r", color, id or "3299", name )
+    return string.format( "%s|Hitem:%s::::::::70::::::::::|h[%s]|h|r", color, id or "3299", name )
   end
 
   -- { item_id, quantity, name_override }
   local ids = {
-    { 30237, 1, "Chestuguard of the Vanquished Ass Defendor of Asses" }, -- Chestguard of the Vanquished Defender
-    { 29988, 1, "The Nexus Keyss" },
+    { 30237, 1 }, -- Chestguard of the Vanquished Defender
+    { 29988, 1 }, -- The Nexus Key
     { 30236, 1 }, -- Chestguard of the Vanquished Champion
     { 30236, 1 }, -- Chestguard of the Vanquished Champion
     { 32405, 1 }, -- Verdant Sphere
@@ -199,11 +199,16 @@ local function create_components()
   ---@type LootFacade
   M.loot_facade = m.LootFacade.new( m.EventFrame.new( m.api ), m.api )
 
-  -- Enable this for testing in game. It will replace dropped items with the above.
-  local mock_items = false
+  local rf_test = false
+  local loot_facade = M.loot_facade
+
+  if rf_test then
+    M.rf_test_loot_facade = m.RfTestLootFacade.new( M.loot_facade )
+    loot_facade = M.rf_test_loot_facade
+  end
 
   ---@type LootList
-  M.raw_loot_list = m.LootList.new( M.loot_facade, M.item_utils, M.tooltip_reader, mock_items and get_dummy_items or nil )
+  M.raw_loot_list = m.LootList.new( loot_facade, M.item_utils, M.tooltip_reader )
 
   ---@type SoftResLootList
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
@@ -343,7 +348,7 @@ local function create_components()
 
   M.loot_controller = m.LootController.new(
     M.player_info,
-    M.loot_facade,
+    loot_facade,
     M.loot_list,
     M.loot_frame,
     M.roll_controller,
@@ -425,13 +430,13 @@ end
 
 local function on_roll_command( roll_slash_command )
   return function( args )
-    if M.rolling_logic.is_rolling() then
-      M.chat.info( "Rolling is in progress." )
+    if string.find( args, "^debug" ) then
+      m.DebugBuffer.on_command( args )
       return
     end
 
-    if string.find( args, "^debug" ) then
-      m.DebugBuffer.on_command( args )
+    if M.rolling_logic.is_rolling() then
+      M.chat.info( "Rolling is in progress." )
       return
     end
 
@@ -638,27 +643,29 @@ local function on_reset_dropped_loot_announce_command()
 end
 
 local function on_rftest_command()
-  local dropped_items = get_dummy_items()
-  local loot_frame_items = {}
-
-  for index, item in ipairs( dropped_items ) do
-    table.insert( loot_frame_items, {
-      index = index,
-      texture = item.texture,
-      name = item.name,
-      quality = item.quality or 0,
-      quantity = item.quantity,
-      link = item.link,
-      click_fn = function() M.roll_controller.preview( item, 1) end,
-      is_selected = false,
-      is_enabled = true,
-      tooltip_link = item.tooltip_link,
-      bind = m.ItemUtils.bind_abbrev( item.bind )
-    } )
+  if not M.player_info.is_master_looter() then
+    info( "You must be the master looter to use this command." )
+    return
   end
 
-  M.loot_frame.show()
-  M.loot_frame.update( loot_frame_items )
+  M.rf_test_loot_facade.setup( get_dummy_items() )
+  M.rf_test_loot_facade.notify( "LootOpened" )
+end
+
+local function on_rfaward_command( args )
+  if not args or args == "" then
+    info( string.format( "Usage: %s <item_link>", hl( "/rfaward" ) ) )
+    return
+  end
+
+  local player_name = m.api.UnitName( "target" )
+
+  if not player_name then
+    info( "Target the player first." )
+    return
+  end
+
+  info( string.format( "player_name: %s  item: %s", player_name, args ) )
 end
 
 local function setup_slash_commands()
@@ -695,8 +702,13 @@ local function setup_slash_commands()
   SLASH_RFT1 = "/rft"
   M.api().SlashCmdList[ "RFT" ] = M.sandbox.run
 
-  SLASH_RFTEST1 = "/rftest"
-  M.api().SlashCmdList[ "RFTEST" ] = on_rftest_command
+  if M.rf_test_loot_facade then
+    SLASH_RFTEST1 = "/rftest"
+    M.api().SlashCmdList[ "RFTEST" ] = on_rftest_command
+  end
+
+  SLASH_RFAWARD1 = "/rfaward"
+  M.api().SlashCmdList[ "RFAWARD" ] = on_rfaward_command
 
   --SLASH_DROPPED1 = "/DROPPED"
   --M.api().SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
