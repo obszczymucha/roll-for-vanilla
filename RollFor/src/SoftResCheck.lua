@@ -10,7 +10,6 @@ local filter = m.filter
 local negate = m.negate
 local colors = m.colors
 local pretty_print = function( text ) m.pretty_print( text, colors.softres ) end
-local sid = m.SoftRes.softres_item_data
 
 local ResultType = {
   NoItemsFound = "NoItemsFound",
@@ -137,7 +136,8 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
     end
   end
 
-  local function show_softres( retry )
+  local function show_softres( link, retry )
+    local filter_item_id = retry ~= true and link and link ~= "" and m.ItemUtils.get_item_id( link )
     if not retry then refetch_retries = 0 else refetch_retries = refetch_retries + 1 end
 
     local needs_refetch = false
@@ -150,20 +150,22 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
     for _, sr_item in pairs( softressed_items ) do
       local item_id = sr_item.item_id
       local id = item_id and tonumber( item_id )
-      if item_id and id and id > 0 then
+
+      if item_id and id and id > 0 and (not filter_item_id or id == filter_item_id) then
         local players = softres.get( sr_item )
         local quality = softres.get_item_quality( item_id )
         local item_link = m.fetch_item_link( item_id, quality )
+        local quantity_suffix = sr_item.item_quantity and sr_item.item_quantity > 1
+            and string.format( " (%s)", sr_item.item_quantity )
+            or ""
 
         if not item_link and refetch_retries < 3 then
           m.set_game_tooltip_with_item_id( item_id )
           needs_refetch = true
         elseif not item_link then
-          -- local players_str = modules.prettify_table( players, function( player ) return player.name end )
-          -- p( string.format( "Couldn't fetch item details (player: %s, item_id: %s).", M.colors.hl( players_str ), M.colors.hl( item_id ) ) )
-          unavailable_items[ item_id ] = players
+          unavailable_items[ item_id .. quantity_suffix ] = players
         else
-          items[ item_link ] = players
+          items[ item_link .. quantity_suffix ] = players
         end
       end
     end
@@ -171,7 +173,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
     if needs_refetch then
       m.pretty_print( "Fetching soft-ressed items details from the server...", colors.grey )
       refetch_retries = refetch_retries + 1
-      ace_timer.ScheduleTimer( M, function() show_softres( true ) end, 1 )
+      ace_timer.ScheduleTimer( M, function() show_softres( link, true ) end, 1 )
       return
     end
 
@@ -193,9 +195,15 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
       return player.rolls > 1 and string.format( "%s (%s)", name, player.rolls ) or string.format( "%s", name )
     end
 
+    local absent_suffix = absent_softres_players_count > 0
+        and string.format( " (players in %s are not in your group)", colors.red( "red" ) )
+        or ""
+
     if item_count > 0 then
-      p( string.format( "Soft-ressed items%s:",
-        absent_softres_players_count > 0 and string.format( " (players in %s are not in your group)", colors.red( "red" ) ) or "" ) )
+      local header = filter_item_id
+          and string.format( "Soft-resses for %s%s:", link, absent_suffix )
+          or string.format( "Soft-ressed items%s:", absent_suffix )
+      p( header )
 
       for item_link, players in pairs( items ) do
         if m.count_elements( players ) > 0 then

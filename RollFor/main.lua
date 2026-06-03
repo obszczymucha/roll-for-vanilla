@@ -197,7 +197,7 @@ local function create_components()
 
   ---@type DroppedLoot
   M.dropped_loot = m.DroppedLoot.new( db( "dropped_loot" ) )
-  M.softres_check = m.SoftResCheck.new( M.matched_name_softres, M.group_roster, M.name_matcher, M.ace_timer,
+  M.softres_check = m.SoftResCheck.new( M.nether_vortex_softres, M.group_roster, M.name_matcher, M.ace_timer,
     M.absent_softres, db( "softres_check" ) )
 
   ---@type WinnerTracker
