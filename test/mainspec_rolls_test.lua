@@ -14,6 +14,7 @@ local repeating_tick = u.repeating_tick
 local t, i = require( "src/Types" ), require( "src/ItemUtils" )
 local make_item_candidate, make_dropped_item = t.make_item_candidate, i.make_dropped_item
 local C = t.PlayerClass
+local alid = u.awarded_loot_item_data
 
 local function mock_config()
   return {
@@ -206,7 +207,7 @@ function MainspecRollsSpec:should_only_record_loot_that_we_are_awarding()
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished()
   )
-  eq( awarded_loot.has_item_been_awarded( "Psikutas", item.id ), false )
+  eq( awarded_loot.has_item_been_awarded( "Psikutas", alid( item.id ) ), false )
 
   -- And we confirm loot award and move, so the loot is closed.
   local candidate = make_item_candidate( "Psikutas", C.Warrior, true )
@@ -217,13 +218,13 @@ function MainspecRollsSpec:should_only_record_loot_that_we_are_awarding()
   loot_received( loot_facade, "Psikutas", u.item_link( "Some other item", 96 ) )
 
   -- Then
-  eq( awarded_loot.has_item_been_awarded( "Psikutas", item.id ), false )
+  eq( awarded_loot.has_item_been_awarded( "Psikutas", alid( item.id ) ), false )
 
   -- And
   loot_received( loot_facade, "Psikutas", item.link )
 
   -- Then
-  eq( awarded_loot.has_item_been_awarded( "Psikutas", item.id ), true )
+  eq( awarded_loot.has_item_been_awarded( "Psikutas", alid( item.id ) ), true )
   m.chat.assert(
     r( "1 item dropped:" ),
     r( "1. [Hearthstone]" ),

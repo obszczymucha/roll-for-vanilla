@@ -8,6 +8,8 @@ local M = m.Module.new( "LootAwardCallback" )
 ---@class LootAwardCallback
 ---@field on_loot_awarded fun( item_id: number, item_link: string, player_name: string, player_class: string? )
 
+local alid = m.AwardedLoot.awarded_loot_item_data
+
 ---@param awarded_loot AwardedLoot
 ---@param roll_controller RollController
 ---@param winner_tracker WinnerTracker
@@ -19,7 +21,8 @@ function M.new( awarded_loot, roll_controller, winner_tracker, group_roster )
   ---@param player_class PlayerClass?
   local function on_loot_awarded( item_id, item_link, player_name, player_class )
     M.debug.add( string.format( "on_loot_awarded( %s, %s, %s, %s )", item_id, item_link, player_name, player_class or "nil" ) )
-    awarded_loot.award( player_name, item_id )
+    local al_item = alid( item_id )
+    awarded_loot.award( player_name, al_item )
 
     if player_class then
       roll_controller.loot_awarded( item_id, item_link, player_name, player_class )

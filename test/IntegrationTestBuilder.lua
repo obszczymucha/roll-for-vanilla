@@ -4,6 +4,7 @@ local lu, eq = u.luaunit( "assertEquals" ) ---@diagnostic disable-line: unused-l
 local m, T, IU = require( "src/modules" ), require( "src/Types" ), require( "src/ItemUtils" )
 reqsrc( "DebugBuffer", "Module", "Types", "SoftResDataTransformer", "RollingLogicUtils", "RollTracker" )
 reqsrc( "TieRollingLogic", "SoftResRollingLogic", "NonSoftResRollingLogic", "RaidRollRollingLogic", "InstaRaidRollRollingLogic" )
+require( "src/AwardedLoot" )
 local SoftResAwardedLootDecorator = require( "src/SoftResAwardedLootDecorator" )
 local SoftResDecorator = require( "src/SoftResPresentPlayersDecorator" )
 local SoftRes, Db = require( "src/SoftRes" ), require( "src/Db" )

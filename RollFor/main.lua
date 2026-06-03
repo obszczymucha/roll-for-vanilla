@@ -11,6 +11,7 @@ local getn = m.getn
 local info = m.pretty_print
 local hl = m.colors.highlight
 local RollSlashCommand = m.Types.RollSlashCommand
+local alid = m.AwardedLoot.awarded_loot_item_data
 
 local function clear_data()
   M.softres_gui.clear()
@@ -57,7 +58,8 @@ local function trade_complete_callback( recipient_name, items_given, items_recei
     if item then
       local item_id = M.item_utils.get_item_id( item.link )
 
-      if item_id and M.awarded_loot.has_item_been_awarded( recipient_name, item_id ) then
+      local al_item = item_id and alid( item_id )
+      if al_item and M.awarded_loot.has_item_been_awarded( recipient_name, al_item ) then
         M.unaward_item( recipient_name, item_id, item.link )
       end
     end
@@ -747,7 +749,8 @@ local function on_party_message( message, player )
 end
 
 function M.unaward_item( player_name, item_id, item_link )
-  M.awarded_loot.unaward( player_name, item_id )
+  local al_item = alid( item_id )
+  M.awarded_loot.unaward( player_name, al_item )
   info( string.format( "%s returned %s.", hl( player_name ), item_link ) )
 end
 

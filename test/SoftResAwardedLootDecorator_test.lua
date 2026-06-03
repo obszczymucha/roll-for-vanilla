@@ -8,6 +8,7 @@ local soft_res = u.soft_res
 local sr, hr = u.soft_res_item, u.hard_res_item
 local is_in_raid = u.is_in_raid
 local sid = u.softres_item_data
+local alid = u.awarded_loot_item_data
 
 SoftResAwardedLootDecoratorSpec = {}
 
@@ -31,7 +32,7 @@ function SoftResAwardedLootDecoratorSpec:should_return_false_if_the_item_is_hard
   is_in_raid( leader( "Jogobobek" ), "Obszczymucha", "Johnny" )
   local rf = soft_res( hr( 123 ), sr( "Jogobobek", 123 ), sr( "Obszczymucha", 123 ), sr( "Obszczymucha", 123 ) )
   local softres = rf.softres
-  rf.awarded_loot.award( "Johnny", 123 )
+  rf.awarded_loot.award( "Johnny", alid( 123 ) )
 
   -- When
   local result = softres.is_item_hardressed( 123 )
@@ -63,7 +64,7 @@ function SoftResAwardedLootDecoratorSpec:should_not_return_players_that_received
   is_in_raid( leader( "Jogobobek" ), "Obszczymucha" )
   local rf = soft_res( sr( "Jogobobek", 123 ), sr( "Obszczymucha", 123 ), sr( "Obszczymucha", 123 ) )
   local softres = rf.softres
-  rf.awarded_loot.award( "Jogobobek", 123 )
+  rf.awarded_loot.award( "Jogobobek", alid( 123 ) )
 
   -- When
   local result = softres.get( sid( 123 ) )
@@ -80,7 +81,7 @@ function SoftResAwardedLootDecoratorSpec:should_not_subtract_rolls()
   is_in_raid( leader( "Jogobobek" ), "Obszczymucha" )
   local rf = soft_res( sr( "Jogobobek", 123 ), sr( "Obszczymucha", 123 ), sr( "Obszczymucha", 123 ) )
   local softres = rf.softres
-  rf.awarded_loot.award( "Jogobobek", 123 )
+  rf.awarded_loot.award( "Jogobobek", alid( 123 ) )
 
   -- When
   local result = softres.get( sid( 123 ) )

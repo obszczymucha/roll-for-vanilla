@@ -1295,4 +1295,8 @@ function M.softres_item_data( item_id )
   return { item_id = item_id }
 end
 
+function M.awarded_loot_item_data( item_id )
+  return { item_id = item_id }
+end
+
 return M
