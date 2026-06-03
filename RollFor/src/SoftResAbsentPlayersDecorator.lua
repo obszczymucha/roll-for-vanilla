@@ -14,8 +14,8 @@ local clone = m.clone
 function M.new( group_roster, softres )
   local f = negate( group_roster.is_player_in_my_group )
 
-  local function get( item_id )
-    return filter( softres.get( item_id ), f, "name" )
+  local function get( item_data )
+    return filter( softres.get( item_data ), f, "name" )
   end
 
   local function get_all_rollers()

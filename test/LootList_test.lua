@@ -10,10 +10,13 @@ require( "src/WowApi" )
 local LootFacade = require( "mocks/LootFacade" )
 require( "src/DebugBuffer" )
 require( "src/Module" )
+require( "src/Types" )
 local ItemUtils = require( "src/ItemUtils" )
 local LT = ItemUtils.LootType
 require( "src/LootList" )
 require( "src/RfTestLootFacade" )
+require( "src/SoftResDataTransformer" )
+require( "src/SoftRes" )
 require( "src/SoftResLootListDecorator" )
 
 local LootQuality = utils.LootQuality

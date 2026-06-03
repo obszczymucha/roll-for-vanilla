@@ -16,8 +16,8 @@ function M.new( name_matcher, softres )
     return player
   end
 
-  local function get( item_id )
-    return map( softres.get( item_id ), f )
+  local function get( item_data )
+    return map( softres.get( item_data ), f )
   end
 
   local function get_all_rollers()

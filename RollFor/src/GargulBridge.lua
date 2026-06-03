@@ -12,6 +12,7 @@ local ACTION_BROADCAST_SOFT_RES = 3
 local ACTION_REQUEST_SOFT_RES_DATA = 8
 local ACTION_START_ROLL_OFF = 10
 local ACTION_STOP_ROLL_OFF = 11
+local sid = m.SoftRes.softres_item_data
 
 ---@param player_info PlayerInfo
 ---@param roll_controller RollController
@@ -136,7 +137,8 @@ function M.new( player_info, roll_controller, config, get_import_string, softres
     }
 
     if event.strategy_type == "SoftResRoll" and softres then
-      for _, roller in ipairs( softres.get( event.item.id ) ) do
+      local sr_item = sid( event.item.id )
+      for _, roller in ipairs( softres.get( sr_item ) ) do
         send_to( ACTION_START_ROLL_OFF, content, "WHISPER", roller.name )
       end
     else

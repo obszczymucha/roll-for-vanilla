@@ -5,6 +5,7 @@ if m.SoftResRollGuiData then return end
 
 local clear = m.clear_table
 local RollType = m.Types.RollType
+local sid = m.SoftRes.softres_item_data
 
 -- I take the list of players who soft res an item
 -- and generate the data for RollingPopup to display.
@@ -61,7 +62,8 @@ function M.new( softres, group_roster )
   end
 
   local function populate_rolls( item_id )
-    local players = softres.get( item_id )
+    local sr_item = sid( item_id )
+    local players = softres.get( sr_item )
     local first = true
 
     for _, sr_player in ipairs( players ) do

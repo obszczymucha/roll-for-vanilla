@@ -10,6 +10,7 @@ local RT = m.Types.RollType
 local RS = m.Types.RollingStrategy
 local hl = m.colors.hl
 local grey = m.colors.grey
+local sid = m.SoftRes.softres_item_data
 
 ---@param chat Chat
 ---@param roll_controller RollController
@@ -31,7 +32,8 @@ function M.new( chat, roll_controller, softres, config )
     local item = winners[ 1 ].item
 
     local function sr_plus( value )
-      local sr_players = softres.get( item.id )
+      local sr_item = sid( item.id )
+      local sr_players = softres.get( sr_item )
       local sr_player = m.find( winners[ 1 ].name, sr_players, 'name' )
 
       if sr_player and sr_player.sr_plus then

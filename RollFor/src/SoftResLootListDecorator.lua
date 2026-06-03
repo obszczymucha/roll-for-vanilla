@@ -13,6 +13,7 @@ local make_softres_dropped_item = m.ItemUtils.make_softres_dropped_item
 
 ---@type MakeHardRessedDroppedItemFn
 local make_hardres_dropped_item = m.ItemUtils.make_hardres_dropped_item
+local sid = m.SoftRes.softres_item_data
 
 ---@class SoftResLootList : LootList
 ---@field get_items fun(): (MasterLootDistributableItem)[]
@@ -69,7 +70,8 @@ function M.new( loot_list, softres )
       end
 
       local hr = softres.is_item_hardressed( item.id )
-      local sr_players = softres.get( item.id )
+      local sr_item = sid( item.id )
+      local sr_players = softres.get( sr_item )
       local sr = getn( sr_players ) > 0
 
       if hr and not hr_map[ item.id ] then

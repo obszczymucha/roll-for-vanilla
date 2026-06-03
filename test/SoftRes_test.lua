@@ -10,6 +10,7 @@ local mod = require( "src/SoftRes" )
 
 local sr = test_utils.soft_res_item
 local data = test_utils.create_softres_data
+local sid = test_utils.softres_item_data
 
 SoftResIntegrationSpec = {}
 
@@ -19,8 +20,8 @@ function SoftResIntegrationSpec.new_instances_should_have_empty_item_lists()
   local soft_res2 = mod.new()
 
   -- Expect
-  lu.assertEquals( soft_res.get( 123 ), nil )
-  lu.assertEquals( soft_res2.get( 123 ), nil )
+  lu.assertEquals( soft_res.get( sid( 123 ) ), nil )
+  lu.assertEquals( soft_res2.get( sid( 123 ) ), nil )
 end
 
 function SoftResIntegrationSpec:should_create_a_proper_object_and_add_an_item()
@@ -30,8 +31,8 @@ function SoftResIntegrationSpec:should_create_a_proper_object_and_add_an_item()
   local soft_res2 = mod.new()
 
   -- When
-  local result = soft_res.get( 123 )
-  local result2 = soft_res2.get( 123 )
+  local result = soft_res.get( sid( 123 ) )
+  local result2 = soft_res2.get( sid( 123 ) )
 
   -- Then
   lu.assertEquals( result, {
@@ -46,7 +47,7 @@ function SoftResIntegrationSpec:should_return_nil_for_untracked_item()
   soft_res.import( data( sr( "Psikutas", 123 ) ) )
 
   -- When
-  local result = soft_res.get( "111" )
+  local result = soft_res.get( sid( "111" ) )
 
   -- Then
   lu.assertEquals( result, {} )
@@ -58,7 +59,7 @@ function SoftResIntegrationSpec:should_add_multiple_players()
   soft_res.import( data( sr( "Psikutas", 123 ), sr( "Obszczymucha", 123 ) ) )
 
   -- When
-  local result = soft_res.get( 123 )
+  local result = soft_res.get( sid( 123 ) )
 
   -- Then
   lu.assertEquals( result, {
@@ -73,7 +74,7 @@ function SoftResIntegrationSpec:should_accumulate_rolls()
   soft_res.import( data( sr( "Psikutas", 123 ), sr( "Psikutas", 123 ) ) )
 
   -- When
-  local result = soft_res.get( 123 )
+  local result = soft_res.get( sid( 123 ) )
 
   -- Then
   lu.assertEquals( result, {

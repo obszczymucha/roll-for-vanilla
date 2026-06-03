@@ -845,10 +845,10 @@ function M.load_real_stuff( req )
   r( "src/Config" )
   r( "src/RollingLogicUtils" )
   r( "src/DroppedLoot" )
-  r( "src/DroppedLootAnnounce" )
   r( "src/TradeTracker" )
   r( "src/SoftResDataTransformer" )
   r( "src/SoftRes" )
+  r( "src/DroppedLootAnnounce" )
   r( "src/SoftResGui" )
   r( "src/AwardedLoot" )
   r( "src/SoftResAwardedLootDecorator" )
@@ -1289,6 +1289,10 @@ function M.table_contains_value( t, value, f )
   end
 
   return false
+end
+
+function M.softres_item_data( item_id )
+  return { item_id = item_id }
 end
 
 return M

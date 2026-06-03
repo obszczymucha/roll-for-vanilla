@@ -9,20 +9,8 @@ local filter = m.filter
 local map = m.map
 local clone = m.clone
 
----@class SoftRes
----@field get fun( item_id: ItemId ): Roller[]
----@field get_all_rollers fun(): Roller[]
----@field is_player_softressing fun( player_name: string, item_id: ItemId ): boolean
----@field get_item_ids fun(): ItemId[]
----@field get_item_quality fun( item_id: ItemId ): ItemQuality
----@field get_hr_item_ids fun(): ItemId[]
----@field is_item_hardressed fun( item_id: ItemId ): boolean
----@field import fun( data: RaidResData )
----@field clear fun( report: boolean )
----@field persist fun()
-
 ---@class GroupAwareSoftRes
----@field get fun( item_id: ItemId ): RollingPlayer[]
+---@field get fun( item_data: ItemData ): RollingPlayer[]
 ---@field get_all_rollers fun(): RollingPlayer[]
 ---@field is_player_softressing fun( player_name: string, item_id: ItemId ): boolean
 ---@field get_item_ids fun(): ItemId[]
@@ -47,8 +35,8 @@ function M.new( group_roster, softres )
     return p
   end
 
-  local function get( item_id )
-    return map( filter( softres.get( item_id ), f, "name" ), enrich_class )
+  local function get( item_data )
+    return map( filter( softres.get( item_data ), f, "name" ), enrich_class )
   end
 
   local function get_all_rollers()

@@ -11,6 +11,7 @@ local RS = m.Types.RollingStrategy
 local LAE = m.Types.LootAwardError
 local IU = m.ItemUtils ---@type ItemUtils
 local hl = m.colors.hl
+local sid = m.SoftRes.softres_item_data
 
 ---@class RollControllerFacade
 ---@field roll_was_ignored fun( player_name: string, player_class: string?, roll_type: RollType, roll: number, reason: string )
@@ -895,7 +896,8 @@ function M.new(
 
     local slot = loot_list.get_slot( item.id )
     local candidates = slot and ml_candidates.get( slot ) or {}
-    local soft_ressers = softres.get( item.id )
+    local sr_item = sid( item.id )
+    local soft_ressers = softres.get( sr_item )
     local hard_ressed = softres.is_item_hardressed( item.id )
     local dropped_item = loot_list.get_by_id( item.id )
     local roll_tracker = new_roll_tracker( item )

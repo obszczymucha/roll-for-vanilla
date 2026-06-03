@@ -10,6 +10,7 @@ local filter = m.filter
 local negate = m.negate
 local colors = m.colors
 local pretty_print = function( text ) m.pretty_print( text, colors.softres ) end
+local sid = m.SoftRes.softres_item_data
 
 local ResultType = {
   NoItemsFound = "NoItemsFound",
@@ -149,7 +150,8 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
     for _, item_id in pairs( softressed_item_ids ) do
       local id = item_id and tonumber( item_id )
       if item_id and id and id > 0 then
-        local players = softres.get( item_id )
+        local sr_item = sid( item_id )
+        local players = softres.get( sr_item )
         local quality = softres.get_item_quality( item_id )
         local item_link = m.fetch_item_link( item_id, quality )
 

@@ -8,6 +8,7 @@ local M = {}
 local getn = m.getn
 ---@type MakeRollingPlayerFn
 local make_rolling_player = m.Types.make_rolling_player
+local sid = m.SoftRes.softres_item_data
 
 ---@class RollingStrategy
 ---@field start_rolling fun()
@@ -91,8 +92,9 @@ function M.new(
       on_softres_rolls_available,
       roll_controller_facade
   )
+    local sr_item = sid( item.id )
     ---@type RollingPlayer[]
-    local softressing_players = softres.get( item.id )
+    local softressing_players = softres.get( sr_item )
 
     if getn( softressing_players ) == 0 then
       return normal_roll( item, item_count or 1, item_quantity, message, seconds, on_rolling_finished, roll_controller_facade )

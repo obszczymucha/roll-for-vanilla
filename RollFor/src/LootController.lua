@@ -8,6 +8,7 @@ local M = m.Module.new( "LootController" )
 local getn = m.getn
 local red, orange, hl = m.colors.red, m.colors.orange, m.colors.hl
 local item_utils = m.ItemUtils
+local sid = m.SoftRes.softres_item_data
 
 ---@alias SelectedItem { item_id: number, comment: string? }
 
@@ -86,7 +87,8 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
 
     for _, item in ipairs( items ) do
       if item.type ~= "Coin" then
-        result[ item.id ] = softres.get( item.id )
+        local sr_item = sid( item.id )
+        result[ item.id ] = softres.get( sr_item )
       end
     end
 
@@ -151,7 +153,8 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
       elseif softres.is_item_hardressed( item.id ) and not is_already_hr( item.id, result ) then
         table.insert( result, { item = item, comment = red( "HR" ), hard_ressed = true } )
       else
-        local sr_players = softres.get( item.id )
+        local sr_item = sid( item.id )
+        local sr_players = softres.get( sr_item )
         local sr_player_count = getn( sr_players )
         local item_count = loot_list.count( item.id )
 

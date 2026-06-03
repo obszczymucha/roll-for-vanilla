@@ -28,6 +28,7 @@ local modifier_keys_not_pressed = u.modifier_keys_not_pressed
 local run_command = u.run_command
 local targetting_enemy = u.targetting_enemy
 local LootQuality = u.LootQuality
+local sid = u.softres_item_data
 
 local mock_config = function( config )
   return {
@@ -416,7 +417,7 @@ function SoftResIntegrationSpec:should_not_subtract_rolls_from_softres_data()
   modifier_keys_not_pressed()
 
   -- Then
-  local sr_data = rf.softres.get( 22637 )[ 1 ]
+  local sr_data = rf.softres.get( sid( 22637 ) )[ 1 ]
   eq( sr_data.rolls, 1 )
 
   -- And
@@ -427,7 +428,7 @@ function SoftResIntegrationSpec:should_not_subtract_rolls_from_softres_data()
   roll( "Bomanz", 100 )
 
   -- Then
-  sr_data = rf.softres.get( 22637 )[ 1 ]
+  sr_data = rf.softres.get( sid( 22637 ) )[ 1 ]
   eq( sr_data.rolls, 1 )
 end
 

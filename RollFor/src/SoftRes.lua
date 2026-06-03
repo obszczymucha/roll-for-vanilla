@@ -5,6 +5,29 @@ if m.SoftRes then return end
 
 local M = {}
 
+---@class ItemData
+---@field item_id ItemId
+
+---@param item_id ItemId
+---@return ItemData
+function M.softres_item_data( item_id )
+  return {
+    item_id = item_id
+  }
+end
+
+---@class SoftRes
+---@field get fun( item_data: ItemData ): Roller[]
+---@field get_all_rollers fun(): Roller[]
+---@field is_player_softressing fun( player_name: string, item_id: ItemId ): boolean
+---@field get_item_ids fun(): ItemId[]
+---@field get_item_quality fun( item_id: ItemId ): ItemQuality
+---@field get_hr_item_ids fun(): ItemId[]
+---@field is_item_hardressed fun( item_id: ItemId ): boolean
+---@field import fun( data: RaidResData )
+---@field clear fun( report: boolean )
+---@field persist fun()
+
 ---@diagnostic disable-next-line: undefined-global
 local lib_stub = LibStub
 
@@ -73,7 +96,8 @@ function M.new( db )
     if report then m.pretty_print( "Cleared soft-res data." ) end
   end
 
-  local function get( item_id )
+  local function get( item_data )
+    local item_id = item_data.item_id
     return softres_data[ item_id ] and m.clone( softres_data[ item_id ].rollers ) or {}
   end
 
