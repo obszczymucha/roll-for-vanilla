@@ -285,7 +285,7 @@ function M.new_roll_for()
     local auto_loot = require( "mocks/AutoLoot" ).new( loot_list, u.modules().api, db( "auto_loot" ), config, player_info )
     deps[ "AutoLoot" ] = auto_loot
 
-    require( "src/RollResultAnnouncer" ).new( chat, roll_controller, softres, config )
+    require( "src/RollResultAnnouncer" ).new( chat, roll_controller, config )
     local dropped_loot = require( "src/DroppedLoot" ).new( db( "dummy" ) )
     local dropped_loot_announce = require( "src/DroppedLootAnnounce" ).new(
       loot_list,

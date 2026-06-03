@@ -10,13 +10,10 @@ local RT = m.Types.RollType
 local RS = m.Types.RollingStrategy
 local hl = m.colors.hl
 local grey = m.colors.grey
-local sid = m.SoftRes.softres_item_data
-
 ---@param chat Chat
 ---@param roll_controller RollController
----@param softres GroupAwareSoftRes
 ---@param config Config
-function M.new( chat, roll_controller, softres, config )
+function M.new( chat, roll_controller, config )
   ---@param winners Winner[]
   ---@param top_roll boolean
   local announce_winner = function( winners, top_roll )
@@ -31,28 +28,13 @@ function M.new( chat, roll_controller, softres, config )
     local rerolling = winners[ 1 ].rerolling
     local item = winners[ 1 ].item
 
-    local function sr_plus( value )
-      local sr_item = sid( item.id )
-      local sr_players = softres.get( sr_item )
-      local sr_player = m.find( winners[ 1 ].name, sr_players, 'name' )
-
-      if sr_player and sr_player.sr_plus then
-        local plus_value = sr_player.sr_plus
-        value = value - plus_value
-        return string.format( "%s+%s=%s", value, plus_value, value + plus_value )
-      end
-
-      return value
-    end
-
     local function message( rollers, f )
       return string.format(
         "%s %srolled the %shighest (%s) for %s%s.",
         rollers,
         rerolling and "re-" or "",
         top_roll and "" or "next ",
-        f and f( sr_plus( roll_value ) ) or sr_plus( roll_value ),
-        -- item_count and item_count > 1 and string.format( "%sx", item_count ) or "",
+        f and f( roll_value ) or roll_value,
         item.link,
         roll_type_str
       )

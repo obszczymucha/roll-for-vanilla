@@ -141,16 +141,16 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
     if not retry then refetch_retries = 0 else refetch_retries = refetch_retries + 1 end
 
     local needs_refetch = false
-    local softressed_item_ids = softres.get_item_ids()
+    local softressed_items = softres.get_items()
     local items = {}
     local unavailable_items = {}
 
     local p = pretty_print
 
-    for _, item_id in pairs( softressed_item_ids ) do
+    for _, sr_item in pairs( softressed_items ) do
+      local item_id = sr_item.item_id
       local id = item_id and tonumber( item_id )
       if item_id and id and id > 0 then
-        local sr_item = sid( item_id )
         local players = softres.get( sr_item )
         local quality = softres.get_item_quality( item_id )
         local item_link = m.fetch_item_link( item_id, quality )

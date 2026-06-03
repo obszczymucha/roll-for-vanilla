@@ -19,8 +19,8 @@ end
 ---@class SoftRes
 ---@field get fun( item_data: ItemData ): Roller[]
 ---@field get_all_rollers fun(): Roller[]
----@field is_player_softressing fun( player_name: string, item_id: ItemId ): boolean
----@field get_item_ids fun(): ItemId[]
+---@field is_player_softressing fun( player_name: string, item_data: ItemData? ): boolean
+---@field get_items fun(): ItemData[]
 ---@field get_item_quality fun( item_id: ItemId ): ItemQuality
 ---@field get_hr_item_ids fun(): ItemId[]
 ---@field is_item_hardressed fun( item_id: ItemId ): boolean
@@ -125,7 +125,8 @@ function M.new( db )
     end
   end
 
-  local function is_player_softressing( player_name, item_id )
+  local function is_player_softressing( player_name, item_data )
+    local item_id = item_data and item_data.item_id
     if item_id and not softres_data[ item_id ] then return false end
 
     if item_id then
@@ -160,11 +161,11 @@ function M.new( db )
     sort_players()
   end
 
-  local function get_item_ids()
+  local function get_items()
     local result = {}
 
     for k, _ in pairs( softres_data ) do
-      table.insert( result, k )
+      table.insert( result, M.softres_item_data( k ) )
     end
 
     return result
@@ -186,7 +187,7 @@ function M.new( db )
     get = get,
     get_all_rollers = get_all_rollers,
     is_player_softressing = is_player_softressing,
-    get_item_ids = get_item_ids,
+    get_items = get_items,
     get_item_quality = get_item_quality,
     get_hr_item_ids = get_hr_item_ids,
     is_item_hardressed = is_item_hardressed,

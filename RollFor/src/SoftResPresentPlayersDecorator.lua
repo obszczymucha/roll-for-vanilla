@@ -12,8 +12,8 @@ local clone = m.clone
 ---@class GroupAwareSoftRes
 ---@field get fun( item_data: ItemData ): RollingPlayer[]
 ---@field get_all_rollers fun(): RollingPlayer[]
----@field is_player_softressing fun( player_name: string, item_id: ItemId ): boolean
----@field get_item_ids fun(): ItemId[]
+---@field is_player_softressing fun( player_name: string, item_data: ItemData? ): boolean
+---@field get_items fun(): ItemData[]
 ---@field get_item_quality fun( item_id: ItemId ): ItemQuality
 ---@field get_hr_item_ids fun(): ItemId[]
 ---@field is_item_hardressed fun( item_id: ItemId ): boolean
