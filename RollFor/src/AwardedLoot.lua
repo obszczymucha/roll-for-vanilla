@@ -9,12 +9,15 @@ local getn = m.getn
 
 ---@class AwardedLootItemData
 ---@field item_id ItemId
+---@field item_quantity number
 
 ---@param item_id ItemId
+---@param item_quantity number?
 ---@return AwardedLootItemData
-function M.awarded_loot_item_data( item_id )
+function M.awarded_loot_item_data( item_id, item_quantity )
   return {
-    item_id = item_id
+    item_id = item_id,
+    item_quantity = item_quantity or 1
   }
 end
 

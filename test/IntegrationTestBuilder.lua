@@ -6,6 +6,8 @@ reqsrc( "DebugBuffer", "Module", "Types", "SoftResDataTransformer", "RollingLogi
 reqsrc( "TieRollingLogic", "SoftResRollingLogic", "NonSoftResRollingLogic", "RaidRollRollingLogic", "InstaRaidRollRollingLogic" )
 require( "src/AwardedLoot" )
 local SoftResAwardedLootDecorator = require( "src/SoftResAwardedLootDecorator" )
+local SoftResNetherVortexDecorator = require( "src/SoftResNetherVortexDecorator" )
+local NetherVortexAwardedLootDecorator = require( "src/NetherVortexAwardedLootDecorator" )
 local SoftResDecorator = require( "src/SoftResPresentPlayersDecorator" )
 local SoftRes, Db = require( "src/SoftRes" ), require( "src/Db" )
 local RollingLogic = require( "src/RollingLogic" )
@@ -75,16 +77,19 @@ end
 ---@param awarded_loot AwardedLoot
 ---@param data table?
 ---@return GroupAwareSoftRes
+---@return AwardedLoot
 local function group_aware_softres( group_roster, awarded_loot, data )
   local raw_softres = SoftRes.new()
-  local awarded_loot_softres = SoftResAwardedLootDecorator.new( awarded_loot, raw_softres )
-  local result = SoftResDecorator.new( group_roster, awarded_loot_softres )
+  local vortex_awarded_loot = NetherVortexAwardedLootDecorator.new( awarded_loot )
+  local awarded_loot_softres = SoftResAwardedLootDecorator.new( vortex_awarded_loot, raw_softres )
+  local nether_vortex_softres = SoftResNetherVortexDecorator.new( awarded_loot_softres )
+  local result = SoftResDecorator.new( group_roster, nether_vortex_softres )
 
   if data then
     result.import( data )
   end
 
-  return result
+  return result, vortex_awarded_loot
 end
 
 function M.mock_loot_facade()
@@ -197,9 +202,13 @@ function M.new_roll_for()
     local loot_facade = deps[ "LootFacade" ] or M.mock_loot_facade()
     deps[ "LootFacade" ] = loot_facade
 
-    local awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ) )
-    local softres = deps[ "SoftResData" ] and group_aware_softres( group_roster, awarded_loot, deps[ "SoftResData" ] ) or
-        group_aware_softres( group_roster, awarded_loot )
+    local raw_awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ) )
+    local softres, awarded_loot
+    if deps[ "SoftResData" ] then
+      softres, awarded_loot = group_aware_softres( group_roster, raw_awarded_loot, deps[ "SoftResData" ] )
+    else
+      softres, awarded_loot = group_aware_softres( group_roster, raw_awarded_loot )
+    end
     deps[ "SoftRes" ] = softres
 
     local raw_loot_list = require( "mocks/LootList" ).new( loot_facade )

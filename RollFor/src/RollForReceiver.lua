@@ -88,6 +88,7 @@ function M.new( rolling_popup, db )
         item_tooltip_link = IU.get_tooltip_link( state.item_link ),
         item_texture = state.item_texture,
         item_count = state.item_count,
+        item_quantity = state.item_quantity,
         buttons = state.buttons
       }
     end
@@ -97,6 +98,7 @@ function M.new( rolling_popup, db )
       item_tooltip_link = IU.get_tooltip_link( state.item_link ),
       item_texture = state.item_texture,
       item_count = state.item_count,
+      item_quantity = state.item_quantity,
       seconds_left = state.seconds_left,
       rolls = state.rolls,
       winners = state.winners,

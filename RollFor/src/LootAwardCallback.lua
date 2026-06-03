@@ -6,7 +6,7 @@ if m.LootAwardCallback then return end
 local M = m.Module.new( "LootAwardCallback" )
 
 ---@class LootAwardCallback
----@field on_loot_awarded fun( item_id: number, item_link: string, player_name: string, player_class: string? )
+---@field on_loot_awarded fun( item_id: number, item_link: string, player_name: string, player_class: string?, item_quantity: number? )
 
 local alid = m.AwardedLoot.awarded_loot_item_data
 
@@ -19,9 +19,10 @@ function M.new( awarded_loot, roll_controller, winner_tracker, group_roster )
   ---@param item_link string
   ---@param player_name string
   ---@param player_class PlayerClass?
-  local function on_loot_awarded( item_id, item_link, player_name, player_class )
+  ---@param item_quantity number?
+  local function on_loot_awarded( item_id, item_link, player_name, player_class, item_quantity )
     M.debug.add( string.format( "on_loot_awarded( %s, %s, %s, %s )", item_id, item_link, player_name, player_class or "nil" ) )
-    local al_item = alid( item_id )
+    local al_item = alid( item_id, item_quantity )
     awarded_loot.award( player_name, al_item )
 
     if player_class then

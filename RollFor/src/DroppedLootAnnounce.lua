@@ -231,7 +231,7 @@ function M.create_item_summary( items, softres )
   for i = 1, getn( distinct_items ) do
     local item = distinct_items[ i ]
     local item_count = count_items( item.id )
-    local sr_item = sid( item.id )
+    local sr_item = sid( item.id, item.quantity )
     local softressers = softres.get( sr_item )
     local softres_count = getn( softressers )
     table.sort( softressers, function( l, r ) return l.name < r.name end )

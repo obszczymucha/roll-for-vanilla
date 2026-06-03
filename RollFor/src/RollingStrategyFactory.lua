@@ -92,7 +92,7 @@ function M.new(
       on_softres_rolls_available,
       roll_controller_facade
   )
-    local sr_item = sid( item.id )
+    local sr_item = sid( item.id, item_quantity )
     ---@type RollingPlayer[]
     local softressing_players = softres.get( sr_item )
 

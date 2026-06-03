@@ -137,7 +137,7 @@ function M.new( player_info, roll_controller, config, get_import_string, softres
     }
 
     if event.strategy_type == "SoftResRoll" and softres then
-      local sr_item = sid( event.item.id )
+      local sr_item = sid( event.item.id, event.item_quantity )
       for _, roller in ipairs( softres.get( sr_item ) ) do
         send_to( ACTION_START_ROLL_OFF, content, "WHISPER", roller.name )
       end

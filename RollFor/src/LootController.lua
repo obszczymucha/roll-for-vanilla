@@ -87,7 +87,7 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
 
     for _, item in ipairs( items ) do
       if item.type ~= "Coin" then
-        local sr_item = sid( item.id )
+        local sr_item = sid( item.id, item.quantity )
         result[ item.id ] = softres.get( sr_item )
       end
     end
@@ -153,7 +153,7 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
       elseif softres.is_item_hardressed( item.id ) and not is_already_hr( item.id, result ) then
         table.insert( result, { item = item, comment = red( "HR" ), hard_ressed = true } )
       else
-        local sr_item = sid( item.id )
+        local sr_item = sid( item.id, item.quantity )
         local sr_players = softres.get( sr_item )
         local sr_player_count = getn( sr_players )
         local item_count = loot_list.count( item.id )

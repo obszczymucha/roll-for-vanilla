@@ -851,7 +851,9 @@ function M.load_real_stuff( req )
   r( "src/DroppedLootAnnounce" )
   r( "src/SoftResGui" )
   r( "src/AwardedLoot" )
+  r( "src/NetherVortexAwardedLootDecorator" )
   r( "src/SoftResAwardedLootDecorator" )
+  r( "src/SoftResNetherVortexDecorator" )
   r( "src/SoftResPresentPlayersDecorator" )
   r( "src/SoftResAbsentPlayersDecorator" )
   r( "src/SoftResMatchedNameDecorator" )
@@ -1289,12 +1291,12 @@ function M.table_contains_value( t, value, f )
   return false
 end
 
-function M.softres_item_data( item_id )
-  return { item_id = item_id }
+function M.softres_item_data( item_id, item_quantity )
+  return { item_id = item_id, item_quantity = item_quantity or 1 }
 end
 
-function M.awarded_loot_item_data( item_id )
-  return { item_id = item_id }
+function M.awarded_loot_item_data( item_id, item_quantity )
+  return { item_id = item_id, item_quantity = item_quantity or 1 }
 end
 
 return M

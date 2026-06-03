@@ -164,8 +164,10 @@ local function create_components()
   -- TODO: Add type.
   M.version_broadcast = m.VersionBroadcast.new( db( "version_broadcast" ), M.player_info, version.str )
 
+  M.raw_awarded_loot = m.AwardedLoot.new( db( "awarded_loot" ) )
+
   ---@type AwardedLoot
-  M.awarded_loot = m.AwardedLoot.new( db( "awarded_loot" ) )
+  M.awarded_loot = m.NetherVortexAwardedLootDecorator.new( M.raw_awarded_loot )
 
   -- TODO: Add type.
   M.softres_db = db( "softres" )
@@ -187,8 +189,11 @@ local function create_components()
   ---@type SoftRes
   M.awarded_loot_softres = m.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
 
+  ---@type SoftRes
+  M.nether_vortex_softres = m.SoftResNetherVortexDecorator.new( M.awarded_loot_softres )
+
   ---@type GroupAwareSoftRes
-  M.softres = M.present_softres( M.awarded_loot_softres )
+  M.softres = M.present_softres( M.nether_vortex_softres )
 
   ---@type DroppedLoot
   M.dropped_loot = m.DroppedLoot.new( db( "dropped_loot" ) )

@@ -725,8 +725,6 @@ function SoftResTieRollSpec:should_display_tie_rolls()
   )
 end
 
-
-
 SrCountEqualsItemCountSpec = {}
 
 function SrCountEqualsItemCountSpec:should_not_show_sr_placeholders_when_sr_player_count_equals_item_count()
@@ -818,6 +816,181 @@ function TwoSrPlayersThreeItemsSpec:should_show_award_buttons_when_looting_and_c
     text( "Psikutas soft-ressed this item.", 8 ),
     individual_award_button,
     buttons( "AwardOther", "Close" )
+  )
+end
+
+NetherVortexSpec = {}
+
+function NetherVortexSpec:should_handle_single_and_double_vortex_drops_across_multiple_looting_sessions()
+  -- Given
+  -- Alfa and Beta have 3xSR on Nether Vortex, Gamma has none.
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local p1, p2, p3 = p( "Alfa" ), p( "Beta" ), p( "Gamma" )
+  local single_vortex = i( "Nether Vortex", 30183 )
+  local double_vortex = i( "Nether Vortex", 30183 )
+  double_vortex.quantity = 2
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2, p3 )
+      :chat( chat )
+      :soft_res_data(
+        sr( p1.name, 30183 ), sr( p1.name, 30183 ), sr( p1.name, 30183 ),
+        sr( p2.name, 30183 ), sr( p2.name, 30183 ), sr( p2.name, 30183 )
+      )
+      :build()
+  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+
+  -- ===== Drop 1: Single vortex. Both Alfa and Beta are eligible. =====
+  loot_facade.notify( "LootOpened", single_vortex )
+
+  -- Then
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Nether Vortex", "SR", { "Soft-ressed by", "Alfa", "Beta" } )
+  )
+  chat.raid( "Princess Kenny dropped 1 item:" )
+  chat.raid( "1. [Nether Vortex] (SR by Alfa and Beta)" )
+
+  -- When
+  rf.loot_frame.click( 1 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( single_vortex, 1 ),
+    roll_placeholder( p1, 11 ),
+    roll_placeholder( p2 ),
+    buttons( "Roll", "AwardOther", "Close" )
+  )
+
+  -- When
+  rf.rolling_popup.click( "Roll" )
+
+  -- Then
+  chat.raid_warning( "Roll for [Nether Vortex]: SR by Alfa and Beta" )
+
+  -- When both roll
+  rf.roll( p1, 80, 1, 100 )
+  rf.roll( p2, 50, 1, 100 )
+
+  -- Then Alfa wins
+  chat.console( "RollFor: Alfa rolled the highest (80) for [Nether Vortex] (SR)." )
+  chat.raid( "Alfa rolled the highest (80) for [Nether Vortex] (SR)." )
+  chat.console( "RollFor: Rolling for [Nether Vortex] finished." )
+  rf.rolling_popup.should_display(
+    item_link( single_vortex, 1 ),
+    softres_roll( p1, 80, 11 ),
+    softres_roll( p2, 50 ),
+    text( "Alfa wins the soft-res roll with 80.", 11 ),
+    buttons( "AwardWinner", "RaidRoll", "AwardOther", "Close" )
+  )
+
+  -- When award Alfa
+  rf.rolling_popup.click( "AwardWinner" )
+  rf.confirmation_popup.confirm()
+
+  -- Then
+  chat.console( "RollFor: Alfa received [Nether Vortex]." )
+  rf.loot_frame.should_display()
+
+  -- Close loot
+  loot_facade.notify( "LootClosed" )
+  rf.reset_announcements()
+
+  -- ===== Drop 2: Single vortex. Only Beta is eligible (Alfa was awarded single). =====
+  loot_facade.notify( "LootOpened", single_vortex )
+
+  -- Then
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Nether Vortex", "SR", { "Soft-ressed by", "Beta" } )
+  )
+  chat.raid( "Princess Kenny dropped 1 item:" )
+  chat.raid( "1. [Nether Vortex] (SR by Beta)" )
+
+  -- When
+  rf.loot_frame.click( 1 )
+
+  -- Then Beta is the sole soft-resser
+  rf.rolling_popup.should_display(
+    item_link( single_vortex, 1 ),
+    text( "Beta soft-ressed this item.", 11 ),
+    buttons( "AwardWinner", "AwardOther", "Close" )
+  )
+
+  -- When award Beta
+  rf.rolling_popup.click( "AwardWinner" )
+  rf.confirmation_popup.confirm()
+
+  -- Then
+  chat.console( "RollFor: Beta received [Nether Vortex]." )
+  rf.loot_frame.should_display()
+
+  -- Close loot
+  loot_facade.notify( "LootClosed" )
+  rf.reset_announcements()
+
+  -- ===== Drop 3: Single vortex. No SR players left. All three can roll. =====
+  loot_facade.notify( "LootOpened", single_vortex )
+
+  -- Then
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Nether Vortex" )
+  )
+  chat.raid( "Princess Kenny dropped 1 item:" )
+  chat.raid( "1. [Nether Vortex]" )
+
+  -- When
+  rf.loot_frame.click( 1 )
+
+  -- Then no SR players - normal roll buttons
+  rf.rolling_popup.should_display(
+    item_link( single_vortex, 1 ),
+    buttons( "Roll", "InstaRaidRoll", "AwardOther", "Close" )
+  )
+
+  -- Close loot
+  loot_facade.notify( "LootClosed" )
+  rf.reset_announcements()
+
+  -- ===== Drop 4: Double vortex. Alfa and Beta are both eligible for double. =====
+  loot_facade.notify( "LootOpened", double_vortex )
+
+  -- Then
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Nether Vortex", "SR", { "Soft-ressed by", "Alfa", "Beta" }, nil, 2 )
+  )
+  chat.raid( "Princess Kenny dropped 1 item:" )
+  chat.raid( "1. [Nether Vortex] (SR by Alfa and Beta)" )
+
+  -- When
+  rf.loot_frame.click( 1 )
+
+  -- Then both are eligible for double despite having won single
+  rf.rolling_popup.should_display(
+    item_link( double_vortex, 1 ),
+    roll_placeholder( p1, 11 ),
+    roll_placeholder( p2 ),
+    buttons( "Roll", "AwardOther", "Close" )
+  )
+
+  -- When
+  rf.rolling_popup.click( "Roll" )
+
+  -- Then
+  chat.raid_warning( "Roll for [Nether Vortex]: SR by Alfa and Beta" )
+
+  -- When both roll
+  rf.roll( p1, 30, 1, 100 )
+  rf.roll( p2, 90, 1, 100 )
+
+  -- Then Beta wins
+  chat.console( "RollFor: Beta rolled the highest (90) for [Nether Vortex] (SR)." )
+  chat.raid( "Beta rolled the highest (90) for [Nether Vortex] (SR)." )
+  chat.console( "RollFor: Rolling for [Nether Vortex] finished." )
+  rf.rolling_popup.should_display(
+    item_link( double_vortex, 1 ),
+    softres_roll( p2, 90, 11 ),
+    softres_roll( p1, 30 ),
+    text( "Beta wins the soft-res roll with 90.", 11 ),
+    buttons( "AwardWinner", "RaidRoll", "AwardOther", "Close" )
   )
 end
 

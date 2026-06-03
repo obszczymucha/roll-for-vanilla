@@ -45,7 +45,7 @@ function M.new( master_loot_candidates, loot_award_callback, loot_list, roll_con
     local cached_item = m_slot_cache[ slot ]
 
     if cached_item.id == m_confirmed.item.id then
-      loot_award_callback.on_loot_awarded( m_confirmed.item.id, m_confirmed.item.link, m_confirmed.player.name, m_confirmed.player.class )
+      loot_award_callback.on_loot_awarded( m_confirmed.item.id, m_confirmed.item.link, m_confirmed.player.name, m_confirmed.player.class, m_confirmed.item.quantity )
       reset_confirmation()
     end
 

@@ -70,7 +70,7 @@ function M.new( loot_list, softres )
       end
 
       local hr = softres.is_item_hardressed( item.id )
-      local sr_item = sid( item.id )
+      local sr_item = sid( item.id, item.quantity )
       local sr_players = softres.get( sr_item )
       local sr = getn( sr_players ) > 0
 

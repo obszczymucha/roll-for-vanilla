@@ -7,12 +7,15 @@ local M = {}
 
 ---@class ItemData
 ---@field item_id ItemId
+---@field item_quantity number
 
 ---@param item_id ItemId
+---@param item_quantity number?
 ---@return ItemData
-function M.softres_item_data( item_id )
+function M.softres_item_data( item_id, item_quantity )
   return {
-    item_id = item_id
+    item_id = item_id,
+    item_quantity = item_quantity or 1
   }
 end
 
@@ -165,7 +168,7 @@ function M.new( db )
     local result = {}
 
     for k, _ in pairs( softres_data ) do
-      table.insert( result, M.softres_item_data( k ) )
+      table.insert( result, M.softres_item_data( k, 1 ) )
     end
 
     return result

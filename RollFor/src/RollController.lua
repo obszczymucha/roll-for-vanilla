@@ -896,7 +896,7 @@ function M.new(
 
     local slot = loot_list.get_slot( item.id )
     local candidates = slot and ml_candidates.get( slot ) or {}
-    local sr_item = sid( item.id )
+    local sr_item = sid( item.id, item.quantity )
     local soft_ressers = softres.get( sr_item )
     local hard_ressed = softres.is_item_hardressed( item.id )
     local dropped_item = loot_list.get_by_id( item.id )
