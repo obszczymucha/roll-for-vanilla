@@ -312,11 +312,6 @@ local function create_components()
   -- TODO: Add type.
   M.auto_master_loot = m.AutoMasterLoot.new( M.config, m.BossList.zones, M.player_info )
 
-  -- TODO: Add type.
-  M.softres_roll_gui_data = m.SoftResRollGuiData.new( M.softres, M.group_roster )
-
-  -- TODO: Add type.
-  M.tie_roll_gui_data = m.TieRollGuiData.new( M.group_roster )
 
   -- TODO: Add type.
   M.welcome_popup = m.WelcomePopup.new( m.FrameBuilder, M.ace_timer, db( "welcome_popup" ) )
