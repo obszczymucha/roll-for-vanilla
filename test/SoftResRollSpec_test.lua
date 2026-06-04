@@ -15,6 +15,390 @@ local individual_award_button = gui.individual_award_button
 
 WaitForRemainingRollsSpec = {}
 
+function WaitForRemainingRollsSpec:should_finish_early_if_two_items_drop_and_the_winner_has_extra_roll_left()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, item2, p1, p2, p3, p4 = i( "Bag", 69 ), i( "Bag", 69 ), p( "Drutree" ), p( "Mendunia" ), p( "Mufasapowel" ), p( "Pinp" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2, p3, p4 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, 69 ), sr( p1.name, 69 ), sr( p2.name, 69 ), sr( p3.name, 69 ), sr( p3.name, 69 ), sr( p4.name, 69 ) )
+      :build()
+  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+  local tick = rf.ace_timer.repeating_tick
+
+  -- Then
+  rf.loot_frame.should_be_hidden()
+
+  -- When
+  loot_facade.notify( "LootOpened", item, item2 )
+
+  -- Then
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } ),
+    enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } )
+  )
+  chat.raid( "Princess Kenny dropped 2 items:" )
+  chat.raid( "1. 2x[Bag] (SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp)" )
+  rf.rolling_popup.should_be_hidden()
+
+  -- When
+  rf.loot_frame.click( 1 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item2, 2 ),
+    roll_placeholder( p1, 11 ),
+    roll_placeholder( p1 ),
+    roll_placeholder( p2 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p4 ),
+    buttons( "Roll", "AwardOther", "Close" )
+  )
+
+  -- When
+  rf.rolling_popup.click( "Roll" )
+
+  -- Then
+  chat.raid_warning( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
+  rf.rolling_popup.should_display(
+    item_link( item2, 2 ),
+    roll_placeholder( p1, 11 ),
+    roll_placeholder( p1 ),
+    roll_placeholder( p2 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p4 ),
+    text( "Rolling ends in 8 seconds.", 11 ),
+    buttons( "Cancel" )
+  )
+
+  -- When
+  rf.roll( p3, 47, 1, 100 ) -- Mufasa
+  tick()
+  rf.roll( p1, 91, 1, 100 ) -- Drutree
+  tick()
+  rf.roll( p3, 75, 1, 100 ) -- Mufasa
+  tick()
+  rf.roll( p4, 21, 1, 100 ) -- Pinp
+  tick()
+  rf.roll( p2, 32, 1, 100 ) -- Mendunia
+
+  -- Then
+  chat.console( "RollFor: Drutree rolled the highest (91) for [Bag] (SR)." )
+  chat.raid( "Drutree rolled the highest (91) for [Bag] (SR)." )
+  chat.console( "RollFor: Mufasapowel rolled the next highest (75) for [Bag] (SR)." )
+  chat.raid( "Mufasapowel rolled the next highest (75) for [Bag] (SR)." )
+  chat.console( "RollFor: Rolling for [Bag] finished." )
+end
+
+function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_win_if_roll_breaks_the_tie()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, item2, p1, p2, p3, p4 = i( "Bag", 69 ), i( "Bag", 69 ), p( "Drutree" ), p( "Mendunia" ), p( "Mufasapowel" ), p( "Pinp" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2, p3, p4 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, 69 ), sr( p1.name, 69 ), sr( p2.name, 69 ), sr( p3.name, 69 ), sr( p3.name, 69 ), sr( p4.name, 69 ) )
+      :build()
+  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+  local tick = rf.ace_timer.repeating_tick
+
+  -- Then
+  rf.loot_frame.should_be_hidden()
+
+  -- When
+  loot_facade.notify( "LootOpened", item, item2 )
+
+  -- Then
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } ),
+    enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } )
+  )
+  chat.raid( "Princess Kenny dropped 2 items:" )
+  chat.raid( "1. 2x[Bag] (SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp)" )
+  rf.rolling_popup.should_be_hidden()
+
+  -- When
+  rf.loot_frame.click( 1 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item2, 2 ),
+    roll_placeholder( p1, 11 ),
+    roll_placeholder( p1 ),
+    roll_placeholder( p2 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p4 ),
+    buttons( "Roll", "AwardOther", "Close" )
+  )
+
+  -- When
+  rf.rolling_popup.click( "Roll" )
+
+  -- Then
+  chat.raid_warning( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
+  rf.rolling_popup.should_display(
+    item_link( item2, 2 ),
+    roll_placeholder( p1, 11 ),
+    roll_placeholder( p1 ),
+    roll_placeholder( p2 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p4 ),
+    text( "Rolling ends in 8 seconds.", 11 ),
+    buttons( "Cancel" )
+  )
+
+  -- When
+  rf.roll( p3, 91, 1, 100 ) -- Mufasa
+  tick()
+  rf.roll( p1, 75, 1, 100 ) -- Drutree
+  tick()
+  rf.roll( p3, 50, 1, 100 ) -- Mufasa
+  tick()
+  rf.roll( p4, 75, 1, 100 ) -- Pinp
+  tick()
+  rf.roll( p2, 32, 1, 100 ) -- Mendunia
+  tick()
+  chat.raid( "Stopping rolls in 3" )
+  tick()
+  chat.raid( "2" )
+  tick()
+  chat.raid( "1" )
+  tick()
+
+  -- Then
+  chat.raid( "SR rolls remaining: Drutree (1 roll)" )
+
+  -- When
+  rf.roll( p1, 76, 1, 100 ) -- Drutree rolls higher, breaks the tie
+
+  -- Then
+  chat.console( "RollFor: Mufasapowel rolled the highest (91) for [Bag] (SR)." )
+  chat.raid( "Mufasapowel rolled the highest (91) for [Bag] (SR)." )
+  chat.console( "RollFor: Drutree rolled the next highest (76) for [Bag] (SR)." )
+  chat.raid( "Drutree rolled the next highest (76) for [Bag] (SR)." )
+  chat.console( "RollFor: Rolling for [Bag] finished." )
+end
+
+function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_tie_if_roll_does_not_break_the_tie()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, item2, p1, p2, p3, p4 = i( "Bag", 69 ), i( "Bag", 69 ), p( "Drutree" ), p( "Mendunia" ), p( "Mufasapowel" ), p( "Pinp" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2, p3, p4 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, 69 ), sr( p1.name, 69 ), sr( p2.name, 69 ), sr( p3.name, 69 ), sr( p3.name, 69 ), sr( p4.name, 69 ) )
+      :build()
+  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+  local tick = rf.ace_timer.repeating_tick
+
+  -- Then
+  rf.loot_frame.should_be_hidden()
+
+  -- When
+  loot_facade.notify( "LootOpened", item, item2 )
+
+  -- Then
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } ),
+    enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } )
+  )
+  chat.raid( "Princess Kenny dropped 2 items:" )
+  chat.raid( "1. 2x[Bag] (SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp)" )
+  rf.rolling_popup.should_be_hidden()
+
+  -- When
+  rf.loot_frame.click( 1 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item2, 2 ),
+    roll_placeholder( p1, 11 ),
+    roll_placeholder( p1 ),
+    roll_placeholder( p2 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p4 ),
+    buttons( "Roll", "AwardOther", "Close" )
+  )
+
+  -- When
+  rf.rolling_popup.click( "Roll" )
+
+  -- Then
+  chat.raid_warning( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
+  rf.rolling_popup.should_display(
+    item_link( item2, 2 ),
+    roll_placeholder( p1, 11 ),
+    roll_placeholder( p1 ),
+    roll_placeholder( p2 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p4 ),
+    text( "Rolling ends in 8 seconds.", 11 ),
+    buttons( "Cancel" )
+  )
+
+  -- When
+  rf.roll( p3, 91, 1, 100 ) -- Mufasa
+  tick()
+  rf.roll( p1, 75, 1, 100 ) -- Drutree
+  tick()
+  rf.roll( p3, 50, 1, 100 ) -- Mufasa
+  tick()
+  rf.roll( p4, 75, 1, 100 ) -- Pinp
+  tick()
+  rf.roll( p2, 32, 1, 100 ) -- Mendunia
+  tick()
+  chat.raid( "Stopping rolls in 3" )
+  tick()
+  chat.raid( "2" )
+  tick()
+  chat.raid( "1" )
+  tick()
+
+  -- Then
+  chat.raid( "SR rolls remaining: Drutree (1 roll)" )
+
+  -- When
+  rf.roll( p1, 74, 1, 100 ) -- Drutree rolls lower, tie remains
+
+  -- Then
+  chat.console( "RollFor: Mufasapowel rolled the highest (91) for [Bag] (SR)." )
+  chat.raid( "Mufasapowel rolled the highest (91) for [Bag] (SR)." )
+  chat.console( "RollFor: Drutree and Pinp rolled the next highest (75) for [Bag] (SR)." )
+  chat.raid( "Drutree and Pinp rolled the next highest (75) for [Bag] (SR)." )
+  rf.rolling_popup.should_display(
+    item_link( item2, 2 ),
+    softres_roll( p3, 91, 11 ),
+    softres_roll( p1, 75 ),
+    softres_roll( p4, 75 ),
+    softres_roll( p1, 74 ),
+    softres_roll( p3, 50 ),
+    softres_roll( p2, 32 ),
+    text( "There was a tie (75):", 11 ),
+    roll_placeholder( p1, 11 ),
+    roll_placeholder( p4 ),
+    empty_line( 5 )
+  )
+
+  -- When
+  rf.ace_timer.tick()
+
+  -- Then
+  chat.raid( "Drutree and Pinp /roll for [Bag] now." )
+
+  -- When
+  rf.roll( p1, 60, 1, 100 )
+  rf.roll( p4, 99, 1, 100 )
+
+  -- Then
+  chat.console( "RollFor: Pinp re-rolled the highest (99) for [Bag] (SR)." )
+  chat.raid( "Pinp re-rolled the highest (99) for [Bag] (SR)." )
+  chat.console( "RollFor: Rolling for [Bag] finished." )
+  rf.rolling_popup.should_display(
+    item_link( item2, 2 ),
+    softres_roll( p3, 91, 11 ),
+    softres_roll( p1, 75 ),
+    softres_roll( p4, 75 ),
+    softres_roll( p1, 74 ),
+    softres_roll( p3, 50 ),
+    softres_roll( p2, 32 ),
+    text( "There was a tie (75):", 11 ),
+    softres_roll( p4, 99, 11 ),
+    softres_roll( p1, 60 ),
+    text( "Mufasapowel wins the soft-res roll with 91.", 11 ),
+    individual_award_button,
+    text( "Pinp wins the soft-res roll with 99.", 8 ),
+    individual_award_button,
+    buttons( "RaidRoll", "AwardOther", "Close" )
+  )
+end
+
+function WaitForRemainingRollsSpec:should_finish_early_if_two_top_rolls_tie()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, item2, p1, p2, p3, p4 = i( "Bag", 69 ), i( "Bag", 69 ), p( "Drutree" ), p( "Mendunia" ), p( "Mufasapowel" ), p( "Pinp" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2, p3, p4 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, 69 ), sr( p1.name, 69 ), sr( p2.name, 69 ), sr( p3.name, 69 ), sr( p3.name, 69 ), sr( p4.name, 69 ) )
+      :build()
+  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+  local tick = rf.ace_timer.repeating_tick
+
+  -- Then
+  rf.loot_frame.should_be_hidden()
+
+  -- When
+  loot_facade.notify( "LootOpened", item, item2 )
+
+  -- Then
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } ),
+    enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } )
+  )
+  chat.raid( "Princess Kenny dropped 2 items:" )
+  chat.raid( "1. 2x[Bag] (SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp)" )
+  rf.rolling_popup.should_be_hidden()
+
+  -- When
+  rf.loot_frame.click( 1 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item2, 2 ),
+    roll_placeholder( p1, 11 ),
+    roll_placeholder( p1 ),
+    roll_placeholder( p2 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p4 ),
+    buttons( "Roll", "AwardOther", "Close" )
+  )
+
+  -- When
+  rf.rolling_popup.click( "Roll" )
+
+  -- Then
+  chat.raid_warning( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
+  rf.rolling_popup.should_display(
+    item_link( item2, 2 ),
+    roll_placeholder( p1, 11 ),
+    roll_placeholder( p1 ),
+    roll_placeholder( p2 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p3 ),
+    roll_placeholder( p4 ),
+    text( "Rolling ends in 8 seconds.", 11 ),
+    buttons( "Cancel" )
+  )
+
+  -- When
+  rf.roll( p3, 47, 1, 100 ) -- Mufasa
+  tick()
+  rf.roll( p1, 91, 1, 100 ) -- Drutree
+  tick()
+  rf.roll( p3, 75, 1, 100 ) -- Mufasa
+  tick()
+  rf.roll( p4, 91, 1, 100 ) -- Pinp
+  tick()
+  rf.roll( p2, 32, 1, 100 ) -- Mendunia
+
+  -- Then
+  chat.console( "RollFor: Drutree and Pinp rolled the highest (91) for [Bag] (SR)." )
+  chat.raid( "Drutree and Pinp rolled the highest (91) for [Bag] (SR)." )
+  chat.console( "RollFor: Rolling for [Bag] finished." )
+end
+
 function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_award_the_winner()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()

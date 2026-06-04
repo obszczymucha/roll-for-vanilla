@@ -62,19 +62,28 @@ local function count_top_roll_winners( rolls, item_count )
   return result
 end
 
-local function is_the_winner_the_only_player_with_extra_rolls( rollers, rolls, item_count )
+local function are_remaining_rollers_already_winners( rollers, rolls, item_count )
   local top_roll_count = count_top_roll_winners( rolls, item_count )
   local rollers_with_remaining_rolls = players_with_available_rolls( rollers )
   local roller_count = getn( rollers_with_remaining_rolls )
   local roll_count = getn( rolls )
 
-  if top_roll_count > 1 or roller_count == 0 or roller_count > 1 or roll_count == 0 then return false end
+  if top_roll_count > item_count or roller_count == 0 or roll_count == 0 then return false end
 
-  return rollers_with_remaining_rolls[ 1 ].name == rolls[ 1 ].player.name
+  local top_winner_names = {}
+  for i = 1, top_roll_count do
+    top_winner_names[ rolls[ i ].player.name ] = true
+  end
+
+  for _, roller in ipairs( rollers_with_remaining_rolls ) do
+    if not top_winner_names[ roller.name ] then return false end
+  end
+
+  return true
 end
 
 local function winner_found( rollers, rolls, item_count )
-  return has_everyone_rolled( rollers, rolls ) and is_the_winner_the_only_player_with_extra_rolls( rollers, rolls, item_count )
+  return has_everyone_rolled( rollers, rolls ) and are_remaining_rollers_already_winners( rollers, rolls, item_count )
 end
 
 ---@param chat Chat
