@@ -52,10 +52,23 @@ local function count_top_roll_winners( rolls, item_count )
     return result
   end
 
+  local function count_distinct_players( group )
+    local seen, count = {}, 0
+
+    for _, roll in ipairs( group ) do
+      if not seen[ roll.player.name ] then
+        seen[ roll.player.name ] = true
+        count = count + 1
+      end
+    end
+
+    return count
+  end
+
   local result = 0
 
   for _, r in ipairs( split_by_roll() ) do
-    result = result + getn( r )
+    result = result + count_distinct_players( r )
     if result >= item_count then return result end
   end
 
