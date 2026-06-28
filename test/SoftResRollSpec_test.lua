@@ -1109,6 +1109,84 @@ function SoftResTieRollSpec:should_display_tie_rolls()
   )
 end
 
+function SoftResTieRollSpec:should_not_tie_roll_if_sring_player_rolls_the_same_amount()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, p1, p2 = i( "Bag", 69 ), p( "Maulfunction" ), p( "Goldblood" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, 69 ), sr( p1.name, 69 ), sr( p2.name, 69 ) )
+      :build()
+  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+
+  -- Then
+  rf.loot_frame.should_be_hidden()
+
+  -- When
+  loot_facade.notify( "LootOpened", item )
+
+  -- Then
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Goldblood", "Maulfunction [2 rolls]" } )
+  )
+  chat.raid( "Princess Kenny dropped 1 item:" )
+  chat.raid( "1. [Bag] (SR by Goldblood and Maulfunction [2 rolls])" )
+  rf.rolling_popup.should_be_hidden()
+
+  -- When
+  rf.loot_frame.click( 1 )
+
+  -- Then
+  rf.loot_frame.should_display(
+    selected_item( 1, "Bag", "SR", { "Soft-ressed by", "Goldblood", "Maulfunction [2 rolls]" } )
+  )
+  rf.rolling_popup.should_display(
+    item_link( item, 1 ),
+    roll_placeholder( p2, 11 ),
+    roll_placeholder( p1 ),
+    roll_placeholder( p1 ),
+    buttons( "Roll", "AwardOther", "Close" )
+  )
+
+  -- When
+  rf.rolling_popup.click( "Roll" )
+
+  -- Then
+  chat.raid_warning( "Roll for [Bag]: SR by Goldblood and Maulfunction [2 rolls]" )
+  rf.rolling_popup.should_display(
+    item_link( item, 1 ),
+    roll_placeholder( p2, 11 ),
+    roll_placeholder( p1 ),
+    roll_placeholder( p1 ),
+    text( "Rolling ends in 8 seconds.", 11 ),
+    buttons( "Cancel" )
+  )
+
+  -- When
+  rf.ace_timer.tick()
+  rf.ace_timer.tick()
+  rf.ace_timer.tick()
+  rf.roll( p1, 90, 1, 100 ) -- Maulfunction
+  rf.roll( p1, 90, 1, 100 ) -- Maulfunction (same amount again)
+  rf.ace_timer.tick()
+  rf.roll( p2, 80, 1, 100 ) -- Goldblood
+
+  -- Then
+  chat.console( "RollFor: Maulfunction rolled the highest (90) for [Bag] (SR)." )
+  chat.raid( "Maulfunction rolled the highest (90) for [Bag] (SR)." )
+  chat.console( "RollFor: Rolling for [Bag] finished." )
+  rf.rolling_popup.should_display(
+    item_link( item, 1 ),
+    softres_roll( p1, 90, 11 ),
+    softres_roll( p1, 90 ),
+    softres_roll( p2, 80 ),
+    text( "Maulfunction wins the soft-res roll with 90.", 11 ),
+    buttons( "AwardWinner", "RaidRoll", "AwardOther", "Close" )
+  )
+end
+
 SrCountEqualsItemCountSpec = {}
 
 function SrCountEqualsItemCountSpec:should_not_show_sr_placeholders_when_sr_player_count_equals_item_count()

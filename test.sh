@@ -2,14 +2,7 @@
 
 set -o pipefail
 
-LISTENING_DIRS=(".")
 CHANGE_REGEX="\.lua$"
-
-WHITE_COLOR="\033[0;37m"
-GREEN_COLOR="\033[0;32m"
-RED_COLOR="\033[0;31m"
-NO_COLOR="\033[0m"
-
 TEST_FAILED=0
 
 run_test() {
@@ -33,7 +26,7 @@ run_test() {
                           gsub("^Failed tests:$", "\033[1;31m&\033[0m");
                           gsub("FAIL$", "\033[1;31m&\033[0m");
                           gsub("ERROR$", "\033[1;31m&\033[0m");
-                          print }' >&2
+                          print }'
 
   TEST_FAILED=$?
   popd > /dev/null || return
