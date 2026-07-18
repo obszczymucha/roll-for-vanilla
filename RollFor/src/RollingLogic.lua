@@ -74,35 +74,23 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     return m_rolling_strategy and m_rolling_strategy.is_rolling() or false
   end
 
-  ---@param winning_rolls Roll[]
-  local function count_top_rolls( winning_rolls )
-    local roll_count = winning_rolls and getn( winning_rolls ) or 0
-    if roll_count == 0 then return 0 end
-
-    local top_roll = winning_rolls[ 1 ].roll
-    local result = 1
-
-    for i = 2, roll_count do
-      if winning_rolls[ i ].roll == top_roll then result = result + 1 end
-    end
-
-    return result
-  end
-
+  -- The rolls exceed the item count only when the last group of equal rolls
+  -- crosses the item count boundary. That tail group is the tie - everything
+  -- before it won outright.
   ---@param rolls Roll[]
-  ---@param item_count number
   ---@return Roll[], Roll[]
-  local function split_winners_and_tied_rollers( rolls, item_count )
-    local top_roll_count = count_top_rolls( rolls )
-    if top_roll_count >= item_count then return {}, rolls end
+  local function split_winners_and_tied_rollers( rolls )
+    local roll_count = getn( rolls )
+    if roll_count == 0 then return {}, {} end
 
+    local last_roll = rolls[ roll_count ]
     local winning_rolls, tied_rolls = {}, {}
 
-    for i, top_roll in ipairs( rolls ) do
-      if i <= top_roll_count then
-        table.insert( winning_rolls, top_roll )
+    for _, roll in ipairs( rolls ) do
+      if roll.roll == last_roll.roll and roll.roll_type == last_roll.roll_type then
+        table.insert( tied_rolls, roll )
       else
-        table.insert( tied_rolls, top_roll )
+        table.insert( winning_rolls, roll )
       end
     end
 
@@ -124,7 +112,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
   ---@param rolls Roll[]
   ---@param rerolling boolean
   local function there_was_a_tie( item, item_count, item_quantity, rolls, rerolling, on_rolling_finished )
-    local winning_rolls, tied_rolls = split_winners_and_tied_rollers( rolls, item_count )
+    local winning_rolls, tied_rolls = split_winners_and_tied_rollers( rolls )
     local count = item_count
 
     local winners = m.map( winning_rolls,

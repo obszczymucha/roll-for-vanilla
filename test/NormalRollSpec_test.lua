@@ -1635,4 +1635,290 @@ function NoOneRollsSpec:should_show_award_button_when_looting_the_corpse_again_i
   )
 end
 
+MultiRollSpec = {}
+
+function MultiRollSpec:should_display_all_winners()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item = i( "Void Crystal", 22450 )
+  local superclassic, hakaishin, mifo, boulderdash = p( "Superclassic" ), p( "Hakaishin" ), p( "Mifo" ), p( "Boulderdash" )
+  local zagtul, cakeshake, antiparty, goldblood = p( "Zagtul" ), p( "Cakeshake" ), p( "Antiparty" ), p( "Goldblood" )
+  local sigas, leftuppercut, preyah, psykobear = p( "Sigas" ), p( "Leftuppercut" ), p( "Preyah" ), p( "Psykobear" )
+  local gotchi, ablakfoso, kopanara, maazh = p( "Gotchi" ), p( "Ablakfoso" ), p( "Kopanara" ), p( "Maazh" )
+  local kekdzzt, tachikoma = p( "Kekdzzt" ), p( "Tachikoma" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster(
+        superclassic, hakaishin, mifo, boulderdash, zagtul, cakeshake,
+        antiparty, goldblood, sigas, leftuppercut, preyah, psykobear,
+        gotchi, ablakfoso, kopanara, maazh, kekdzzt, tachikoma
+      )
+      :chat( chat )
+      :build()
+
+  -- When (simulating /rf 6x[Void Crystal])
+  rf.roll_controller.start( "SoftResRoll", item, 6, 1, 8 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item, 6 ),
+    text( "Rolling ends in 8 seconds.", 11 ),
+    buttons( "Cancel" )
+  )
+  chat.raid_warning( "Roll for 6x[Void Crystal]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 6 top rolls win." )
+
+  -- When (Tachikoma does not roll)
+  rf.roll( superclassic, 37, 1, 100 )
+  rf.roll( hakaishin, 11, 1, 100 )
+  rf.roll( mifo, 20, 1, 100 )
+  rf.roll( boulderdash, 81, 1, 100 )
+  rf.roll( zagtul, 80, 1, 100 )
+  rf.roll( cakeshake, 63, 1, 100 )
+  rf.roll( antiparty, 73, 1, 100 )
+  rf.roll( goldblood, 2, 1, 100 )
+  rf.roll( sigas, 24, 1, 100 )
+  rf.roll( leftuppercut, 75, 1, 100 )
+  rf.roll( preyah, 47, 1, 100 )
+  rf.roll( psykobear, 89, 1, 100 )
+  rf.roll( gotchi, 75, 1, 100 )
+  rf.roll( ablakfoso, 84, 1, 100 )
+  rf.roll( kopanara, 12, 1, 100 )
+  rf.roll( maazh, 77, 1, 100 )
+  rf.roll( kekdzzt, 7, 1, 100 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item, 6 ),
+    mainspec_roll( psykobear, 89, 11 ),
+    mainspec_roll( ablakfoso, 84 ),
+    mainspec_roll( boulderdash, 81 ),
+    mainspec_roll( zagtul, 80 ),
+    mainspec_roll( maazh, 77 ),
+    mainspec_roll( gotchi, 75 ),
+    mainspec_roll( leftuppercut, 75 ),
+    mainspec_roll( antiparty, 73 ),
+    mainspec_roll( cakeshake, 63 ),
+    mainspec_roll( preyah, 47 ),
+    mainspec_roll( superclassic, 37 ),
+    mainspec_roll( sigas, 24 ),
+    mainspec_roll( mifo, 20 ),
+    mainspec_roll( kopanara, 12 ),
+    mainspec_roll( hakaishin, 11 ),
+    mainspec_roll( kekdzzt, 7 ),
+    mainspec_roll( goldblood, 2 ),
+    text( "Rolling ends in 8 seconds.", 11 ),
+    buttons( "FinishEarly", "Cancel" )
+  )
+
+  -- When
+  rf.ace_timer.repeating_tick( 8 )
+
+  -- Then
+  chat.raid( "Stopping rolls in 3" )
+  chat.raid( "2" )
+  chat.raid( "1" )
+  chat.console( "RollFor: Psykobear rolled the highest (89) for [Void Crystal]." )
+  chat.raid( "Psykobear rolled the highest (89) for [Void Crystal]." )
+  chat.console( "RollFor: Ablakfoso rolled the next highest (84) for [Void Crystal]." )
+  chat.raid( "Ablakfoso rolled the next highest (84) for [Void Crystal]." )
+  chat.console( "RollFor: Boulderdash rolled the next highest (81) for [Void Crystal]." )
+  chat.raid( "Boulderdash rolled the next highest (81) for [Void Crystal]." )
+  chat.console( "RollFor: Zagtul rolled the next highest (80) for [Void Crystal]." )
+  chat.raid( "Zagtul rolled the next highest (80) for [Void Crystal]." )
+  chat.console( "RollFor: Maazh rolled the next highest (77) for [Void Crystal]." )
+  chat.raid( "Maazh rolled the next highest (77) for [Void Crystal]." )
+  chat.console( "RollFor: Gotchi and Leftuppercut rolled the next highest (75) for [Void Crystal]." )
+  chat.raid( "Gotchi and Leftuppercut rolled the next highest (75) for [Void Crystal]." )
+  rf.rolling_popup.should_display(
+    item_link( item, 6 ),
+    mainspec_roll( psykobear, 89, 11 ),
+    mainspec_roll( ablakfoso, 84 ),
+    mainspec_roll( boulderdash, 81 ),
+    mainspec_roll( zagtul, 80 ),
+    mainspec_roll( maazh, 77 ),
+    mainspec_roll( gotchi, 75 ),
+    mainspec_roll( leftuppercut, 75 ),
+    mainspec_roll( antiparty, 73 ),
+    mainspec_roll( cakeshake, 63 ),
+    mainspec_roll( preyah, 47 ),
+    mainspec_roll( superclassic, 37 ),
+    mainspec_roll( sigas, 24 ),
+    mainspec_roll( mifo, 20 ),
+    mainspec_roll( kopanara, 12 ),
+    mainspec_roll( hakaishin, 11 ),
+    mainspec_roll( kekdzzt, 7 ),
+    mainspec_roll( goldblood, 2 ),
+    text( "There was a tie (75):", 11 ),
+    roll_placeholder( gotchi, "MainSpec", 11 ),
+    roll_placeholder( leftuppercut, "MainSpec" ),
+    empty_line( 5 )
+  )
+
+  -- When
+  rf.ace_timer.tick()
+
+  -- Then
+  chat.raid( "Gotchi and Leftuppercut /roll for [Void Crystal] now." )
+  rf.rolling_popup.should_display(
+    item_link( item, 6 ),
+    mainspec_roll( psykobear, 89, 11 ),
+    mainspec_roll( ablakfoso, 84 ),
+    mainspec_roll( boulderdash, 81 ),
+    mainspec_roll( zagtul, 80 ),
+    mainspec_roll( maazh, 77 ),
+    mainspec_roll( gotchi, 75 ),
+    mainspec_roll( leftuppercut, 75 ),
+    mainspec_roll( antiparty, 73 ),
+    mainspec_roll( cakeshake, 63 ),
+    mainspec_roll( preyah, 47 ),
+    mainspec_roll( superclassic, 37 ),
+    mainspec_roll( sigas, 24 ),
+    mainspec_roll( mifo, 20 ),
+    mainspec_roll( kopanara, 12 ),
+    mainspec_roll( hakaishin, 11 ),
+    mainspec_roll( kekdzzt, 7 ),
+    mainspec_roll( goldblood, 2 ),
+    text( "There was a tie (75):", 11 ),
+    roll_placeholder( gotchi, "MainSpec", 11 ),
+    roll_placeholder( leftuppercut, "MainSpec" ),
+    text( "Waiting for remaining rolls...", 11 ),
+    buttons( "FinishEarly", "Cancel" )
+  )
+
+  -- When
+  rf.roll( gotchi, 50, 1, 100 )
+  rf.roll( leftuppercut, 30, 1, 100 )
+
+  -- Then
+  chat.console( "RollFor: Gotchi re-rolled the highest (50) for [Void Crystal]." )
+  chat.raid( "Gotchi re-rolled the highest (50) for [Void Crystal]." )
+  chat.console( "RollFor: Rolling for [Void Crystal] finished." )
+  rf.rolling_popup.should_display(
+    item_link( item, 6 ),
+    mainspec_roll( psykobear, 89, 11 ),
+    mainspec_roll( ablakfoso, 84 ),
+    mainspec_roll( boulderdash, 81 ),
+    mainspec_roll( zagtul, 80 ),
+    mainspec_roll( maazh, 77 ),
+    mainspec_roll( gotchi, 75 ),
+    mainspec_roll( leftuppercut, 75 ),
+    mainspec_roll( antiparty, 73 ),
+    mainspec_roll( cakeshake, 63 ),
+    mainspec_roll( preyah, 47 ),
+    mainspec_roll( superclassic, 37 ),
+    mainspec_roll( sigas, 24 ),
+    mainspec_roll( mifo, 20 ),
+    mainspec_roll( kopanara, 12 ),
+    mainspec_roll( hakaishin, 11 ),
+    mainspec_roll( kekdzzt, 7 ),
+    mainspec_roll( goldblood, 2 ),
+    text( "There was a tie (75):", 11 ),
+    mainspec_roll( gotchi, 50, 11 ),
+    mainspec_roll( leftuppercut, 30 ),
+    text( "Psykobear wins the main-spec roll with 89.", 11 ),
+    text( "Ablakfoso wins the main-spec roll with 84.", 2 ),
+    text( "Boulderdash wins the main-spec roll with 81.", 2 ),
+    text( "Zagtul wins the main-spec roll with 80.", 2 ),
+    text( "Maazh wins the main-spec roll with 77.", 2 ),
+    text( "Gotchi wins the main-spec roll with 50.", 2 ),
+    buttons( "RaidRoll", "Close" )
+  )
+end
+
+function MultiRollSpec:should_not_tie_roll_when_the_tie_does_not_cross_the_item_count()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item = i( "Void Crystal", 22450 )
+  local superclassic, hakaishin, mifo, boulderdash = p( "Superclassic" ), p( "Hakaishin" ), p( "Mifo" ), p( "Boulderdash" )
+  local zagtul, cakeshake, antiparty, goldblood = p( "Zagtul" ), p( "Cakeshake" ), p( "Antiparty" ), p( "Goldblood" )
+  local sigas, leftuppercut, preyah, psykobear = p( "Sigas" ), p( "Leftuppercut" ), p( "Preyah" ), p( "Psykobear" )
+  local gotchi, ablakfoso, kopanara, maazh = p( "Gotchi" ), p( "Ablakfoso" ), p( "Kopanara" ), p( "Maazh" )
+  local kekdzzt, tachikoma = p( "Kekdzzt" ), p( "Tachikoma" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster(
+        superclassic, hakaishin, mifo, boulderdash, zagtul, cakeshake,
+        antiparty, goldblood, sigas, leftuppercut, preyah, psykobear,
+        gotchi, ablakfoso, kopanara, maazh, kekdzzt, tachikoma
+      )
+      :chat( chat )
+      :build()
+
+  -- When (simulating /rf 6x[Void Crystal])
+  rf.roll_controller.start( "SoftResRoll", item, 6, 1, 8 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item, 6 ),
+    text( "Rolling ends in 8 seconds.", 11 ),
+    buttons( "Cancel" )
+  )
+  chat.raid_warning( "Roll for 6x[Void Crystal]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 6 top rolls win." )
+
+  -- When (Gotchi and Maazh tie at 77 for the 5th and 6th item and Tachikoma does not roll)
+  rf.roll( superclassic, 37, 1, 100 )
+  rf.roll( hakaishin, 11, 1, 100 )
+  rf.roll( mifo, 20, 1, 100 )
+  rf.roll( boulderdash, 81, 1, 100 )
+  rf.roll( zagtul, 80, 1, 100 )
+  rf.roll( cakeshake, 63, 1, 100 )
+  rf.roll( antiparty, 73, 1, 100 )
+  rf.roll( goldblood, 2, 1, 100 )
+  rf.roll( sigas, 24, 1, 100 )
+  rf.roll( leftuppercut, 75, 1, 100 )
+  rf.roll( preyah, 47, 1, 100 )
+  rf.roll( psykobear, 89, 1, 100 )
+  rf.roll( gotchi, 77, 1, 100 )
+  rf.roll( ablakfoso, 84, 1, 100 )
+  rf.roll( kopanara, 12, 1, 100 )
+  rf.roll( maazh, 77, 1, 100 )
+  rf.roll( kekdzzt, 7, 1, 100 )
+
+  -- When
+  rf.ace_timer.repeating_tick( 8 )
+
+  -- Then
+  chat.raid( "Stopping rolls in 3" )
+  chat.raid( "2" )
+  chat.raid( "1" )
+  chat.console( "RollFor: Psykobear rolled the highest (89) for [Void Crystal]." )
+  chat.raid( "Psykobear rolled the highest (89) for [Void Crystal]." )
+  chat.console( "RollFor: Ablakfoso rolled the next highest (84) for [Void Crystal]." )
+  chat.raid( "Ablakfoso rolled the next highest (84) for [Void Crystal]." )
+  chat.console( "RollFor: Boulderdash rolled the next highest (81) for [Void Crystal]." )
+  chat.raid( "Boulderdash rolled the next highest (81) for [Void Crystal]." )
+  chat.console( "RollFor: Zagtul rolled the next highest (80) for [Void Crystal]." )
+  chat.raid( "Zagtul rolled the next highest (80) for [Void Crystal]." )
+  chat.console( "RollFor: Gotchi and Maazh rolled the next highest (77) for [Void Crystal]." )
+  chat.raid( "Gotchi and Maazh rolled the next highest (77) for [Void Crystal]." )
+  chat.console( "RollFor: Rolling for [Void Crystal] finished." )
+  rf.rolling_popup.should_display(
+    item_link( item, 6 ),
+    mainspec_roll( psykobear, 89, 11 ),
+    mainspec_roll( ablakfoso, 84 ),
+    mainspec_roll( boulderdash, 81 ),
+    mainspec_roll( zagtul, 80 ),
+    mainspec_roll( gotchi, 77 ),
+    mainspec_roll( maazh, 77 ),
+    mainspec_roll( leftuppercut, 75 ),
+    mainspec_roll( antiparty, 73 ),
+    mainspec_roll( cakeshake, 63 ),
+    mainspec_roll( preyah, 47 ),
+    mainspec_roll( superclassic, 37 ),
+    mainspec_roll( sigas, 24 ),
+    mainspec_roll( mifo, 20 ),
+    mainspec_roll( kopanara, 12 ),
+    mainspec_roll( hakaishin, 11 ),
+    mainspec_roll( kekdzzt, 7 ),
+    mainspec_roll( goldblood, 2 ),
+    text( "Psykobear wins the main-spec roll with 89.", 11 ),
+    text( "Ablakfoso wins the main-spec roll with 84.", 2 ),
+    text( "Boulderdash wins the main-spec roll with 81.", 2 ),
+    text( "Zagtul wins the main-spec roll with 80.", 2 ),
+    text( "Gotchi wins the main-spec roll with 77.", 2 ),
+    text( "Maazh wins the main-spec roll with 77.", 2 ),
+    buttons( "RaidRoll", "Close" )
+  )
+end
+
 os.exit( lu.LuaUnit.run() )
