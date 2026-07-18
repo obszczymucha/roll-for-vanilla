@@ -315,7 +315,7 @@ local function create_components()
   M.auto_group_loot = m.AutoGroupLoot.new( M.loot_list, M.config, m.BossList.zones, M.player_info )
 
   -- TODO: Add type.
-  M.auto_master_loot = m.AutoMasterLoot.new( M.config, m.BossList.zones, M.player_info )
+  M.auto_master_loot = m.AutoMasterLoot.new( M.config, m.BossList.zones, M.player_info, M.ace_timer )
 
 
   -- TODO: Add type.
@@ -425,6 +425,7 @@ function M.import_encoded_softres_data( data, data_loaded_callback )
   if data_loaded_callback then
     data_loaded_callback( softres_data )
     if M.gargul_bridge then M.gargul_bridge.broadcast_softres( data ) end
+    M.auto_master_loot.on_softres_import()
   end
 
   update_minimap_icon()

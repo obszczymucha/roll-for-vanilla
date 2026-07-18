@@ -219,6 +219,17 @@ function M.is_master_loot()
   return M.api.IsInGroup() and M.api.C_PartyInfo.GetLootMethod() == 2
 end
 
+---@param method "master"|"group"
+---@param player_name string?
+function M.set_loot_method( method, player_name )
+  -- SetLootMethod is not available on anniversary clients.
+  if M.api.SetLootMethod then
+    M.api.SetLootMethod( method, player_name )
+  else
+    M.api.C_PartyInfo.SetLootMethod( method == "master" and 2 or 3, player_name )
+  end
+end
+
 function M.target_name()
   return M.api.UnitName( "target" )
 end

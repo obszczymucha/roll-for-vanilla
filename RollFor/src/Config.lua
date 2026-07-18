@@ -9,6 +9,7 @@ local hl = m.colors.hl
 local blue = m.colors.blue
 local grey = m.colors.grey
 local RollType = m.Types.RollType
+local ItemQuality = m.Types.ItemQuality
 
 local M = {}
 
@@ -54,6 +55,7 @@ function M.new( db, event_bus )
     if db.default_rolling_time_seconds == nil then db.default_rolling_time_seconds = 8 end
     if db.master_loot_frame_rows == nil then db.master_loot_frame_rows = 5 end
     if db.auto_master_loot == nil then db.auto_master_loot = true end
+    if db.master_loot_threshold == nil then db.master_loot_threshold = ItemQuality.Rare end
     if db.auto_loot == nil then db.auto_loot = true end
     if db.auto_loot_announce == nil then db.auto_loot_announce = true end
   end
@@ -117,10 +119,27 @@ function M.new( db, event_bus )
     info( string.format( "Master loot frame rows: %s", hl( db.master_loot_frame_rows ) ) )
   end
 
+  local master_loot_threshold_qualities = {
+    [ "uncommon" ] = ItemQuality.Uncommon,
+    [ "rare" ] = ItemQuality.Rare,
+    [ "epic" ] = ItemQuality.Epic
+  }
+
+  local function master_loot_threshold_name( quality )
+    for name, value in pairs( master_loot_threshold_qualities ) do
+      if value == quality then return name end
+    end
+  end
+
+  local function print_master_loot_threshold()
+    info( string.format( "Master loot threshold: %s", hl( master_loot_threshold_name( db.master_loot_threshold ) ) ) )
+  end
+
   local function print_settings()
     print_header( "RollFor Configuration" )
     print_default_rolling_time()
     print_master_loot_frame_rows()
+    print_master_loot_threshold()
     print_roll_thresholds()
     print_transmog_rolling_setting()
 
@@ -183,6 +202,28 @@ function M.new( db, event_bus )
     info( string.format( "Usage: %s <rows>", hl( "/rf config master-loot-frame-rows" ) ) )
   end
 
+  local function configure_master_loot_threshold( args )
+    if args == "config master-loot-threshold" then
+      print_master_loot_threshold()
+      return
+    end
+
+    for value in string.gmatch( args, "config master%-loot%-threshold (%a+)" ) do
+      local quality = master_loot_threshold_qualities[ string.lower( value ) ]
+
+      if not quality then
+        info( string.format( "Valid thresholds: %s, %s, %s.", hl( "uncommon" ), hl( "rare" ), hl( "epic" ) ) )
+        return
+      end
+
+      db.master_loot_threshold = quality
+      print_master_loot_threshold()
+      return
+    end
+
+    info( string.format( "Usage: %s <quality>", hl( "/rf config master-loot-threshold" ) ) )
+  end
+
   local function configure_ms_threshold( args )
     for value in string.gmatch( args, "config ms (%d+)" ) do
       db.ms_roll_threshold = tonumber( value )
@@ -229,6 +270,7 @@ function M.new( db, event_bus )
     m.print( string.format( "%s - lock/unlock minimap icon", rfc( "minimap lock" ) ) )
     m.print( string.format( "%s - show default rolling time", rfc( "default-rolling-time" ) ) )
     m.print( string.format( "%s - show master loot frame rows", rfc( "master-loot-frame-rows" ) ) )
+    m.print( string.format( "%s %s - set master loot threshold", rfc( "master-loot-threshold" ), v( "quality" ) ) )
     m.print( string.format( "%s %s - set default rolling time", rfc( "default-rolling-time" ), v( "seconds" ) ) )
     m.print( string.format( "%s - show MS rolling threshold ", rfc( "ms" ) ) )
     m.print( string.format( "%s %s - set MS rolling threshold ", rfc( "ms" ), v( "threshold" ) ) )
@@ -345,6 +387,11 @@ function M.new( db, event_bus )
       return
     end
 
+    if string.find( args, "^config master%-loot%-threshold" ) then
+      configure_master_loot_threshold( args )
+      return
+    end
+
     print_help()
   end
 
@@ -409,6 +456,8 @@ function M.new( db, event_bus )
     default_rolling_time_seconds = get( "default_rolling_time_seconds" ),
     master_loot_frame_rows = get( "master_loot_frame_rows" ),
     configure_master_loot_frame_rows = configure_master_loot_frame_rows,
+    master_loot_threshold = get( "master_loot_threshold" ),
+    configure_master_loot_threshold = configure_master_loot_threshold,
   }
 
   for toggle_key, _ in pairs( toggles ) do

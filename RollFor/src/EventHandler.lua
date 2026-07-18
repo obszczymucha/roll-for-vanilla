@@ -66,6 +66,8 @@ function M.handle_events( main )
     elseif event == "PLAYER_TARGET_CHANGED" then
       main.master_loot_warning.on_player_target_changed()
       main.auto_master_loot.on_player_target_changed( arg1 )
+    elseif event == "PARTY_LOOT_METHOD_CHANGED" then
+      main.auto_master_loot.on_party_loot_method_changed()
     elseif event == "GET_ITEM_INFO_RECEIVED" then
       main.on_item_info_received( arg1 )
     elseif event == "UI_ERROR_MESSAGE" then
@@ -110,6 +112,7 @@ function M.handle_events( main )
   frame:RegisterEvent( "TRADE_REQUEST_CANCEL" )
   frame:RegisterEvent( "UI_ERROR_MESSAGE" )
   frame:RegisterEvent( "PLAYER_TARGET_CHANGED" )
+  frame:RegisterEvent( "PARTY_LOOT_METHOD_CHANGED" )
   if not m.vanilla then
     frame:RegisterEvent( "GET_ITEM_INFO_RECEIVED" )
   end

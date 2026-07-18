@@ -44,7 +44,7 @@ function M.new( loot_list, config, boss_list, player_info )
     local is_a_boss = m.table_contains_value( bosses, m_target_name )
 
     if is_a_boss and config.auto_group_loot() and m.is_master_loot() and player_info.is_leader() then
-      m.api.SetLootMethod( "group" )
+      m.set_loot_method( "group" )
     end
   end
 
