@@ -3,7 +3,7 @@ local m = RollFor
 
 if m.AutoLoot then return end
 
-local item_utils = m.ItemUtils
+local item_utils = m.ItemUtils ---@type ItemUtils
 local info = m.pretty_print
 local hl = m.colors.hl
 local grey = m.colors.grey
@@ -35,7 +35,6 @@ function M.new( loot_list, api, db, config, player_info )
   db.items = db.items or {}
 
   local frame
-  local items = db.items
 
   local function find_my_candidate_index( slot )
     for i = 1, 40 do
@@ -60,12 +59,10 @@ function M.new( loot_list, api, db, config, player_info )
       return false
     end
 
-    local zone_name = api().GetRealZoneText()
-    local item_ids = items[ zone_name ] or {}
     local threshold = api().GetLootThreshold()
     local quality = item.quality or 0
 
-    if item_ids[ item.id ] then
+    if db.items[ item.id ] then
       return true
     end
 
@@ -133,7 +130,7 @@ function M.new( loot_list, api, db, config, player_info )
       if not frame then create_frame() end
 
       local zone_name = api().GetRealZoneText()
-      local item_ids = items[ zone_name ]
+      local item_ids = db.items[ zone_name ]
 
       if not item_ids or getn( item_ids ) == 0 then
         frame:Hide()
@@ -146,60 +143,76 @@ function M.new( loot_list, api, db, config, player_info )
   end
 
   local function show_usage()
-    info( string.format( "Usage: %s %s", hl( "/rfal <add||remove>" ), grey( "<item_link>" ) ) )
+    info( string.format( "Usage: %s %s", hl( "/rfal <add||remove||list>" ), grey( "<item_links>" ) ) )
   end
 
-  local function add( item_link )
-    local item_id = item_utils.get_item_id( item_link )
+  local function add( item_links )
+    local details = item_utils.parse_items( item_links )
 
-    if not item_id then
+    if #details == 0 then
       show_usage()
       return
     end
 
-    local zone_name = api().GetRealZoneText()
+    for _, i in ipairs( details ) do
+      db.items[ i.id ] = {
+        item_name = i.name,
+        item_link = i.link
+      }
 
-    if not items[ zone_name ] then
-      items[ zone_name ] = {}
+      info( string.format( "%s added.", i.link ) )
     end
-
-    items[ zone_name ][ item_id ] = {
-      item_name = item_utils.get_item_name( item_link ),
-      item_link = item_link
-    }
-
-    info( string.format( "%s added.", item_link ), "auto-loot" )
   end
 
-  local function remove( item_link )
-    local item_id = item_utils.get_item_id( item_link )
+  local function remove( item_links )
+    local details = item_utils.parse_items( item_links )
 
-    if not item_id then
+    if #details == 0 then
       show_usage()
       return
     end
 
-    local zone_name = api().GetRealZoneText()
+    for _, i in ipairs( details ) do
+      if not db.items[ i.id ] then
+        return
+      end
 
-    if not items[ zone_name ] or not items[ zone_name ][ item_id ] then
-      return
+      db.items[ i.id ] = nil
+      info( string.format( "%s removed.", i.link ) )
     end
-
-    items[ zone_name ][ item_id ] = nil
-    info( string.format( "%s removed.", item_link ), "auto-loot" )
   end
 
   local function clear()
   end
 
-  local function on_command( args )
-    for item_link in string.gmatch( args, "add (.*)" ) do
-      add( item_link )
+  local function list()
+    local count = m.count_elements( db.items )
+
+    if count == 0 then
+      info( "No items are set to auto-loot." )
       return
     end
 
-    for item_link in string.gmatch( args, "remove (.*)" ) do
-      remove( item_link )
+    info( "Auto-looted items:" )
+
+    for _, item in pairs( db.items ) do
+      info( item.item_link )
+    end
+  end
+
+  local function on_command( args )
+    if args == "list" then
+      list()
+      return
+    end
+
+    for item_links in string.gmatch( args, "add (.*)" ) do
+      add( item_links )
+      return
+    end
+
+    for item_links in string.gmatch( args, "remove (.*)" ) do
+      remove( item_links )
       return
     end
 
@@ -224,7 +237,8 @@ function M.new( loot_list, api, db, config, player_info )
     add = add,
     remove = remove,
     clear = clear,
-    loot_item = loot_item
+    loot_item = loot_item,
+    list = list
   }
 end
 

@@ -5,6 +5,11 @@ if m.ItemUtils then return end
 
 local red, white = m.colors.red, m.colors.white
 
+---@class ItemUtils
+---@field parse_items fun( item_links: string ): ParsedItem[]
+---@field BindType BT
+---@field LootType LT
+
 local M = {}
 
 ---@class LT
@@ -157,6 +162,18 @@ function M.get_item_id( item_link )
   end
 end
 
+---@param item_links ItemLink
+---@return table<number>
+function M.get_item_ids( item_links )
+  local result = {}
+
+  for item_id in string.gmatch( item_links, "|c%x%x%x%x%x%x%x%x|Hitem:(%d+):.-|r" ) do
+    table.insert( result, tonumber( item_id ) )
+  end
+
+  return result
+end
+
 ---@param item_link ItemLink
 ---@return string
 function M.get_item_name( item_link )
@@ -182,6 +199,29 @@ function M.parse_all_links( item_links )
 
   for item_link in string.gmatch( item_links, "|c%x%x%x%x%x%x%x%x|Hitem:[^%]]+%]|h|r" ) do
     table.insert( result, item_link )
+  end
+
+  return result
+end
+
+---@class ParsedItem
+---@field link string
+---@field name string
+---@field id number
+
+---@param item_links string
+---@return ParsedItem[]
+function M.parse_items( item_links )
+  local result = {}
+  if not item_links then return result end
+
+  for link, id, name in string.gmatch( item_links, "(|c%x%x%x%x%x%x%x%x|Hitem:(%d+).-|h%[(.-)%]|h|r)" ) do
+    local item_id = tonumber( id )
+
+    if item_id then
+      local item = { link = link, id = item_id, name = name } ---@type ParsedItem
+      table.insert( result, item )
+    end
   end
 
   return result
