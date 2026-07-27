@@ -13,9 +13,9 @@ local M = {}
 ---@param config Config
 ---@param boss_list BossList
 ---@param player_info PlayerInfo
----@param ace_timer NotAceTimer
-function M.new( config, boss_list, player_info, ace_timer )
-  local threshold_timer
+function M.new( config, boss_list, player_info )
+  local should_change_threshold = false
+
   local function on_player_target_changed( arg1 )
     if not config.auto_master_loot() then return end
 
@@ -35,29 +35,37 @@ function M.new( config, boss_list, player_info, ace_timer )
     end
   end
 
+  local function threshold_matches()
+    local threshold = config.master_loot_threshold()
+    return threshold and m.api.GetLootThreshold() == threshold
+  end
+
+  local function change_threshold()
+    local threshold = config.master_loot_threshold()
+    m.api.SetLootThreshold( threshold )
+    should_change_threshold = false
+  end
+
   local function on_softres_import()
     if not config.auto_master_loot() then return end
 
-    if not m.is_master_loot() and player_info.is_leader() then
+    local ml, leader = m.is_master_loot(), player_info.is_leader()
+
+    if not ml and leader then
+      should_change_threshold = not threshold_matches()
       m.set_loot_method( "master", player_info.get_name() )
+    elseif ml and leader and not threshold_matches() then
+      should_change_threshold = true
+      change_threshold()
     end
   end
 
   local function on_party_loot_method_changed()
-    if threshold_timer then return end
+    if not should_change_threshold then return end
     if not m.is_master_loot() or not player_info.is_master_looter() then return end
+    if threshold_matches() then return end
 
-    local threshold = config.master_loot_threshold()
-    if not threshold or m.api.GetLootThreshold() == threshold then return end
-
-    -- Setting the threshold while the loot method is still changing reverts the loot method.
-    threshold_timer = ace_timer.ScheduleTimer( M, function()
-      threshold_timer = nil
-
-      if m.is_master_loot() and player_info.is_master_looter() and m.api.GetLootThreshold() ~= threshold then
-        m.api.SetLootThreshold( threshold )
-      end
-    end, 0.5 )
+    change_threshold()
   end
 
   return {
