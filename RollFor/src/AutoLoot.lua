@@ -175,6 +175,7 @@ function M.new( loot_list, api, db, config, player_info, chat )
     info( string.format( "Usage: %s <%s>", hl( "/rfal add-category" ), grey( "category_name" ) ) )
     info( string.format( "Usage: %s <%s||%s||%s> <%s>", hl( "/rfal" ), hl( "remove-category" ), hl( "enable-category" ), hl( "disable-category" ),
       grey( "category_id" ) ) )
+    info( string.format( "Usage: %s <%s> <%s>", hl( "/rfal rename-category" ), grey( "category_id" ), grey( "new_name" ) ) )
   end
 
   ---@param category_id number
@@ -337,6 +338,20 @@ function M.new( loot_list, api, db, config, player_info, chat )
     info( string.format( "Category %s %s.", hl( category.name ), m.msg.disabled ) )
   end
 
+  ---@param id number
+  ---@param name string
+  local function rename_category( id, name )
+    local category = db.categories[ id ]
+    if not category then
+      info( string.format( "Category with ID %s does not exist.", hl( id ) ) )
+      return
+    end
+
+    local old_name = category.name
+    category.name = name
+    info( string.format( "Renamed %s category to %s.", hl( old_name ), hl( name ) ) )
+  end
+
   local function list_categories()
     if #db.categories == 0 then
       info( "No categories exist." )
@@ -405,6 +420,11 @@ function M.new( loot_list, api, db, config, player_info, chat )
       return
     end
 
+    for category, name in string.gmatch( args, "rename%-category (.-) (.*)" ) do
+      category_id_fn( category, rename_category, name )
+      return
+    end
+
     show_usage()
   end
 
@@ -428,6 +448,7 @@ function M.new( loot_list, api, db, config, player_info, chat )
     remove_category = remove_category,
     enable_category = enable_category,
     disable_category = disable_category,
+    rename_category = rename_category,
     list_categories = list_categories,
     remove = remove,
     clear = clear,
