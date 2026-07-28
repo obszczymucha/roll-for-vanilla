@@ -82,12 +82,30 @@ function AutoLootSpec:should_autoloot_any_explicitly_added_items()
       } )
       :build()
 
-  rf.auto_loot.add( item.link )
+  local id = rf.auto_loot.add_category( "global" )
+  rf.auto_loot.add( id, item.link )
 
   lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
 
   rf.auto_loot.remove( item.link )
 
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), false )
+end
+
+function AutoLootSpec:should_not_autoloot_if_category_is_disabled()
+  local item = qi( "Fire for Crafting", 123, 4, bop )
+
+  local rf = new_roll_for()
+      :config( {
+        auto_loot = true
+      } )
+      :build()
+
+  local id = rf.auto_loot.add_category( "global" )
+  rf.auto_loot.add( id, item.link )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
+
+  rf.auto_loot.disable_category( id )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item ), false )
 end
 
@@ -101,7 +119,8 @@ function AutoLootSpec:should_not_autoloot_if_config_option_is_false()
       } )
       :build()
 
-  rf.auto_loot.add( explicitly_added_item.link )
+  local id = rf.auto_loot.add_category( "global" )
+  rf.auto_loot.add( id, explicitly_added_item.link )
 
   lu.assertEquals( rf.auto_loot.is_auto_looted( low_quality_item ), false )
   lu.assertEquals( rf.auto_loot.is_auto_looted( explicitly_added_item ), false )
