@@ -52,6 +52,15 @@ function M.mock_config( configuration )
 
   return {
     auto_loot = function() return config and config.auto_loot end,
+    auto_loot_announce = function()
+      if config and config.auto_loot_announce ~= nil then return config.auto_loot_announce end
+      return true
+    end,
+    superwow_auto_loot_coins = function()
+      if config and config.superwow_auto_loot_coins ~= nil then return config.superwow_auto_loot_coins end
+      return true
+    end,
+    auto_loot_messages = function() return config and config.auto_loot_messages end,
     auto_raid_roll = function() return config and config.auto_raid_roll end,
     raid_roll_again = function() return config and config.raid_roll_again end,
     rolling_popup_lock = function() return config and config.rolling_popup_lock end,
@@ -291,7 +300,7 @@ function M.new_roll_for()
     local rolling_popup_content = require( "src/RollingPopupContentTransformer" ).new( config )
     deps[ "RollingPopupContent" ] = rolling_popup_content
 
-    local auto_loot = require( "mocks/AutoLoot" ).new( loot_list, u.modules().api, db( "auto_loot" ), config, player_info )
+    local auto_loot = require( "mocks/AutoLoot" ).new( loot_list, u.modules().api, db( "auto_loot" ), config, player_info, chat )
     deps[ "AutoLoot" ] = auto_loot
 
     require( "src/RollResultAnnouncer" ).new( chat, roll_controller, config )

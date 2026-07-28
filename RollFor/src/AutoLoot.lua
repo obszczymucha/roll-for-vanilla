@@ -4,12 +4,10 @@ local m = RollFor
 if m.AutoLoot then return end
 
 local item_utils = m.ItemUtils ---@type ItemUtils
-local info = m.pretty_print
 local hl = m.colors.hl
 local grey = m.colors.grey
 
 local M = {}
-local getn = m.getn
 
 M.interface = {
   on_loot_opened = "function",
@@ -46,9 +44,12 @@ local _G = getfenv( 0 ) ---@diagnostic disable-line: deprecated
 ---@param api function
 ---@param db table
 ---@param config Config
-function M.new( loot_list, api, db, config, player_info )
+---@param player_info PlayerInfo
+---@param chat Chat
+function M.new( loot_list, api, db, config, player_info, chat )
   ---@type AutoLootCategory[]
   db.categories = db.categories or {}
+  local info = chat.info
 
   local frame
 
@@ -143,17 +144,24 @@ function M.new( loot_list, api, db, config, player_info )
     frame:Show()
   end
 
+  local function has_auto_loot_items()
+    for _, category in ipairs( db.categories ) do
+      if category.enabled and next( category.items ) then
+        return true
+      end
+    end
+
+    return false
+  end
+
   local function on_loot_opened()
     if button_visible then
       if not frame then create_frame() end
 
-      local zone_name = api().GetRealZoneText()
-      local item_ids = db.items[ zone_name ]
-
-      if not item_ids or getn( item_ids ) == 0 then
-        frame:Hide()
-      else
+      if has_auto_loot_items() then
         frame:Show()
+      else
+        frame:Hide()
       end
     end
 

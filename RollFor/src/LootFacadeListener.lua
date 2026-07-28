@@ -24,8 +24,8 @@ function M.new(
     player_info
 )
   loot_facade.subscribe( "LootOpened", function()
-    auto_loot.on_loot_opened()
     dropped_loot_announce.on_loot_opened()
+    auto_loot.on_loot_opened()
     master_loot.on_loot_opened()
     auto_group_loot.on_loot_opened()
     roll_controller.loot_opened()

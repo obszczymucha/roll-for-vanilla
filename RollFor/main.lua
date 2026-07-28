@@ -279,7 +279,7 @@ local function create_components()
   )
 
   ---@type AutoLoot
-  M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, db( "auto_loot" ), M.config, M.player_info )
+  M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, db( "auto_loot" ), M.config, M.player_info, M.chat )
 
   ---@type DroppedLootAnnounce
   M.dropped_loot_announce = m.DroppedLootAnnounce.new(
