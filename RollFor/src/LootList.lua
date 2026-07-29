@@ -12,7 +12,7 @@ local clear = m.clear_table
 ---@field get_items fun(): DroppedItem[]
 ---@field get_items_by_slot fun(): table<number, DroppedItem|Coin>
 ---@field get_source_guid fun(): string
----@field get_slot fun( item_id: number|"Coin" ): number?
+---@field get_slot fun( item_id: number|"Coin" ): number? -- first matching slot only; use get_items_by_slot for duplicate-aware work
 ---@field is_looting fun(): boolean
 ---@field count fun( item_id: number ): number
 ---@field size fun(): number
@@ -126,6 +126,12 @@ function M.new( loot_facade, item_utils, tooltip_reader, dummy_items_fn )
   loot_facade.subscribe( "LootClosed", on_loot_closed )
   loot_facade.subscribe( "LootSlotCleared", on_loot_slot_cleared )
 
+  -- Returns the FIRST slot holding the given item id. When the same item drops
+  -- more than once it occupies several slots, and this only ever yields one of
+  -- them. That's fine for candidate/existence lookups (slot-independent) and for
+  -- awarding one copy at a time (each award clears its slot, so the next call
+  -- advances). For anything that must touch every slot in a single pass, use
+  -- get_items_by_slot() instead -- get_slot() would collapse duplicates.
   ---@param item_id number|"Coin"
   ---@return number?
   local function get_slot( item_id )
