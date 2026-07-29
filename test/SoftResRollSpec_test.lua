@@ -1456,4 +1456,63 @@ function NetherVortexSpec:should_handle_single_and_double_vortex_drops_across_mu
   )
 end
 
+ThreeIdenticalItemsOneSrSpec = {}
+
+function ThreeIdenticalItemsOneSrSpec:should_auto_loot_three_items_then_rf_command()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, item2, item3 = i( "Bag", 69 ), i( "Bag", 69 ), i( "Bag", 69 )
+  local p1, p2, p3 = p( "Psikutas" ), p( "Obszczymucha" ), p( "Jimmy" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2, p3 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, 69 ) )
+      :config( {
+        auto_loot = true,
+        auto_loot_messages = true
+      } )
+      :build()
+
+  local id = rf.auto_loot.add_category( "global" )
+  rf.auto_loot.add( id, item.link )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item2 ), true )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item3 ), true )
+
+  chat.console( "RollFor: Category global added with ID 1." )
+  chat.console( "RollFor: [Bag] added to global." )
+
+  u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
+  u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha", "Jimmy" } )
+  local master_loot = u.mock_async_master_loot( loot_facade )
+
+  -- When
+  loot_facade.notify( "LootOpened", item, item2, item3 )
+  master_loot.flush()
+
+  -- Then (the SR item is announced separately, the two non-SR identical items are grouped)
+  chat.raid( "Princess Kenny dropped 3 items:" )
+  chat.raid( "1. [Bag] (SR by Psikutas)" )
+  chat.raid( "2. 2x[Bag]" )
+  chat.console( "RollFor: Auto-looting [Bag]." )
+  chat.console( "RollFor: Auto-looting [Bag]." )
+  chat.console( "RollFor: Auto-looting [Bag]." )
+  rf.loot_frame.should_display()
+  rf.rolling_popup.should_be_hidden()
+
+  -- When (simulating /rf 3x[Bag])
+  rf.roll_controller.start( "SoftResRoll", item, 3, 8 )
+
+  -- Then (the single soft-resser should be announced)
+  chat.raid_warning( "Psikutas soft-ressed [Bag]." )
+
+  -- Then (only one SR player for three items, so the winner is shown directly, no rolling)
+  rf.rolling_popup.should_display(
+    item_link( item, 3 ),
+    text( "Psikutas soft-ressed this item.", 11 ),
+    buttons( "RaidRoll", "Close" )
+  )
+end
+
 os.exit( lu.LuaUnit.run() )
