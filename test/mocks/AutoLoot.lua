@@ -17,6 +17,7 @@ function M.new( loot_list, api, db, config, player_info, chat )
   local interface = mock( RealAutoLoot.interface )
 
   interface.is_auto_looted = real_auto_loot.is_auto_looted
+  interface.is_on_manual_list = real_auto_loot.is_on_manual_list
   interface.add = real_auto_loot.add
   interface.remove = real_auto_loot.remove
   interface.add_category = real_auto_loot.add_category

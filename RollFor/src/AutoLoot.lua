@@ -19,6 +19,7 @@ local _G = getfenv( 0 ) ---@diagnostic disable-line: deprecated
 
 ---@class AutoLoot
 ---@field is_auto_looted fun( item: DroppedItem ): boolean
+---@field is_on_manual_list fun( item: DroppedItem ): boolean
 ---@field on_loot_opened fun()
 ---@field add fun( category_id: number, item_link: string )
 ---@field remove fun( item_link: string )
@@ -71,29 +72,30 @@ function M.new( loot_list, api, db, config, player_info, chat )
     end
   end
 
-  local function is_auto_looted( item )
-    if not config.auto_loot() then
-      return false
-    end
-
-    local threshold = api().GetLootThreshold()
-    local quality = item.quality or 0
-
+  local function is_on_manual_list( item )
     for _, category in ipairs( db.categories ) do
       if category.enabled and category.items[ item.id ] then
         return true
       end
     end
 
+    return false
+  end
+
+  local function is_auto_looted( item )
+    if not config.auto_loot() then
+      return false
+    end
+
+    if is_on_manual_list( item ) then
+      return true
+    end
+
     if item.bind == item_utils.BindType.BindOnPickup or item.bind == item_utils.BindType.Quest then
       return false
     end
 
-    if quality < threshold then
-      return true
-    end
-
-    return false
+    return (item.quality or 0) < api().GetLootThreshold()
   end
 
   local function on_auto_loot()
@@ -443,6 +445,7 @@ function M.new( loot_list, api, db, config, player_info, chat )
   ---@type AutoLoot
   return {
     is_auto_looted = is_auto_looted,
+    is_on_manual_list = is_on_manual_list,
     on_loot_opened = on_loot_opened,
     add = add,
     add_category = add_category,

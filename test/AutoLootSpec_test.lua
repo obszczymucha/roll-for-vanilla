@@ -352,4 +352,41 @@ function AutoLootGuiSpec:should_register_auto_looted_items_as_dropped_loot_even_
   lu.assertEquals( rf.dropped_loot.get_dropped_item_name( 123 ), "Hearthstone" )
 end
 
+-- Items on the manual auto-loot list are announced even when auto-loot
+-- announcements are turned off (only automatically auto-looted items are
+-- silenced by that toggle).
+function AutoLootGuiSpec:should_announce_manually_listed_items_even_when_announcements_are_off()
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, p1, p2 = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2 )
+      :chat( chat )
+      :config( {
+        auto_loot = true,
+        auto_loot_messages = true,
+        auto_loot_announce = false
+      } )
+      :build()
+
+  local id = rf.auto_loot.add_category( "global" )
+  rf.auto_loot.add( id, item.link )
+
+  chat.console( "RollFor: Category global added with ID 1." )
+  chat.console( "RollFor: [Hearthstone] added to global." )
+
+  u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
+  u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha" } )
+  local master_loot = u.mock_async_master_loot( loot_facade )
+
+  -- When
+  loot_facade.notify( "LootOpened", item )
+  master_loot.flush()
+
+  -- Then
+  chat.raid( "Princess Kenny dropped 1 item:" )
+  chat.raid( "1. [Hearthstone]" )
+  chat.console( "RollFor: Auto-looting [Hearthstone]." )
+end
+
 os.exit( lu.LuaUnit.run() )
