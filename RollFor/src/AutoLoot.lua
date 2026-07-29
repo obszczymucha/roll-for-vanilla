@@ -101,9 +101,10 @@ function M.new( loot_list, api, db, config, player_info, chat )
       return
     end
 
-    for _, item in ipairs( loot_list.get_items() ) do
-      local slot = loot_list.get_slot( item.id )
-
+    -- Iterate by slot so duplicates of the same item id stay distinguishable;
+    -- get_slot() would collapse them onto the first matching slot and we'd only
+    -- ever loot one of them.
+    for slot, item in pairs( loot_list.get_items_by_slot() ) do
       -- Looting coins is hidden under a secure button and cannot be done
       -- through vanilla API. If the user has the SuperWoW mod, we can call an
       -- extra function instead.
@@ -118,7 +119,7 @@ function M.new( loot_list, api, db, config, player_info, chat )
         end
       end
 
-      if item.id and slot then
+      if item.id then
         if is_auto_looted( item ) then
           local index = find_my_candidate_index( slot )
 

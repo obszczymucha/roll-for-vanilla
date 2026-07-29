@@ -26,6 +26,16 @@ function M.new( loot_facade )
     return result
   end
 
+  local function get_items_by_slot()
+    local result = {}
+
+    for slot, item in pairs( m_items or {} ) do
+      result[ slot ] = item
+    end
+
+    return result
+  end
+
   local function get_source_guid()
     return M.source_guid or "PrincessKenny"
   end
@@ -94,6 +104,7 @@ function M.new( loot_facade )
   return {
     ---@diagnostic disable-next-line: assign-type-mismatch
     get_items = get_items,
+    get_items_by_slot = get_items_by_slot,
     get_source_guid = get_source_guid,
     get_slot = get_slot,
     count = count,

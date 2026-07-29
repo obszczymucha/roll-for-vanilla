@@ -17,6 +17,7 @@ local sid = m.SoftRes.softres_item_data
 
 ---@class SoftResLootList : LootList
 ---@field get_items fun(): (MasterLootDistributableItem)[]
+---@field get_items_by_slot fun(): table<number, DroppedItem|Coin>
 ---@field get_source_guid fun(): string
 ---@field is_looting fun(): boolean
 ---@field count fun( item_id: number ): number

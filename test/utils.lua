@@ -354,6 +354,27 @@ function M.mock_object( name, result )
   M.modules().api[ name ] = result
 end
 
+-- Models WoW's asynchronous master looting: GiveMasterLoot does not clear the
+-- slot inline; LOOT_SLOT_CLEARED arrives later as a game event. Queues the
+-- looted slots and delivers them via flush(), which should be called after the
+-- auto-loot pass so a single pass can't rely on slots vanishing mid-loop.
+---@param loot_facade LootFacadeMock
+function M.mock_async_master_loot( loot_facade )
+  local pending = {}
+
+  M.mock( "GiveMasterLoot", function( slot ) table.insert( pending, slot ) end )
+
+  return {
+    flush = function()
+      for _, slot in ipairs( pending ) do
+        loot_facade.notify( "LootSlotCleared", slot )
+      end
+
+      pending = {}
+    end
+  }
+end
+
 function M.run_command( command, args )
   local f = m_slashcmdlist[ command ]
 
@@ -501,6 +522,11 @@ function M.mock_table_function( name, values )
       return value
     end
   end
+end
+
+---@param candidates string[]
+function M.mock_master_loot_candidates( candidates )
+  M.mock( "GetMasterLootCandidate", function( _, index ) return candidates[ index ] end )
 end
 
 ---@param name string

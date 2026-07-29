@@ -10,6 +10,7 @@ local clear = m.clear_table
 
 ---@class LootList
 ---@field get_items fun(): DroppedItem[]
+---@field get_items_by_slot fun(): table<number, DroppedItem|Coin>
 ---@field get_source_guid fun(): string
 ---@field get_slot fun( item_id: number|"Coin" ): number?
 ---@field is_looting fun(): boolean
@@ -107,6 +108,20 @@ function M.new( loot_facade, item_utils, tooltip_reader, dummy_items_fn )
     return result
   end
 
+  -- Returns a copy of the slot -> item map. Unlike get_slot(), this preserves
+  -- the slot of every item, so duplicates of the same item id remain
+  -- distinguishable (each occupies its own slot).
+  ---@return table<Slot, Coin|DroppedItem>
+  local function get_items_by_slot()
+    local result = {}
+
+    for slot, item in pairs( items ) do
+      result[ slot ] = item
+    end
+
+    return result
+  end
+
   loot_facade.subscribe( "LootOpened", on_loot_opened )
   loot_facade.subscribe( "LootClosed", on_loot_closed )
   loot_facade.subscribe( "LootSlotCleared", on_loot_slot_cleared )
@@ -154,6 +169,7 @@ function M.new( loot_facade, item_utils, tooltip_reader, dummy_items_fn )
   ---@type LootList
   return {
     get_items = get_items,
+    get_items_by_slot = get_items_by_slot,
     get_source_guid = function() return source_guid end,
     get_slot = get_slot,
     is_looting = is_looting,

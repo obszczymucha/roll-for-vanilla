@@ -154,10 +154,11 @@ function AutoLootGuiSpec:should_auto_loot_item_without_displaying_rolling_popup(
   chat.console( "RollFor: [Hearthstone] added to global." )
 
   u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
-  u.mock_table_function( "GetMasterLootCandidate", { "Psikutas", "Obszczymucha" } )
-  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+  u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha" } )
+  local master_loot = u.mock_async_master_loot( loot_facade )
 
   loot_facade.notify( "LootOpened", item )
+  master_loot.flush()
 
   chat.raid( "Princess Kenny dropped 1 item:" )
   chat.raid( "1. [Hearthstone]" )
@@ -189,10 +190,11 @@ function AutoLootGuiSpec:should_auto_loot_one_item_and_display_rolling_popup_for
   chat.console( "RollFor: [Hearthstone] added to global." )
 
   u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
-  u.mock_table_function( "GetMasterLootCandidate", { "Psikutas", "Obszczymucha" } )
-  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+  u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha" } )
+  local master_loot = u.mock_async_master_loot( loot_facade )
 
   loot_facade.notify( "LootOpened", item, item2 )
+  master_loot.flush()
 
   chat.raid( "Princess Kenny dropped 2 items:" )
   chat.raid( "1. [Bag]" )
@@ -237,14 +239,16 @@ function AutoLootGuiSpec:should_auto_loot_soft_ressed_item_and_display_rolling_p
   chat.console( "RollFor: [Hearthstone] added to global." )
 
   u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
-  u.mock_table_function( "GetMasterLootCandidate", { "Psikutas", "Obszczymucha" } )
-  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+  u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha" } )
+  local master_loot = u.mock_async_master_loot( loot_facade )
 
   loot_facade.notify( "LootOpened", item, item2 )
+  master_loot.flush()
 
   chat.raid( "Princess Kenny dropped 2 items:" )
   chat.raid( "1. [Hearthstone] (SR by Psikutas)" )
   chat.raid( "2. [Bag]" )
+  chat.console( "RollFor: Auto-looting [Hearthstone]." )
 
   rf.loot_frame.should_display(
     enabled_item( 1, "Bag" )
@@ -257,6 +261,59 @@ function AutoLootGuiSpec:should_auto_loot_soft_ressed_item_and_display_rolling_p
   -- Then
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
+    buttons( "Roll", "InstaRaidRoll", "AwardOther", "Close" )
+  )
+end
+
+function AutoLootGuiSpec:should_auto_loot_all_auto_lootable_items_and_display_rolling_popup_for_the_other()
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, item2, item3, p1, p2 = i( "Hearthstone", 123 ), i( "Hearthstone", 123 ), i( "Bag", 69 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, 123 ) )
+      :config( {
+        auto_loot = true,
+        auto_loot_messages = true
+      } )
+      :build()
+
+  local id = rf.auto_loot.add_category( "global" )
+  rf.auto_loot.add( id, item.link )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item2), true )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item3 ), false )
+
+  chat.console( "RollFor: Category global added with ID 1." )
+  chat.console( "RollFor: [Hearthstone] added to global." )
+
+  u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
+  u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha" } )
+
+  local master_loot = u.mock_async_master_loot( loot_facade )
+
+  loot_facade.notify( "LootOpened", item, item2, item3 )
+  master_loot.flush()
+
+  chat.raid( "Princess Kenny dropped 3 items:" )
+  chat.raid( "1. [Hearthstone] (SR by Psikutas)" )
+  chat.raid( "2. [Bag]" )
+  chat.raid( "3. [Hearthstone]" )
+  chat.console( "RollFor: Auto-looting [Hearthstone]." )
+  chat.console( "RollFor: Auto-looting [Hearthstone]." )
+
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Bag" )
+  )
+  rf.rolling_popup.should_be_hidden()
+
+  -- When
+  rf.loot_frame.click( 1 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item3, 1 ),
     buttons( "Roll", "InstaRaidRoll", "AwardOther", "Close" )
   )
 end
