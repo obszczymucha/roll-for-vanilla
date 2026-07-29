@@ -108,6 +108,34 @@ function GetAllPlayersInMyGroupSpec:should_return_all_players_in_raid_sorted()
   } )
 end
 
+function GetAllPlayersInMyGroupSpec:should_keep_raid_members_whose_class_is_not_populated_yet()
+  -- During a group change GetRaidRosterInfo can momentarily return a member
+  -- with a name but no class. The player must still be in the list (not
+  -- dropped) and sort() must not crash comparing the nil class.
+  local api = mock_api( function()
+    return {
+      mock( "IsInGroup", true ),
+      mock( "IsInRaid", true ),
+      mock( "UnitClass", "Warrior" ),
+      mock( "GetRaidRosterInfo", smart_table( {
+        packed_value( { "Psikutas", "Officer", 1, 60, "Warrior", "Stormwind", "Online" } ),
+        packed_value( { "Obszczymucha", "Officer", 1, 60 } ) -- class not populated yet
+      } ) ),
+      mock( "UnitIsConnected", true )
+    }
+  end )
+  local mod = gr.new( api(), mock_player_info() )
+
+  -- When
+  local result = mod.get_all_players_in_my_group()
+
+  -- Then
+  eq( result, {
+    { name = "Obszczymucha", online = true },
+    { class = "Warrior", name = "Psikutas", online = true }
+  } )
+end
+
 IsPlayerInMyGroupSpec = {}
 
 function IsPlayerInMyGroupSpec:should_return_true_for_myself()

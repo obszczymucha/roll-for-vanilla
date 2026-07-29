@@ -30,10 +30,12 @@ local make_player = m.Types.make_player
 function M.new( api, player_info )
   local function sort( candidates )
     table.sort( candidates, function( lhs, rhs )
-      if lhs.class < rhs.class then
-        return true
-      elseif lhs.class > rhs.class then
-        return false
+      -- class can be transiently nil during a group change; keep the player in
+      -- the list and just order nil consistently instead of crashing.
+      local lclass, rclass = lhs.class or "", rhs.class or ""
+
+      if lclass ~= rclass then
+        return lclass < rclass
       end
 
       return lhs.name < rhs.name
