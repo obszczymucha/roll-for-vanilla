@@ -36,6 +36,7 @@ end
 ---@param on_rolling_finished RollingFinishedCallback
 ---@param config Config
 ---@param controller RollControllerFacade
+---@param already_won_players RollingPlayer[]? -- players who already won a copy (e.g. via soft-res); their rolls are ignored
 function M.new(
     chat,
     ace_timer,
@@ -47,8 +48,15 @@ function M.new(
     seconds,
     on_rolling_finished,
     config,
-    controller
+    controller,
+    already_won_players
 )
+  local already_won_by_name = {}
+
+  for _, player in ipairs( already_won_players or {} ) do
+    already_won_by_name[ player.name ] = player.class
+  end
+
   ---@type RollingPlayer[], Roll[]
   local mainspec_rollers, mainspec_rolls = players, {}
   ---@type RollingPlayer[], Roll[]
@@ -177,6 +185,17 @@ function M.new(
     local roll_type = ms_roll and RollType.MainSpec or os_roll and RollType.OffSpec or RollType.Transmog
     local rollers = ms_roll and mainspec_rollers or os_roll and offspec_rollers or tmog_rollers
     local player = find_player( roller.name, rollers ) ---@type RollingPlayer
+
+    if not player then
+      local class = already_won_by_name[ roller.name ]
+
+      if class then
+        chat.info( m.msg.already_won_soft_res( roller.name, class, item.link, roll ) )
+        controller.roll_was_ignored( roller.name, class, roll_type, roll, "Already won via soft-res." )
+      end
+
+      return
+    end
 
     if player.rolls == 0 then
       chat.info( m.msg.rolls_exhausted( player.name, player.class, roll ) )

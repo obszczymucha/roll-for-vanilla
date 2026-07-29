@@ -7,6 +7,7 @@ local M = {}
 
 local getn = m.getn
 local RS = m.Types.RollingStrategy
+local RT = m.Types.RollType
 
 ---@alias SoftresRollsAvailableCallback fun( rollers: RollingPlayer[] )
 
@@ -238,9 +239,51 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     if m_rolling_strategy then m_rolling_strategy.show_sorted_rolls( limit ) end
   end
 
+  -- Fewer soft-ressers than dropped copies: each soft-resser wins one copy
+  -- outright, and the remaining copies go to a normal roll. The soft-ressers
+  -- already got theirs, so their rolls in the normal roll are ignored.
+  ---@param data RollControllerStartData
+  ---@param softressers RollingPlayer[]
+  local function softres_winners_then_normal_roll( data, softressers )
+    local item = data.item
+    local item_count = data.item_count
+    local item_quantity = data.item_quantity
+    local seconds = data.seconds or config.default_rolling_time_seconds()
+    local sr_count = getn( softressers )
+
+    local sr_winners = m.map( softressers,
+      ---@param player RollingPlayer
+      function( player )
+        local winner = master_loot_candidates.transform_to_winner( player, item, RT.SoftRes, nil )
+        winner_tracker.track( winner.name, item.link, RT.SoftRes, nil, RS.SoftResRoll )
+        return winner
+      end )
+
+    roll_controller.winners_found( item, item_count, sr_winners, RS.SoftResRoll )
+
+    local remaining = item_count - sr_count
+
+    -- When the normal roll finishes, re-announce the soft-res winners first so
+    -- all winners are listed together at the end, soft-ressers ahead of rollers.
+    ---@type RollingFinishedCallback
+    local function on_normal_roll_finished( f_item, f_item_count, f_item_quantity, winning_rolls, rerolling )
+      if getn( winning_rolls ) > 0 then
+        roll_controller.winners_found( f_item, item_count, sr_winners, RS.SoftResRoll )
+      end
+
+      on_rolling_finished( f_item, f_item_count, f_item_quantity, winning_rolls, rerolling )
+    end
+
+    local normal_strategy = strategy_factory.normal_roll( item, remaining, item_quantity, nil, seconds, on_normal_roll_finished, facade, softressers )
+
+    m_rolling_strategy = nil
+    roll( normal_strategy, item, remaining, item_quantity, seconds )
+  end
+
   ---@param data RollControllerStartData
   local function start( data )
     ---@return RollingStrategy?
+    ---@return RollingPlayer[]?
     ---@return RollingPlayer[]?
     local function make_strategy()
       local seconds = data.seconds or config.default_rolling_time_seconds()
@@ -273,10 +316,16 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
       end
     end
 
-    local strategy, rolling_players = make_strategy()
+    local strategy, rolling_players, softressers = make_strategy()
     if not strategy then return end
 
     winner_tracker.start_rolling( data.item.link )
+
+    if data.strategy_type == RS.SoftResRoll and softressers then
+      softres_winners_then_normal_roll( data, softressers )
+      return
+    end
+
     roll( strategy, data.item, data.item_count, data.item_quantity, data.seconds, data.message, rolling_players )
   end
 

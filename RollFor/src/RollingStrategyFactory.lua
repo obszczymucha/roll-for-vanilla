@@ -21,7 +21,7 @@ local sid = m.SoftRes.softres_item_data
 
 ---@class RollingStrategyFactory
 ---@field normal_roll fun( item: Item, item_count: number, item_quantity: number, message: string?, seconds: number, on_rolling_finished: RollingFinishedCallback, roll_controller_facade: RollControllerFacade ): RollingStrategy
----@field softres_roll fun( item: Item, item_count: number, item_quantity: number, message: string?, seconds: number, on_rolling_finished: RollingFinishedCallback, on_softres_rolls_available: SoftresRollsAvailableCallback, roll_controller_facade: RollControllerFacade ): RollingStrategy, RollingPlayer[]
+---@field softres_roll fun( item: Item, item_count: number, item_quantity: number, message: string?, seconds: number, on_rolling_finished: RollingFinishedCallback, on_softres_rolls_available: SoftresRollsAvailableCallback, roll_controller_facade: RollControllerFacade ): RollingStrategy, RollingPlayer[]?, RollingPlayer[]?
 ---@field raid_roll fun( item: Item, item_count: number, roll_controller_facade: RollControllerFacade ): RollingStrategy
 ---@field insta_raid_roll fun( item: Item, item_count: number, roll_controller_facade: RollControllerFacade ): RollingStrategy
 ---@field tie_roll fun( players: RollingPlayer[], item: Item, item_count: number, item_quantity: number, on_rolling_finished: RollingFinishedCallback, roll_type: RollType, roll_controller_facade: RollControllerFacade ): RollingStrategy
@@ -53,11 +53,22 @@ function M.new(
   ---@param seconds number
   ---@param on_rolling_finished RollingFinishedCallback
   ---@param roll_controller_facade RollControllerFacade
-  local function normal_roll( item, item_count, item_quantity, message, seconds, on_rolling_finished, roll_controller_facade )
+  ---@param already_won_players RollingPlayer[]? -- players who already won a copy; excluded from rolling, their rolls ignored
+  local function normal_roll( item, item_count, item_quantity, message, seconds, on_rolling_finished, roll_controller_facade, already_won_players )
+    local excluded = {}
+
+    for _, player in ipairs( already_won_players or {} ) do
+      excluded[ player.name ] = true
+    end
+
     local players = group_roster.get_all_players_in_my_group()
-    local rollers = m.map( players, function( player )
-      return make_rolling_player( player.name, player.class, player.online, 1 )
-    end )
+    local rollers = {}
+
+    for _, player in ipairs( players ) do
+      if not excluded[ player.name ] then
+        table.insert( rollers, make_rolling_player( player.name, player.class, player.online, 1 ) )
+      end
+    end
 
     return m.NonSoftResRollingLogic.new(
       chat,
@@ -70,7 +81,8 @@ function M.new(
       seconds,
       on_rolling_finished,
       config,
-      roll_controller_facade
+      roll_controller_facade,
+      already_won_players
     )
   end
 
@@ -100,7 +112,27 @@ function M.new(
       return normal_roll( item, item_count or 1, item_quantity, message, seconds, on_rolling_finished, roll_controller_facade )
     end
 
-    local needs_rolling = getn( softressing_players ) > item_count
+    local sr_count = getn( softressing_players )
+    local needs_rolling = sr_count > item_count
+
+    -- When fewer players soft-ressed than copies dropped, each soft-resser wins
+    -- one copy and the rest go to a normal roll -- but only if there are
+    -- non-soft-resser players left to roll. If everyone soft-ressed, there's
+    -- no one to roll, so fall back to the plain soft-res behaviour.
+    local sr_names = {}
+
+    for _, player in ipairs( softressing_players ) do
+      sr_names[ player.name ] = true
+    end
+
+    local non_sr_rollers = 0
+
+    for _, player in ipairs( group_roster.get_all_players_in_my_group() ) do
+      if not sr_names[ player.name ] then non_sr_rollers = non_sr_rollers + 1 end
+    end
+
+    local leftover_softressers = sr_count < item_count and non_sr_rollers > 0 and softressing_players or nil
+
     return m.SoftResRollingLogic.new(
       chat,
       ace_timer,
@@ -115,7 +147,7 @@ function M.new(
       winner_tracker,
       master_loot_candidates,
       roll_controller_facade
-    ), needs_rolling and softressing_players or nil
+    ), needs_rolling and softressing_players or nil, leftover_softressers
   end
 
   local function raid_roll( f )

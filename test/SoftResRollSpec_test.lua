@@ -10,6 +10,7 @@ local gui = require( "test/gui_helpers" )
 local item_link, text, buttons, empty_line = gui.item_link, gui.text, gui.buttons, gui.empty_line
 local enabled_item, disabled_item, selected_item = gui.enabled_item, gui.disabled_item, gui.selected_item
 local softres_roll, roll_placeholder = gui.softres_roll, gui.sr_roll_placeholder
+local mainspec_roll = gui.mainspec_roll
 local sr = u.soft_res_item
 local individual_award_button = gui.individual_award_button
 
@@ -18,6 +19,7 @@ WaitForRemainingRollsSpec = {}
 function WaitForRemainingRollsSpec:should_finish_early_if_two_items_drop_and_the_winner_has_extra_roll_left()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local c, r, rw = chat.console, chat.raid, chat.raid_warning
   local item, item2, p1, p2, p3, p4 = i( "Bag", 69 ), i( "Bag", 69 ), p( "Drutree" ), p( "Mendunia" ), p( "Mufasapowel" ), p( "Pinp" )
   local rf = new_roll_for()
       :loot_facade( loot_facade )
@@ -39,8 +41,8 @@ function WaitForRemainingRollsSpec:should_finish_early_if_two_items_drop_and_the
     enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } ),
     enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } )
   )
-  chat.raid( "Princess Kenny dropped 2 items:" )
-  chat.raid( "1. 2x[Bag] (SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp)" )
+  r( "Princess Kenny dropped 2 items:" )
+  r( "1. 2x[Bag] (SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp)" )
   rf.rolling_popup.should_be_hidden()
 
   -- When
@@ -62,7 +64,7 @@ function WaitForRemainingRollsSpec:should_finish_early_if_two_items_drop_and_the
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
+  rw( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
     roll_placeholder( p1, 11 ),
@@ -87,16 +89,17 @@ function WaitForRemainingRollsSpec:should_finish_early_if_two_items_drop_and_the
   rf.roll( p2, 32, 1, 100 ) -- Mendunia
 
   -- Then
-  chat.console( "RollFor: Drutree rolled the highest (91) for [Bag] (SR)." )
-  chat.raid( "Drutree rolled the highest (91) for [Bag] (SR)." )
-  chat.console( "RollFor: Mufasapowel rolled the next highest (75) for [Bag] (SR)." )
-  chat.raid( "Mufasapowel rolled the next highest (75) for [Bag] (SR)." )
-  chat.console( "RollFor: Rolling for [Bag] finished." )
+  c( "RollFor: Drutree rolled the highest (91) for [Bag] (SR)." )
+  r( "Drutree rolled the highest (91) for [Bag] (SR)." )
+  c( "RollFor: Mufasapowel rolled the next highest (75) for [Bag] (SR)." )
+  r( "Mufasapowel rolled the next highest (75) for [Bag] (SR)." )
+  c( "RollFor: Rolling for [Bag] finished." )
 end
 
 function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_win_if_roll_breaks_the_tie()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local c, r, rw = chat.console, chat.raid, chat.raid_warning
   local item, item2, p1, p2, p3, p4 = i( "Bag", 69 ), i( "Bag", 69 ), p( "Drutree" ), p( "Mendunia" ), p( "Mufasapowel" ), p( "Pinp" )
   local rf = new_roll_for()
       :loot_facade( loot_facade )
@@ -118,8 +121,8 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_win_if_rol
     enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } ),
     enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } )
   )
-  chat.raid( "Princess Kenny dropped 2 items:" )
-  chat.raid( "1. 2x[Bag] (SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp)" )
+  r( "Princess Kenny dropped 2 items:" )
+  r( "1. 2x[Bag] (SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp)" )
   rf.rolling_popup.should_be_hidden()
 
   -- When
@@ -141,7 +144,7 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_win_if_rol
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
+  rw( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
     roll_placeholder( p1, 11 ),
@@ -165,30 +168,31 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_win_if_rol
   tick()
   rf.roll( p2, 32, 1, 100 ) -- Mendunia
   tick()
-  chat.raid( "Stopping rolls in 3" )
+  r( "Stopping rolls in 3" )
   tick()
-  chat.raid( "2" )
+  r( "2" )
   tick()
-  chat.raid( "1" )
+  r( "1" )
   tick()
 
   -- Then
-  chat.raid( "SR rolls remaining: Drutree (1 roll)" )
+  r( "SR rolls remaining: Drutree (1 roll)" )
 
   -- When
   rf.roll( p1, 76, 1, 100 ) -- Drutree rolls higher, breaks the tie
 
   -- Then
-  chat.console( "RollFor: Mufasapowel rolled the highest (91) for [Bag] (SR)." )
-  chat.raid( "Mufasapowel rolled the highest (91) for [Bag] (SR)." )
-  chat.console( "RollFor: Drutree rolled the next highest (76) for [Bag] (SR)." )
-  chat.raid( "Drutree rolled the next highest (76) for [Bag] (SR)." )
-  chat.console( "RollFor: Rolling for [Bag] finished." )
+  c( "RollFor: Mufasapowel rolled the highest (91) for [Bag] (SR)." )
+  r( "Mufasapowel rolled the highest (91) for [Bag] (SR)." )
+  c( "RollFor: Drutree rolled the next highest (76) for [Bag] (SR)." )
+  r( "Drutree rolled the next highest (76) for [Bag] (SR)." )
+  c( "RollFor: Rolling for [Bag] finished." )
 end
 
 function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_tie_if_roll_does_not_break_the_tie()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local c, r, rw = chat.console, chat.raid, chat.raid_warning
   local item, item2, p1, p2, p3, p4 = i( "Bag", 69 ), i( "Bag", 69 ), p( "Drutree" ), p( "Mendunia" ), p( "Mufasapowel" ), p( "Pinp" )
   local rf = new_roll_for()
       :loot_facade( loot_facade )
@@ -210,8 +214,8 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_tie_if_rol
     enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } ),
     enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } )
   )
-  chat.raid( "Princess Kenny dropped 2 items:" )
-  chat.raid( "1. 2x[Bag] (SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp)" )
+  r( "Princess Kenny dropped 2 items:" )
+  r( "1. 2x[Bag] (SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp)" )
   rf.rolling_popup.should_be_hidden()
 
   -- When
@@ -233,7 +237,7 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_tie_if_rol
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
+  rw( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
     roll_placeholder( p1, 11 ),
@@ -257,24 +261,24 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_tie_if_rol
   tick()
   rf.roll( p2, 32, 1, 100 ) -- Mendunia
   tick()
-  chat.raid( "Stopping rolls in 3" )
+  r( "Stopping rolls in 3" )
   tick()
-  chat.raid( "2" )
+  r( "2" )
   tick()
-  chat.raid( "1" )
+  r( "1" )
   tick()
 
   -- Then
-  chat.raid( "SR rolls remaining: Drutree (1 roll)" )
+  r( "SR rolls remaining: Drutree (1 roll)" )
 
   -- When
   rf.roll( p1, 74, 1, 100 ) -- Drutree rolls lower, tie remains
 
   -- Then
-  chat.console( "RollFor: Mufasapowel rolled the highest (91) for [Bag] (SR)." )
-  chat.raid( "Mufasapowel rolled the highest (91) for [Bag] (SR)." )
-  chat.console( "RollFor: Drutree and Pinp rolled the next highest (75) for [Bag] (SR)." )
-  chat.raid( "Drutree and Pinp rolled the next highest (75) for [Bag] (SR)." )
+  c( "RollFor: Mufasapowel rolled the highest (91) for [Bag] (SR)." )
+  r( "Mufasapowel rolled the highest (91) for [Bag] (SR)." )
+  c( "RollFor: Drutree and Pinp rolled the next highest (75) for [Bag] (SR)." )
+  r( "Drutree and Pinp rolled the next highest (75) for [Bag] (SR)." )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
     softres_roll( p3, 91, 11 ),
@@ -293,16 +297,16 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_tie_if_rol
   rf.ace_timer.tick()
 
   -- Then
-  chat.raid( "Drutree and Pinp /roll for [Bag] now." )
+  r( "Drutree and Pinp /roll for [Bag] now." )
 
   -- When
   rf.roll( p1, 60, 1, 100 )
   rf.roll( p4, 99, 1, 100 )
 
   -- Then
-  chat.console( "RollFor: Pinp re-rolled the highest (99) for [Bag] (SR)." )
-  chat.raid( "Pinp re-rolled the highest (99) for [Bag] (SR)." )
-  chat.console( "RollFor: Rolling for [Bag] finished." )
+  c( "RollFor: Pinp re-rolled the highest (99) for [Bag] (SR)." )
+  r( "Pinp re-rolled the highest (99) for [Bag] (SR)." )
+  c( "RollFor: Rolling for [Bag] finished." )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
     softres_roll( p3, 91, 11 ),
@@ -325,6 +329,7 @@ end
 function WaitForRemainingRollsSpec:should_finish_early_if_two_top_rolls_tie()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local c, r, rw = chat.console, chat.raid, chat.raid_warning
   local item, item2, p1, p2, p3, p4 = i( "Bag", 69 ), i( "Bag", 69 ), p( "Drutree" ), p( "Mendunia" ), p( "Mufasapowel" ), p( "Pinp" )
   local rf = new_roll_for()
       :loot_facade( loot_facade )
@@ -346,8 +351,8 @@ function WaitForRemainingRollsSpec:should_finish_early_if_two_top_rolls_tie()
     enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } ),
     enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Drutree [2 rolls]", "Mendunia", "Mufasapowel [2 rolls]", "Pinp" } )
   )
-  chat.raid( "Princess Kenny dropped 2 items:" )
-  chat.raid( "1. 2x[Bag] (SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp)" )
+  r( "Princess Kenny dropped 2 items:" )
+  r( "1. 2x[Bag] (SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp)" )
   rf.rolling_popup.should_be_hidden()
 
   -- When
@@ -369,7 +374,7 @@ function WaitForRemainingRollsSpec:should_finish_early_if_two_top_rolls_tie()
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
+  rw( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
     roll_placeholder( p1, 11 ),
@@ -394,14 +399,15 @@ function WaitForRemainingRollsSpec:should_finish_early_if_two_top_rolls_tie()
   rf.roll( p2, 32, 1, 100 ) -- Mendunia
 
   -- Then
-  chat.console( "RollFor: Drutree and Pinp rolled the highest (91) for [Bag] (SR)." )
-  chat.raid( "Drutree and Pinp rolled the highest (91) for [Bag] (SR)." )
-  chat.console( "RollFor: Rolling for [Bag] finished." )
+  c( "RollFor: Drutree and Pinp rolled the highest (91) for [Bag] (SR)." )
+  r( "Drutree and Pinp rolled the highest (91) for [Bag] (SR)." )
+  c( "RollFor: Rolling for [Bag] finished." )
 end
 
 function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_award_the_winner()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local c, r, rw = chat.console, chat.raid, chat.raid_warning
   local item, item2, p1, p2 = i( "Hearthstone", 123 ), i( "Bag", 69 ), p( "Psikutas" ), p( "Obszczymucha" )
   local rf = new_roll_for()
       :loot_facade( loot_facade )
@@ -422,9 +428,9 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
     enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas" } ),
     enabled_item( 2, "Hearthstone" )
   )
-  chat.raid( "Princess Kenny dropped 2 items:" )
-  chat.raid( "1. [Bag] (SR by Obszczymucha and Psikutas)" )
-  chat.raid( "2. [Hearthstone]" )
+  r( "Princess Kenny dropped 2 items:" )
+  r( "1. [Bag] (SR by Obszczymucha and Psikutas)" )
+  r( "2. [Hearthstone]" )
   rf.rolling_popup.should_be_hidden()
 
   -- When
@@ -446,7 +452,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: SR by Obszczymucha and Psikutas" )
+  rw( "Roll for [Bag]: SR by Obszczymucha and Psikutas" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     roll_placeholder( p2, 11 ),
@@ -478,7 +484,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
     text( "Rolling ends in 3 seconds.", 11 ),
     buttons( "Cancel" )
   )
-  chat.raid( "Stopping rolls in 3" )
+  r( "Stopping rolls in 3" )
 
   -- When
   rf.ace_timer.repeating_tick()
@@ -491,7 +497,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
     text( "Rolling ends in 2 seconds.", 11 ),
     buttons( "Cancel" )
   )
-  chat.raid( "2" )
+  r( "2" )
 
   -- When
   rf.ace_timer.repeating_tick()
@@ -504,13 +510,13 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
     text( "Rolling ends in 1 second.", 11 ),
     buttons( "Cancel" )
   )
-  chat.raid( "1" )
+  r( "1" )
 
   -- When
   rf.ace_timer.repeating_tick()
 
   -- Then
-  chat.raid( "SR rolls remaining: Obszczymucha (1 roll) and Psikutas (1 roll)" )
+  r( "SR rolls remaining: Obszczymucha (1 roll) and Psikutas (1 roll)" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     roll_placeholder( p2, 11 ),
@@ -535,9 +541,9 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
   rf.roll( p2, 99, 1, 100 )
 
   -- Then
-  chat.console( "RollFor: Obszczymucha rolled the highest (99) for [Bag] (SR)." )
-  chat.raid( "Obszczymucha rolled the highest (99) for [Bag] (SR)." )
-  chat.console( "RollFor: Rolling for [Bag] finished." )
+  c( "RollFor: Obszczymucha rolled the highest (99) for [Bag] (SR)." )
+  r( "Obszczymucha rolled the highest (99) for [Bag] (SR)." )
+  c( "RollFor: Rolling for [Bag] finished." )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     softres_roll( p2, 99, 11 ),
@@ -558,7 +564,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
   rf.confirmation_popup.confirm()
 
   -- Then
-  chat.console( "RollFor: Obszczymucha received [Bag]." )
+  c( "RollFor: Obszczymucha received [Bag]." )
   rf.confirmation_popup.should_be_hidden()
   rf.rolling_popup.should_be_hidden()
   rf.loot_frame.should_display(
@@ -581,6 +587,7 @@ end
 function WaitForRemainingRollsSpec:should_cancel_rolling_and_display_initial_setup()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local c, r, rw = chat.console, chat.raid, chat.raid_warning
   local item, item2, p1, p2 = i( "Hearthstone", 123 ), i( "Bag", 69 ), p( "Psikutas" ), p( "Obszczymucha" )
   local rf = new_roll_for()
       :loot_facade( loot_facade )
@@ -601,9 +608,9 @@ function WaitForRemainingRollsSpec:should_cancel_rolling_and_display_initial_set
     enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas" } ),
     enabled_item( 2, "Hearthstone" )
   )
-  chat.raid( "Princess Kenny dropped 2 items:" )
-  chat.raid( "1. [Bag] (SR by Obszczymucha and Psikutas)" )
-  chat.raid( "2. [Hearthstone]" )
+  r( "Princess Kenny dropped 2 items:" )
+  r( "1. [Bag] (SR by Obszczymucha and Psikutas)" )
+  r( "2. [Hearthstone]" )
   rf.rolling_popup.should_be_hidden()
 
   -- When
@@ -625,7 +632,7 @@ function WaitForRemainingRollsSpec:should_cancel_rolling_and_display_initial_set
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: SR by Obszczymucha and Psikutas" )
+  rw( "Roll for [Bag]: SR by Obszczymucha and Psikutas" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     roll_placeholder( p2, 11 ),
@@ -638,8 +645,8 @@ function WaitForRemainingRollsSpec:should_cancel_rolling_and_display_initial_set
   rf.rolling_popup.click( "Cancel" )
 
   -- Then
-  chat.console( "RollFor: Rolling for [Bag] was canceled." )
-  chat.raid( "Rolling for [Bag] was canceled." )
+  c( "RollFor: Rolling for [Bag] was canceled." )
+  r( "Rolling for [Bag] was canceled." )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     text( "Rolling was canceled.", 11 ),
@@ -661,6 +668,7 @@ end
 function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_award_the_winners()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local c, r, rw = chat.console, chat.raid, chat.raid_warning
   local item, item2, p1, p2, p3 = i( "Hearthstone", 123 ), i( "Bag", 69 ), p( "Psikutas" ), p( "Obszczymucha" ), p( "Jimmy" )
   local rf = new_roll_for()
       :loot_facade( loot_facade )
@@ -682,9 +690,9 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
     enabled_item( 2, "Bag", "SR", { "Soft-ressed by", "Jimmy", "Obszczymucha", "Psikutas" } ),
     enabled_item( 3, "Hearthstone" )
   )
-  chat.raid( "Princess Kenny dropped 3 items:" )
-  chat.raid( "1. 2x[Bag] (SR by Jimmy, Obszczymucha and Psikutas)" )
-  chat.raid( "2. [Hearthstone]" )
+  r( "Princess Kenny dropped 3 items:" )
+  r( "1. 2x[Bag] (SR by Jimmy, Obszczymucha and Psikutas)" )
+  r( "2. [Hearthstone]" )
   rf.rolling_popup.should_be_hidden()
 
   -- When
@@ -708,7 +716,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for 2x[Bag]: SR by Jimmy, Obszczymucha and Psikutas. 2 top rolls win." )
+  rw( "Roll for 2x[Bag]: SR by Jimmy, Obszczymucha and Psikutas. 2 top rolls win." )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
     roll_placeholder( p3, 11 ),
@@ -743,7 +751,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
     text( "Rolling ends in 3 seconds.", 11 ),
     buttons( "Cancel" )
   )
-  chat.raid( "Stopping rolls in 3" )
+  r( "Stopping rolls in 3" )
 
   -- When
   rf.ace_timer.repeating_tick()
@@ -757,7 +765,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
     text( "Rolling ends in 2 seconds.", 11 ),
     buttons( "Cancel" )
   )
-  chat.raid( "2" )
+  r( "2" )
 
   -- When
   rf.ace_timer.repeating_tick()
@@ -771,13 +779,13 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
     text( "Rolling ends in 1 second.", 11 ),
     buttons( "Cancel" )
   )
-  chat.raid( "1" )
+  r( "1" )
 
   -- When
   rf.ace_timer.repeating_tick()
 
   -- Then
-  chat.raid( "SR rolls remaining: Jimmy (1 roll), Obszczymucha (1 roll) and Psikutas (1 roll)" )
+  r( "SR rolls remaining: Jimmy (1 roll), Obszczymucha (1 roll) and Psikutas (1 roll)" )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
     roll_placeholder( p3, 11 ),
@@ -817,11 +825,11 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
   rf.roll( p3, 98, 1, 100 )
 
   -- Then
-  chat.console( "RollFor: Obszczymucha rolled the highest (99) for [Bag] (SR)." )
-  chat.raid( "Obszczymucha rolled the highest (99) for [Bag] (SR)." )
-  chat.console( "RollFor: Jimmy rolled the next highest (98) for [Bag] (SR)." )
-  chat.raid( "Jimmy rolled the next highest (98) for [Bag] (SR)." )
-  chat.console( "RollFor: Rolling for [Bag] finished." )
+  c( "RollFor: Obszczymucha rolled the highest (99) for [Bag] (SR)." )
+  r( "Obszczymucha rolled the highest (99) for [Bag] (SR)." )
+  c( "RollFor: Jimmy rolled the next highest (98) for [Bag] (SR)." )
+  r( "Jimmy rolled the next highest (98) for [Bag] (SR)." )
+  c( "RollFor: Rolling for [Bag] finished." )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
     softres_roll( p2, 99, 11 ),
@@ -847,7 +855,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
 
   -- Then
   rf.confirmation_popup.should_be_hidden()
-  chat.console( "RollFor: Obszczymucha received [Bag]." )
+  c( "RollFor: Obszczymucha received [Bag]." )
   rf.loot_frame.should_display(
     selected_item( 1, "Bag", "SR", { "Soft-ressed by", "Jimmy", "Obszczymucha", "Psikutas" } ),
     disabled_item( 2, "Hearthstone" )
@@ -874,7 +882,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
 
   -- Then
   rf.confirmation_popup.should_be_hidden()
-  chat.console( "RollFor: Jimmy received [Bag]." )
+  c( "RollFor: Jimmy received [Bag]." )
 
   -- Then
   rf.rolling_popup.should_be_hidden()
@@ -892,9 +900,9 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
     enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Psikutas" } ),
     enabled_item( 2, "Hearthstone" )
   )
-  chat.raid( "Princess Kenny dropped 2 items:" )
-  chat.raid( "1. [Bag] (SR by Psikutas)" )
-  chat.raid( "2. [Hearthstone]" )
+  r( "Princess Kenny dropped 2 items:" )
+  r( "1. [Bag] (SR by Psikutas)" )
+  r( "2. [Hearthstone]" )
   rf.rolling_popup.should_be_hidden()
 
   -- When
@@ -917,6 +925,7 @@ SoftResTieRollSpec = {}
 function SoftResTieRollSpec:should_display_tie_rolls()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local c, r, rw = chat.console, chat.raid, chat.raid_warning
   local item, item2, p1, p2 = i( "Hearthstone", 123 ), i( "Bag", 69 ), p( "Psikutas" ), p( "Obszczymucha" )
   local rf = new_roll_for()
       :loot_facade( loot_facade )
@@ -937,9 +946,9 @@ function SoftResTieRollSpec:should_display_tie_rolls()
     enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas" } ),
     enabled_item( 2, "Hearthstone" )
   )
-  chat.raid( "Princess Kenny dropped 2 items:" )
-  chat.raid( "1. [Bag] (SR by Obszczymucha and Psikutas)" )
-  chat.raid( "2. [Hearthstone]" )
+  r( "Princess Kenny dropped 2 items:" )
+  r( "1. [Bag] (SR by Obszczymucha and Psikutas)" )
+  r( "2. [Hearthstone]" )
   rf.rolling_popup.should_be_hidden()
 
   -- When
@@ -961,7 +970,7 @@ function SoftResTieRollSpec:should_display_tie_rolls()
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: SR by Obszczymucha and Psikutas" )
+  rw( "Roll for [Bag]: SR by Obszczymucha and Psikutas" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     roll_placeholder( p2, 11 ),
@@ -975,8 +984,8 @@ function SoftResTieRollSpec:should_display_tie_rolls()
   rf.roll( p1, 69, 1, 100 )
 
   -- Then
-  chat.console( "RollFor: Obszczymucha and Psikutas rolled the highest (69) for [Bag] (SR)." )
-  chat.raid( "Obszczymucha and Psikutas rolled the highest (69) for [Bag] (SR)." )
+  c( "RollFor: Obszczymucha and Psikutas rolled the highest (69) for [Bag] (SR)." )
+  r( "Obszczymucha and Psikutas rolled the highest (69) for [Bag] (SR)." )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     softres_roll( p2, 69, 11 ),
@@ -991,7 +1000,7 @@ function SoftResTieRollSpec:should_display_tie_rolls()
   rf.ace_timer.tick()
 
   -- Then
-  chat.raid( "Obszczymucha and Psikutas /roll for [Bag] now." )
+  r( "Obszczymucha and Psikutas /roll for [Bag] now." )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     softres_roll( p2, 69, 11 ),
@@ -1008,8 +1017,8 @@ function SoftResTieRollSpec:should_display_tie_rolls()
   rf.roll( p1, 42, 1, 100 )
 
   -- Then
-  chat.console( "RollFor: Obszczymucha and Psikutas re-rolled the highest (42) for [Bag] (SR)." )
-  chat.raid( "Obszczymucha and Psikutas re-rolled the highest (42) for [Bag] (SR)." )
+  c( "RollFor: Obszczymucha and Psikutas re-rolled the highest (42) for [Bag] (SR)." )
+  r( "Obszczymucha and Psikutas re-rolled the highest (42) for [Bag] (SR)." )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     softres_roll( p2, 69, 11 ),
@@ -1027,7 +1036,7 @@ function SoftResTieRollSpec:should_display_tie_rolls()
   rf.ace_timer.tick()
 
   -- Then
-  chat.raid( "Obszczymucha and Psikutas /roll for [Bag] now." )
+  r( "Obszczymucha and Psikutas /roll for [Bag] now." )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     softres_roll( p2, 69, 11 ),
@@ -1047,9 +1056,9 @@ function SoftResTieRollSpec:should_display_tie_rolls()
   rf.roll( p1, 2, 1, 100 )
 
   -- Then
-  chat.console( "RollFor: Psikutas re-rolled the highest (2) for [Bag] (SR)." )
-  chat.raid( "Psikutas re-rolled the highest (2) for [Bag] (SR)." )
-  chat.console( "RollFor: Rolling for [Bag] finished." )
+  c( "RollFor: Psikutas re-rolled the highest (2) for [Bag] (SR)." )
+  r( "Psikutas re-rolled the highest (2) for [Bag] (SR)." )
+  c( "RollFor: Rolling for [Bag] finished." )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     softres_roll( p2, 69, 11 ),
@@ -1103,7 +1112,7 @@ function SoftResTieRollSpec:should_display_tie_rolls()
 
   -- Then
   rf.confirmation_popup.should_be_hidden()
-  chat.console( "RollFor: Psikutas received [Bag]." )
+  c( "RollFor: Psikutas received [Bag]." )
   rf.loot_frame.should_display(
     enabled_item( 1, "Hearthstone" )
   )
@@ -1112,6 +1121,7 @@ end
 function SoftResTieRollSpec:should_not_tie_roll_if_sring_player_rolls_the_same_amount()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local c, r, rw = chat.console, chat.raid, chat.raid_warning
   local item, p1, p2 = i( "Bag", 69 ), p( "Maulfunction" ), p( "Goldblood" )
   local rf = new_roll_for()
       :loot_facade( loot_facade )
@@ -1131,8 +1141,8 @@ function SoftResTieRollSpec:should_not_tie_roll_if_sring_player_rolls_the_same_a
   rf.loot_frame.should_display(
     enabled_item( 1, "Bag", "SR", { "Soft-ressed by", "Goldblood", "Maulfunction [2 rolls]" } )
   )
-  chat.raid( "Princess Kenny dropped 1 item:" )
-  chat.raid( "1. [Bag] (SR by Goldblood and Maulfunction [2 rolls])" )
+  r( "Princess Kenny dropped 1 item:" )
+  r( "1. [Bag] (SR by Goldblood and Maulfunction [2 rolls])" )
   rf.rolling_popup.should_be_hidden()
 
   -- When
@@ -1154,7 +1164,7 @@ function SoftResTieRollSpec:should_not_tie_roll_if_sring_player_rolls_the_same_a
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: SR by Goldblood and Maulfunction [2 rolls]" )
+  rw( "Roll for [Bag]: SR by Goldblood and Maulfunction [2 rolls]" )
   rf.rolling_popup.should_display(
     item_link( item, 1 ),
     roll_placeholder( p2, 11 ),
@@ -1174,9 +1184,9 @@ function SoftResTieRollSpec:should_not_tie_roll_if_sring_player_rolls_the_same_a
   rf.roll( p2, 80, 1, 100 ) -- Goldblood
 
   -- Then
-  chat.console( "RollFor: Maulfunction rolled the highest (90) for [Bag] (SR)." )
-  chat.raid( "Maulfunction rolled the highest (90) for [Bag] (SR)." )
-  chat.console( "RollFor: Rolling for [Bag] finished." )
+  c( "RollFor: Maulfunction rolled the highest (90) for [Bag] (SR)." )
+  r( "Maulfunction rolled the highest (90) for [Bag] (SR)." )
+  c( "RollFor: Rolling for [Bag] finished." )
   rf.rolling_popup.should_display(
     item_link( item, 1 ),
     softres_roll( p1, 90, 11 ),
@@ -1287,6 +1297,7 @@ function NetherVortexSpec:should_handle_single_and_double_vortex_drops_across_mu
   -- Given
   -- Alfa and Beta have 3xSR on Nether Vortex, Gamma has none.
   local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local c, r, rw = chat.console, chat.raid, chat.raid_warning
   local p1, p2, p3 = p( "Alfa" ), p( "Beta" ), p( "Gamma" )
   local single_vortex = i( "Nether Vortex", 30183 )
   local double_vortex = i( "Nether Vortex", 30183 )
@@ -1309,8 +1320,8 @@ function NetherVortexSpec:should_handle_single_and_double_vortex_drops_across_mu
   rf.loot_frame.should_display(
     enabled_item( 1, "Nether Vortex", "SR", { "Soft-ressed by", "Alfa", "Beta" } )
   )
-  chat.raid( "Princess Kenny dropped 1 item:" )
-  chat.raid( "1. [Nether Vortex] (SR by Alfa and Beta)" )
+  r( "Princess Kenny dropped 1 item:" )
+  r( "1. [Nether Vortex] (SR by Alfa and Beta)" )
 
   -- When
   rf.loot_frame.click( 1 )
@@ -1327,16 +1338,16 @@ function NetherVortexSpec:should_handle_single_and_double_vortex_drops_across_mu
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Nether Vortex]: SR by Alfa and Beta" )
+  rw( "Roll for [Nether Vortex]: SR by Alfa and Beta" )
 
   -- When both roll
   rf.roll( p1, 80, 1, 100 )
   rf.roll( p2, 50, 1, 100 )
 
   -- Then Alfa wins
-  chat.console( "RollFor: Alfa rolled the highest (80) for [Nether Vortex] (SR)." )
-  chat.raid( "Alfa rolled the highest (80) for [Nether Vortex] (SR)." )
-  chat.console( "RollFor: Rolling for [Nether Vortex] finished." )
+  c( "RollFor: Alfa rolled the highest (80) for [Nether Vortex] (SR)." )
+  r( "Alfa rolled the highest (80) for [Nether Vortex] (SR)." )
+  c( "RollFor: Rolling for [Nether Vortex] finished." )
   rf.rolling_popup.should_display(
     item_link( single_vortex, 1 ),
     softres_roll( p1, 80, 11 ),
@@ -1350,7 +1361,7 @@ function NetherVortexSpec:should_handle_single_and_double_vortex_drops_across_mu
   rf.confirmation_popup.confirm()
 
   -- Then
-  chat.console( "RollFor: Alfa received [Nether Vortex]." )
+  c( "RollFor: Alfa received [Nether Vortex]." )
   rf.loot_frame.should_display()
 
   -- Close loot
@@ -1364,8 +1375,8 @@ function NetherVortexSpec:should_handle_single_and_double_vortex_drops_across_mu
   rf.loot_frame.should_display(
     enabled_item( 1, "Nether Vortex", "SR", { "Soft-ressed by", "Beta" } )
   )
-  chat.raid( "Princess Kenny dropped 1 item:" )
-  chat.raid( "1. [Nether Vortex] (SR by Beta)" )
+  r( "Princess Kenny dropped 1 item:" )
+  r( "1. [Nether Vortex] (SR by Beta)" )
 
   -- When
   rf.loot_frame.click( 1 )
@@ -1382,7 +1393,7 @@ function NetherVortexSpec:should_handle_single_and_double_vortex_drops_across_mu
   rf.confirmation_popup.confirm()
 
   -- Then
-  chat.console( "RollFor: Beta received [Nether Vortex]." )
+  c( "RollFor: Beta received [Nether Vortex]." )
   rf.loot_frame.should_display()
 
   -- Close loot
@@ -1396,8 +1407,8 @@ function NetherVortexSpec:should_handle_single_and_double_vortex_drops_across_mu
   rf.loot_frame.should_display(
     enabled_item( 1, "Nether Vortex" )
   )
-  chat.raid( "Princess Kenny dropped 1 item:" )
-  chat.raid( "1. [Nether Vortex]" )
+  r( "Princess Kenny dropped 1 item:" )
+  r( "1. [Nether Vortex]" )
 
   -- When
   rf.loot_frame.click( 1 )
@@ -1419,8 +1430,8 @@ function NetherVortexSpec:should_handle_single_and_double_vortex_drops_across_mu
   rf.loot_frame.should_display(
     enabled_item( 1, "Nether Vortex", "SR", { "Soft-ressed by", "Alfa", "Beta" }, nil, 2 )
   )
-  chat.raid( "Princess Kenny dropped 1 item:" )
-  chat.raid( "1. [Nether Vortex] (SR by Alfa and Beta)" )
+  r( "Princess Kenny dropped 1 item:" )
+  r( "1. [Nether Vortex] (SR by Alfa and Beta)" )
 
   -- When
   rf.loot_frame.click( 1 )
@@ -1437,16 +1448,16 @@ function NetherVortexSpec:should_handle_single_and_double_vortex_drops_across_mu
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Nether Vortex]: SR by Alfa and Beta" )
+  rw( "Roll for [Nether Vortex]: SR by Alfa and Beta" )
 
   -- When both roll
   rf.roll( p1, 30, 1, 100 )
   rf.roll( p2, 90, 1, 100 )
 
   -- Then Beta wins
-  chat.console( "RollFor: Beta rolled the highest (90) for [Nether Vortex] (SR)." )
-  chat.raid( "Beta rolled the highest (90) for [Nether Vortex] (SR)." )
-  chat.console( "RollFor: Rolling for [Nether Vortex] finished." )
+  c( "RollFor: Beta rolled the highest (90) for [Nether Vortex] (SR)." )
+  r( "Beta rolled the highest (90) for [Nether Vortex] (SR)." )
+  c( "RollFor: Rolling for [Nether Vortex] finished." )
   rf.rolling_popup.should_display(
     item_link( double_vortex, 1 ),
     softres_roll( p2, 90, 11 ),
@@ -1461,16 +1472,18 @@ ThreeIdenticalItemsOneSrSpec = {}
 function ThreeIdenticalItemsOneSrSpec:should_auto_loot_three_items_then_rf_command()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local c, r, rw = chat.console, chat.raid, chat.raid_warning
   local item, item2, item3 = i( "Bag", 69 ), i( "Bag", 69 ), i( "Bag", 69 )
-  local p1, p2, p3 = p( "Psikutas" ), p( "Obszczymucha" ), p( "Jimmy" )
+  local p1, p2, p3, p4 = p( "Psikutas" ), p( "Obszczymucha" ), p( "Jimmy" ), p( "Pumba" )
   local rf = new_roll_for()
       :loot_facade( loot_facade )
-      :raid_roster( p1, p2, p3 )
+      :raid_roster( p1, p2, p3, p4 )
       :chat( chat )
       :soft_res_data( sr( p1.name, 69 ) )
       :config( {
         auto_loot = true,
-        auto_loot_messages = true
+        auto_loot_messages = true,
+        tmog_rolling_enabled = false
       } )
       :build()
 
@@ -1480,11 +1493,11 @@ function ThreeIdenticalItemsOneSrSpec:should_auto_loot_three_items_then_rf_comma
   lu.assertEquals( rf.auto_loot.is_auto_looted( item2 ), true )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item3 ), true )
 
-  chat.console( "RollFor: Category global added with ID 1." )
-  chat.console( "RollFor: [Bag] added to global." )
+  c( "RollFor: Category global added with ID 1." )
+  c( "RollFor: [Bag] added to global." )
 
   u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
-  u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha", "Jimmy" } )
+  u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha", "Jimmy", "Pumba" } )
   local master_loot = u.mock_async_master_loot( loot_facade )
 
   -- When
@@ -1492,25 +1505,127 @@ function ThreeIdenticalItemsOneSrSpec:should_auto_loot_three_items_then_rf_comma
   master_loot.flush()
 
   -- Then (the SR item is announced separately, the two non-SR identical items are grouped)
-  chat.raid( "Princess Kenny dropped 3 items:" )
-  chat.raid( "1. [Bag] (SR by Psikutas)" )
-  chat.raid( "2. 2x[Bag]" )
-  chat.console( "RollFor: Auto-looting [Bag]." )
-  chat.console( "RollFor: Auto-looting [Bag]." )
-  chat.console( "RollFor: Auto-looting [Bag]." )
+  r( "Princess Kenny dropped 3 items:" )
+  r( "1. [Bag] (SR by Psikutas)" )
+  r( "2. 2x[Bag]" )
+  c( "RollFor: Auto-looting [Bag]." )
+  c( "RollFor: Auto-looting [Bag]." )
+  c( "RollFor: Auto-looting [Bag]." )
   rf.loot_frame.should_display()
   rf.rolling_popup.should_be_hidden()
 
   -- When (simulating /rf 3x[Bag])
   rf.roll_controller.start( "SoftResRoll", item, 3, 8 )
 
-  -- Then (the single soft-resser should be announced)
-  chat.raid_warning( "Psikutas soft-ressed [Bag]." )
+  -- Then (the single soft-resser wins one copy outright, and the remaining two go to a normal roll)
+  rw( "Psikutas soft-ressed [Bag]." )
+  rw( "Roll for 2x[Bag]: /roll (MS) or /roll 99 (OS). 2 top rolls win." )
 
-  -- Then (only one SR player for three items, so the winner is shown directly, no rolling)
+  -- When (everyone rolls; Psikutas already won his via soft-res, so his roll is ignored)
+  rf.roll( p1, 95, 1, 100 ) -- Psikutas (ignored, already won via SR)
+  c( "RollFor: Psikutas already won [Bag] via soft-res. This roll (95) is ignored." )
+  rf.roll( p2, 80, 1, 100 ) -- Obszczymucha
+  rf.roll( p3, 70, 1, 100 ) -- Jimmy
+  rf.roll( p4, 60, 1, 100 ) -- Pumba
+
+  -- Then (all three winners are announced at the end: the soft-resser first, then the top two rollers)
+  rw( "Psikutas soft-ressed [Bag]." )
+  c( "RollFor: Obszczymucha rolled the highest (80) for [Bag]." )
+  r( "Obszczymucha rolled the highest (80) for [Bag]." )
+  c( "RollFor: Jimmy rolled the next highest (70) for [Bag]." )
+  r( "Jimmy rolled the next highest (70) for [Bag]." )
+  c( "RollFor: Rolling for [Bag] finished." )
+
+  -- Then (popup lists all winners: the soft-resser first, then the two roll winners)
   rf.rolling_popup.should_display(
-    item_link( item, 3 ),
+    item_link( item, 2 ),
+    mainspec_roll( p2, 80, 11 ),
+    mainspec_roll( p3, 70 ),
+    mainspec_roll( p4, 60 ),
     text( "Psikutas soft-ressed this item.", 11 ),
+    text( "Obszczymucha wins the main-spec roll with 80.", 2 ),
+    text( "Jimmy wins the main-spec roll with 70.", 2 ),
+    buttons( "RaidRoll", "Close" )
+  )
+end
+
+ThreeIdenticalItemsTwoSrSpec = {}
+
+function ThreeIdenticalItemsTwoSrSpec:should_auto_loot_three_items_then_rf_command()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local c, r, rw = chat.console, chat.raid, chat.raid_warning
+  local item, item2, item3 = i( "Bag", 69 ), i( "Bag", 69 ), i( "Bag", 69 )
+  local p1, p2, p3, p4 = p( "Psikutas" ), p( "Obszczymucha" ), p( "Jimmy" ), p( "Pumba" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2, p3, p4 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, 69 ), sr( p2.name, 69 ) )
+      :config( {
+        auto_loot = true,
+        auto_loot_messages = true,
+        tmog_rolling_enabled = false
+      } )
+      :build()
+
+  local id = rf.auto_loot.add_category( "global" )
+  rf.auto_loot.add( id, item.link )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item2 ), true )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item3 ), true )
+
+  c( "RollFor: Category global added with ID 1." )
+  c( "RollFor: [Bag] added to global." )
+
+  u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
+  u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha", "Jimmy", "Pumba" } )
+  local master_loot = u.mock_async_master_loot( loot_facade )
+
+  -- When
+  loot_facade.notify( "LootOpened", item, item2, item3 )
+  master_loot.flush()
+
+  -- Then (with two soft-ressers and three copies, each soft-ressed copy is announced separately and the leftover as a plain drop)
+  r( "Princess Kenny dropped 3 items:" )
+  r( "1. [Bag] (SR by Obszczymucha)" )
+  r( "2. [Bag] (SR by Psikutas)" )
+  r( "3. [Bag]" )
+  c( "RollFor: Auto-looting [Bag]." )
+  c( "RollFor: Auto-looting [Bag]." )
+  c( "RollFor: Auto-looting [Bag]." )
+  rf.loot_frame.should_display()
+  rf.rolling_popup.should_be_hidden()
+
+  -- When (simulating /rf 3x[Bag])
+  rf.roll_controller.start( "SoftResRoll", item, 3, 8 )
+
+  -- Then (both soft-ressers win a copy outright, the remaining one goes to a normal roll)
+  rw( "Obszczymucha and Psikutas soft-ressed [Bag]." )
+  rw( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
+
+  -- When (everyone rolls; Psikutas and Obszczymucha already won theirs via soft-res, so their rolls are ignored)
+  rf.roll( p1, 95, 1, 100 ) -- Psikutas (ignored)
+  c( "RollFor: Psikutas already won [Bag] via soft-res. This roll (95) is ignored." )
+  rf.roll( p2, 80, 1, 100 ) -- Obszczymucha (ignored)
+  c( "RollFor: Obszczymucha already won [Bag] via soft-res. This roll (80) is ignored." )
+  rf.roll( p3, 70, 1, 100 ) -- Jimmy
+  rf.roll( p4, 60, 1, 100 ) -- Pumba
+
+  -- Then (all three winners announced at the end: the two soft-ressers first, then the roll winner)
+  rw( "Obszczymucha and Psikutas soft-ressed [Bag]." )
+  c( "RollFor: Jimmy rolled the highest (70) for [Bag]." )
+  r( "Jimmy rolled the highest (70) for [Bag]." )
+  c( "RollFor: Rolling for [Bag] finished." )
+
+  -- Then (popup lists all winners: the two soft-ressers first, then the roll winner)
+  rf.rolling_popup.should_display(
+    item_link( item, 1 ),
+    mainspec_roll( p3, 70, 11 ),
+    mainspec_roll( p4, 60 ),
+    text( "Obszczymucha soft-ressed this item.", 11 ),
+    text( "Psikutas soft-ressed this item.", 2 ),
+    text( "Jimmy wins the main-spec roll with 70.", 2 ),
     buttons( "RaidRoll", "Close" )
   )
 end

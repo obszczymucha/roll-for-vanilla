@@ -5,6 +5,7 @@ local _, eq = u.luaunit( "assertEquals" )
 
 ---@class ChatApiMock : ChatApi
 ---@field assert fun( ...: ChatMessage[] )
+---@field dump fun() -- prints all buffered messages; handy for discovering actual chat output
 ---@field assert_no_messages fun()
 ---@field party fun( expected_message: string )
 ---@field raid fun( expected_message: string )
@@ -99,6 +100,7 @@ function M.new()
     SendChatMessage = send_chat_message,
     DEFAULT_CHAT_FRAME = { AddMessage = default_chat_frame },
     assert = assert,
+    dump = function() for idx, msg in ipairs( messages ) do print( string.format( "  [%d] %s: %q", idx, msg.type, msg.message ) ) end end,
     assert_no_messages = assert_no_messages,
     party = assert_party,
     raid = assert_raid,

@@ -114,6 +114,19 @@ end
 ---@param player_class PlayerClass
 ---@param item_link string
 ---@param roll number
+local function already_won_soft_res( player_name, player_class, item_link, roll )
+  return string.format(
+    "%s already won %s via soft-res. This roll (%s) is ignored.",
+    M.colorize_player_by_class( player_name, player_class ),
+    item_link,
+    hl( roll )
+  )
+end
+
+---@param player_name string
+---@param player_class PlayerClass
+---@param item_link string
+---@param roll number
 local function did_not_tie( player_name, player_class, item_link, roll )
   return string.format(
     "%s didn't tie roll for %s. This roll (%s) is ignored.",
@@ -132,6 +145,7 @@ M.msg = {
   invalid_roll = invalid_roll,
   invalid_sr_roll = invalid_sr_roll,
   did_not_soft_res = did_not_soft_res,
+  already_won_soft_res = already_won_soft_res,
   did_not_tie = did_not_tie
 }
 
