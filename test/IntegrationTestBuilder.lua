@@ -304,11 +304,10 @@ function M.new_roll_for()
     deps[ "AutoLoot" ] = auto_loot
 
     require( "src/RollResultAnnouncer" ).new( chat, roll_controller, config )
-    local dropped_loot = require( "src/DroppedLoot" ).new( db( "dummy" ) )
+    local dropped_loot = require( "src/DroppedLoot" ).new( db( "dummy" ), loot_list, player_info )
     local dropped_loot_announce = require( "src/DroppedLootAnnounce" ).new(
       loot_list,
       chat,
-      dropped_loot,
       softres,
       winner_tracker,
       player_info,
@@ -320,6 +319,7 @@ function M.new_roll_for()
     local loot_facade_listener = require( "src/LootFacadeListener" ).new(
       loot_facade,
       auto_loot,
+      dropped_loot,
       dropped_loot_announce,
       master_loot,
       auto_group_loot,
@@ -338,6 +338,7 @@ function M.new_roll_for()
       player_selection = player_selection_frame,
       loot_list = loot_list, ---@type LootList
       auto_loot = auto_loot, ---@type AutoLoot
+      dropped_loot = dropped_loot, ---@type DroppedLoot
       ace_timer = ace_timer,
       roll = rolling_logic.on_roll,
       roll_controller = roll_controller,

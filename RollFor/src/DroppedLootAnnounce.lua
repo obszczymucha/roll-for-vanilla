@@ -275,12 +275,12 @@ end
 
 ---@param loot_list LootList
 ---@param chat Chat
----@param dropped_loot DroppedLoot
 ---@param softres GroupAwareSoftRes
 ---@param winner_tracker WinnerTracker
 ---@param player_info PlayerInfo
+---@param auto_loot AutoLoot
 ---@param config Config
-function M.new( loot_list, chat, dropped_loot, softres, winner_tracker, player_info, auto_loot, config )
+function M.new( loot_list, chat, softres, winner_tracker, player_info, auto_loot, config )
   local announcing = false
   local announced_source_ids = {}
 
@@ -308,11 +308,6 @@ function M.new( loot_list, chat, dropped_loot, softres, winner_tracker, player_i
     if item_count > 0 then
       chat.announce(
         string.format( "%s%s item%s%s", target_msg, item_count, item_count > 1 and "s" or "", target_msg == "" and " dropped:" or ":" ) )
-
-      for i = 1, item_count do
-        local item = items[ i ]
-        dropped_loot.add( item.id, item.name )
-      end
 
       local trimmed = false
 

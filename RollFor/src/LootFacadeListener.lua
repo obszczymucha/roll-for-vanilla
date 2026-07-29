@@ -9,6 +9,7 @@ local M = {}
 
 ---@param loot_facade LootFacade
 ---@param auto_loot AutoLoot
+---@param dropped_loot DroppedLoot
 ---@param dropped_loot_announce DroppedLootAnnounce
 ---@param master_loot MasterLoot
 ---@param auto_group_loot AutoGroupLoot
@@ -17,6 +18,7 @@ local M = {}
 function M.new(
     loot_facade,
     auto_loot,
+    dropped_loot,
     dropped_loot_announce,
     master_loot,
     auto_group_loot,
@@ -24,6 +26,7 @@ function M.new(
     player_info
 )
   loot_facade.subscribe( "LootOpened", function()
+    dropped_loot.on_loot_opened()
     dropped_loot_announce.on_loot_opened()
     auto_loot.on_loot_opened()
     master_loot.on_loot_opened()

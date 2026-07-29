@@ -195,8 +195,6 @@ local function create_components()
   ---@type GroupAwareSoftRes
   M.softres = M.present_softres( M.nether_vortex_softres )
 
-  ---@type DroppedLoot
-  M.dropped_loot = m.DroppedLoot.new( db( "dropped_loot" ) )
   M.softres_check = m.SoftResCheck.new( M.nether_vortex_softres, M.group_roster, M.name_matcher, M.ace_timer,
     M.absent_softres, db( "softres_check" ) )
 
@@ -219,6 +217,9 @@ local function create_components()
 
   ---@type SoftResLootList
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
+
+  ---@type DroppedLoot
+  M.dropped_loot = m.DroppedLoot.new( db( "dropped_loot" ), M.loot_list, M.player_info )
 
   ---@type MasterLootCandidates
   M.master_loot_candidates = m.MasterLootCandidates.new( M.api(), M.group_roster, M.raw_loot_list ) -- remove group_roster for testing (dummy candidates)
@@ -285,7 +286,6 @@ local function create_components()
   M.dropped_loot_announce = m.DroppedLootAnnounce.new(
     M.loot_list,
     M.chat,
-    M.dropped_loot,
     M.softres,
     M.winner_tracker,
     M.player_info,
@@ -367,6 +367,7 @@ local function create_components()
   M.loot_facade_listener = m.LootFacadeListener.new(
     M.loot_facade,
     M.auto_loot,
+    M.dropped_loot,
     M.dropped_loot_announce,
     M.master_loot,
     M.auto_group_loot,

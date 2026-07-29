@@ -318,4 +318,38 @@ function AutoLootGuiSpec:should_auto_loot_all_auto_lootable_items_and_display_ro
   )
 end
 
+-- Regression: auto-looted items must be registered as dropped loot so that
+-- trading them out later is recognised as awarding them. This must hold even
+-- when announcements are turned off -- registration is independent of the
+-- announce path. Before the fix, disabling announcements also suppressed
+-- registration, so this asserted name would have been nil.
+function AutoLootGuiSpec:should_register_auto_looted_items_as_dropped_loot_even_when_announcements_are_off()
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, p1, p2 = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2 )
+      :chat( chat )
+      :config( {
+        auto_loot = true,
+        auto_loot_messages = true,
+        auto_loot_announce = false
+      } )
+      :build()
+
+  local id = rf.auto_loot.add_category( "global" )
+  rf.auto_loot.add( id, item.link )
+
+  u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
+  u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha" } )
+  local master_loot = u.mock_async_master_loot( loot_facade )
+
+  -- When
+  loot_facade.notify( "LootOpened", item )
+  master_loot.flush()
+
+  -- Then
+  lu.assertEquals( rf.dropped_loot.get_dropped_item_name( 123 ), "Hearthstone" )
+end
+
 os.exit( lu.LuaUnit.run() )
