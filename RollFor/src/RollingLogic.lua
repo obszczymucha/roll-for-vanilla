@@ -87,11 +87,11 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     local last_roll = rolls[ roll_count ]
     local winning_rolls, tied_rolls = {}, {}
 
-    for _, roll in ipairs( rolls ) do
-      if roll.roll == last_roll.roll and roll.roll_type == last_roll.roll_type then
-        table.insert( tied_rolls, roll )
+    for _, r in ipairs( rolls ) do
+      if r.roll == last_roll.roll and r.roll_type == last_roll.roll_type then
+        table.insert( tied_rolls, r )
       else
-        table.insert( winning_rolls, roll )
+        table.insert( winning_rolls, r )
       end
     end
 
