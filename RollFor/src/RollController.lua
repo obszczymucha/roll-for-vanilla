@@ -1281,8 +1281,10 @@ function M.new(
   ---@param player_name string
   ---@param player_class PlayerClass?
   local function loot_awarded( item_id, item_link, player_name, player_class )
-    local roll_tracker = get_roll_tracker( item_id )
-    roll_tracker.loot_awarded( player_name, item_id )
+    -- The item may have never been rolled for (e.g. a soft-ressed item that was
+    -- auto-looted and traded directly), in which case there's no roll tracker.
+    local roll_tracker = roll_trackers[ item_id ]
+    if roll_tracker then roll_tracker.loot_awarded( player_name, item_id ) end
 
     if ml_confirmation_data then
       ml_confirmation_data = nil
@@ -1299,6 +1301,8 @@ function M.new(
     }
 
     notify_subscribers( event )
+
+    if not roll_tracker then return end
 
     local data, current_iteration = roll_tracker.get()
 
