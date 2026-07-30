@@ -175,6 +175,9 @@ function M.new( loot_list, api, db, config, player_info, chat )
     info( string.format( "Usage: %s <%s> <%s>", hl( "/rfal add" ), grey( "category_id" ), grey( "item_links" ) ) )
     info( string.format( "Usage: %s <%s>", hl( "/rfal remove" ), grey( "item_links" ) ) )
     info( string.format( "Usage: %s <%s||%s>", hl( "/rfal" ), hl( "list" ), hl( "list-categories" ) ) )
+    info( string.format( "Usage: %s <%s> <%s>", hl( "/rfal" ), hl( "list" ), grey( "category_id" ) ) )
+    info( string.format( "Usage: %s <%s> <%s> <%s>", hl( "/rfal" ), hl( "list" ), grey( "category_id" ), grey( "limit" ) ) )
+    info( string.format( "Usage: %s <%s> <%s> <%s> <%s>", hl( "/rfal" ), hl( "list" ), grey( "category_id" ), grey( "limit" ), grey( "offset" ) ) )
     info( string.format( "Usage: %s <%s>", hl( "/rfal add-category" ), grey( "category_name" ) ) )
     info( string.format( "Usage: %s <%s||%s||%s> <%s>", hl( "/rfal" ), hl( "remove-category" ), hl( "enable-category" ), hl( "disable-category" ),
       grey( "category_id" ) ) )
@@ -242,7 +245,10 @@ function M.new( loot_list, api, db, config, player_info, chat )
     return result
   end
 
-  local function list()
+  ---@param category_id number?
+  ---@param limit number?
+  ---@param offset number?
+  local function list( category_id, limit, offset )
     local count = count_items()
 
     if count == 0 then
@@ -250,21 +256,31 @@ function M.new( loot_list, api, db, config, player_info, chat )
       return
     end
 
+    if category_id and not db.categories[ category_id ] then
+      info( string.format( "Category with ID %s does not exist.", hl( category_id ) ) )
+      return
+    end
+
     info( "Auto-looted items:" )
 
     local i = 1
 
-    for category_id, category in ipairs( db.categories ) do
-      if m.count_elements( category.items ) > 0 then
+    for id, category in ipairs( db.categories ) do
+      if (not category_id or category_id == id) and m.count_elements( category.items ) > 0 then
         if i > 1 then print( "" ) end
 
         local status = category.enabled and m.msg.enabled or m.msg.disabled
-        print( string.format( "%s: %s (%s)", hl( category_id ), hl( category.name ), status ) )
+        print( string.format( "%s: %s (%s)", hl( id ), hl( category.name ), status ) )
 
         local item_index = 1
+        local total = 0
 
         for _, item in pairs( category.items ) do
-          print( string.format( "%s: %s", item_index, item.link ) )
+          if (not limit or total < limit) and (not offset or item_index >= offset) then
+            print( string.format( "%s: %s", item_index, item.link ) )
+            total = total + 1
+          end
+
           item_index = item_index + 1
         end
 
@@ -391,6 +407,39 @@ function M.new( loot_list, api, db, config, player_info, chat )
       end
 
       fn( category_id, ... )
+    end
+
+    for category, limit, offset in string.gmatch( args, "list (.-) (.-) (.*)" ) do
+      local l = tonumber( limit )
+      if not l then
+        info( "Limit must be a number." )
+        return
+      end
+
+      local o = tonumber( offset )
+      if not o then
+        info( "Offset must be a number." )
+        return
+      end
+
+      category_id_fn( category, list, l, o )
+      return
+    end
+
+    for category, limit in string.gmatch( args, "list (.-) (.*)" ) do
+      local l = tonumber( limit )
+      if not l then
+        info( "Limit must be a number." )
+        return
+      end
+
+      category_id_fn( category, list, l )
+      return
+    end
+
+    for category in string.gmatch( args, "list (.*)" ) do
+      category_id_fn( category, list )
+      return
     end
 
     for category, item_links in string.gmatch( args, "add (.-) (.*)" ) do
