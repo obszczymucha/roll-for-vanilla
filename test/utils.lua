@@ -397,6 +397,20 @@ function M.run_command( command, args )
   end
 end
 
+---@param command string -- the slash command, e.g. "award" (case-insensitive)
+---@param ... string -- arguments, joined with a space (e.g. player, item_link)
+function M.slash( command, ... )
+  local list = _G[ "SlashCmdList" ] or {}
+  local key = string.upper( command )
+  local f = list[ key ]
+
+  if not f then
+    error( string.format( "No slash command registered for: %s", command ), 2 )
+  end
+
+  f( table.concat( { ... }, " " ) )
+end
+
 function M.roll_for( item_name, count, item_id )
   M.run_command( "RF", string.format( "%s%s", count and string.format( "%sx", count ) or "", M.item_link( item_name, item_id ) ) )
   m_rolling_item_name = item_name

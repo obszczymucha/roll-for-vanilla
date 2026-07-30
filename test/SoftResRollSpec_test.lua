@@ -1630,4 +1630,119 @@ function ThreeIdenticalItemsTwoSrSpec:should_auto_loot_three_items_then_rf_comma
   )
 end
 
+AwardedLootSpec = {}
+
+function AwardedLootSpec:should_award_the_sr_item_then_roll_for_the_rest()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local c, r, rw = chat.console, chat.raid, chat.raid_warning
+  local item, item2 = i( "Bag", 69 ), i( "Bag", 69 )
+  local p1, p2, p3 = p( "Psikutas" ), p( "Obszczymucha" ), p( "Jimmy" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2, p3 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, 69 ) )
+      :config( {
+        auto_loot = true,
+        auto_loot_messages = true,
+        tmog_rolling_enabled = false
+      } )
+      :build()
+
+  local id = rf.auto_loot.add_category( "global" )
+  rf.auto_loot.add( id, item.link )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item2 ), true )
+
+  c( "RollFor: Category global added with ID 1." )
+  c( "RollFor: [Bag] added to global." )
+
+  u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
+  u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha", "Jimmy" } )
+  local master_loot = u.mock_async_master_loot( loot_facade )
+
+  -- When (the two identical items drop and are auto-looted)
+  loot_facade.notify( "LootOpened", item, item2 )
+  master_loot.flush()
+
+  -- Then
+  r( "Princess Kenny dropped 2 items:" )
+  r( "1. [Bag] (SR by Psikutas)" )
+  r( "2. [Bag]" )
+  c( "RollFor: Auto-looting [Bag]." )
+  c( "RollFor: Auto-looting [Bag]." )
+  rf.loot_frame.should_display()
+  rf.rolling_popup.should_be_hidden()
+
+  -- When (we /award one copy to the soft-resser)
+  u.slash( "award", p1.name, item.link )
+
+  -- Then
+  c( "RollFor: Psikutas was awarded [Bag]." )
+
+  -- When (we /rf [Item] for the remaining copy)
+  rf.roll_controller.start( "SoftResRoll", item, 1, 1, 8 )
+
+  -- Then (Psikutas' soft-res was fulfilled by the award, so this is a plain
+  -- normal roll - no soft-res announcement)
+  rw( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
+
+  -- When (everyone rolls; Psikutas may roll normally now that his SR is fulfilled)
+  rf.roll( p1, 95, 1, 100 ) -- Psikutas
+  rf.roll( p2, 80, 1, 100 ) -- Obszczymucha
+  rf.roll( p3, 70, 1, 100 ) -- Jimmy
+
+  -- Then (Psikutas wins the leftover copy outright with the highest roll)
+  c( "RollFor: Psikutas rolled the highest (95) for [Bag]." )
+  r( "Psikutas rolled the highest (95) for [Bag]." )
+  c( "RollFor: Rolling for [Bag] finished." )
+
+  -- Then (the popup shows a normal roll won by Psikutas)
+  rf.rolling_popup.should_display(
+    item_link( item, 1 ),
+    mainspec_roll( p1, 95, 11 ),
+    mainspec_roll( p2, 80 ),
+    mainspec_roll( p3, 70 ),
+    text( "Psikutas wins the main-spec roll with 95.", 11 ),
+    buttons( "RaidRoll", "Close" )
+  )
+end
+
+function AwardedLootSpec:should_restore_the_soft_res_after_unawarding()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local c, rw = chat.console, chat.raid_warning
+  local item = i( "Bag", 69 )
+  local p1, p2, p3 = p( "Psikutas" ), p( "Obszczymucha" ), p( "Jimmy" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2, p3 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, 69 ) )
+      :config( { tmog_rolling_enabled = false } )
+      :build()
+
+  -- When (we /award the item to the soft-resser)
+  u.slash( "award", p1.name, item.link )
+  c( "RollFor: Psikutas was awarded [Bag]." )
+
+  -- When (we /unaward it again)
+  u.slash( "unaward", p1.name, item.link )
+  c( "RollFor: Psikutas was unawarded [Bag]." )
+
+  -- When (we /rf [Item]; the soft-res should be restored now)
+  rf.roll_controller.start( "SoftResRoll", item, 1, 1, 8 )
+
+  -- Then (the soft-res is restored, so Psikutas wins the copy outright via SR -
+  -- no normal roll happens, unlike when the award stands)
+  rw( "Psikutas soft-ressed [Bag]." )
+
+  rf.rolling_popup.should_display(
+    item_link( item, 1 ),
+    text( "Psikutas soft-ressed this item.", 11 ),
+    buttons( "RaidRoll", "Close" )
+  )
+end
+
 os.exit( lu.LuaUnit.run() )

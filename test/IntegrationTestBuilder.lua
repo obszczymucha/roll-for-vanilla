@@ -214,7 +214,7 @@ function M.new_roll_for()
     local loot_facade = deps[ "LootFacade" ] or M.mock_loot_facade()
     deps[ "LootFacade" ] = loot_facade
 
-    local raw_awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ) )
+    local raw_awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ), chat )
     local softres, awarded_loot
     if deps[ "SoftResData" ] then
       softres, awarded_loot = group_aware_softres( group_roster, raw_awarded_loot, deps[ "SoftResData" ] )
@@ -345,6 +345,7 @@ function M.new_roll_for()
       ace_timer = ace_timer,
       roll = rolling_logic.on_roll,
       roll_controller = roll_controller,
+      awarded_loot = awarded_loot, ---@type AwardedLoot
       reset_announcements = dropped_loot_announce.reset,
       enable_debug = enable_debug
     }

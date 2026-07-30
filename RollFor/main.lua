@@ -164,7 +164,7 @@ local function create_components()
   -- TODO: Add type.
   M.version_broadcast = m.VersionBroadcast.new( db( "version_broadcast" ), M.player_info, version.str )
 
-  M.raw_awarded_loot = m.AwardedLoot.new( db( "awarded_loot" ) )
+  M.raw_awarded_loot = m.AwardedLoot.new( db( "awarded_loot" ), M.chat )
 
   ---@type AwardedLoot
   M.awarded_loot = m.NetherVortexAwardedLootDecorator.new( M.raw_awarded_loot )
@@ -655,22 +655,6 @@ local function on_rftest_command()
   M.rf_test_loot_facade.notify( "LootOpened" )
 end
 
-local function on_rfaward_command( args )
-  if not args or args == "" then
-    info( string.format( "Usage: %s <item_link>", hl( "/rfaward" ) ) )
-    return
-  end
-
-  local player_name = m.api.UnitName( "target" )
-
-  if not player_name then
-    info( "Target the player first." )
-    return
-  end
-
-  info( string.format( "player_name: %s  item: %s", player_name, args ) )
-end
-
 local function setup_slash_commands()
   -- Roll For commands
   SLASH_RF1 = RollSlashCommand.NormalRoll
@@ -709,9 +693,6 @@ local function setup_slash_commands()
     SLASH_RFTEST1 = "/rftest"
     M.api().SlashCmdList[ "RFTEST" ] = on_rftest_command
   end
-
-  SLASH_RFAWARD1 = "/rfaward"
-  M.api().SlashCmdList[ "RFAWARD" ] = on_rfaward_command
 
   --SLASH_DROPPED1 = "/DROPPED"
   --M.api().SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
