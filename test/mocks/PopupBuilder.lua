@@ -28,6 +28,7 @@ function M.new()
     on_show = function( self ) return self end,
     scale = function( self ) return self end,
     strata = function( self ) return self end,
+    hidden = function( self ) return self end,
     build = function()
       ---@type Popup
       return {

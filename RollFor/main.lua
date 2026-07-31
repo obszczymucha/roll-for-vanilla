@@ -381,6 +381,12 @@ local function create_components()
 
   M.roll_for_broadcast = m.RollForBroadcast.new( M.roll_controller, M.config )
   M.roll_for_receiver = m.RollForReceiver.new( M.rolling_popup, db( "receiver" ) )
+
+  ---@type OptionsFrameContentTransformer
+  local options_frame_content_transformer = m.OptionsFrameContentTransformer.new()
+
+  ---@type OptionsFrame
+  M.options = m.OptionsFrame.new( popup_builder(), options_frame_content_transformer, M.config, db( "options" ) )
 end
 
 local function subscribe_for_component_events()
@@ -445,6 +451,11 @@ local function on_roll_command( roll_slash_command )
 
     if string.find( args, "^config" ) then
       M.config.on_command( args )
+      return
+    end
+
+    if string.find( args, "^options" ) then
+      M.options.toggle()
       return
     end
 

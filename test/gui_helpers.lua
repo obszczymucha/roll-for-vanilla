@@ -3,6 +3,9 @@ local M = {}
 local transformer = require( "src/RollingPopupContentTransformer" )
 local button_definitions = transformer.button_definitions
 
+local options_transformer = require( "src/OptionsFrameContentTransformer" )
+local options_button_definitions = options_transformer.button_definitions
+
 local T = require( "src/Types" )
 local RT = T.RollType
 
@@ -103,5 +106,26 @@ function M.buttons( ... )
 end
 
 M.individual_award_button = { type = "award_button", label = "Award", width = 90, padding = 6 }
+
+---@param ... OptionsFrameButtonType
+function M.options_buttons( ... )
+  local result = {}
+
+  for _, button_type in ipairs( { ... } ) do
+    local button = options_button_definitions[ button_type ]
+    if not button then error( string.format( "%s button definition was not found.", button_type ), 2 ) end
+
+    table.insert( result, options_button_definitions[ button_type ] )
+  end
+
+  return table.unpack( result )
+end
+
+---@param label string
+---@param value boolean
+---@param padding number?
+function M.checkbox( label, value, padding )
+  return { type = "checkbox", label = label, value = value, padding = padding }
+end
 
 return M

@@ -450,6 +450,7 @@ function M.new( db, event_bus )
     roll_threshold = roll_threshold,
     show_minimap_button = show_minimap_button,
     subscribe = subscribe,
+    toggles = toggles,
     tmog_roll_threshold = get( "tmog_roll_threshold" ),
     tmog_rolling_enabled = get( "tmog_rolling_enabled", "Vanilla", false ),
     unlock_minimap_button = unlock_minimap_button,

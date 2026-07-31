@@ -32,6 +32,7 @@ local getn = m.getn
 ---@field self_centered_anchor fun( self: PopupBuilder ): PopupBuilder
 ---@field scale fun( self: PopupBuilder, scale: number ): PopupBuilder
 ---@field strata fun( self: PopupBuilder, strata: FrameStrata ): PopupBuilder
+---@field hidden fun( self: PopupBuilder ): PopupBuilder
 ---@field build fun( self: PopupBuilder ): Popup
 
 ---@param frame_builder FrameBuilderFactory

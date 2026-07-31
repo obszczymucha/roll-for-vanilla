@@ -15,6 +15,7 @@ local hl = m.colors.hl
 ---@field button fun( parent: Frame ): Frame
 ---@field info fun( parent: Frame ): Frame
 ---@field dropped_item fun( parent: Frame, text: string ): Frame
+---@field checkbox fun( parent: Frame ): Frame
 
 local M = {}
 
@@ -353,6 +354,37 @@ function M.create_icon_in_container( type, parent, w, h, icon_zoom )
   result.texture:SetTexCoord( icon_zoom / w, (w - icon_zoom) / w, icon_zoom / h, (h - icon_zoom) / h )
 
   return result
+end
+
+function M.checkbox( parent )
+  local container = m.api.CreateFrame( "Frame", nil, parent )
+  local button = m.api.CreateFrame( "CheckButton", nil, container, "UICheckButtonTemplate" )
+  button:SetWidth( 20 )
+  button:SetHeight( 20 )
+  button:SetPoint( "LEFT", container, "LEFT", 0, 0 )
+
+  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+  label:SetTextColor( 1, 1, 1 )
+  label:SetPoint( "LEFT", button, "RIGHT", 0, 1 )
+
+  container:SetHeight( button:GetHeight() )
+
+  container.SetText = function( _, text )
+    label:SetText( text )
+    container:SetWidth( button:GetWidth() + label:GetWidth() )
+  end
+
+  container.SetChecked = function( _, checked )
+    button:SetChecked( checked and true or false )
+  end
+
+  button:SetScript( "OnClick", function()
+    if container.on_click then
+      container.on_click( button:GetChecked() and true or false )
+    end
+  end )
+
+  return container
 end
 
 m.GuiElements = M
