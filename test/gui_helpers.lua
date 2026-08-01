@@ -128,4 +128,28 @@ function M.checkbox( label, value, padding )
   return { type = "checkbox", label = label, value = value, padding = padding }
 end
 
+---@param label string
+---@param value number
+---@param min number
+---@param max number
+---@param padding number?
+function M.slider( label, value, min, max, padding )
+  return { type = "slider", label = label, value = value, min = min, max = max, padding = padding }
+end
+
+---@param label string
+---@param value number
+---@param padding number?
+function M.editbox( label, value, padding )
+  return { type = "editbox", label = label, value = value, padding = padding }
+end
+
+---@param label string
+---@param value any
+---@param options table
+---@param padding number?
+function M.dropdown( label, value, options, padding )
+  return { type = "dropdown", label = label, value = value, options = options, padding = padding }
+end
+
 return M

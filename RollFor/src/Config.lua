@@ -132,7 +132,71 @@ function M.new( db, event_bus )
   end
 
   local function print_master_loot_threshold()
-    info( string.format( "Master loot threshold: %s", hl( master_loot_threshold_name( db.master_loot_threshold ) ) ) )
+    local quality = db.master_loot_threshold
+    info( string.format( "Master loot threshold: %s", m.colorize_item_by_quality( master_loot_threshold_name( quality ), quality ) ) )
+  end
+
+  -- Validated setters. Each persists, notifies and prints on success; returns false and does
+  -- nothing else if the value is out of range, so callers (slash commands, GUI controls) can
+  -- decide how to report that.
+  local function set_default_rolling_time_seconds( value )
+    if not value or value < 4 or value > 15 then return false end
+
+    db.default_rolling_time_seconds = value
+    print_default_rolling_time()
+    notify_subscribers( "default_rolling_time_seconds", value )
+
+    return true
+  end
+
+  local function set_master_loot_frame_rows( value )
+    if not value or value < 5 then return false end
+
+    db.master_loot_frame_rows = value
+    print_master_loot_frame_rows()
+    notify_subscribers( "master_loot_frame_rows", value )
+
+    return true
+  end
+
+  local function set_ms_roll_threshold( value )
+    if not value then return false end
+
+    db.ms_roll_threshold = value
+    print_roll_thresholds()
+    notify_subscribers( "ms_roll_threshold", value )
+
+    return true
+  end
+
+  local function set_os_roll_threshold( value )
+    if not value then return false end
+
+    db.os_roll_threshold = value
+    print_roll_thresholds()
+    notify_subscribers( "os_roll_threshold", value )
+
+    return true
+  end
+
+  local function set_tmog_roll_threshold( value )
+    if not value then return false end
+
+    db.tmog_roll_threshold = value
+    print_roll_thresholds()
+    notify_subscribers( "tmog_roll_threshold", value )
+
+    return true
+  end
+
+  local function set_master_loot_threshold( quality )
+    if not master_loot_threshold_name( quality ) then return false end
+
+    db.master_loot_threshold = quality
+    print_master_loot_threshold()
+    notify_subscribers( "master_loot_threshold", quality )
+
+    return true
   end
 
   local function print_settings()
@@ -171,8 +235,7 @@ function M.new( db, event_bus )
         return
       end
 
-      db.default_rolling_time_seconds = v
-      print_default_rolling_time()
+      set_default_rolling_time_seconds( v )
       return
     end
 
@@ -193,9 +256,7 @@ function M.new( db, event_bus )
         return
       end
 
-      db.master_loot_frame_rows = v
-      print_master_loot_frame_rows()
-      notify_subscribers( "master_loot_frame_rows" )
+      set_master_loot_frame_rows( v )
       return
     end
 
@@ -211,13 +272,11 @@ function M.new( db, event_bus )
     for value in string.gmatch( args, "config master%-loot%-threshold (%a+)" ) do
       local quality = master_loot_threshold_qualities[ string.lower( value ) ]
 
-      if not quality then
+      if not quality or not set_master_loot_threshold( quality ) then
         info( string.format( "Valid thresholds: %s, %s, %s.", hl( "uncommon" ), hl( "rare" ), hl( "epic" ) ) )
         return
       end
 
-      db.master_loot_threshold = quality
-      print_master_loot_threshold()
       return
     end
 
@@ -226,8 +285,7 @@ function M.new( db, event_bus )
 
   local function configure_ms_threshold( args )
     for value in string.gmatch( args, "config ms (%d+)" ) do
-      db.ms_roll_threshold = tonumber( value )
-      print_roll_thresholds()
+      set_ms_roll_threshold( tonumber( value ) )
       return
     end
 
@@ -236,8 +294,7 @@ function M.new( db, event_bus )
 
   local function configure_os_threshold( args )
     for value in string.gmatch( args, "config os (%d+)" ) do
-      db.os_roll_threshold = tonumber( value )
-      print_roll_thresholds()
+      set_os_roll_threshold( tonumber( value ) )
       return
     end
 
@@ -252,8 +309,7 @@ function M.new( db, event_bus )
     end
 
     for value in string.gmatch( args, "config tmog (%d+)" ) do
-      db.tmog_roll_threshold = tonumber( value )
-      print_roll_thresholds()
+      set_tmog_roll_threshold( tonumber( value ) )
       return
     end
 
@@ -459,6 +515,12 @@ function M.new( db, event_bus )
     configure_master_loot_frame_rows = configure_master_loot_frame_rows,
     master_loot_threshold = get( "master_loot_threshold" ),
     configure_master_loot_threshold = configure_master_loot_threshold,
+    set_default_rolling_time_seconds = set_default_rolling_time_seconds,
+    set_master_loot_frame_rows = set_master_loot_frame_rows,
+    set_ms_roll_threshold = set_ms_roll_threshold,
+    set_os_roll_threshold = set_os_roll_threshold,
+    set_tmog_roll_threshold = set_tmog_roll_threshold,
+    set_master_loot_threshold = set_master_loot_threshold,
   }
 
   for toggle_key, _ in pairs( toggles ) do

@@ -16,6 +16,9 @@ local hl = m.colors.hl
 ---@field info fun( parent: Frame ): Frame
 ---@field dropped_item fun( parent: Frame, text: string ): Frame
 ---@field checkbox fun( parent: Frame ): Frame
+---@field slider fun( parent: Frame ): Frame
+---@field dropdown fun( parent: Frame ): Frame
+---@field editbox fun( parent: Frame ): Frame
 
 local M = {}
 
@@ -383,6 +386,221 @@ function M.checkbox( parent )
       container.on_click( button:GetChecked() and true or false )
     end
   end )
+
+  return container
+end
+
+local slider_count = 0
+
+function M.slider( parent )
+  slider_count = slider_count + 1
+  local name = "RollForOptionsSlider" .. slider_count
+
+  local slider_width = 80
+  local value_gap = 34
+
+  local container = m.api.CreateFrame( "Frame", nil, parent )
+  local slider = m.api.CreateFrame( "Slider", name, container, "OptionsSliderTemplate" )
+  slider:SetWidth( slider_width )
+  slider:SetHeight( 16 )
+  slider:SetOrientation( "HORIZONTAL" )
+  slider:SetValueStep( 1 )
+
+  -- OptionsSliderTemplate creates Low/High/Text FontStrings named after the slider and registers them globally.
+  local slider_low = m.api[ name .. "Low" ]
+  local slider_high = m.api[ name .. "High" ]
+  local slider_text = m.api[ name .. "Text" ]
+
+  if slider_low then slider_low:SetText( "" ) end
+  if slider_high then slider_high:SetText( "" ) end
+  if slider_text then slider_text:SetFontObject( m.api.GameFontHighlightSmall ) end
+
+  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+  label:SetTextColor( 1, 1, 1 )
+  label:SetPoint( "LEFT", container, "LEFT", 0, 0 )
+
+  slider:ClearAllPoints()
+  slider:SetPoint( "LEFT", label, "RIGHT", value_gap, 0 )
+
+  if slider_text then
+    -- Move the built-in value readout from above the slider to its left, right up against it.
+    slider_text:ClearAllPoints()
+    slider_text:SetPoint( "RIGHT", slider, "LEFT", -6, 1 )
+  end
+
+  container:SetHeight( slider:GetHeight() )
+
+  local updating = false
+  -- Only commit on mouse release, not on every drag tick. pending_value tracks what's on
+  -- screen while dragging; committed_value is what on_change was last called with.
+  local pending_value
+  local committed_value
+
+  container.SetText = function( _, text )
+    label:SetText( text )
+    container:SetWidth( label:GetWidth() + value_gap + slider_width )
+  end
+
+  container.SetMinMaxValues = function( _, min, max )
+    slider:SetMinMaxValues( min or 0, max or 100 )
+  end
+
+  container.SetValue = function( _, value )
+    updating = true
+    slider:SetValue( value )
+    if slider_text then slider_text:SetText( tostring( value ) ) end
+    pending_value = value
+    committed_value = value
+    updating = false
+  end
+
+  slider:SetScript( "OnValueChanged", function( _, value )
+    if m.vanilla then value = arg1 end ---@diagnostic disable-line: undefined-global
+
+    value = math.floor( value + 0.5 )
+    if slider_text then slider_text:SetText( tostring( value ) ) end
+    pending_value = value
+
+    if updating then return end
+  end )
+
+  slider:SetScript( "OnMouseUp", function()
+    if pending_value == nil or pending_value == committed_value then return end
+
+    committed_value = pending_value
+    if container.on_change then container.on_change( pending_value ) end
+  end )
+
+  return container
+end
+
+local dropdown_count = 0
+
+function M.dropdown( parent )
+  dropdown_count = dropdown_count + 1
+  local name = "RollForOptionsDropdown" .. dropdown_count
+
+  local dropdown_width = 90
+  -- UIDropDownMenuTemplate bakes in ~16px of empty space to the left of its visible box.
+  local value_gap = 4 - 16
+
+  local container = m.api.CreateFrame( "Frame", nil, parent )
+  local dropdown = m.api.CreateFrame( "Frame", name, container, "UIDropDownMenuTemplate" )
+  m.api.UIDropDownMenu_SetWidth( dropdown, dropdown_width )
+
+  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+  label:SetTextColor( 1, 1, 1 )
+  label:SetPoint( "LEFT", container, "LEFT", 0, 0 )
+
+  dropdown:SetPoint( "LEFT", label, "RIGHT", value_gap, 0 )
+
+  container:SetHeight( dropdown:GetHeight() )
+
+  local options = {}
+
+  local function option_label( value )
+    for _, option in ipairs( options ) do
+      if option.value == value then return option.label end
+    end
+  end
+
+  local function initialize()
+    for _, option in ipairs( options ) do
+      local info = m.api.UIDropDownMenu_CreateInfo()
+      info.text = option.label
+      info.value = option.value
+      info.checked = option.value == container.value
+
+      info.func = function()
+        container.value = option.value
+        m.api.UIDropDownMenu_SetSelectedValue( dropdown, option.value )
+        m.api.UIDropDownMenu_SetText( dropdown, option.label )
+        if container.on_change then container.on_change( option.value ) end
+      end
+
+      m.api.UIDropDownMenu_AddButton( info )
+    end
+  end
+
+  m.api.UIDropDownMenu_Initialize( dropdown, initialize )
+
+  container.SetText = function( _, text )
+    label:SetText( text )
+    container:SetWidth( label:GetWidth() + value_gap + dropdown_width + 40 )
+  end
+
+  container.SetOptions = function( _, opts )
+    options = opts or {}
+  end
+
+  container.SetValue = function( _, value )
+    container.value = value
+    m.api.UIDropDownMenu_SetSelectedValue( dropdown, value )
+    m.api.UIDropDownMenu_SetText( dropdown, option_label( value ) or "" )
+  end
+
+  return container
+end
+
+function M.editbox( parent )
+  local edit_width = 40
+  local value_gap = 16
+
+  local container = m.api.CreateFrame( "Frame", nil, parent )
+  local edit = m.api.CreateFrame( "EditBox", nil, container, "InputBoxTemplate" )
+  edit:SetWidth( edit_width )
+  edit:SetHeight( 16 )
+  edit:SetAutoFocus( false )
+  edit:SetNumeric( true )
+  edit:SetFontObject( m.api.GameFontHighlightSmall )
+
+  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+  label:SetTextColor( 1, 1, 1 )
+  label:SetPoint( "LEFT", container, "LEFT", 0, 0 )
+
+  edit:SetPoint( "LEFT", label, "RIGHT", value_gap, 1 )
+
+  container:SetHeight( edit:GetHeight() )
+
+  -- Last committed valid value. Restored whenever the typed text is rejected.
+  local last_valid_value
+
+  local function revert()
+    edit:SetText( last_valid_value ~= nil and tostring( last_valid_value ) or "" )
+  end
+
+  -- Range/legality is Config's call, not ours: on_change (a Config setter) returns whether it
+  -- accepted the value. We only rule out text that isn't even a number (e.g. an emptied box).
+  local function commit()
+    local value = tonumber( edit:GetText() )
+    local accepted = value ~= nil and container.on_change and container.on_change( value )
+
+    if accepted then
+      last_valid_value = value
+      edit:SetText( tostring( value ) )
+    else
+      revert()
+    end
+
+    edit:ClearFocus()
+  end
+
+  edit:SetScript( "OnEnterPressed", commit )
+  edit:SetScript( "OnEditFocusLost", commit )
+  edit:SetScript( "OnEscapePressed", function()
+    revert()
+    edit:ClearFocus()
+  end )
+
+  container.SetText = function( _, text )
+    label:SetText( text )
+    container:SetWidth( label:GetWidth() + value_gap + edit_width )
+  end
+
+  container.SetValue = function( _, value )
+    last_valid_value = value
+    edit:SetText( tostring( value ) )
+  end
 
   return container
 end

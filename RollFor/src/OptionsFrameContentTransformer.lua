@@ -76,9 +76,88 @@ local function add_settings( content, settings )
   end
 end
 
+---@class OptionsFrameSliderSetting
+---@field key string
+---@field label string
+---@field value number
+---@field min number
+---@field max number
+---@field on_change fun( value: number )
+
+---@param content table
+---@param sliders OptionsFrameSliderSetting[]
+local function add_sliders( content, sliders )
+  for i, setting in ipairs( sliders or {} ) do
+    local padding = i == 1 and 10 or 4
+
+    table.insert( content, {
+      type = "slider",
+      label = setting.label,
+      value = setting.value,
+      min = setting.min,
+      max = setting.max,
+      on_change = setting.on_change,
+      padding = padding
+    } )
+  end
+end
+
+---@class OptionsFrameEditboxSetting
+---@field key string
+---@field label string
+---@field value number
+---@field on_change fun( value: number ): boolean
+
+---@param content table
+---@param editboxes OptionsFrameEditboxSetting[]
+local function add_editboxes( content, editboxes )
+  for i, setting in ipairs( editboxes or {} ) do
+    local padding = i == 1 and 10 or 4
+
+    table.insert( content, {
+      type = "editbox",
+      label = setting.label,
+      value = setting.value,
+      on_change = setting.on_change,
+      padding = padding
+    } )
+  end
+end
+
+---@class OptionsFrameDropdownOption
+---@field value any
+---@field label string
+
+---@class OptionsFrameDropdownSetting
+---@field key string
+---@field label string
+---@field value any
+---@field options OptionsFrameDropdownOption[]
+---@field on_change fun( value: any )
+
+---@param content table
+---@param dropdowns OptionsFrameDropdownSetting[]
+local function add_dropdowns( content, dropdowns )
+  for i, setting in ipairs( dropdowns or {} ) do
+    local padding = i == 1 and 10 or 4
+
+    table.insert( content, {
+      type = "dropdown",
+      label = setting.label,
+      value = setting.value,
+      options = setting.options,
+      on_change = setting.on_change,
+      padding = padding
+    } )
+  end
+end
+
 ---@class OptionsFrameData
 ---@field title string?
 ---@field settings OptionsFrameBooleanSetting[]
+---@field sliders OptionsFrameSliderSetting[]
+---@field editboxes OptionsFrameEditboxSetting[]
+---@field dropdowns OptionsFrameDropdownSetting[]
 ---@field buttons OptionsFrameButtonWithCallback[]
 
 ---@param data OptionsFrameData
@@ -86,6 +165,9 @@ local function transform( data )
   local content = {}
   add_title( content, data.title )
   add_settings( content, data.settings )
+  add_editboxes( content, data.editboxes )
+  add_sliders( content, data.sliders )
+  add_dropdowns( content, data.dropdowns )
   add_buttons( content, data.buttons )
 
   return content

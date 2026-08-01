@@ -35,6 +35,9 @@ end
 ---@field should_be_hidden fun()
 ---@field click fun( button_type: OptionsFrameButtonType )
 ---@field toggle_setting fun( key: string )
+---@field change_slider fun( key: string, value: number )
+---@field change_editbox fun( key: string, value: number )
+---@field change_dropdown fun( key: string, value: any )
 
 ---@param popup_builder PopupBuilder
 ---@param config Config
@@ -85,6 +88,22 @@ function M.new( popup_builder, config, db )
       if setting.key == key then setting.on_toggle() end
     end
   end
+
+  local function change_setting( category, key, value )
+    if not model then return end
+
+    if not model[ category ] then
+      error( string.format( "There were no %s to change.", category ) )
+    end
+
+    for _, setting in ipairs( model[ category ] ) do
+      if setting.key == key then setting.on_change( value ) end
+    end
+  end
+
+  options.change_slider = function( key, value ) change_setting( "sliders", key, value ) end
+  options.change_editbox = function( key, value ) change_setting( "editboxes", key, value ) end
+  options.change_dropdown = function( key, value ) change_setting( "dropdowns", key, value ) end
 
   local function should_be_visible( level )
     if not options.is_visible() then

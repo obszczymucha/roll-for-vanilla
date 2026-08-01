@@ -5,6 +5,7 @@ if m.OptionsFrame then return end
 
 local M = {}
 local getn = m.getn
+local ItemQuality = m.Types.ItemQuality
 
 local button_defaults = {
   width = 80,
@@ -89,6 +90,20 @@ function M.new( popup_builder, content_transformer, config, db )
           frame:SetText( v.label or "" )
           frame:SetChecked( v.value )
           frame.on_click = v.on_click or function() end
+        elseif type == "slider" then
+          frame:SetText( v.label or "" )
+          frame:SetMinMaxValues( v.min, v.max )
+          frame:SetValue( v.value )
+          frame.on_change = v.on_change or function() end
+        elseif type == "dropdown" then
+          frame:SetText( v.label or "" )
+          frame:SetOptions( v.options )
+          frame:SetValue( v.value )
+          frame.on_change = v.on_change or function() end
+        elseif type == "editbox" then
+          frame:SetText( v.label or "" )
+          frame:SetValue( v.value )
+          frame.on_change = v.on_change or function() end
         elseif type == "text" then
           frame:SetText( v.value )
         end
@@ -114,6 +129,31 @@ function M.new( popup_builder, content_transformer, config, db )
     superwow_auto_loot_coins = true
   }
 
+  -- What this popup shows and which widget renders it: purely a GUI concern. Config only exposes
+  -- validated get_key()/set_key() primitives per setting; it has no notion of "slider" or "dropdown".
+  local slider_descriptors = {
+    { key = "default_rolling_time_seconds", label = "Default rolling time (seconds)", min = 4, max = 15 },
+    { key = "master_loot_frame_rows", label = "Master loot frame rows", min = 5, max = 20 },
+  }
+
+  local editbox_descriptors = {
+    { key = "ms_roll_threshold", label = "MS roll threshold" },
+    { key = "os_roll_threshold", label = "OS roll threshold" },
+    { key = "tmog_roll_threshold", label = "TMOG roll threshold", hidden = m.bcc },
+  }
+
+  local dropdown_descriptors = {
+    {
+      key = "master_loot_threshold",
+      label = "Master loot threshold",
+      options = {
+        { value = ItemQuality.Uncommon, label = m.colorize_item_by_quality( "Uncommon", ItemQuality.Uncommon ) },
+        { value = ItemQuality.Rare, label = m.colorize_item_by_quality( "Rare", ItemQuality.Rare ) },
+        { value = ItemQuality.Epic, label = m.colorize_item_by_quality( "Epic", ItemQuality.Epic ) },
+      }
+    }
+  }
+
   ---@return OptionsFrameBooleanSetting[]
   local function boolean_settings()
     local result = {}
@@ -134,11 +174,77 @@ function M.new( popup_builder, content_transformer, config, db )
     return result
   end
 
+  ---@return OptionsFrameSliderSetting[]
+  local function slider_settings()
+    local result = {}
+
+    for _, descriptor in ipairs( slider_descriptors ) do
+      if not descriptor.hidden then
+        table.insert( result, {
+          key = descriptor.key,
+          label = descriptor.label,
+          value = config[ descriptor.key ](),
+          min = descriptor.min,
+          max = descriptor.max,
+          on_change = config[ "set_" .. descriptor.key ]
+        } )
+      end
+    end
+
+    table.sort( result, function( a, b ) return a.label < b.label end )
+
+    return result
+  end
+
+  ---@return OptionsFrameEditboxSetting[]
+  local function editbox_settings()
+    local result = {}
+
+    for _, descriptor in ipairs( editbox_descriptors ) do
+      if not descriptor.hidden then
+        table.insert( result, {
+          key = descriptor.key,
+          label = descriptor.label,
+          value = config[ descriptor.key ](),
+          on_change = config[ "set_" .. descriptor.key ]
+        } )
+      end
+    end
+
+    table.sort( result, function( a, b ) return a.label < b.label end )
+
+    return result
+  end
+
+  ---@return OptionsFrameDropdownSetting[]
+  local function dropdown_settings()
+    local result = {}
+
+    for _, descriptor in ipairs( dropdown_descriptors ) do
+      if not descriptor.hidden then
+        table.insert( result, {
+          key = descriptor.key,
+          label = descriptor.label,
+          value = config[ descriptor.key ](),
+          options = descriptor.options,
+          on_change = config[ "set_" .. descriptor.key ]
+        } )
+      end
+    end
+
+    table.sort( result, function( a, b ) return a.label < b.label end )
+
+    return result
+  end
+
   ---@return OptionsFrameData
   local function default_content()
     return {
       title = "RollFor Options",
       settings = boolean_settings(),
+      sliders = slider_settings(),
+      editboxes = editbox_settings(),
+      dropdowns = dropdown_settings(),
       buttons = {
         { type = "Close", callback = function() if popup then popup:Hide() end end }
       }
