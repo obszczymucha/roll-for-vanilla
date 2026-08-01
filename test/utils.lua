@@ -163,6 +163,8 @@ function M.mock_wow_api()
           Hide = function() end,
           SetBlendMode = function() end,
           SetAllPoints = function() end,
+          ClearAllPoints = function() end,
+          SetVertexColor = function() end,
         }
       end,
       SetWidth = function() end,
@@ -952,6 +954,8 @@ function M.load_real_stuff( req )
   r( "src/GargulBridge" )
   r( "src/OptionsFrameContentTransformer" )
   r( "src/OptionsFrame" )
+  r( "src/SandboxFrameContentTransformer" )
+  r( "src/SandboxFrame" )
   -- r( "Libs/LibDeflate/LibDeflate" )
   r( "src/bcc/Json" )
   r( "main" )

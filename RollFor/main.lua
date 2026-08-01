@@ -387,6 +387,12 @@ local function create_components()
 
   ---@type OptionsFrame
   M.options = m.OptionsFrame.new( popup_builder(), options_frame_content_transformer, M.config, db( "options" ) )
+
+  ---@type SandboxFrameContentTransformer
+  local sandbox_frame_content_transformer = m.SandboxFrameContentTransformer.new()
+
+  ---@type SandboxFrame
+  M.sandbox_frame = m.SandboxFrame.new( popup_builder(), sandbox_frame_content_transformer, db( "sandbox_frame" ) )
 end
 
 local function subscribe_for_component_events()
@@ -456,6 +462,11 @@ local function on_roll_command( roll_slash_command )
 
     if string.find( args, "^options" ) then
       M.options.toggle()
+      return
+    end
+
+    if string.find( args, "^sandbox" ) then
+      M.sandbox_frame.toggle()
       return
     end
 

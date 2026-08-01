@@ -19,6 +19,7 @@ local hl = m.colors.hl
 ---@field slider fun( parent: Frame ): Frame
 ---@field dropdown fun( parent: Frame ): Frame
 ---@field editbox fun( parent: Frame ): Frame
+---@field tree_node fun( parent: Frame ): Frame
 
 local M = {}
 
@@ -601,6 +602,112 @@ function M.editbox( parent )
     last_valid_value = value
     edit:SetText( tostring( value ) )
   end
+
+  return container
+end
+
+local tree_node_indent_step = 14
+local tree_node_toggle_size = 14
+local tree_node_label_gap = 4
+
+-- A row in a tree/list view (e.g. SandboxFrame): an expand/collapse icon button (only shown for
+-- expandable nodes) followed by a label. Indentation is baked into the row's own internal layout
+-- (rather than the row frame's outer position) so the popup's own width-to-content math, which
+-- only looks at each line's width, keeps working unmodified.
+function M.tree_node( parent )
+  local container = m.api.CreateFrame( "Frame", nil, parent )
+  container:SetHeight( tree_node_toggle_size )
+
+  local toggle = m.api.CreateFrame( "Button", nil, container )
+  toggle:SetWidth( tree_node_toggle_size )
+  toggle:SetHeight( tree_node_toggle_size )
+
+  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+  label:SetTextColor( 1, 1, 1 )
+  label:SetJustifyH( "LEFT" )
+
+  -- L-shaped connector back to the parent row's icon column: a vertical tick from this row's top
+  -- down to icon-center, then a horizontal tick over to this row's own icon. Only shown at depth > 0.
+  local connector_right_margin = 3
+
+  local connector_v = container:CreateTexture( nil, "ARTWORK" )
+  connector_v:SetTexture( "Interface\\Buttons\\WHITE8x8" )
+  connector_v:SetVertexColor( 0.5, 0.5, 0.5, 0.35 )
+  connector_v:SetWidth( 1 )
+
+  local connector_h = container:CreateTexture( nil, "ARTWORK" )
+  connector_h:SetTexture( "Interface\\Buttons\\WHITE8x8" )
+  connector_h:SetVertexColor( 0.5, 0.5, 0.5, 0.35 )
+  connector_h:SetHeight( 1 )
+
+  local depth = 0
+  local expandable = false
+
+  local function layout()
+    local indent = depth * tree_node_indent_step
+
+    toggle:ClearAllPoints()
+    label:ClearAllPoints()
+    connector_v:ClearAllPoints()
+    connector_h:ClearAllPoints()
+
+    local content_start
+
+    if expandable then
+      toggle:SetPoint( "LEFT", container, "LEFT", indent, 0 )
+      toggle:Show()
+      content_start = indent + tree_node_toggle_size + tree_node_label_gap
+    else
+      -- No icon to align with, so don't reserve room for one: sit right after the indent.
+      toggle:Hide()
+      content_start = indent + tree_node_label_gap
+    end
+
+    label:SetPoint( "LEFT", container, "LEFT", content_start, 0 )
+
+    if depth > 0 then
+      local parent_column = (depth - 1) * tree_node_indent_step + tree_node_toggle_size / 2
+      local mid_height = tree_node_toggle_size / 2
+
+      connector_v:SetPoint( "TOPLEFT", container, "TOPLEFT", parent_column, 0 )
+      connector_v:SetHeight( mid_height )
+      connector_v:Show()
+
+      connector_h:SetPoint( "TOPLEFT", container, "TOPLEFT", parent_column, -mid_height )
+      connector_h:SetWidth( indent - parent_column - connector_right_margin )
+      connector_h:Show()
+    else
+      connector_v:Hide()
+      connector_h:Hide()
+    end
+
+    container:SetWidth( content_start + label:GetWidth() )
+  end
+
+  container.SetText = function( _, text )
+    label:SetText( text )
+    layout()
+  end
+
+  container.SetDepth = function( _, d )
+    depth = d or 0
+    layout()
+  end
+
+  container.SetExpandable = function( _, is_expandable, is_expanded )
+    expandable = is_expandable and true or false
+
+    if expandable then
+      toggle:SetNormalTexture( is_expanded and "Interface\\Buttons\\UI-MinusButton-Up" or "Interface\\Buttons\\UI-PlusButton-Up" )
+      toggle:SetPushedTexture( is_expanded and "Interface\\Buttons\\UI-MinusButton-Down" or "Interface\\Buttons\\UI-PlusButton-Down" )
+    end
+
+    layout()
+  end
+
+  toggle:SetScript( "OnClick", function()
+    if container.on_click then container.on_click() end
+  end )
 
   return container
 end
