@@ -140,6 +140,15 @@ function M.mock_wow_api()
       end,
       Enable = function() end,
       Disable = function() end,
+      SetChecked = function( self, checked ) self.checked = checked end,
+      GetChecked = function( self ) return self.checked end,
+      GetCheckedTexture = function()
+        return {
+          SetVertexColor = function() end,
+          SetDesaturated = function() end,
+          SetAlpha = function() end,
+        }
+      end,
       ClearAllPoints = function() end,
       SetBackdrop = function() end,
       SetBackdropColor = function() end,
@@ -150,6 +159,13 @@ function M.mock_wow_api()
       RegisterForClicks = function() end,
       RegisterForDrag = function() end,
       SetHighlightTexture = function() end,
+      GetHighlightTexture = function()
+        return {
+          SetVertexColor = function() end,
+          ClearAllPoints = function() end,
+          SetPoint = function() end,
+        }
+      end,
       GetFrameLevel = function() return 0 end,
       GetName = function() return "PrincessKenny" end,
       CreateTexture = function()
@@ -877,6 +893,9 @@ function M.load_real_stuff( req )
   r( "src/Types" )
   r( "src/Interface" )
   r( "src/ItemUtils" )
+  r( "src/AutoLootDb" )
+  r( "src/Tree" )
+  r( "src/AutoLootTree" )
   r( "src/LootFacade" )
   r( "src/EventFrame" )
   r( "src/WowApi" )

@@ -18,6 +18,7 @@ function M.new()
     gui_elements = function( self ) return self end,
     frame_style = function( self ) return self end,
     self_centered_anchor = function( self ) return self end,
+    anchor_point = function( self ) return self end,
     bg_file = function( self ) return self end,
     edge_file = function( self ) return self end,
     backdrop_color = function( self ) return self end,

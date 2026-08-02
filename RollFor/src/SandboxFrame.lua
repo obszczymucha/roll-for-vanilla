@@ -6,6 +6,7 @@ if m.SandboxFrame then return end
 local M = {}
 local getn = m.getn
 local ItemQuality = m.Types.ItemQuality
+local IU = m.ItemUtils
 
 local button_defaults = {
   width = 80,
@@ -13,26 +14,10 @@ local button_defaults = {
   scale = 0.76
 }
 
--- Experiment: a 3-level tree (Dungeon -> Boss -> Item drops) to try out an expandable tree
--- widget. Data is hardcoded sample data, not wired to anything real yet.
-local dungeons = {
-  {
-    name = "Blackrock Depths",
-    expanded = false,
-    bosses = {
-      { name = "Lord Incendius", expanded = false, items = { "Incendius' Cinch", "Flickering Cinderweb Cloak" } },
-      { name = "Grizzle", expanded = false, items = { "Grizzly Claw", "Boarskin Gloves" } },
-    }
-  },
-  {
-    name = "Scholomance",
-    expanded = false,
-    bosses = {
-      { name = "Darkmaster Gandling", expanded = false, items = { "Master's Burning Cape", "Gandling's Grimoire" } },
-      { name = "Instructor Malicia", expanded = false, items = { "Malicia's Rejuvenating Charm" } },
-    }
-  }
-}
+-- Experiment: a 3-level tree (Dungeon -> Boss -> Item drops) GUI built on top of AutoLootTree's
+-- pure data (tree contents, checked/desaturated/visibility already decided there). This file is
+-- dumb rendering only -- it wires click/check callbacks that mutate a row's node and calls
+-- refresh(), and translates rows into widget calls; it makes no decisions about the tree itself.
 
 ---@class SandboxFrame
 ---@field show fun()
@@ -48,7 +33,7 @@ M.center_point = { point = "CENTER", relative_point = "CENTER", x = 0, y = 0 }
 function M.new( popup_builder, content_transformer, db )
   ---@type Popup?
   local popup
-  local top_padding = 8
+  local top_padding = 16
   local side_padding = 20
 
   local function on_drag_stop()
@@ -84,6 +69,7 @@ function M.new( popup_builder, content_transformer, db )
         :on_drag_stop( on_drag_stop )
         :strata( "DIALOG" )
         :self_centered_anchor()
+        :anchor_point( "TOPLEFT" )
         :hidden()
         :build()
 
@@ -94,42 +80,33 @@ function M.new( popup_builder, content_transformer, db )
 
   local refresh
 
+  -- Just relabels/wires callbacks onto AutoLootTree's already-decided rows -- no tree walking,
+  -- no checked/desaturated computation here.
   ---@return SandboxFrameTreeNode[]
   local function tree_rows()
     local rows = {}
 
-    for _, dungeon in ipairs( dungeons ) do
+    for _, row in ipairs( m.AutoLootTree.visible_rows( m.AutoLootTree.dungeons ) ) do
+      local node = row.node
+
+      -- Raw data (with its `type`) passed straight through -- the content transformer is where
+      -- type -> presentation (label color, item vs label rendering) gets decided, not here.
       table.insert( rows, {
-        depth = 0,
-        label = m.colors.blue( dungeon.name ),
-        expandable = true,
-        expanded = dungeon.expanded,
-        on_click = function()
-          dungeon.expanded = not dungeon.expanded
+        depth = row.depth,
+        data = row.data,
+        expandable = row.expandable,
+        expanded = row.expanded,
+        checked = row.checked,
+        desaturated = row.desaturated,
+        on_click = row.expandable and function()
+          node.data.expanded = not node.data.expanded
+          refresh()
+        end or nil,
+        on_check = function( checked )
+          node.data.checked = checked
           refresh()
         end
       } )
-
-      if dungeon.expanded then
-        for _, boss in ipairs( dungeon.bosses ) do
-          table.insert( rows, {
-            depth = 1,
-            label = boss.name,
-            expandable = true,
-            expanded = boss.expanded,
-            on_click = function()
-              boss.expanded = not boss.expanded
-              refresh()
-            end
-          } )
-
-          if boss.expanded then
-            for _, item in ipairs( boss.items ) do
-              table.insert( rows, { depth = 2, label = item } )
-            end
-          end
-        end
-      end
     end
 
     return rows
@@ -160,10 +137,20 @@ function M.new( popup_builder, content_transformer, db )
           frame:SetScale( v.scale or button_defaults.scale )
           frame:SetScript( "OnClick", v.on_click or function() end )
         elseif type == "tree_node" then
-          frame:SetText( v.label or "" )
           frame:SetDepth( v.depth or 0 )
           frame:SetExpandable( v.expandable, v.expanded )
+          frame:SetChecked( v.checked )
+          frame:SetDesaturated( v.desaturated )
           frame.on_click = v.on_click or function() end
+          frame.on_check = v.on_check or function() end
+
+          if v.item then
+            local link = m.AutoLootDb.make_link( v.item_id, v.item.quality, v.item.name )
+            frame:SetItem( { link = link, texture = v.item.icon, hover_background_color = v.hover_background_color, tooltip_position = v.tooltip_position }, IU.get_tooltip_link( link ) )
+          else
+            frame:SetText( v.label or "" )
+            frame:SetLabelStyle( v.color, v.hover_text_color, v.hover_background_color )
+          end
         elseif type == "text" then
           frame:SetText( v.value )
         end

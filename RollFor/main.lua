@@ -393,6 +393,8 @@ local function create_components()
 
   ---@type SandboxFrame
   M.sandbox_frame = m.SandboxFrame.new( popup_builder(), sandbox_frame_content_transformer, db( "sandbox_frame" ) )
+
+  M.autoloot_db = db( "autoloot_db" )
 end
 
 local function subscribe_for_component_events()
@@ -467,6 +469,18 @@ local function on_roll_command( roll_slash_command )
 
     if string.find( args, "^sandbox" ) then
       M.sandbox_frame.toggle()
+      return
+    end
+
+    if string.find( args, "^autolootdb print" ) then
+      m.AutoLootDb.on_print_command()
+      return
+    end
+
+    if string.find( args, "^autolootdb" ) then
+      m.AutoLootDb.on_command( M.autoloot_db, function()
+        m.print( "AutoLootDb: all pending items resolved." )
+      end )
       return
     end
 
@@ -761,6 +775,7 @@ end
 function M.on_item_info_received( item_id )
   M.roll_controller.on_item_info_received( item_id )
   M.roll_for_receiver.on_item_info_received( item_id )
+  m.AutoLootDb.on_item_info_received( item_id )
 end
 
 function M.on_group_changed()

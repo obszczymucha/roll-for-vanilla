@@ -7,7 +7,7 @@ local hl = m.colors.hl
 
 ---@class GuiElements
 ---@field item_link fun( parent: Frame ): Frame
----@field item_link_with_icon fun( parent: Frame, text: string ): Frame
+---@field item_link_with_icon fun( parent: Frame, text: string, spacing: number? ): Frame
 ---@field text fun( parent: Frame, text: string ): Frame
 ---@field icon fun( parent: Frame, show: boolean, width: number, height: number ): Frame
 ---@field icon_text fun( parent: Frame, text: string ): Frame
@@ -50,16 +50,17 @@ function M.empty_line( parent )
   return result
 end
 
-function M.item_link_with_icon( parent, text )
+function M.item_link_with_icon( parent, text, spacing )
   local container = M.create_text_in_container( "Button", parent, 20, nil, nil, "text" )
 
   local w = 14
   local h = 14
-  local spacing = 10
+  spacing = spacing or 10
   local count = 0
   local quantity = 1
   local texture
   local tooltip_link
+  local tooltip_position
 
   container:SetPoint( "TOP", 0, 0 )
   container.icon = M.icon( container, true, w, h )
@@ -121,6 +122,7 @@ function M.item_link_with_icon( parent, text )
     count = i.count or 0
     quantity = i.quantity or 1
     tooltip_link = tt_link
+    tooltip_position = i.tooltip_position
 
     container.text:SetText( i.link )
     container.icon:SetTexture( texture )
@@ -130,6 +132,22 @@ function M.item_link_with_icon( parent, text )
     resize()
   end
 
+  -- ANCHOR_CURSOR ignores SetOwner's offsetX/offsetY -- the client repositions the tooltip to the
+  -- raw cursor position every frame regardless of what's passed there. Shifting it requires
+  -- fighting that same per-frame repositioning with our own OnUpdate. tooltip_position (supplied
+  -- per item, see SetItem) decides how far and in which direction; this only feeds it the cursor.
+  local function reposition_at_cursor( tooltip )
+    local x, y = m.api.GetCursorPosition()
+    local scale = m.api.UIParent:GetEffectiveScale()
+    local anchor, px, py = tooltip_position( x / scale, y / scale )
+
+    -- px/py are absolute screen coordinates (GetCursorPosition's origin), so the relative-to point
+    -- has to stay UIParent's BOTTOMLEFT -- the only UIParent anchor that actually sits at (0, 0).
+    -- Only the tooltip's own corner/edge is meant to be configurable via `anchor`.
+    tooltip:ClearAllPoints()
+    tooltip:SetPoint( anchor, m.api.UIParent, "BOTTOMLEFT", px, py )
+  end
+
   local function on_enter( self )
     if not tooltip_link then return end
     if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
@@ -137,9 +155,14 @@ function M.item_link_with_icon( parent, text )
     m.api.GameTooltip:SetOwner( self, "ANCHOR_CURSOR" )
     m.api.GameTooltip:SetHyperlink( tooltip_link )
     m.api.GameTooltip:Show()
+
+    if tooltip_position then
+      m.api.GameTooltip:SetScript( "OnUpdate", reposition_at_cursor )
+    end
   end
 
   local function on_leave()
+    if tooltip_position then m.api.GameTooltip:SetScript( "OnUpdate", nil ) end
     m.api.GameTooltip:Hide()
   end
 
@@ -155,7 +178,10 @@ function M.item_link_with_icon( parent, text )
 
     if m.is_shift_key_down() then
       m.link_item_in_chat( container.text:GetText() )
+      return
     end
+
+    if container.on_click then container.on_click() end
   end )
 
   return container
@@ -609,6 +635,10 @@ end
 local tree_node_indent_step = 14
 local tree_node_toggle_size = 14
 local tree_node_label_gap = 4
+local tree_node_checkbox_size = 14
+local tree_node_checkbox_gap = 4
+local tree_node_icon_spacing = 4
+local tree_node_row_right_margin = 18
 
 -- A row in a tree/list view (e.g. SandboxFrame): an expand/collapse icon button (only shown for
 -- expandable nodes) followed by a label. Indentation is baked into the row's own internal layout
@@ -618,55 +648,134 @@ function M.tree_node( parent )
   local container = m.api.CreateFrame( "Frame", nil, parent )
   container:SetHeight( tree_node_toggle_size )
 
+  local checkbox = m.api.CreateFrame( "CheckButton", nil, container, "UICheckButtonTemplate" )
+  checkbox:SetWidth( tree_node_checkbox_size )
+  checkbox:SetHeight( tree_node_checkbox_size )
+
   local toggle = m.api.CreateFrame( "Button", nil, container )
   toggle:SetWidth( tree_node_toggle_size )
   toggle:SetHeight( tree_node_toggle_size )
 
   local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
-  label:SetTextColor( 1, 1, 1 )
+  local label_default_color = { 1, 1, 1 }
+  label:SetTextColor( unpack( label_default_color ) )
   label:SetJustifyH( "LEFT" )
 
   -- L-shaped connector back to the parent row's icon column: a vertical tick from this row's top
   -- down to icon-center, then a horizontal tick over to this row's own icon. Only shown at depth > 0.
   local connector_right_margin = 3
+  local connector_x_offset = 1
 
   local connector_v = container:CreateTexture( nil, "ARTWORK" )
   connector_v:SetTexture( "Interface\\Buttons\\WHITE8x8" )
-  connector_v:SetVertexColor( 0.5, 0.5, 0.5, 0.35 )
-  connector_v:SetWidth( 1 )
+  connector_v:SetVertexColor( 0.5, 0.5, 0.5, 0.7 )
+  connector_v:SetWidth( 0.8 )
 
   local connector_h = container:CreateTexture( nil, "ARTWORK" )
   connector_h:SetTexture( "Interface\\Buttons\\WHITE8x8" )
-  connector_h:SetVertexColor( 0.5, 0.5, 0.5, 0.35 )
-  connector_h:SetHeight( 1 )
+  connector_h:SetVertexColor( 0.5, 0.5, 0.5, 0.7 )
+  connector_h:SetHeight( 0.8 )
+
+  -- Leaf rows that carry a real item use the existing item_link_with_icon widget (tooltip,
+  -- shift-click chat link, ctrl-click dress up) instead of reinventing that behaviour here.
+  local item_link_widget = M.item_link_with_icon( container, nil, tree_node_icon_spacing )
+  item_link_widget:Hide()
+
+  -- Native Button highlight layer: Blizzard shows/hides it automatically on hover, always above
+  -- the button's own content, so there's no custom OnEnter/OnLeave or z-order to get wrong. Its
+  -- color comes from item.hover_background_color (set via SetItem below).
+  item_link_widget:SetHighlightTexture( "Interface\\Buttons\\WHITE8x8", "BLEND" )
+  local item_highlight = item_link_widget:GetHighlightTexture()
+  -- Re-anchored slightly taller than the button itself (1px above, 2px below) instead of the
+  -- default exact fill.
+  item_highlight:ClearAllPoints()
+  item_highlight:SetPoint( "TOPLEFT", item_link_widget, "TOPLEFT", 0, 2 )
+  item_highlight:SetPoint( "BOTTOMRIGHT", item_link_widget, "BOTTOMRIGHT", 0, -2 )
+
+  -- Lets clicking the label itself (not just the +/- icon) expand/collapse a dungeon or boss row.
+  -- Also drives the hover feedback (background + text color) for dungeon/boss rows.
+  local label_button = m.api.CreateFrame( "Button", nil, container )
+  label_button:Hide()
+
+  -- Set per row via SetLabelStyle below. nil means exactly that -- no color override, no hover
+  -- effect at all -- not "pick a default", this widget doesn't get to decide that. Hover text and
+  -- hover background are independent -- a row can set either, both, or neither.
+  local label_color
+  local label_hover_text_color
+  local label_hover_background_color
+
+  local label_highlight = container:CreateTexture( nil, "BACKGROUND" )
+  label_highlight:SetTexture( "Interface\\Buttons\\WHITE8x8" )
+  label_highlight:Hide()
 
   local depth = 0
   local expandable = false
+  local is_link = false
 
   local function layout()
     local indent = depth * tree_node_indent_step
 
+    checkbox:ClearAllPoints()
     toggle:ClearAllPoints()
     label:ClearAllPoints()
+    label_button:ClearAllPoints()
+    label_highlight:ClearAllPoints()
+    item_link_widget:ClearAllPoints()
     connector_v:ClearAllPoints()
     connector_h:ClearAllPoints()
 
-    local content_start
+    local after_toggle
 
     if expandable then
       toggle:SetPoint( "LEFT", container, "LEFT", indent, 0 )
       toggle:Show()
-      content_start = indent + tree_node_toggle_size + tree_node_label_gap
+      after_toggle = indent + tree_node_toggle_size + tree_node_checkbox_gap
     else
-      -- No icon to align with, so don't reserve room for one: sit right after the indent.
+      -- No icon to align with, so don't reserve room for one: checkbox sits right after the indent.
       toggle:Hide()
-      content_start = indent + tree_node_label_gap
+      after_toggle = indent
     end
 
-    label:SetPoint( "LEFT", container, "LEFT", content_start, 0 )
+    checkbox:SetPoint( "LEFT", container, "LEFT", after_toggle, 0 )
+
+    local content_start = after_toggle + tree_node_checkbox_size + tree_node_label_gap
+
+    local content_width
+
+    if is_link then
+      label:Hide()
+      label_button:Hide()
+      label_highlight:Hide()
+      item_link_widget:SetPoint( "LEFT", container, "LEFT", content_start, 0 )
+      item_link_widget:Show()
+      -- Measure the natural (unstretched) width first -- this is what container reports for the
+      -- popup's own auto-sizing below. Stretching to the popup's right edge is purely visual/click
+      -- -area (the highlight fills whatever the frame's actual width ends up being).
+      content_width = item_link_widget:GetWidth()
+      item_link_widget:SetPoint( "RIGHT", parent, "RIGHT", -tree_node_row_right_margin, 0 )
+    else
+      item_link_widget:Hide()
+      label:SetPoint( "LEFT", container, "LEFT", content_start, 0 )
+      if label_color then label:SetTextColor( unpack( label_color ) ) end
+      label:Show()
+      content_width = label:GetWidth()
+
+      -- Only expandable rows (dungeon/boss) reach this branch, so it's always safe to make the
+      -- label clickable here. Stretched to the popup's right edge (like item rows), so hover/click
+      -- covers the full row, not just the text -- content_width above stays the natural
+      -- (unstretched) measurement used for the popup's own auto-sizing.
+      label_button:SetPoint( "LEFT", container, "LEFT", content_start, 0 )
+      label_button:SetPoint( "RIGHT", parent, "RIGHT", -tree_node_row_right_margin, 0 )
+      label_button:SetHeight( tree_node_toggle_size )
+      label_button:Show()
+
+      label_highlight:SetPoint( "LEFT", container, "LEFT", content_start, 0 )
+      label_highlight:SetPoint( "RIGHT", parent, "RIGHT", -tree_node_row_right_margin, 0 )
+      label_highlight:SetHeight( tree_node_toggle_size )
+    end
 
     if depth > 0 then
-      local parent_column = (depth - 1) * tree_node_indent_step + tree_node_toggle_size / 2
+      local parent_column = (depth - 1) * tree_node_indent_step + tree_node_toggle_size / 2 - connector_x_offset
       local mid_height = tree_node_toggle_size / 2
 
       connector_v:SetPoint( "TOPLEFT", container, "TOPLEFT", parent_column, 0 )
@@ -674,14 +783,14 @@ function M.tree_node( parent )
       connector_v:Show()
 
       connector_h:SetPoint( "TOPLEFT", container, "TOPLEFT", parent_column, -mid_height )
-      connector_h:SetWidth( indent - parent_column - connector_right_margin )
+      connector_h:SetWidth( indent - parent_column - connector_right_margin + 1 )
       connector_h:Show()
     else
       connector_v:Hide()
       connector_h:Hide()
     end
 
-    container:SetWidth( content_start + label:GetWidth() )
+    container:SetWidth( content_start + content_width )
   end
 
   container.SetText = function( _, text )
@@ -694,8 +803,51 @@ function M.tree_node( parent )
     layout()
   end
 
+  container.SetChecked = function( _, checked )
+    checkbox:SetChecked( checked and true or false )
+  end
+
+  -- Per-row label styling: base text color and hover (text + background wash) color, both
+  -- { r, g, b }. Callers supply whatever the row's own data says; falls back to white / purple
+  -- if either is omitted. Only meaningful for label rows (dungeon/boss), not item rows.
+  container.SetLabelStyle = function( _, color, hover_text_color, hover_background_color )
+    label_color = color
+    label_hover_text_color = hover_text_color
+    label_hover_background_color = hover_background_color
+
+    if label_color then label:SetTextColor( unpack( label_color ) ) end
+
+    if label_hover_background_color then
+      local c = label_hover_background_color
+      label_highlight:SetVertexColor( c[ 1 ], c[ 2 ], c[ 3 ], c[ 4 ] )
+    end
+  end
+
+  -- Greyed-out, slightly translucent checkmark: used to show a node is effectively off because an
+  -- ancestor is unchecked, independent of this node's own checked state. Desaturation alone reads
+  -- as barely-there at this size, so alpha is dropped too for a clearer visual cue.
+  container.SetDesaturated = function( _, desaturated )
+    local texture = checkbox:GetCheckedTexture()
+    if not texture then return end
+
+    if texture.SetDesaturated then texture:SetDesaturated( desaturated and true or false ) end
+    texture:SetAlpha( desaturated and 0.55 or 1 )
+  end
+
+  -- item: { link, texture, count, quantity, hover_background_color } -- hover_background_color
+  -- ({r,g,b}) comes from AutoLootTree, the rest is consumed by item_link_with_icon.SetItem.
+  container.SetItem = function( _, item, tooltip_link )
+    if item.hover_background_color then
+      local c = item.hover_background_color
+      item_highlight:SetVertexColor( c[ 1 ], c[ 2 ], c[ 3 ], c[ 4 ] )
+    end
+    item_link_widget:SetItem( item, tooltip_link )
+    layout()
+  end
+
   container.SetExpandable = function( _, is_expandable, is_expanded )
     expandable = is_expandable and true or false
+    is_link = not expandable
 
     if expandable then
       toggle:SetNormalTexture( is_expanded and "Interface\\Buttons\\UI-MinusButton-Up" or "Interface\\Buttons\\UI-PlusButton-Up" )
@@ -708,6 +860,29 @@ function M.tree_node( parent )
   toggle:SetScript( "OnClick", function()
     if container.on_click then container.on_click() end
   end )
+
+  label_button:SetScript( "OnClick", function()
+    if container.on_click then container.on_click() end
+  end )
+
+  label_button:SetScript( "OnEnter", function()
+    if label_hover_background_color then label_highlight:Show() end
+    if label_hover_text_color then label:SetTextColor( unpack( label_hover_text_color ) ) end
+  end )
+
+  label_button:SetScript( "OnLeave", function()
+    if label_hover_background_color then label_highlight:Hide() end
+    if label_hover_text_color then label:SetTextColor( unpack( label_color or label_default_color ) ) end
+  end )
+
+  checkbox:SetScript( "OnClick", function()
+    if container.on_check then container.on_check( checkbox:GetChecked() and true or false ) end
+  end )
+
+  -- Clicking the item link itself toggles the same checkbox shown to its left.
+  item_link_widget.on_click = function()
+    checkbox:Click()
+  end
 
   return container
 end

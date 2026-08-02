@@ -51,24 +51,39 @@ end
 
 ---@class SandboxFrameTreeNode
 ---@field depth number
----@field label string
+---@field data table AutoLootTree row payload -- name/id/item/color/hover_text_color/
+--- hover_background_color, all already decided by AutoLootTree.
 ---@field expandable boolean?
 ---@field expanded boolean?
+---@field checked boolean?
+---@field desaturated boolean?
 ---@field on_click fun()?
+---@field on_check fun( checked: boolean )?
 
 ---@param content table
 ---@param rows SandboxFrameTreeNode[]
 local function add_rows( content, rows )
-  for _, row in ipairs( rows or {} ) do
-    local padding = 2
+  for i, row in ipairs( rows or {} ) do
+    local padding = i == 1 and 10 or 2
 
+    -- data.name/id/item are already disjoint per row kind (only items have id/item, only
+    -- dungeon/boss have name/color/hover_*), so no branching is needed to pick the right one.
     table.insert( content, {
       type = "tree_node",
-      label = row.label,
+      label = row.data.name,
+      color = row.data.color,
+      hover_text_color = row.data.hover_text_color,
+      hover_background_color = row.data.hover_background_color,
+      item_id = row.data.id,
+      item = row.data.item,
+      tooltip_position = row.data.tooltip_position,
       depth = row.depth,
       expandable = row.expandable,
       expanded = row.expanded,
+      checked = row.checked,
+      desaturated = row.desaturated,
       on_click = row.on_click,
+      on_check = row.on_check,
       padding = padding
     } )
   end

@@ -1,0 +1,88 @@
+["Serpentshrine Cavern"]={
+  ["Hydross the Unstable"]={
+    [30056]={
+      quality=4,
+      icon=132684,
+      name="Robe of Hateful Echoes",
+      link="|cffa335ee|Hitem:30056::::::::70::::::::::|h[Robe of Hateful Echoes]|h|r"
+    },
+    [30664]={
+      quality=4,
+      icon=134218,
+      name="Living Root of the Wildheart",
+      link="|cffa335ee|Hitem:30664::::::::70::::::::::|h[Living Root of the Wildheart]|h|r"
+    },
+    [30053]={
+      quality=4,
+      icon=135051,
+      name="Pauldrons of the Wardancer",
+      link="|cffa335ee|Hitem:30053::::::::70::::::::::|h[Pauldrons of the Wardancer]|h|r"
+    },
+    [32516]={
+      quality=4,
+      icon=132612,
+      name="Wraps of Purification",
+      link="|cffa335ee|Hitem:32516::::::::70::::::::::|h[Wraps of Purification]|h|r"
+    },
+    [30050]={
+      quality=4,
+      icon=132539,
+      name="Boots of the Shifting Nightmare",
+      link="|cffa335ee|Hitem:30050::::::::70::::::::::|h[Boots of the Shifting Nightmare]|h|r"
+    },
+    [33055]={
+      quality=4,
+      icon=133413,
+      name="Band of Vile Aggression",
+      link="|cffa335ee|Hitem:33055::::::::70::::::::::|h[Band of Vile Aggression]|h|r"
+    },
+    [30049]={
+      quality=4,
+      icon=134079,
+      name="Fathomstone",
+      link="|cffa335ee|Hitem:30049::::::::70::::::::::|h[Fathomstone]|h|r"
+    },
+    [30047]={
+      quality=4,
+      icon=132601,
+      name="Blackfathom Warbands",
+      link="|cffa335ee|Hitem:30047::::::::70::::::::::|h[Blackfathom Warbands]|h|r"
+    },
+    [30051]={
+      quality=4,
+      icon=134903,
+      name="Idol of the Crescent Goddess",
+      link="|cffa335ee|Hitem:30051::::::::70::::::::::|h[Idol of the Crescent Goddess]|h|r"
+    },
+    [30055]={
+      quality=4,
+      icon=135054,
+      name="Shoulderpads of the Stranger",
+      link="|cffa335ee|Hitem:30055::::::::70::::::::::|h[Shoulderpads of the Stranger]|h|r"
+    },
+    [30629]={
+      quality=4,
+      icon=135443,
+      name="Scarab of Displacement",
+      link="|cffa335ee|Hitem:30629::::::::70::::::::::|h[Scarab of Displacement]|h|r"
+    },
+    [30048]={
+      quality=4,
+      icon=133124,
+      name="Brighthelm of Justice",
+      link="|cffa335ee|Hitem:30048::::::::70::::::::::|h[Brighthelm of Justice]|h|r"
+    },
+    [30052]={
+      quality=4,
+      icon=133393,
+      name="Ring of Lethality",
+      link="|cffa335ee|Hitem:30052::::::::70::::::::::|h[Ring of Lethality]|h|r"
+    },
+    [30054]={
+      quality=4,
+      icon=132744,
+      name="Ranger-General's Chestguard",
+      link="|cffa335ee|Hitem:30054::::::::70::::::::::|h[Ranger-General's Chestguard]|h|r"
+    }
+  }
+}

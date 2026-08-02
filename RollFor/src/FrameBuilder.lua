@@ -125,6 +125,7 @@ M.interface = {
 ---@field on_hide fun( self: FrameBuilder, on_hide: function ): FrameBuilder
 ---@field border_color fun( self: FrameBuilder, r: number, g: number, b: number, a: number ): FrameBuilder
 ---@field self_centered_anchor fun( self: FrameBuilder ): FrameBuilder
+---@field anchor_point fun( self: FrameBuilder, point: string ): FrameBuilder
 ---@field scale fun( self: FrameBuilder, scale: number ): FrameBuilder
 ---@field strata fun( self: FrameBuilder, strata: FrameStrata ): FrameBuilder
 ---@field hidden fun( self: FrameBuilder ): FrameBuilder
@@ -167,7 +168,8 @@ function M.new()
       frame:SetHeight( options.height or 100 )
 
       if anchor then
-        frame:SetPoint( "CENTER", anchor, "CENTER", 0, 0 )
+        local pin_point = options.anchor_point or "CENTER"
+        frame:SetPoint( pin_point, anchor, pin_point, 0, 0 )
       end
 
       if options.point then
@@ -282,8 +284,9 @@ function M.new()
           end
 
           if anchor then
+            local pin_point = options.anchor_point or "CENTER"
             frame:ClearAllPoints()
-            frame:SetPoint( "CENTER", anchor, "CENTER", 0, 0 )
+            frame:SetPoint( pin_point, anchor, pin_point, 0, 0 )
           end
         end )
       else
@@ -523,6 +526,14 @@ function M.new()
     return self
   end
 
+  -- Which point of the frame stays pinned to the (self-centered) anchor when the frame resizes.
+  -- Defaults to "CENTER" (grows/shrinks symmetrically); "TOP" keeps the top edge fixed and only
+  -- moves the bottom, "BOTTOM" the reverse, etc.
+  local function anchor_point( self, point )
+    options.anchor_point = point
+    return self
+  end
+
   local function scale( self, v )
     options.scale = v
     return self
@@ -566,6 +577,7 @@ function M.new()
     on_hide = on_hide,
     border_color = border_color,
     self_centered_anchor = self_centered_anchor,
+    anchor_point = anchor_point,
     scale = scale,
     enable_mouse = enable_mouse,
     strata = strata,
