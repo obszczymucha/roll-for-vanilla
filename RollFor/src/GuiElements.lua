@@ -657,8 +657,6 @@ function M.tree_node( parent )
   toggle:SetHeight( tree_node_toggle_size )
 
   local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
-  local label_default_color = { 1, 1, 1 }
-  label:SetTextColor( unpack( label_default_color ) )
   label:SetJustifyH( "LEFT" )
 
   -- L-shaped connector back to the parent row's icon column: a vertical tick from this row's top
@@ -807,15 +805,15 @@ function M.tree_node( parent )
     checkbox:SetChecked( checked and true or false )
   end
 
-  -- Per-row label styling: base text color and hover (text + background wash) color, both
-  -- { r, g, b }. Callers supply whatever the row's own data says; falls back to white / purple
-  -- if either is omitted. Only meaningful for label rows (dungeon/boss), not item rows.
+  -- Per-row label styling: base text color (required) and hover text/background color
+  -- (optional -- nil means no hover effect), all { r, g, b }. Only meaningful for label rows
+  -- (dungeon/boss), not item rows.
   container.SetLabelStyle = function( _, color, hover_text_color, hover_background_color )
     label_color = color
     label_hover_text_color = hover_text_color
     label_hover_background_color = hover_background_color
 
-    if label_color then label:SetTextColor( unpack( label_color ) ) end
+    label:SetTextColor( unpack( label_color ) )
 
     if label_hover_background_color then
       local c = label_hover_background_color
@@ -872,7 +870,7 @@ function M.tree_node( parent )
 
   label_button:SetScript( "OnLeave", function()
     if label_hover_background_color then label_highlight:Hide() end
-    if label_hover_text_color then label:SetTextColor( unpack( label_color or label_default_color ) ) end
+    if label_hover_text_color then label:SetTextColor( unpack( label_color ) ) end
   end )
 
   checkbox:SetScript( "OnClick", function()

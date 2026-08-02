@@ -43,6 +43,7 @@ local DUNGEON_COLOR = { 0.125, 0.624, 0.976 }
 local DUNGEON_HOVER_TEXT_COLOR = { 0.5, 0.8, 1 }
 local BOSS_HOVER_TEXT_COLOR = { 0.625, 0.624, 0.976 }
 
+local BOSS_COLOR = { 1, 1, 1 }
 local TRASH_COLOR = { 0.45, 0.45, 0.45 }
 local TRASH_HOVER_TEXT_COLOR = { 0.65, 0.65, 0.65 }
 
@@ -73,62 +74,73 @@ local function item_tooltip_position( x, y )
   return ITEM_TOOLTIP_ANCHOR, x + ITEM_TOOLTIP_OFFSET_X, y
 end
 
+-- ids here is the persisted autoloot_db.ids (see AutoLootDb.ensure_seeded) -- every dungeon/boss/
+-- item that exists in AutoLootDb's static data is always present and seeded with its own
+-- `enabled`, which is this tree's initial checked state and the write-back target for toggling
+-- (see set_checked below). No enabled-based filtering here: unlike the old AutoLootDb.ids gate,
+-- a seeded entry always exists once seeded, it's just off (enabled = false) by default.
+---@param ids table
 ---@return TreeNode[]
-local function build_tree()
+local function build_tree( ids )
   local dungeons = {}
 
-  for _, dungeon_name in ipairs( ordered_keys( m.AutoLootDb.ids ) ) do
-    local dungeon_entry = m.AutoLootDb.ids[ dungeon_name ]
+  for _, dungeon_name in ipairs( ordered_keys( ids ) ) do
+    local dungeon_entry = ids[ dungeon_name ]
+    local bosses = {}
 
-    if dungeon_entry.enabled then
-      local bosses = {}
+    for _, boss_name in ipairs( ordered_keys( dungeon_entry.bosses or {} ) ) do
+      local boss_entry = dungeon_entry.bosses[ boss_name ]
+      local items = {}
 
-      for _, boss_name in ipairs( ordered_keys( dungeon_entry.bosses or {} ) ) do
-        local boss_entry = dungeon_entry.bosses[ boss_name ]
+      for _, item_id in ipairs( sorted_keys( boss_entry.items or {} ) ) do
+        local item_entry = boss_entry.items[ item_id ]
 
-        if boss_entry.enabled then
-          local items = {}
-
-          for _, item_id in ipairs( sorted_keys( boss_entry.items or {} ) ) do
-            local item_data = boss_entry.items[ item_id ]
-            if item_data.enabled then
-              table.insert( items, Tree.new_leaf( {
-                id = item_id,
-                item = item_data,
-                hover_background_color = quality_color_rgb( item_data.quality, ITEM_HOVER_BACKGROUND_ALPHA ),
-                tooltip_position = item_tooltip_position,
-                checked = true,
-              } ) )
-            end
-          end
-
-          local is_trash = boss_name == "Trash"
-
-          table.insert( bosses, Tree.new_node( {
-            name = boss_name,
-            color = is_trash and TRASH_COLOR or nil,
-            hover_text_color = is_trash and TRASH_HOVER_TEXT_COLOR or BOSS_HOVER_TEXT_COLOR,
-            checked = true,
-            expanded = false,
-          }, items ) )
-        end
+        table.insert( items, Tree.new_leaf( {
+          id = item_id,
+          item = item_entry,
+          entry = item_entry,
+          hover_background_color = quality_color_rgb( item_entry.quality, ITEM_HOVER_BACKGROUND_ALPHA ),
+          tooltip_position = item_tooltip_position,
+          checked = item_entry.enabled,
+        } ) )
       end
 
-      table.insert( dungeons, Tree.new_node( {
-        name = dungeon_name,
-        color = DUNGEON_COLOR,
-        hover_text_color = DUNGEON_HOVER_TEXT_COLOR,
-        checked = true,
+      local is_trash = boss_name == "Trash"
+
+      table.insert( bosses, Tree.new_node( {
+        name = boss_name,
+        entry = boss_entry,
+        color = is_trash and TRASH_COLOR or BOSS_COLOR,
+        hover_text_color = is_trash and TRASH_HOVER_TEXT_COLOR or BOSS_HOVER_TEXT_COLOR,
+        checked = boss_entry.enabled,
         expanded = false,
-      }, bosses ) )
+      }, items ) )
     end
+
+    table.insert( dungeons, Tree.new_node( {
+      name = dungeon_name,
+      entry = dungeon_entry,
+      color = DUNGEON_COLOR,
+      hover_text_color = DUNGEON_HOVER_TEXT_COLOR,
+      checked = dungeon_entry.enabled,
+      expanded = false,
+    }, bosses ) )
   end
 
   return dungeons
 end
 
 ---@type TreeNode[]
-M.dungeons = build_tree()
+M.dungeons = {}
+
+-- Seeds the persisted db (if needed) and builds the tree from it. Called once from main.lua once
+-- the SavedVariables-backed db is actually available -- can't happen at module load time like the
+-- old AutoLootDb.ids-only version did, since db doesn't exist yet then.
+---@param db table
+function M.init( db )
+  m.AutoLootDb.ensure_seeded( db )
+  M.dungeons = build_tree( db.ids )
+end
 
 -- Each node's own `data.checked` is independent and never touched by its parent/ancestors --
 -- toggling a dungeon or boss only ever sets that node's own flag, nothing cascades down. Children
@@ -163,10 +175,53 @@ function M.all_checked( node )
   return ok
 end
 
+---@param node TreeNode
+---@param checked boolean
+local function apply_checked( node, checked )
+  node.data.checked = checked
+  node.data.entry.enabled = checked
+end
+
+-- Whether every node in node's own subtree (node included) is currently checked == value. Used to
+-- decide whether toggling a dungeon/boss is safe to cascade: only when the whole subtree already
+-- agreed with the node's own (pre-toggle) state, so a deliberate partial selection underneath
+-- never gets silently clobbered.
+---@param node TreeNode
+---@param value boolean
+---@return boolean
+local function subtree_matches( node, value )
+  local matches = true
+
+  Tree.walk( { node }, nil, function( n )
+    if n.data.checked ~= value then
+      matches = false
+      return false, nil, true -- stop the whole walk immediately, no point checking the rest
+    end
+  end )
+
+  return matches
+end
+
+-- Toggling a row writes through to the persisted entry (see AutoLootDb.ensure_seeded) as well as
+-- the node's own in-memory checked state, so the selection survives a /reload instead of resetting
+-- to whatever build_tree seeded it with. A dungeon/boss also cascades the new state down to every
+-- descendant, but only if the whole subtree currently shares its own (pre-toggle) checked state --
+-- if even one descendant already differs, that's a deliberate partial selection, so only the
+-- toggled node itself changes.
+---@param node TreeNode
+---@param checked boolean
+function M.set_checked( node, checked )
+  if node.children and subtree_matches( node, node.data.checked ) then
+    Tree.walk( { node }, nil, function( n ) apply_checked( n, checked ) end )
+  else
+    apply_checked( node, checked )
+  end
+end
+
 ---@class AutoLootTreeRow
 ---@field depth number
 ---@field node TreeNode the node this row was built from -- callers wire click/check callbacks
---- against it and mutate node.data directly (expanded/checked); this module never does.
+--- against it, mutating node.data.expanded directly and going through set_checked for checked.
 ---@field expandable boolean
 ---@field expanded boolean?
 ---@field checked boolean

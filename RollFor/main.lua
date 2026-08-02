@@ -395,6 +395,7 @@ local function create_components()
   M.sandbox_frame = m.SandboxFrame.new( popup_builder(), sandbox_frame_content_transformer, db( "sandbox_frame" ) )
 
   M.autoloot_db = db( "autoloot_db" )
+  m.AutoLootTree.init( M.autoloot_db )
 end
 
 local function subscribe_for_component_events()

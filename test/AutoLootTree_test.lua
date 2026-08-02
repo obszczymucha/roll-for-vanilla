@@ -13,11 +13,11 @@ local AutoLootTree = require( "src/AutoLootTree" )
 local Tree = RollFor.Tree
 
 local function leaf( checked )
-  return Tree.new_leaf( { checked = checked, id = 1, item = { name = "Item" } } )
+  return Tree.new_leaf( { checked = checked, entry = { enabled = checked }, id = 1, item = { name = "Item" } } )
 end
 
 local function branch( checked, children )
-  return Tree.new_node( { checked = checked, expanded = false, name = "Node" }, children or {} )
+  return Tree.new_node( { checked = checked, entry = { enabled = checked }, expanded = false, name = "Node" }, children or {} )
 end
 
 AutoLootTreeIsLeafEnabledSpec = {}
@@ -62,6 +62,120 @@ end
 function AutoLootTreeAllCheckedSpec:should_be_false_when_a_single_item_is_unchecked()
   local d = branch( true, { branch( true, { leaf( true ), leaf( false ) } ) } )
   eq( AutoLootTree.all_checked( d ), false )
+end
+
+AutoLootTreeSetCheckedSpec = {}
+
+function AutoLootTreeSetCheckedSpec:should_toggle_a_leaf_item_on_by_itself()
+  local i = leaf( false )
+
+  AutoLootTree.set_checked( i, true )
+
+  eq( i.data.checked, true )
+  eq( i.data.entry.enabled, true )
+end
+
+function AutoLootTreeSetCheckedSpec:should_toggle_a_leaf_item_off_by_itself()
+  local i = leaf( true )
+
+  AutoLootTree.set_checked( i, false )
+
+  eq( i.data.checked, false )
+  eq( i.data.entry.enabled, false )
+end
+
+function AutoLootTreeSetCheckedSpec:should_cascade_to_all_items_when_boss_and_every_item_share_the_same_state()
+  local i1, i2 = leaf( false ), leaf( false )
+  local b = branch( false, { i1, i2 } )
+
+  AutoLootTree.set_checked( b, true )
+
+  eq( b.data.checked, true )
+  eq( i1.data.checked, true )
+  eq( i2.data.checked, true )
+end
+
+function AutoLootTreeSetCheckedSpec:should_cascade_off_to_all_items_when_boss_and_every_item_share_the_same_state()
+  local i1, i2 = leaf( true ), leaf( true )
+  local b = branch( true, { i1, i2 } )
+
+  AutoLootTree.set_checked( b, false )
+
+  eq( b.data.checked, false )
+  eq( i1.data.checked, false )
+  eq( i2.data.checked, false )
+end
+
+function AutoLootTreeSetCheckedSpec:should_write_the_cascaded_state_through_to_each_items_persisted_entry()
+  local i1, i2 = leaf( false ), leaf( false )
+  local b = branch( false, { i1, i2 } )
+
+  AutoLootTree.set_checked( b, true )
+
+  eq( i1.data.entry.enabled, true )
+  eq( i2.data.entry.enabled, true )
+end
+
+function AutoLootTreeSetCheckedSpec:should_not_cascade_when_at_least_one_item_already_differs_from_the_boss()
+  local matching_item = leaf( false )
+  local differing_item = leaf( true )
+  local b = branch( false, { matching_item, differing_item } )
+
+  AutoLootTree.set_checked( b, true )
+
+  eq( b.data.checked, true )
+  eq( matching_item.data.checked, false )
+  eq( differing_item.data.checked, true )
+end
+
+function AutoLootTreeSetCheckedSpec:should_toggle_only_the_boss_itself_when_it_has_no_items()
+  local b = branch( false, {} )
+
+  AutoLootTree.set_checked( b, true )
+
+  eq( b.data.checked, true )
+end
+
+function AutoLootTreeSetCheckedSpec:should_cascade_to_every_boss_and_item_when_the_whole_dungeon_subtree_shares_the_same_state()
+  local i1, i2, i3 = leaf( false ), leaf( false ), leaf( false )
+  local b1 = branch( false, { i1, i2 } )
+  local b2 = branch( false, { i3 } )
+  local d = branch( false, { b1, b2 } )
+
+  AutoLootTree.set_checked( d, true )
+
+  eq( d.data.checked, true )
+  eq( b1.data.checked, true )
+  eq( b2.data.checked, true )
+  eq( i1.data.checked, true )
+  eq( i2.data.checked, true )
+  eq( i3.data.checked, true )
+end
+
+function AutoLootTreeSetCheckedSpec:should_not_cascade_to_any_boss_when_one_boss_already_differs_from_the_dungeon()
+  local matching_boss = branch( false, { leaf( false ) } )
+  local differing_boss = branch( true, { leaf( true ) } )
+  local d = branch( false, { matching_boss, differing_boss } )
+
+  AutoLootTree.set_checked( d, true )
+
+  eq( d.data.checked, true )
+  eq( matching_boss.data.checked, false )
+  eq( differing_boss.data.checked, true )
+end
+
+function AutoLootTreeSetCheckedSpec:should_not_cascade_when_a_boss_matches_the_dungeon_but_one_of_its_own_items_does_not()
+  local matching_item = leaf( false )
+  local differing_item = leaf( true )
+  local b = branch( false, { matching_item, differing_item } )
+  local d = branch( false, { b } )
+
+  AutoLootTree.set_checked( d, true )
+
+  eq( d.data.checked, true )
+  eq( b.data.checked, false )
+  eq( matching_item.data.checked, false )
+  eq( differing_item.data.checked, true )
 end
 
 AutoLootTreeVisibleRowsSpec = {}

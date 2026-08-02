@@ -103,7 +103,7 @@ function M.new( popup_builder, content_transformer, db )
           refresh()
         end or nil,
         on_check = function( checked )
-          node.data.checked = checked
+          m.AutoLootTree.set_checked( node, checked )
           refresh()
         end
       } )
