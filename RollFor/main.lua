@@ -388,11 +388,11 @@ local function create_components()
   ---@type OptionsFrame
   M.options = m.OptionsFrame.new( popup_builder(), options_frame_content_transformer, M.config, db( "options" ) )
 
-  ---@type SandboxFrameContentTransformer
-  local sandbox_frame_content_transformer = m.SandboxFrameContentTransformer.new()
+  ---@type AutoLootFrameContentTransformer
+  local autoloot_frame_content_transformer = m.AutoLootFrameContentTransformer.new()
 
-  ---@type SandboxFrame
-  M.sandbox_frame = m.SandboxFrame.new( popup_builder(), sandbox_frame_content_transformer, db( "sandbox_frame" ) )
+  ---@type AutoLootFrame
+  M.autoloot_frame = m.AutoLootFrame.new( popup_builder(), autoloot_frame_content_transformer, db( "autoloot_frame" ) )
 
   M.autoloot_db = db( "autoloot_db" )
   m.AutoLootTree.init( M.autoloot_db )
@@ -468,22 +468,22 @@ local function on_roll_command( roll_slash_command )
       return
     end
 
-    if string.find( args, "^sandbox" ) then
-      M.sandbox_frame.toggle()
+    if string.find( args, "^autoloot" ) then
+      M.autoloot_frame.toggle()
       return
     end
 
-    if string.find( args, "^autolootdb print" ) then
-      m.AutoLootDb.on_print_command()
-      return
-    end
-
-    if string.find( args, "^autolootdb" ) then
-      m.AutoLootDb.on_command( M.autoloot_db, function()
-        m.print( "AutoLootDb: all pending items resolved." )
-      end )
-      return
-    end
+    -- if string.find( args, "^autolootdb print" ) then
+    --   m.AutoLootDb.on_print_command()
+    --   return
+    -- end
+    --
+    -- if string.find( args, "^autolootdb" ) then
+    --   m.AutoLootDb.on_command( M.autoloot_db, function()
+    --     m.print( "AutoLootDb: all pending items resolved." )
+    --   end )
+    --   return
+    -- end
 
     if args == "versioncheck guild" then
       M.version_broadcast.guild_version_request()

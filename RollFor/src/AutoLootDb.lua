@@ -1283,7 +1283,7 @@ local function quality_color_hex( quality )
 end
 
 -- Every entry uses the same item link shape, so it isn't stored per item -- callers (e.g.
--- SandboxFrame) build it on demand from the id/quality/name they already have.
+-- AutoLootFrame) build it on demand from the id/quality/name they already have.
 ---@param item_id number
 ---@param quality number
 ---@param name string

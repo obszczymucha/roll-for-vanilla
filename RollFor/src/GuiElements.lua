@@ -640,7 +640,7 @@ local tree_node_checkbox_gap = 4
 local tree_node_icon_spacing = 4
 local tree_node_row_right_margin = 18
 
--- A row in a tree/list view (e.g. SandboxFrame): an expand/collapse icon button (only shown for
+-- A row in a tree/list view (e.g. AutoLootFrame): an expand/collapse icon button (only shown for
 -- expandable nodes) followed by a label. Indentation is baked into the row's own internal layout
 -- (rather than the row frame's outer position) so the popup's own width-to-content math, which
 -- only looks at each line's width, keeps working unmodified.

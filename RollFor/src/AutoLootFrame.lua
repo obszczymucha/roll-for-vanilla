@@ -1,7 +1,7 @@
 RollFor = RollFor or {}
 local m = RollFor
 
-if m.SandboxFrame then return end
+if m.AutoLootFrame then return end
 
 local M = {}
 local getn = m.getn
@@ -19,7 +19,7 @@ local button_defaults = {
 -- dumb rendering only -- it wires click/check callbacks that mutate a row's node and calls
 -- refresh(), and translates rows into widget calls; it makes no decisions about the tree itself.
 
----@class SandboxFrame
+---@class AutoLootFrame
 ---@field show fun()
 ---@field hide fun()
 ---@field toggle fun()
@@ -28,7 +28,7 @@ local button_defaults = {
 M.center_point = { point = "CENTER", relative_point = "CENTER", x = 0, y = 0 }
 
 ---@param popup_builder PopupBuilder
----@param content_transformer SandboxFrameContentTransformer
+---@param content_transformer AutoLootFrameContentTransformer
 ---@param db table
 function M.new( popup_builder, content_transformer, db )
   ---@type Popup?
@@ -62,7 +62,7 @@ function M.new( popup_builder, content_transformer, db )
 
   local function create_popup()
     local result = popup_builder
-        :name( "RollForSandboxFrame" )
+        :name( "RollForAutoLootFrame" )
         :point( get_point() )
         :gui_elements( m.GuiElements )
         :movable()
@@ -82,7 +82,7 @@ function M.new( popup_builder, content_transformer, db )
 
   -- Just relabels/wires callbacks onto AutoLootTree's already-decided rows -- no tree walking,
   -- no checked/desaturated computation here.
-  ---@return SandboxFrameTreeNode[]
+  ---@return AutoLootFrameTreeNode[]
   local function tree_rows()
     local rows = {}
 
@@ -112,10 +112,10 @@ function M.new( popup_builder, content_transformer, db )
     return rows
   end
 
-  ---@return SandboxFrameData
+  ---@return AutoLootFrameData
   local function content()
     return {
-      title = m.colorize_item_by_quality( "RollFor Sandbox", ItemQuality.Legendary ),
+      title = m.colorize_item_by_quality( "RollFor Auto Loot", ItemQuality.Legendary ),
       rows = tree_rows(),
       buttons = {
         { type = "Close", callback = function() if popup then popup:Hide() end end }
@@ -199,7 +199,7 @@ function M.new( popup_builder, content_transformer, db )
     end
   end
 
-  ---@type SandboxFrame
+  ---@type AutoLootFrame
   return {
     show = show,
     hide = hide,
@@ -208,5 +208,5 @@ function M.new( popup_builder, content_transformer, db )
   }
 end
 
-m.SandboxFrame = M
+m.AutoLootFrame = M
 return M

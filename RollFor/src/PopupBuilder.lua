@@ -30,6 +30,7 @@ local getn = m.getn
 ---@field on_hide fun( self: PopupBuilder, on_hide: function ): PopupBuilder
 ---@field border_color fun( self: PopupBuilder, r: number, g: number, b: number, a: number ): PopupBuilder
 ---@field self_centered_anchor fun( self: PopupBuilder ): PopupBuilder
+---@field anchor_point fun( self: PopupBuilder, point: string ): PopupBuilder
 ---@field scale fun( self: PopupBuilder, scale: number ): PopupBuilder
 ---@field strata fun( self: PopupBuilder, strata: FrameStrata ): PopupBuilder
 ---@field hidden fun( self: PopupBuilder ): PopupBuilder

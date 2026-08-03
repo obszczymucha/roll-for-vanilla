@@ -1,7 +1,7 @@
 RollFor = RollFor or {}
 local m = RollFor
 
-if m.SandboxFrameContentTransformer then return end
+if m.AutoLootFrameContentTransformer then return end
 
 local M = {}
 
@@ -15,18 +15,18 @@ M.button_definitions = {
   [ "Close" ] = button_definition( "Close", 70 )
 }
 
----@alias SandboxFrameButtonType
+---@alias AutoLootFrameButtonType
 ---| "Close"
 
----@class SandboxFrameButtonWithCallback
----@field type SandboxFrameButtonType
+---@class AutoLootFrameButtonWithCallback
+---@field type AutoLootFrameButtonType
 ---@field callback fun()
 
----@class SandboxFrameContentTransformer
----@field transform fun( data: SandboxFrameData ): table
+---@class AutoLootFrameContentTransformer
+---@field transform fun( data: AutoLootFrameData ): table
 
 ---@param content table
----@param buttons SandboxFrameButtonWithCallback[]
+---@param buttons AutoLootFrameButtonWithCallback[]
 local function add_buttons( content, buttons )
   for _, button in ipairs( buttons or {} ) do
     local definition = M.button_definitions[ button.type ]
@@ -49,7 +49,7 @@ local function add_title( content, title )
   table.insert( content, { type = "text", value = title, padding = 0 } )
 end
 
----@class SandboxFrameTreeNode
+---@class AutoLootFrameTreeNode
 ---@field depth number
 ---@field data table AutoLootTree row payload -- name/id/item/color/hover_text_color/
 --- hover_background_color, all already decided by AutoLootTree.
@@ -61,7 +61,7 @@ end
 ---@field on_check fun( checked: boolean )?
 
 ---@param content table
----@param rows SandboxFrameTreeNode[]
+---@param rows AutoLootFrameTreeNode[]
 local function add_rows( content, rows )
   for i, row in ipairs( rows or {} ) do
     local padding = i == 1 and 10 or 2
@@ -89,12 +89,12 @@ local function add_rows( content, rows )
   end
 end
 
----@class SandboxFrameData
+---@class AutoLootFrameData
 ---@field title string?
----@field rows SandboxFrameTreeNode[]
----@field buttons SandboxFrameButtonWithCallback[]
+---@field rows AutoLootFrameTreeNode[]
+---@field buttons AutoLootFrameButtonWithCallback[]
 
----@param data SandboxFrameData
+---@param data AutoLootFrameData
 local function transform( data )
   local content = {}
   add_title( content, data.title )
@@ -110,5 +110,5 @@ function M.new()
   }
 end
 
-m.SandboxFrameContentTransformer = M
+m.AutoLootFrameContentTransformer = M
 return M
