@@ -288,9 +288,12 @@ function M.new( config )
       add_rolls( content, data.rolls )
     end
 
-    if data.seconds_left then seconds_left_content( content, data.seconds_left ) end
-
+    -- Winners already decided before/independently of the countdown (e.g. soft-ressers
+    -- who each won a copy outright while the leftover goes to a normal roll) are listed
+    -- ahead of the "Rolling ends in..." line.
     add_winners( content, data.winners, data.strategy_type )
+
+    if data.seconds_left then seconds_left_content( content, data.seconds_left ) end
 
     if data.waiting_for_rolls then
       add_text( content, "Waiting for remaining rolls...", top_padding )

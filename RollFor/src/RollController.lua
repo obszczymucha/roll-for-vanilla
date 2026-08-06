@@ -17,7 +17,7 @@ local sid = m.SoftRes.softres_item_data
 ---@field roll_was_ignored fun( player_name: string, player_class: string?, roll_type: RollType, roll: number, reason: string )
 ---@field roll_was_accepted fun( player_name: string, player_class: string, roll_type: RollType, roll: number )
 ---@field tick fun( seconds_left: number )
----@field winners_found fun( item: Item, item_count: number, winners: Winner[], strategy: RollingStrategyType )
+---@field winners_found fun( item: Item, item_count: number, winners: Winner[], strategy: RollingStrategyType, skip_tracking: boolean? )
 ---@field finish fun()
 
 ---@alias RollControllerPreviewFn fun( item: Item, count: number, seconds: number?, message: string? )
@@ -25,7 +25,7 @@ local sid = m.SoftRes.softres_item_data
 ---@class RollController
 ---@field preview RollControllerPreviewFn
 ---@field start fun( strategy_type: RollingStrategyType, item: Item, item_count: number, item_quantity: number, seconds: number?, message: string? )
----@field winners_found fun( item: Item, item_count: number, winners: Winner[], strategy: RollingStrategyType )
+---@field winners_found fun( item: Item, item_count: number, winners: Winner[], strategy: RollingStrategyType, skip_tracking: boolean? )
 ---@field finish fun()
 ---@field tick fun( seconds_left: number )
 ---@field add fun( player_name: string, player_class: string, roll_type: RollType, roll: number )
@@ -49,7 +49,7 @@ local sid = m.SoftRes.softres_item_data
 ---@field loot_list_item_deselected fun()
 ---@field finish_rolling_early fun()
 ---@field cancel_rolling fun()
----@field rolling_started fun( strategy_type: RollingStrategyType, item: Item, item_count: number, item_quantity: number, seconds: number?, message: string?, rolling_players: RollingPlayer[]? )
+---@field rolling_started fun( strategy_type: RollingStrategyType, item: Item, item_count: number, item_quantity: number, seconds: number?, message: string?, rolling_players: RollingPlayer[]?, pre_winners: Winner[]? )
 ---@field award_confirmed fun( player: ItemCandidate|Winner, item: MasterLootDistributableItem )
 ---@field update fun( item_id: ItemId )
 ---@field on_item_info_received fun( item_id: ItemId )
@@ -397,6 +397,20 @@ function M.new(
   ---@return boolean
   local function should_display_callback()
     return currently_displayed_item and loot_list.is_looting() and loot_list.get_slot( currently_displayed_item.id ) and true or false
+  end
+
+  -- Maps the roll tracker's raw winners into the shape the popup expects, without any
+  -- award callbacks. Used while a roll is still in progress to show winners that were
+  -- already decided (e.g. soft-ressers who won a copy outright before the leftover roll).
+  ---@param winners Winner[]?
+  ---@return WinnerWithAwardCallback[]
+  local function in_progress_winners( winners )
+    return m.map( winners or {},
+      ---@param winner Winner
+      function( winner )
+        if type( winner ) ~= "table" then return end -- Fucking lua50 and its n.
+        return { name = winner.name, class = winner.class, roll_type = winner.roll_type, roll = winner.winning_roll }
+      end )
   end
 
   ---@param player_name string
@@ -1032,7 +1046,7 @@ function M.new(
 
     if strategy_type == "NormalRoll" or strategy_type == "SoftResRoll" then
       roll_content( data.item, data.item_count, data.item_quantity, seconds_left, roll_in_progress_buttons( current_iteration.rolls ), current_iteration.rolls,
-        {}, strategy_type )
+        in_progress_winners( data.winners ), strategy_type )
     end
   end
 
@@ -1047,9 +1061,10 @@ function M.new(
   ---@param item_count number
   ---@param winners Winner[]
   ---@param strategy RollingStrategyType
-  local function winners_found( item, item_count, winners, strategy )
+  ---@param skip_tracking boolean? -- announce only; winners are already recorded in the tracker.
+  local function winners_found( item, item_count, winners, strategy, skip_tracking )
     local roll_tracker = get_roll_tracker( item.id )
-    roll_tracker.add_winners( winners )
+    if not skip_tracking then roll_tracker.add_winners( winners ) end
 
     ---@type WinnersFoundEvent
     local event = {
@@ -1106,16 +1121,18 @@ function M.new(
   ---@param seconds number?
   ---@param message string?
   ---@param rolling_players RollingPlayer[]?
-  local function rolling_started( strategy_type, item, item_count, item_quantity, seconds, message, rolling_players )
+  ---@param pre_winners Winner[]? -- winners decided before the roll (e.g. outright soft-res winners) shown during rolling.
+  local function rolling_started( strategy_type, item, item_count, item_quantity, seconds, message, rolling_players, pre_winners )
     local roll_tracker = get_roll_tracker( item.id )
     roll_tracker.start( strategy_type, item_count, item_quantity, seconds, message, rolling_players )
+    if pre_winners then roll_tracker.add_winners( pre_winners ) end
 
     local _, _, quality = m.api.GetItemInfo( string.format( "item:%s:0:0:0", item.id ) )
     local color = m.get_popup_border_color( quality )
 
     rolling_popup:border_color( color )
 
-    local _, current_iteration = roll_tracker.get()
+    local data, current_iteration = roll_tracker.get()
     local rolls = current_iteration and current_iteration.rolls or {}
 
     if strategy_type == "NormalRoll" or strategy_type == "SoftResRoll" then
@@ -1131,7 +1148,8 @@ function M.new(
       }
 
       notify_subscribers( event )
-      roll_content( item, item_count, item_quantity, seconds, roll_in_progress_buttons( current_iteration.rolls ), rolls, {}, strategy_type )
+      roll_content( item, item_count, item_quantity, seconds, roll_in_progress_buttons( current_iteration.rolls ), rolls,
+        in_progress_winners( data.winners ), strategy_type )
       return
     end
   end
@@ -1246,7 +1264,7 @@ function M.new(
         nil,
         roll_in_progress_buttons( current_iteration.rolls ),
         current_iteration.rolls,
-        {},
+        in_progress_winners( data.winners ),
         strategy_type,
         true
       )

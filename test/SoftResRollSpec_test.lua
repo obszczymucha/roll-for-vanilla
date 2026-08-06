@@ -1226,7 +1226,7 @@ function SrCountEqualsItemCountSpec:should_not_show_sr_placeholders_when_sr_play
   )
 
   -- When (simulating /rf 2x[Bag])
-  rf.roll_controller.start( "SoftResRoll", item, 2, 8 )
+  rf.roll_controller.start( "SoftResRoll", item, 2, 1, 8 )
 
   -- Then (popup shows winners without SR placeholder rolls)
   rf.rolling_popup.should_display(
@@ -1253,7 +1253,7 @@ function TwoSrPlayersThreeItemsSpec:should_handle_two_sr_players_with_three_item
       :build()
 
   -- When (simulating /rf 3x[Bag])
-  rf.roll_controller.start( "SoftResRoll", item, 3, 8 )
+  rf.roll_controller.start( "SoftResRoll", item, 3, 1, 8 )
 
   -- Then
   rf.rolling_popup.should_display(
@@ -1515,7 +1515,7 @@ function ThreeIdenticalItemsOneSrSpec:should_auto_loot_three_items_then_rf_comma
   rf.rolling_popup.should_be_hidden()
 
   -- When (simulating /rf 3x[Bag])
-  rf.roll_controller.start( "SoftResRoll", item, 3, 8 )
+  rf.roll_controller.start( "SoftResRoll", item, 3, 1, 8 )
 
   -- Then (the single soft-resser wins one copy outright, and the remaining two go to a normal roll)
   rw( "Psikutas soft-ressed [Bag]." )
@@ -1598,11 +1598,43 @@ function ThreeIdenticalItemsTwoSrSpec:should_auto_loot_three_items_then_rf_comma
   rf.rolling_popup.should_be_hidden()
 
   -- When (simulating /rf 3x[Bag])
-  rf.roll_controller.start( "SoftResRoll", item, 3, 8 )
+  rf.roll_controller.start( "SoftResRoll", item, 3, 1, 8 )
 
   -- Then (both soft-ressers win a copy outright, the remaining one goes to a normal roll)
   rw( "Obszczymucha and Psikutas soft-ressed [Bag]." )
   rw( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
+  rf.rolling_popup.should_display(
+    item_link( item, 1 ),
+    text( "Obszczymucha soft-ressed this item.", 11 ),
+    text( "Psikutas soft-ressed this item.", 2 ),
+    text( "Rolling ends in 8 seconds.", 11 ),
+    buttons( "Cancel" )
+  )
+
+  -- When (a few seconds pass with nobody rolling yet)
+  rf.ace_timer.repeating_tick()
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item, 1 ),
+    text( "Obszczymucha soft-ressed this item.", 11 ),
+    text( "Psikutas soft-ressed this item.", 2 ),
+    text( "Rolling ends in 7 seconds.", 11 ),
+    buttons( "Cancel" )
+  )
+
+  -- When
+  rf.ace_timer.repeating_tick( 4 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item, 1 ),
+    text( "Obszczymucha soft-ressed this item.", 11 ),
+    text( "Psikutas soft-ressed this item.", 2 ),
+    text( "Rolling ends in 3 seconds.", 11 ),
+    buttons( "Cancel" )
+  )
+  r( "Stopping rolls in 3" )
 
   -- When (everyone rolls; Psikutas and Obszczymucha already won theirs via soft-res, so their rolls are ignored)
   rf.roll( p1, 95, 1, 100 ) -- Psikutas (ignored)
@@ -1610,6 +1642,22 @@ function ThreeIdenticalItemsTwoSrSpec:should_auto_loot_three_items_then_rf_comma
   rf.roll( p2, 80, 1, 100 ) -- Obszczymucha (ignored)
   c( "RollFor: Obszczymucha already won [Bag] via soft-res. This roll (80) is ignored." )
   rf.roll( p3, 70, 1, 100 ) -- Jimmy
+
+  -- When (a tick passes with only Jimmy having rolled so far)
+  rf.ace_timer.repeating_tick()
+
+  -- Then (Jimmy's roll shows above the soft-res winners while the countdown continues)
+  r( "2" )
+  rf.rolling_popup.should_display(
+    item_link( item, 1 ),
+    mainspec_roll( p3, 70, 11 ),
+    text( "Obszczymucha soft-ressed this item.", 11 ),
+    text( "Psikutas soft-ressed this item.", 2 ),
+    text( "Rolling ends in 2 seconds.", 11 ),
+    buttons( "FinishEarly", "Cancel" )
+  )
+
+  -- When
   rf.roll( p4, 60, 1, 100 ) -- Pumba
 
   -- Then (all three winners announced at the end: the two soft-ressers first, then the roll winner)

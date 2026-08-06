@@ -56,7 +56,8 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
   ---@param seconds number?
   ---@param message string?
   ---@param rolling_players RollingPlayer[]?
-  local function roll( strategy, item, item_count, item_quantity, seconds, message, rolling_players )
+  ---@param pre_winners Winner[]?
+  local function roll( strategy, item, item_count, item_quantity, seconds, message, rolling_players, pre_winners )
     if m_rolling_strategy and m_rolling_strategy.is_rolling() then
       m.err( "Rolling is already in progress." )
       return
@@ -65,7 +66,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     m_rolling_strategy = strategy
 
     if item and item_count and item_quantity then
-      roll_controller.rolling_started( strategy.get_type(), item, item_count, item_quantity, seconds, message, rolling_players )
+      roll_controller.rolling_started( strategy.get_type(), item, item_count, item_quantity, seconds, message, rolling_players, pre_winners )
     end
 
     m_rolling_strategy.start_rolling()
@@ -265,10 +266,12 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
 
     -- When the normal roll finishes, re-announce the soft-res winners first so
     -- all winners are listed together at the end, soft-ressers ahead of rollers.
+    -- They're already recorded in the tracker (see pre_winners below), so this only
+    -- announces them again -- tracking is skipped to avoid duplicating them.
     ---@type RollingFinishedCallback
     local function on_normal_roll_finished( f_item, f_item_count, f_item_quantity, winning_rolls, rerolling )
       if getn( winning_rolls ) > 0 then
-        roll_controller.winners_found( f_item, item_count, sr_winners, RS.SoftResRoll )
+        roll_controller.winners_found( f_item, item_count, sr_winners, RS.SoftResRoll, true )
       end
 
       on_rolling_finished( f_item, f_item_count, f_item_quantity, winning_rolls, rerolling )
@@ -277,7 +280,9 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     local normal_strategy = strategy_factory.normal_roll( item, remaining, item_quantity, nil, seconds, on_normal_roll_finished, facade, softressers )
 
     m_rolling_strategy = nil
-    roll( normal_strategy, item, remaining, item_quantity, seconds )
+    -- Pass the soft-res winners as pre_winners so they persist in the tracker (start()
+    -- clears winners) and stay visible in the popup throughout the leftover normal roll.
+    roll( normal_strategy, item, remaining, item_quantity, seconds, nil, nil, sr_winners )
   end
 
   ---@param data RollControllerStartData
