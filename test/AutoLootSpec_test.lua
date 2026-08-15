@@ -78,7 +78,9 @@ function AutoLootSpec:autoloot_should_depend_on_loot_threshold()
   lu.assertEquals( rf_high_threshold.auto_loot.is_auto_looted( item ), false )
 end
 
-function AutoLootSpec:should_autoloot_any_explicitly_added_items()
+-- Items ticked in the auto-loot GUI are auto-looted whatever their quality or bind type -- the
+-- player asked for them by name, so none of the automatic rules get a say.
+function AutoLootSpec:should_autoloot_items_on_the_predefined_list()
   local item = qi( "Fire for Crafting", 123, 4, bop )
 
   local rf = new_roll_for()
@@ -87,17 +89,16 @@ function AutoLootSpec:should_autoloot_any_explicitly_added_items()
       } )
       :build()
 
-  local id = rf.auto_loot.add_category( "global" )
-  rf.auto_loot.add( id, item.link )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), false )
 
+  rf.auto_loot_list.enable( item )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
 
-  rf.auto_loot.remove( item.link )
-
+  rf.auto_loot_list.disable( item )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item ), false )
 end
 
-function AutoLootSpec:should_not_autoloot_if_category_is_disabled()
+function AutoLootSpec:should_not_autoloot_predefined_items_whose_boss_is_disabled()
   local item = qi( "Fire for Crafting", 123, 4, bop )
 
   local rf = new_roll_for()
@@ -106,17 +107,32 @@ function AutoLootSpec:should_not_autoloot_if_category_is_disabled()
       } )
       :build()
 
-  local id = rf.auto_loot.add_category( "global" )
-  rf.auto_loot.add( id, item.link )
+  rf.auto_loot_list.enable( item )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
 
-  rf.auto_loot.disable_category( id )
+  rf.auto_loot_list.set_boss_enabled( false )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), false )
+end
+
+function AutoLootSpec:should_not_autoloot_predefined_items_whose_dungeon_is_disabled()
+  local item = qi( "Fire for Crafting", 123, 4, bop )
+
+  local rf = new_roll_for()
+      :config( {
+        auto_loot = true
+      } )
+      :build()
+
+  rf.auto_loot_list.enable( item )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
+
+  rf.auto_loot_list.set_dungeon_enabled( false )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item ), false )
 end
 
 function AutoLootSpec:should_not_autoloot_if_config_option_is_false()
   local low_quality_item = qi( "Pocket Lint", 123, 1, boe )
-  local explicitly_added_item = qi( "Fire for Crafting", 123, 4, bop )
+  local predefined_item = qi( "Fire for Crafting", 123, 4, bop )
 
   local rf = new_roll_for()
       :config( {
@@ -124,11 +140,10 @@ function AutoLootSpec:should_not_autoloot_if_config_option_is_false()
       } )
       :build()
 
-  local id = rf.auto_loot.add_category( "global" )
-  rf.auto_loot.add( id, explicitly_added_item.link )
+  rf.auto_loot_list.enable( predefined_item )
 
   lu.assertEquals( rf.auto_loot.is_auto_looted( low_quality_item ), false )
-  lu.assertEquals( rf.auto_loot.is_auto_looted( explicitly_added_item ), false )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( predefined_item ), false )
 end
 
 AutoLootGuiSpec = {}
@@ -146,12 +161,8 @@ function AutoLootGuiSpec:should_auto_loot_item_without_displaying_rolling_popup(
       } )
       :build()
 
-  local id = rf.auto_loot.add_category( "global" )
-  rf.auto_loot.add( id, item.link )
+  rf.auto_loot_list.enable( item )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
-
-  chat.console( "RollFor: Category global added with ID 1." )
-  chat.console( "RollFor: [Hearthstone] added to global." )
 
   u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
   u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha" } )
@@ -181,13 +192,9 @@ function AutoLootGuiSpec:should_auto_loot_one_item_and_display_rolling_popup_for
       } )
       :build()
 
-  local id = rf.auto_loot.add_category( "global" )
-  rf.auto_loot.add( id, item.link )
+  rf.auto_loot_list.enable( item )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item2 ), false )
-
-  chat.console( "RollFor: Category global added with ID 1." )
-  chat.console( "RollFor: [Hearthstone] added to global." )
 
   u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
   u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha" } )
@@ -230,13 +237,9 @@ function AutoLootGuiSpec:should_auto_loot_soft_ressed_item_and_display_rolling_p
       } )
       :build()
 
-  local id = rf.auto_loot.add_category( "global" )
-  rf.auto_loot.add( id, item.link )
+  rf.auto_loot_list.enable( item )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item2 ), false )
-
-  chat.console( "RollFor: Category global added with ID 1." )
-  chat.console( "RollFor: [Hearthstone] added to global." )
 
   u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
   u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha" } )
@@ -279,14 +282,10 @@ function AutoLootGuiSpec:should_auto_loot_all_auto_lootable_items_and_display_ro
       } )
       :build()
 
-  local id = rf.auto_loot.add_category( "global" )
-  rf.auto_loot.add( id, item.link )
+  rf.auto_loot_list.enable( item )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item2), true )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item3 ), false )
-
-  chat.console( "RollFor: Category global added with ID 1." )
-  chat.console( "RollFor: [Hearthstone] added to global." )
 
   u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
   u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha" } )
@@ -337,8 +336,7 @@ function AutoLootGuiSpec:should_register_auto_looted_items_as_dropped_loot_even_
       } )
       :build()
 
-  local id = rf.auto_loot.add_category( "global" )
-  rf.auto_loot.add( id, item.link )
+  rf.auto_loot_list.enable( item )
 
   u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
   u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha" } )
@@ -352,10 +350,10 @@ function AutoLootGuiSpec:should_register_auto_looted_items_as_dropped_loot_even_
   lu.assertEquals( rf.dropped_loot.get_dropped_item_name( 123 ), "Hearthstone" )
 end
 
--- Items on the manual auto-loot list are announced even when auto-loot
+-- Items on the predefined auto-loot list are announced even when auto-loot
 -- announcements are turned off (only automatically auto-looted items are
 -- silenced by that toggle).
-function AutoLootGuiSpec:should_announce_manually_listed_items_even_when_announcements_are_off()
+function AutoLootGuiSpec:should_announce_predefined_items_even_when_announcements_are_off()
   local loot_facade, chat = mock_loot_facade(), mock_chat()
   local item, p1, p2 = i( "Hearthstone", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
   local rf = new_roll_for()
@@ -369,11 +367,7 @@ function AutoLootGuiSpec:should_announce_manually_listed_items_even_when_announc
       } )
       :build()
 
-  local id = rf.auto_loot.add_category( "global" )
-  rf.auto_loot.add( id, item.link )
-
-  chat.console( "RollFor: Category global added with ID 1." )
-  chat.console( "RollFor: [Hearthstone] added to global." )
+  rf.auto_loot_list.enable( item )
 
   u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
   u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha" } )

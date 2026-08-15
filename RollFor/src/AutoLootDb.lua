@@ -1334,23 +1334,56 @@ function M.ensure_seeded( db )
   db.ids = seeded
 end
 
----@param dungeon string
----@param boss string
----@return table<number, AutoLootDbItem> enabled items keyed by item id
-function M.get_items( dungeon, boss )
-  local dungeon_entry = ids[ dungeon ]
-  if not dungeon_entry or not dungeon_entry.enabled then return {} end
+-- The two queries below are what AutoLoot runs against the player's selection. Both read the
+-- persisted db.ids (see ensure_seeded), never the static `ids` above -- that one is just the
+-- catalogue and carries no selection state at all. An item only counts if it and both nodes above
+-- it are enabled, the same rule AutoLootTree.is_leaf_enabled applies to the GUI's own rows.
+--
+-- Skipping disabled dungeons/bosses wholesale keeps these proportional to what's actually selected
+-- rather than to the size of the catalogue, so no lookup index is maintained here.
 
-  local boss_entry = dungeon_entry.bosses and dungeon_entry.bosses[ boss ]
-  if not boss_entry or not boss_entry.enabled then return {} end
+-- Items that appear under more than one boss (shared trash drops) count as soon as any one of
+-- those occurrences is enabled.
+---@param db table the persisted autoloot_db
+---@param item_id number
+---@return boolean
+function M.is_enabled( db, item_id )
+  if not db or not db.ids then return false end
 
-  local items = {}
-
-  for item_id, item in pairs( boss_entry.items or {} ) do
-    if item.enabled then items[ item_id ] = item end
+  for _, dungeon_entry in pairs( db.ids ) do
+    if dungeon_entry.enabled then
+      for _, boss_entry in pairs( dungeon_entry.bosses or {} ) do
+        if boss_entry.enabled then
+          local item = boss_entry.items and boss_entry.items[ item_id ]
+          if item and item.enabled then return true end
+        end
+      end
+    end
   end
 
-  return items
+  return false
+end
+
+-- Whether the player has anything at all selected -- i.e. whether M.is_enabled could ever return
+-- true for this db. Stops at the first hit instead of counting.
+---@param db table the persisted autoloot_db
+---@return boolean
+function M.has_enabled_items( db )
+  if not db or not db.ids then return false end
+
+  for _, dungeon_entry in pairs( db.ids ) do
+    if dungeon_entry.enabled then
+      for _, boss_entry in pairs( dungeon_entry.bosses or {} ) do
+        if boss_entry.enabled then
+          for _, item in pairs( boss_entry.items or {} ) do
+            if item.enabled then return true end
+          end
+        end
+      end
+    end
+  end
+
+  return false
 end
 
 -- Only used by the fetch tool below (dump_to_db / on_item_info_received) -- its output is meant

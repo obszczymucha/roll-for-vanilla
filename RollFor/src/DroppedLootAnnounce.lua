@@ -197,7 +197,7 @@ function M.process_dropped_items( loot_list, softres, auto_loot, config )
   local source_guid = loot_list.get_source_guid()
   local threshold = m.api.GetLootThreshold()
   local items = filter( loot_list.get_items(), function( item )
-    if auto_loot.is_auto_looted( item ) and not auto_loot.is_on_manual_list( item ) and not config.auto_loot_announce() or item.id == 29434 then return false end
+    if auto_loot.is_auto_looted( item ) and not auto_loot.is_on_predefined_list( item ) and not config.auto_loot_announce() or item.id == 29434 then return false end
 
     local quality = item.quality or 0
 

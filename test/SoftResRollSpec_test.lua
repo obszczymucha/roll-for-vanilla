@@ -1487,14 +1487,10 @@ function ThreeIdenticalItemsOneSrSpec:should_auto_loot_three_items_then_rf_comma
       } )
       :build()
 
-  local id = rf.auto_loot.add_category( "global" )
-  rf.auto_loot.add( id, item.link )
+  rf.auto_loot_list.enable( item )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item2 ), true )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item3 ), true )
-
-  c( "RollFor: Category global added with ID 1." )
-  c( "RollFor: [Bag] added to global." )
 
   u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
   u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha", "Jimmy", "Pumba" } )
@@ -1569,14 +1565,10 @@ function ThreeIdenticalItemsTwoSrSpec:should_auto_loot_three_items_then_rf_comma
       } )
       :build()
 
-  local id = rf.auto_loot.add_category( "global" )
-  rf.auto_loot.add( id, item.link )
+  rf.auto_loot_list.enable( item )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item2 ), true )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item3 ), true )
-
-  c( "RollFor: Category global added with ID 1." )
-  c( "RollFor: [Bag] added to global." )
 
   u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
   u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha", "Jimmy", "Pumba" } )
@@ -1698,13 +1690,9 @@ function AwardedLootSpec:should_award_the_sr_item_then_roll_for_the_rest()
       } )
       :build()
 
-  local id = rf.auto_loot.add_category( "global" )
-  rf.auto_loot.add( id, item.link )
+  rf.auto_loot_list.enable( item )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
   lu.assertEquals( rf.auto_loot.is_auto_looted( item2 ), true )
-
-  c( "RollFor: Category global added with ID 1." )
-  c( "RollFor: [Bag] added to global." )
 
   u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
   u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha", "Jimmy" } )

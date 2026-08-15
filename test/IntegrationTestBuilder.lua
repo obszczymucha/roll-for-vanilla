@@ -108,6 +108,53 @@ function M.mock_loot_facade()
   return require( "mocks/LootFacade" ).new()
 end
 
+-- Test seam for the auto-loot GUI's predefined list. Test items aren't in AutoLootDb's real
+-- catalogue, so instead of ticking rows in the tree this writes the exact db shape ticking them
+-- would produce (see AutoLootDb.ensure_seeded and AutoLootTree.set_checked): the item enabled
+-- under an enabled boss under an enabled dungeon. AutoLootTree's own write-through is covered in
+-- AutoLootTree_test; what these specs care about is AutoLoot honouring the resulting selection.
+---@param db table the autoloot_db the AutoLoot under test was built with
+function M.auto_loot_list( db )
+  local DUNGEON, BOSS = "Test Dungeon", "Test Boss"
+
+  local function boss_entry()
+    db.ids = db.ids or {}
+    db.ids[ DUNGEON ] = db.ids[ DUNGEON ] or { enabled = true, order = 1, bosses = {} }
+    db.ids[ DUNGEON ].bosses[ BOSS ] = db.ids[ DUNGEON ].bosses[ BOSS ] or { enabled = true, order = 1, items = {} }
+
+    return db.ids[ DUNGEON ].bosses[ BOSS ]
+  end
+
+  ---@param item DroppedItem
+  local function enable( item )
+    boss_entry().items[ item.id ] = { enabled = true, name = item.name, quality = item.quality, icon = 0 }
+  end
+
+  ---@param item DroppedItem
+  local function disable( item )
+    local entry = boss_entry().items[ item.id ]
+    if entry then entry.enabled = false end
+  end
+
+  ---@param enabled boolean
+  local function set_dungeon_enabled( enabled )
+    boss_entry()
+    db.ids[ DUNGEON ].enabled = enabled
+  end
+
+  ---@param enabled boolean
+  local function set_boss_enabled( enabled )
+    boss_entry().enabled = enabled
+  end
+
+  return {
+    enable = enable,
+    disable = disable,
+    set_dungeon_enabled = set_dungeon_enabled,
+    set_boss_enabled = set_boss_enabled
+  }
+end
+
 ---@param name string
 ---@param id number?
 ---@param sr_players RollingPlayer[]?
@@ -303,7 +350,8 @@ function M.new_roll_for()
     local rolling_popup_content = require( "src/RollingPopupContentTransformer" ).new( config )
     deps[ "RollingPopupContent" ] = rolling_popup_content
 
-    local auto_loot = require( "mocks/AutoLoot" ).new( loot_list, u.modules().api, db( "auto_loot" ), config, player_info, chat )
+    local autoloot_db = db( "autoloot_db" )
+    local auto_loot = require( "mocks/AutoLoot" ).new( loot_list, u.modules().api, autoloot_db, config, player_info, chat )
     deps[ "AutoLoot" ] = auto_loot
 
     require( "src/RollResultAnnouncer" ).new( chat, roll_controller, config )
@@ -341,6 +389,8 @@ function M.new_roll_for()
       player_selection = player_selection_frame,
       loot_list = loot_list, ---@type LootList
       auto_loot = auto_loot, ---@type AutoLoot
+      auto_loot_list = M.auto_loot_list( autoloot_db ),
+      autoloot_db = autoloot_db,
       dropped_loot = dropped_loot, ---@type DroppedLoot
       ace_timer = ace_timer,
       roll = rolling_logic.on_roll,

@@ -279,8 +279,10 @@ local function create_components()
     M.roll_controller
   )
 
+  M.autoloot_db = db( "autoloot_db" )
+
   ---@type AutoLoot
-  M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, db( "auto_loot" ), M.config, M.player_info, M.chat )
+  M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, M.autoloot_db, M.config, M.player_info, M.chat )
 
   ---@type DroppedLootAnnounce
   M.dropped_loot_announce = m.DroppedLootAnnounce.new(
@@ -394,7 +396,6 @@ local function create_components()
   ---@type AutoLootFrame
   M.autoloot_frame = m.AutoLootFrame.new( popup_builder(), autoloot_frame_content_transformer, db( "autoloot_frame" ) )
 
-  M.autoloot_db = db( "autoloot_db" )
   m.AutoLootTree.init( M.autoloot_db )
 end
 
