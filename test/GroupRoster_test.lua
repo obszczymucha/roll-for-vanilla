@@ -63,6 +63,46 @@ local function raid( _player, ... )
   return group( _player, true, ... )
 end
 
+local function raid_units( ... )
+  local names = { ... }
+  local unit_names = { [ "player" ] = names[ 1 ] }
+  local exists = { [ "player" ] = packed_value( { 1 } ) }
+
+  for i, name in ipairs( names ) do
+    unit_names[ "raid" .. i ] = name
+    exists[ "raid" .. i ] = packed_value( { 1 } )
+  end
+
+  return function()
+    return {
+      mock( "UnitName", smart_table( unit_names ) ),
+      mock( "UnitExists", smart_table( exists ) ),
+      mock( "IsInGroup", true ),
+      mock( "IsInRaid", true )
+    }
+  end
+end
+
+local function party_units( _player, ... )
+  local args = { ... }
+  local unit_names = { [ "player" ] = _player }
+  local exists = { [ "player" ] = packed_value( { 1 } ) }
+
+  for i, name in ipairs( args ) do
+    unit_names[ "party" .. i ] = name
+    exists[ "party" .. i ] = packed_value( { 1 } )
+  end
+
+  return function()
+    return {
+      mock( "UnitName", smart_table( unit_names ) ),
+      mock( "UnitExists", smart_table( exists ) ),
+      mock( "IsInGroup", true ),
+      mock( "IsInRaid", false )
+    }
+  end
+end
+
 GetAllPlayersInMyGroupSpec = {}
 
 function GetAllPlayersInMyGroupSpec:should_return_my_name_if_not_in_group()
@@ -276,6 +316,71 @@ function AmIInGroupSpec:should_return_true_if_in_raid()
   eq( mod.am_i_in_group(), true )
   eq( mod.am_i_in_party(), false )
   eq( mod.am_i_in_raid(), true )
+end
+
+GetGroupUnitTokensSpec = {}
+
+function GetGroupUnitTokensSpec:should_return_the_player_when_solo()
+  -- Given
+  local api = mock_api( player( "Psikutas" ) )
+  local mod = gr.new( api(), mock_player_info( "Psikutas" ) )
+
+  -- When / Then
+  eq( mod.get_group_unit_tokens(), { "player" } )
+end
+
+function GetGroupUnitTokensSpec:should_return_party_tokens()
+  -- Given
+  local api = mock_api( party_units( "Psikutas", "Obszczymucha", "Ohhaimark" ) )
+  local mod = gr.new( api(), mock_player_info( "Psikutas" ) )
+
+  -- When / Then
+  eq( mod.get_group_unit_tokens(), { "player", "party1", "party2" } )
+end
+
+function GetGroupUnitTokensSpec:should_return_raid_tokens()
+  -- Given
+  local api = mock_api( raid_units( "Psikutas", "Obszczymucha", "Ohhaimark" ) )
+  local mod = gr.new( api(), mock_player_info( "Psikutas" ) )
+
+  -- When / Then
+  eq( mod.get_group_unit_tokens(), { "raid1", "raid2", "raid3" } )
+end
+
+GetGroupPlayersSpec = {}
+
+function GetGroupPlayersSpec:should_return_me_with_the_player_token_if_not_in_group()
+  -- Given
+  local api = mock_api( player( "Psikutas" ) )
+  local mod = gr.new( api(), mock_player_info( "Psikutas" ) )
+
+  -- When / Then
+  eq( mod.get_group_players(), { { name = "Psikutas", class = "Warrior", unit = "player" } } )
+end
+
+function GetGroupPlayersSpec:should_return_party_members_with_their_tokens_sorted()
+  -- Given
+  local api = mock_api( party( "Psikutas", "Obszczymucha" ) )
+  local mod = gr.new( api(), mock_player_info( "Psikutas" ) )
+
+  -- When / Then
+  eq( mod.get_group_players(), {
+    { name = "Obszczymucha", class = "Warrior", online = true, unit = "party1" },
+    { name = "Psikutas",     class = "Warrior", online = true, unit = "player" }
+  } )
+end
+
+function GetGroupPlayersSpec:should_return_raid_members_with_their_tokens_sorted()
+  -- The sort is by class then name, so a member's token is not their raid index.
+  -- Given
+  local api = mock_api( raid( "Psikutas", "Obszczymucha" ) )
+  local mod = gr.new( api(), mock_player_info( "Psikutas" ) )
+
+  -- When / Then
+  eq( mod.get_group_players(), {
+    { name = "Obszczymucha", class = "Warrior", online = true, unit = "raid2" },
+    { name = "Psikutas",     class = "Warrior", online = true, unit = "raid1" }
+  } )
 end
 
 os.exit( lu.LuaUnit.run() )

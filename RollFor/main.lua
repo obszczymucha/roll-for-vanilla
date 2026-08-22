@@ -161,6 +161,25 @@ local function create_components()
   ---@type TooltipReader
   M.tooltip_reader = m.TooltipReader.new( M.api() )
 
+  ---@type Inspector
+  M.inspector = m.Inspector.new( M.api(), M.ace_timer, m.EventFrame.new( m.api ) )
+
+  ---@type GearScanner
+  M.gear_scanner = m.GearScanner.new( M.api(), M.tooltip_reader, M.inspector )
+
+  ---@type BuffScanner
+  M.buff_scanner = m.BuffScanner.new( M.api(), M.tooltip_reader )
+
+  ---@type ResistanceRegistry
+  M.resistance_registry = m.ResistanceRegistry.new()
+
+  ---@type ResistanceParser
+  M.resistance_parser = m.ResistanceParser.new( M.api(), M.resistance_registry )
+
+  ---@type ResistanceCheck
+  M.resistance_check = m.ResistanceCheck.new( db( "resistance_check" ), M.group_roster,
+    M.gear_scanner, M.buff_scanner, M.resistance_parser, M.resistance_registry )
+
   -- TODO: Add type.
   M.version_broadcast = m.VersionBroadcast.new( db( "version_broadcast" ), M.player_info, version.str )
 
@@ -395,6 +414,13 @@ local function create_components()
 
   ---@type AutoLootFrame
   M.autoloot_frame = m.AutoLootFrame.new( popup_builder(), autoloot_frame_content_transformer, db( "autoloot_frame" ) )
+
+  ---@type ResistanceFrameContentTransformer
+  local resistance_frame_content_transformer = m.ResistanceFrameContentTransformer.new()
+
+  ---@type ResistanceFrame
+  M.resistance_frame = m.ResistanceFrame.new( popup_builder(), resistance_frame_content_transformer,
+    M.resistance_check, db( "resistance_frame" ) )
 
   m.AutoLootTree.init( M.autoloot_db )
 end
@@ -713,6 +739,8 @@ local function setup_slash_commands()
   M.api().SlashCmdList[ "SSR" ] = on_show_sorted_rolls_command
   SLASH_RFR1 = "/rfr"
   M.api().SlashCmdList[ "RFR" ] = on_reset_dropped_loot_announce_command
+  SLASH_RFRES1 = "/rfres"
+  M.api().SlashCmdList[ "RFRES" ] = function() M.resistance_frame.toggle() end
 
   -- Soft Res commands
   SLASH_SR1 = "/sr"
@@ -782,6 +810,7 @@ end
 
 function M.on_group_changed()
   M.name_matcher.auto_match()
+  M.resistance_frame.on_group_changed()
   update_minimap_icon()
 end
 

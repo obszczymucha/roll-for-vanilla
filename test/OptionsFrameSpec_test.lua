@@ -17,6 +17,7 @@ u.mock_wow_api()
 
 -- OptionsFrame hardcodes which real settings it shows (and which widget renders each), so every
 -- test that calls show() needs a getter/setter for all of them, not just the one under test.
+---@return table<string, any>
 local function default_setting_values()
   return {
     default_rolling_time_seconds = 8,

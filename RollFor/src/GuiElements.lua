@@ -20,6 +20,7 @@ local hl = m.colors.hl
 ---@field dropdown fun( parent: Frame ): Frame
 ---@field editbox fun( parent: Frame ): Frame
 ---@field tree_node fun( parent: Frame ): Frame
+---@field resistance_row fun( parent: Frame ): Frame
 
 local M = {}
 
@@ -881,6 +882,131 @@ function M.tree_node( parent )
   item_link_widget.on_click = function()
     checkbox:Click()
   end
+
+  return container
+end
+
+-- Fixed column geometry. The popup sizes itself from the widest line, so a row
+-- that measured itself from its own text would be a different width per player
+-- and the columns would drift; every row reports the same width instead.
+local resistance_row_height = 14
+local resistance_row_clear_size = 12
+local resistance_row_width = 310
+
+local resistance_row_columns = {
+  { field = "player", x = 18, width = 108, justify = "LEFT" },
+  { field = "resistance", x = 130, width = 66, justify = "CENTER" },
+  { field = "personal", x = 196, width = 54, justify = "RIGHT" },
+  { field = "total", x = 252, width = 54, justify = "RIGHT" }
+}
+
+-- Cool grey: the column titles are a legend, not data, so they sit back.
+local resistance_row_header_color = { 0.6, 0.65, 0.76 }
+local resistance_row_text_color = { 1, 1, 1 }
+-- Enough to tell which row the cursor is on across four columns, not enough to
+-- compete with the values themselves.
+local resistance_row_hover_color = { 0.351, 0.553, 1.0, 0.18 }
+-- How far the highlight reaches past the row on each side. The popup is the
+-- widest row plus its side margin, so this stays inside the frame.
+local resistance_row_hover_overhang = 10
+
+-- A row in the resistance list: a small clear button, then Player / Resistance /
+-- Personal / Total at fixed offsets. The column-title row is the same widget
+-- (SetHeader) so the titles line up with the values underneath them.
+function M.resistance_row( parent )
+  local container = m.api.CreateFrame( "Frame", nil, parent )
+  container:SetHeight( resistance_row_height )
+  container:SetWidth( resistance_row_width )
+
+  local clear_button = m.api.CreateFrame( "Button", nil, container )
+  clear_button:SetWidth( resistance_row_clear_size )
+  clear_button:SetHeight( resistance_row_clear_size )
+  clear_button:SetPoint( "LEFT", container, "LEFT", 0, 0 )
+  clear_button:SetNormalTexture( "Interface\\Buttons\\UI-GroupLoot-Pass-Up" )
+  clear_button:SetPushedTexture( "Interface\\Buttons\\UI-GroupLoot-Pass-Down" )
+  clear_button:SetHighlightTexture( "Interface\\Buttons\\UI-Common-MouseHilight" )
+
+  -- Reaches a little past the row on both sides so it reads as a band rather
+  -- than a box around the text. Both corners are anchored to the row itself, so
+  -- the rectangle is fully defined by these two points; the row frame's own
+  -- width is untouched, which keeps the popup's width-to-content math intact.
+  local hover_highlight = container:CreateTexture( nil, "BACKGROUND" )
+  hover_highlight:SetTexture( "Interface\\Buttons\\WHITE8x8" )
+  hover_highlight:SetVertexColor( unpack( resistance_row_hover_color ) )
+  hover_highlight:SetPoint( "TOPLEFT", container, "TOPLEFT", -resistance_row_hover_overhang, 1 )
+  hover_highlight:SetPoint( "BOTTOMRIGHT", container, "BOTTOMRIGHT", resistance_row_hover_overhang, -1 )
+  hover_highlight:Hide()
+
+  local is_header = false
+
+  local columns = {}
+
+  for _, column in ipairs( resistance_row_columns ) do
+    local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+    label:SetWidth( column.width )
+    label:SetHeight( resistance_row_height )
+    label:SetJustifyH( column.justify )
+    label:SetTextColor( unpack( resistance_row_text_color ) )
+    label:SetPoint( "LEFT", container, "LEFT", column.x, 0 )
+    columns[ column.field ] = label
+  end
+
+  -- FrameBuilder caches line frames per line type and reuses them across
+  -- refreshes, so every column is written on every call -- a field left alone
+  -- would keep showing whichever player occupied this frame last time.
+  container.SetRow = function( _, row )
+    for _, column in ipairs( resistance_row_columns ) do
+      columns[ column.field ]:SetText( row[ column.field ] or "" )
+    end
+
+    -- The only thing that shows the button, so the column-title row (which has
+    -- no clearable field) and rows with nothing cached both come out bare.
+    if row.clearable then clear_button:Show() else clear_button:Hide() end
+
+    -- Rows are recycled between refreshes and a hidden frame never gets its
+    -- OnLeave, so a stale highlight would follow the frame to its next row.
+    hover_highlight:Hide()
+  end
+
+  container.SetHeader = function( _, header )
+    is_header = header and true or false
+    local color = is_header and resistance_row_header_color or resistance_row_text_color
+
+    if is_header then hover_highlight:Hide() end
+
+    for _, column in ipairs( resistance_row_columns ) do
+      columns[ column.field ]:SetTextColor( unpack( color ) )
+    end
+  end
+
+  container:EnableMouse( true )
+
+  container:SetScript( "OnEnter", function()
+    if is_header then return end
+    hover_highlight:Show()
+  end )
+
+  container:SetScript( "OnLeave", function()
+    hover_highlight:Hide()
+  end )
+
+  -- A mouse-enabled row swallows the click the popup needs to start dragging,
+  -- so the row hands it back rather than making most of the frame undraggable.
+  container:RegisterForDrag( "LeftButton" )
+
+  local function forward_to_popup( script )
+    return function()
+      local handler = parent:GetScript( script )
+      if handler then handler( parent ) end
+    end
+  end
+
+  container:SetScript( "OnDragStart", forward_to_popup( "OnDragStart" ) )
+  container:SetScript( "OnDragStop", forward_to_popup( "OnDragStop" ) )
+
+  clear_button:SetScript( "OnClick", function()
+    if container.on_clear then container.on_clear() end
+  end )
 
   return container
 end

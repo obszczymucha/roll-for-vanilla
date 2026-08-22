@@ -41,6 +41,10 @@ function M.new( players, in_raid )
     end
   end
 
+  local function unit_exists( unit )
+    return get_player_by_unit( unit ) and 1 or nil
+  end
+
   local function unit_name( unit )
     local player = get_player_by_unit( unit )
     return player and player.name
@@ -70,6 +74,7 @@ function M.new( players, in_raid )
     IsInParty = is_in_party,
     IsInRaid = is_in_raid,
     IsInGroup = function() return is_in_party() or is_in_raid() end,
+    UnitExists = unit_exists,
     UnitName = unit_name,
     UnitClass = unit_class,
     UnitIsConnected = unit_is_connected,

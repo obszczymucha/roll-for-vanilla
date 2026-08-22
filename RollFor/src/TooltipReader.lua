@@ -17,6 +17,8 @@ end
 
 ---@class TooltipReader
 ---@field get_slot_bind_type fun( slot: number ): BindType
+---@field get_inventory_item_lines fun( unit: string, slot: number ): string[]?
+---@field get_unit_buff_lines fun( unit: string, index: number ): string[]?
 
 ---@param api table
 function M.new( api )
@@ -62,9 +64,59 @@ function M.new( api )
     return get_item_type_from_tooltip()
   end
 
+  -- Whatever is currently in the tooltip frame.
+  ---@return string[]? -- left-hand lines, nil if the tooltip is empty
+  local function read_lines()
+    local line_count = m_frame:NumLines()
+    if not line_count or line_count == 0 then return nil end
+
+    local result = {}
+
+    for i = 1, line_count do
+      local line = _G[ "RollForTooltipFrameTextLeft" .. i ]
+      local text = line and line:GetText()
+
+      if text then table.insert( result, text ) end
+    end
+
+    return result
+  end
+
+  -- Reads the tooltip of an item equipped by a unit. Works for inspected units,
+  -- too, as long as their inspect data has arrived (see Inspector).
+  ---@param unit string
+  ---@param slot number
+  ---@return string[]? -- nil if the slot is empty
+  local function get_inventory_item_lines( unit, slot )
+    ensure_frame()
+
+    m_frame:ClearLines()
+    m_frame:SetOwner( m.api.WorldFrame, "ANCHOR_NONE" )
+    m_frame:SetInventoryItem( unit, slot )
+
+    return read_lines()
+  end
+
+  -- Same trick as the item tooltips above, for an aura the unit is carrying.
+  -- Auras are already on the client, so unlike gear this needs no inspect.
+  ---@param unit string
+  ---@param index number -- the UnitBuff index the name came from
+  ---@return string[]? -- nil if there's no buff in that slot
+  local function get_unit_buff_lines( unit, index )
+    ensure_frame()
+
+    m_frame:ClearLines()
+    m_frame:SetOwner( m.api.WorldFrame, "ANCHOR_NONE" )
+    m_frame:SetUnitBuff( unit, index )
+
+    return read_lines()
+  end
+
   ---@type TooltipReader
   return {
-    get_slot_bind_type = get_slot_bind_type
+    get_slot_bind_type = get_slot_bind_type,
+    get_inventory_item_lines = get_inventory_item_lines,
+    get_unit_buff_lines = get_unit_buff_lines
   }
 end
 

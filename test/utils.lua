@@ -22,6 +22,10 @@ if not lua50 then
   end
 
   if not unpack then
+    ---@param t table
+    ---@param i integer?
+    ---@param j integer?
+    ---@return any ...
     function unpack( t, i, j )
       i = i or 1
       j = j or #t
@@ -247,6 +251,7 @@ function M.mock_wow_api()
         if self.OnClickCallback then self:OnClickCallback() end
       end,
       SetLootItem = function() end,
+      SetInventoryItem = function() end,
     }
 
     if frame_name then _G[ frame_name ] = frame end
@@ -963,6 +968,14 @@ function M.load_real_stuff( req )
   r( "src/RollResultAnnouncer" )
   r( "src/LootFacadeListener" )
   r( "src/TooltipReader" )
+  r( "src/resistances/Inspector" )
+  r( "src/resistances/BuffScanner" )
+  r( "src/resistances/ResistanceRegistry" )
+  r( "src/resistances/ResistanceParser" )
+  r( "src/resistances/GearScanner" )
+  r( "src/resistances/ResistanceCheck" )
+  r( "src/resistances/ResistanceFrameContentTransformer" )
+  r( "src/resistances/ResistanceFrame" )
   r( "src/UiReloadPopup" )
   r( "src/Sandbox" )
   r( "src/GuiElements" )
