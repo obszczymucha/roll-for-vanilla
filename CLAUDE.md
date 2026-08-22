@@ -11,3 +11,8 @@ This is the reference client UI source (version `2.5.6.68502`). The Blizzard
 under that directory. Consult it when you need to know how the stock client UI
 behaves or what APIs/templates an addon is extending.
 
+
+## List of dumped function names and variables
+Keys from _G variable are located in:
+WowApiDump_20260822.txt
+
