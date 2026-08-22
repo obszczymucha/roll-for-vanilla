@@ -32,15 +32,32 @@ local function players_with_available_rolls( rollers )
   return m.filter( rollers, function( roller ) return roller.rolls > 0 end )
 end
 
-local function count_top_roll_winners( rolls, item_count )
-  local roll_count = getn( rolls )
-  if roll_count == 0 then return 0 end
+-- One player, one item. Every roll beyond a player's best one is spent, so only their
+-- best roll can win. `rolls` is sorted descending, so the first roll we see for a player
+-- is their best one.
+local function best_roll_per_player( rolls )
+  local seen, result = {}, {}
+
+  for _, roll in ipairs( rolls ) do
+    if not seen[ roll.player.name ] then
+      seen[ roll.player.name ] = true
+      table.insert( result, roll )
+    end
+  end
+
+  return result
+end
+
+-- Expects the candidate rolls (one per player) sorted descending. Returns how many of
+-- them win, which exceeds item_count when the roll on the cut-off line is tied.
+local function count_top_roll_winners( candidates, item_count )
+  if getn( candidates ) == 0 then return 0 end
 
   local function split_by_roll()
     local result = {}
     local last_roll
 
-    for _, roll in ipairs( rolls ) do
+    for _, roll in ipairs( candidates ) do
       if not last_roll or last_roll ~= roll.roll then
         table.insert( result, { roll } )
         last_roll = roll.roll
@@ -52,23 +69,10 @@ local function count_top_roll_winners( rolls, item_count )
     return result
   end
 
-  local function count_distinct_players( group )
-    local seen, count = {}, 0
-
-    for _, roll in ipairs( group ) do
-      if not seen[ roll.player.name ] then
-        seen[ roll.player.name ] = true
-        count = count + 1
-      end
-    end
-
-    return count
-  end
-
   local result = 0
 
-  for _, r in ipairs( split_by_roll() ) do
-    result = result + count_distinct_players( r )
+  for _, group in ipairs( split_by_roll() ) do
+    result = result + getn( group )
     if result >= item_count then return result end
   end
 
@@ -76,7 +80,8 @@ local function count_top_roll_winners( rolls, item_count )
 end
 
 local function are_remaining_rollers_already_winners( rollers, rolls, item_count )
-  local top_roll_count = count_top_roll_winners( rolls, item_count )
+  local candidates = best_roll_per_player( rolls )
+  local top_roll_count = count_top_roll_winners( candidates, item_count )
   local rollers_with_remaining_rolls = players_with_available_rolls( rollers )
   local roller_count = getn( rollers_with_remaining_rolls )
   local roll_count = getn( rolls )
@@ -85,7 +90,7 @@ local function are_remaining_rollers_already_winners( rollers, rolls, item_count
 
   local top_winner_names = {}
   for i = 1, top_roll_count do
-    top_winner_names[ rolls[ i ].player.name ] = true
+    top_winner_names[ candidates[ i ].player.name ] = true
   end
 
   for _, roller in ipairs( rollers_with_remaining_rolls ) do
@@ -192,8 +197,9 @@ function M.new(
       stop_listening()
     end
 
-    local top_roll_winner_count = count_top_roll_winners( rolls, item_count )
-    local winner_rolls = take( rolls, top_roll_winner_count > item_count and top_roll_winner_count or item_count )
+    local candidates = best_roll_per_player( rolls )
+    local top_roll_winner_count = count_top_roll_winners( candidates, item_count )
+    local winner_rolls = take( candidates, top_roll_winner_count > item_count and top_roll_winner_count or item_count )
 
     on_rolling_finished( item, item_count, item_quantity, winner_rolls )
   end

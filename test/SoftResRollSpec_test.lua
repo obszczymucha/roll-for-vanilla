@@ -1781,4 +1781,81 @@ function AwardedLootSpec:should_restore_the_soft_res_after_unawarding()
   )
 end
 
+-- One player, one item: only a player's best roll competes, the rest are spent. The
+-- multi-roll player has to burn all of their rolls before anyone else rolls, otherwise
+-- the early-finish path settles the item first and winner selection never runs.
+MultipleSrRollsPerPlayerSpec = {}
+
+function MultipleSrRollsPerPlayerSpec:should_not_award_both_copies_to_the_same_player()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local c, r, rw = chat.console, chat.raid, chat.raid_warning
+  local item, item2, p1, p2, p3 = i( "Bag", 69 ), i( "Bag", 69 ), p( "Drutree" ), p( "Mendunia" ), p( "Pinp" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2, p3 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, 69 ), sr( p1.name, 69 ), sr( p2.name, 69 ), sr( p3.name, 69 ) )
+      :build()
+  u.mock( "GiveMasterLoot", function( slot ) loot_facade.notify( "LootSlotCleared", slot ) end )
+  local tick = rf.ace_timer.repeating_tick
+
+  -- When
+  loot_facade.notify( "LootOpened", item, item2 )
+
+  -- Then
+  r( "Princess Kenny dropped 2 items:" )
+  r( "1. 2x[Bag] (SR by Drutree [2 rolls], Mendunia and Pinp)" )
+
+  -- When
+  rf.loot_frame.click( 1 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item2, 2 ),
+    roll_placeholder( p1, 11 ),
+    roll_placeholder( p1 ),
+    roll_placeholder( p2 ),
+    roll_placeholder( p3 ),
+    buttons( "Roll", "AwardOther", "Close" )
+  )
+
+  -- When
+  rf.rolling_popup.click( "Roll" )
+
+  -- Then
+  rw( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia and Pinp. 2 top rolls win." )
+
+  -- When (Drutree burns both of his rolls before anyone else rolls)
+  rf.roll( p1, 91, 1, 100 )
+  tick()
+  rf.roll( p1, 88, 1, 100 )
+  tick()
+  rf.roll( p2, 32, 1, 100 )
+  tick()
+  rf.roll( p3, 21, 1, 100 )
+  tick()
+
+  -- Then (Drutree wins one copy with 91; his 88 is spent, so the second copy goes to
+  -- Mendunia, the highest roller who hasn't won yet)
+  c( "RollFor: Drutree rolled the highest (91) for [Bag] (SR)." )
+  r( "Drutree rolled the highest (91) for [Bag] (SR)." )
+  c( "RollFor: Mendunia rolled the next highest (32) for [Bag] (SR)." )
+  r( "Mendunia rolled the next highest (32) for [Bag] (SR)." )
+  c( "RollFor: Rolling for [Bag] finished." )
+
+  rf.rolling_popup.should_display(
+    item_link( item2, 2 ),
+    softres_roll( p1, 91, 11 ),
+    softres_roll( p1, 88 ),
+    softres_roll( p2, 32 ),
+    softres_roll( p3, 21 ),
+    text( "Drutree wins the soft-res roll with 91.", 11 ),
+    individual_award_button,
+    text( "Mendunia wins the soft-res roll with 32.", 8 ),
+    individual_award_button,
+    buttons( "RaidRoll", "AwardOther", "Close" )
+  )
+end
+
 os.exit( lu.LuaUnit.run() )
