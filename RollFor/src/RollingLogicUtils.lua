@@ -110,6 +110,7 @@ function M.update_roll( rolls, data )
   for _, line in ipairs( rolls ) do
     if line.player_name == data.player_name and not line.roll then
       line.roll = data.roll
+      line.ordinal = data.ordinal
       return
     end
   end

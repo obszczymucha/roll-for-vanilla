@@ -9,6 +9,7 @@ local mock_loot_facade, mock_chat, new_roll_for = builder.mock_loot_facade, buil
 local i, p = builder.i, builder.p
 local gui = require( "test/gui_helpers" )
 local item_link, text, roll_placeholder, buttons = gui.item_link, gui.text, gui.sr_roll_placeholder, gui.buttons
+local sr_row = gui.sr_row
 local enabled_item, disabled_item, selected_item = gui.enabled_item, gui.disabled_item, gui.selected_item
 local individual_award_button = gui.individual_award_button
 
@@ -781,9 +782,8 @@ function PreviewSoftRessedItemSpec:should_display_close_button_that_closes_the_p
   rf.confirmation_popup.should_be_hidden()
   rf.rolling_popup.should_display(
     item_link( item, 1 ),
-    roll_placeholder( p2, 11 ),
-    roll_placeholder( p1 ),
-    roll_placeholder( p1 ),
+    sr_row( p2, { false }, 2, 11 ),
+    sr_row( p1, { false, false }, 2 ),
     buttons( "Roll", "AwardOther", "Close" )
   )
 
@@ -826,9 +826,8 @@ function PreviewSoftRessedItemSpec:should_display_roll_button_that_starts_rollin
   rf.confirmation_popup.should_be_hidden()
   rf.rolling_popup.should_display(
     item_link( item, 1 ),
-    roll_placeholder( p2, 11 ),
-    roll_placeholder( p1 ),
-    roll_placeholder( p1 ),
+    sr_row( p2, { false }, 2, 11 ),
+    sr_row( p1, { false, false }, 2 ),
     buttons( "Roll", "AwardOther", "Close" )
   )
 
@@ -868,9 +867,8 @@ function PreviewSoftRessedItemSpec:should_display_roll_button_that_starts_rollin
   rf.confirmation_popup.should_be_hidden()
   rf.rolling_popup.should_display(
     item_link( item, 1 ),
-    roll_placeholder( p2, 11 ),
-    roll_placeholder( p1 ),
-    roll_placeholder( p1 ),
+    sr_row( p2, { false }, 2, 11 ),
+    sr_row( p1, { false, false }, 2 ),
     buttons( "Roll", "AwardOther", "Close" )
   )
 
@@ -935,9 +933,8 @@ function PreviewSoftRessedItemSpec:should_reset_the_preview_if_loot_was_closed_a
   -- Then
   rf.rolling_popup.should_display(
     item_link( item, 1 ),
-    roll_placeholder( p2, 11 ),
-    roll_placeholder( p1 ),
-    roll_placeholder( p1 ),
+    sr_row( p2, { false }, 2, 11 ),
+    sr_row( p1, { false, false }, 2 ),
     buttons( "Roll", "AwardOther", "Close" )
   )
 end

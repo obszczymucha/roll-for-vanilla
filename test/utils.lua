@@ -37,6 +37,12 @@ if not lua50 then
       return t[ i ], unpack( t, i + 1, j )
     end
   end
+
+  if not table.getn then
+    ---@param t table
+    ---@return number
+    function table.getn( t ) return #t end
+  end
 end
 
 M.debug_enabled = true

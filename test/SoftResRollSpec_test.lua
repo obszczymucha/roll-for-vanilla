@@ -9,7 +9,7 @@ local i, p = builder.i, builder.p
 local gui = require( "test/gui_helpers" )
 local item_link, text, buttons, empty_line = gui.item_link, gui.text, gui.buttons, gui.empty_line
 local enabled_item, disabled_item, selected_item = gui.enabled_item, gui.disabled_item, gui.selected_item
-local softres_roll, roll_placeholder = gui.softres_roll, gui.sr_roll_placeholder
+local softres_roll, roll_placeholder, sr_row = gui.softres_roll, gui.sr_roll_placeholder, gui.sr_row
 local mainspec_roll = gui.mainspec_roll
 local sr = u.soft_res_item
 local individual_award_button = gui.individual_award_button
@@ -51,12 +51,10 @@ function WaitForRemainingRollsSpec:should_finish_early_if_two_items_drop_and_the
   -- Then
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
-    roll_placeholder( p1, 11 ),
-    roll_placeholder( p1 ),
-    roll_placeholder( p2 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p4 ),
+    sr_row( p1, { false, false }, 2, 11 ),
+    sr_row( p2, { false }, 2 ),
+    sr_row( p3, { false, false }, 2 ),
+    sr_row( p4, { false }, 2 ),
     buttons( "Roll", "AwardOther", "Close" )
   )
 
@@ -67,12 +65,10 @@ function WaitForRemainingRollsSpec:should_finish_early_if_two_items_drop_and_the
   rw( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
-    roll_placeholder( p1, 11 ),
-    roll_placeholder( p1 ),
-    roll_placeholder( p2 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p4 ),
+    sr_row( p1, { false, false }, 2, 11 ),
+    sr_row( p2, { false }, 2 ),
+    sr_row( p3, { false, false }, 2 ),
+    sr_row( p4, { false }, 2 ),
     text( "Rolling ends in 8 seconds.", 11 ),
     buttons( "Cancel" )
   )
@@ -131,12 +127,10 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_win_if_rol
   -- Then
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
-    roll_placeholder( p1, 11 ),
-    roll_placeholder( p1 ),
-    roll_placeholder( p2 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p4 ),
+    sr_row( p1, { false, false }, 2, 11 ),
+    sr_row( p2, { false }, 2 ),
+    sr_row( p3, { false, false }, 2 ),
+    sr_row( p4, { false }, 2 ),
     buttons( "Roll", "AwardOther", "Close" )
   )
 
@@ -147,12 +141,10 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_win_if_rol
   rw( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
-    roll_placeholder( p1, 11 ),
-    roll_placeholder( p1 ),
-    roll_placeholder( p2 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p4 ),
+    sr_row( p1, { false, false }, 2, 11 ),
+    sr_row( p2, { false }, 2 ),
+    sr_row( p3, { false, false }, 2 ),
+    sr_row( p4, { false }, 2 ),
     text( "Rolling ends in 8 seconds.", 11 ),
     buttons( "Cancel" )
   )
@@ -224,12 +216,10 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_tie_if_rol
   -- Then
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
-    roll_placeholder( p1, 11 ),
-    roll_placeholder( p1 ),
-    roll_placeholder( p2 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p4 ),
+    sr_row( p1, { false, false }, 2, 11 ),
+    sr_row( p2, { false }, 2 ),
+    sr_row( p3, { false, false }, 2 ),
+    sr_row( p4, { false }, 2 ),
     buttons( "Roll", "AwardOther", "Close" )
   )
 
@@ -240,12 +230,10 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_tie_if_rol
   rw( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
-    roll_placeholder( p1, 11 ),
-    roll_placeholder( p1 ),
-    roll_placeholder( p2 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p4 ),
+    sr_row( p1, { false, false }, 2, 11 ),
+    sr_row( p2, { false }, 2 ),
+    sr_row( p3, { false, false }, 2 ),
+    sr_row( p4, { false }, 2 ),
     text( "Rolling ends in 8 seconds.", 11 ),
     buttons( "Cancel" )
   )
@@ -281,15 +269,13 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_tie_if_rol
   r( "Drutree and Pinp rolled the next highest (75) for [Bag] (SR)." )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
-    softres_roll( p3, 91, 11 ),
-    softres_roll( p1, 75 ),
-    softres_roll( p4, 75 ),
-    softres_roll( p1, 74 ),
-    softres_roll( p3, 50 ),
-    softres_roll( p2, 32 ),
+    sr_row( p3, { 91, 50 }, 2, 11 ),
+    sr_row( p1, { 75, 74 }, 2 ),
+    sr_row( p4, { 75 }, 2 ),
+    sr_row( p2, { 32 }, 2 ),
     text( "There was a tie (75):", 11 ),
-    roll_placeholder( p1, 11 ),
-    roll_placeholder( p4 ),
+    sr_row( p1, { false }, 2, 11 ),
+    sr_row( p4, { false }, 2 ),
     empty_line( 5 )
   )
 
@@ -309,15 +295,13 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_tie_if_rol
   c( "RollFor: Rolling for [Bag] finished." )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
-    softres_roll( p3, 91, 11 ),
-    softres_roll( p1, 75 ),
-    softres_roll( p4, 75 ),
-    softres_roll( p1, 74 ),
-    softres_roll( p3, 50 ),
-    softres_roll( p2, 32 ),
+    sr_row( p3, { 91, 50 }, 2, 11 ),
+    sr_row( p1, { 75, 74 }, 2 ),
+    sr_row( p4, { 75 }, 2 ),
+    sr_row( p2, { 32 }, 2 ),
     text( "There was a tie (75):", 11 ),
-    softres_roll( p4, 99, 11 ),
-    softres_roll( p1, 60 ),
+    sr_row( p4, { 99 }, 2, 11 ),
+    sr_row( p1, { 60 }, 2 ),
     text( "Mufasapowel wins the soft-res roll with 91.", 11 ),
     individual_award_button,
     text( "Pinp wins the soft-res roll with 99.", 8 ),
@@ -361,12 +345,10 @@ function WaitForRemainingRollsSpec:should_finish_early_if_two_top_rolls_tie()
   -- Then
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
-    roll_placeholder( p1, 11 ),
-    roll_placeholder( p1 ),
-    roll_placeholder( p2 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p4 ),
+    sr_row( p1, { false, false }, 2, 11 ),
+    sr_row( p2, { false }, 2 ),
+    sr_row( p3, { false, false }, 2 ),
+    sr_row( p4, { false }, 2 ),
     buttons( "Roll", "AwardOther", "Close" )
   )
 
@@ -377,12 +359,10 @@ function WaitForRemainingRollsSpec:should_finish_early_if_two_top_rolls_tie()
   rw( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
-    roll_placeholder( p1, 11 ),
-    roll_placeholder( p1 ),
-    roll_placeholder( p2 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p3 ),
-    roll_placeholder( p4 ),
+    sr_row( p1, { false, false }, 2, 11 ),
+    sr_row( p2, { false }, 2 ),
+    sr_row( p3, { false, false }, 2 ),
+    sr_row( p4, { false }, 2 ),
     text( "Rolling ends in 8 seconds.", 11 ),
     buttons( "Cancel" )
   )
@@ -1154,9 +1134,8 @@ function SoftResTieRollSpec:should_not_tie_roll_if_sring_player_rolls_the_same_a
   )
   rf.rolling_popup.should_display(
     item_link( item, 1 ),
-    roll_placeholder( p2, 11 ),
-    roll_placeholder( p1 ),
-    roll_placeholder( p1 ),
+    sr_row( p2, { false }, 2, 11 ),
+    sr_row( p1, { false, false }, 2 ),
     buttons( "Roll", "AwardOther", "Close" )
   )
 
@@ -1167,9 +1146,8 @@ function SoftResTieRollSpec:should_not_tie_roll_if_sring_player_rolls_the_same_a
   rw( "Roll for [Bag]: SR by Goldblood and Maulfunction [2 rolls]" )
   rf.rolling_popup.should_display(
     item_link( item, 1 ),
-    roll_placeholder( p2, 11 ),
-    roll_placeholder( p1 ),
-    roll_placeholder( p1 ),
+    sr_row( p2, { false }, 2, 11 ),
+    sr_row( p1, { false, false }, 2 ),
     text( "Rolling ends in 8 seconds.", 11 ),
     buttons( "Cancel" )
   )
@@ -1189,9 +1167,8 @@ function SoftResTieRollSpec:should_not_tie_roll_if_sring_player_rolls_the_same_a
   c( "RollFor: Rolling for [Bag] finished." )
   rf.rolling_popup.should_display(
     item_link( item, 1 ),
-    softres_roll( p1, 90, 11 ),
-    softres_roll( p1, 90 ),
-    softres_roll( p2, 80 ),
+    sr_row( p1, { 90, 90 }, 2, 11 ),
+    sr_row( p2, { 80 }, 2 ),
     text( "Maulfunction wins the soft-res roll with 90.", 11 ),
     buttons( "AwardWinner", "RaidRoll", "AwardOther", "Close" )
   )
@@ -1813,10 +1790,9 @@ function MultipleSrRollsPerPlayerSpec:should_not_award_both_copies_to_the_same_p
   -- Then
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
-    roll_placeholder( p1, 11 ),
-    roll_placeholder( p1 ),
-    roll_placeholder( p2 ),
-    roll_placeholder( p3 ),
+    sr_row( p1, { false, false }, 2, 11 ),
+    sr_row( p2, { false }, 2 ),
+    sr_row( p3, { false }, 2 ),
     buttons( "Roll", "AwardOther", "Close" )
   )
 
@@ -1846,10 +1822,9 @@ function MultipleSrRollsPerPlayerSpec:should_not_award_both_copies_to_the_same_p
 
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
-    softres_roll( p1, 91, 11 ),
-    softres_roll( p1, 88 ),
-    softres_roll( p2, 32 ),
-    softres_roll( p3, 21 ),
+    sr_row( p1, { 91, 88 }, 2, 11 ),
+    sr_row( p2, { 32 }, 2 ),
+    sr_row( p3, { 21 }, 2 ),
     text( "Drutree wins the soft-res roll with 91.", 11 ),
     individual_award_button,
     text( "Mendunia wins the soft-res roll with 32.", 8 ),

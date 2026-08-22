@@ -396,7 +396,7 @@ local function create_components()
     M.player_info
   )
 
-  M.sandbox = m.Sandbox.new()
+  M.sandbox = m.Sandbox.new( M )
 
   M.gargul_bridge = m.GargulBridge.new( M.player_info, M.roll_controller, M.config, function() return M.softres_db.data end, M.softres )
 

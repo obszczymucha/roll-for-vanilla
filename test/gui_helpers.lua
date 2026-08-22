@@ -23,10 +23,41 @@ function M.roll_placeholder( player, roll_type, padding )
   return { type = "roll", player_name = player.name, player_class = player.class, roll_type = roll_type, padding = padding }
 end
 
+-- Soft-res rolls render as one row per player with a cell per roll, so their expected
+-- shape is a `rolls` array rather than a single `roll`.
+---@param player Player
+---@param cells table -- cast rolls in cast order; `false` for a pending cell
+---@param cell_count number? -- widest grouped row in the popup; defaults to this row's own
+---@param padding number?
+function M.sr_row( player, cells, cell_count, padding )
+  local rolls = {}
+  local best_index, best_roll
+
+  for i, roll in ipairs( cells ) do
+    table.insert( rolls, { roll_type = RT.SoftRes, roll = roll ~= false and roll or nil } )
+
+    if roll ~= false and (not best_roll or roll > best_roll) then
+      best_roll = roll
+      best_index = i
+    end
+  end
+
+  return {
+    type = "roll",
+    player_name = player.name,
+    player_class = player.class,
+    rolls = rolls,
+    best_index = best_index,
+    cell_count = cell_count or table.getn( cells ),
+    padding = padding
+  }
+end
+
 ---@param player Player
 ---@param padding number?
-function M.sr_roll_placeholder( player, padding )
-  return M.roll_placeholder( player, RT.SoftRes, padding )
+---@param cell_count number?
+function M.sr_roll_placeholder( player, padding, cell_count )
+  return M.sr_row( player, { false }, cell_count, padding )
 end
 
 ---@param player Player
@@ -48,9 +79,11 @@ function M.tmog_roll( player, roll, padding )
 end
 
 ---@param player Player
+---@param roll number
 ---@param padding number?
-function M.softres_roll( player, roll, padding )
-  return { type = "roll", player_name = player.name, player_class = player.class, roll_type = RT.SoftRes, roll = roll, padding = padding }
+---@param cell_count number?
+function M.softres_roll( player, roll, padding, cell_count )
+  return M.sr_row( player, { roll }, cell_count, padding )
 end
 
 ---@param message string

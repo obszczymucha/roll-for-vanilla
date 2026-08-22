@@ -20,6 +20,7 @@ local S = m.Types.RollingStatus
 ---@field player_class string
 ---@field roll_type RollType
 ---@field roll number?
+---@field ordinal number? -- cast order within the current iteration; absent until the roll is cast
 
 ---@class RollIteration
 ---@field rolling_strategy RollingStrategyType
@@ -69,6 +70,7 @@ function M.new( item_on_roll )
   local iterations = {}
   local current_iteration = 0
   local master_loot_candidates = {}
+  local next_ordinal = 1
 
   ---@type Winner[]
   local winners = {}
@@ -85,6 +87,13 @@ function M.new( item_on_roll )
     ---@type RollData
     local data = { player_name = player_name, player_class = player_class, roll_type = roll_type, roll = roll }
     local iteration = iterations[ current_iteration ]
+
+    -- Placeholders get no ordinal. Cast rolls get a monotonic one so that the popup can
+    -- present a player's rolls in cast order regardless of how they sort by value.
+    if roll then
+      data.ordinal = next_ordinal
+      next_ordinal = next_ordinal + 1
+    end
 
     if roll and (iteration.rolling_strategy == RS.SoftResRoll or iteration.rolling_strategy == RS.TieRoll) then
       m.RollingLogicUtils.update_roll( iteration.rolls, data )
@@ -118,6 +127,7 @@ function M.new( item_on_roll )
   local function preview( count, quantity, ml_candidates, soft_ressers, hard_ressed )
     M.debug.add( "preview" )
     current_iteration = 1
+    next_ordinal = 1
     status = { type = S.Preview }
     item_on_roll_count = count
     item_on_roll_quantity = quantity
@@ -158,6 +168,7 @@ function M.new( item_on_roll )
     lua50_clear_table( winners )
     lua50_clear_table( master_loot_candidates )
     current_iteration = 1
+    next_ordinal = 1
     status = { type = S.InProgress, seconds_left = seconds }
 
     item_on_roll_count = count
@@ -207,6 +218,7 @@ function M.new( item_on_roll )
   local function tie( players, roll_type, roll )
     M.debug.add( "tie" )
     current_iteration = current_iteration + 1
+    next_ordinal = 1
     status = { type = S.TieFound }
 
     table.insert( iterations, {

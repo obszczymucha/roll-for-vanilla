@@ -4,6 +4,52 @@ local m = RollFor
 if m.GuiElements then return end
 
 local hl = m.colors.hl
+local blue = m.colors.blue
+local getn = m.getn
+
+-- Grouped (soft-res) row metrics. The cell width is fixed at three digits: a ragged grid
+-- across 25 rows is unscannable, and the wasted pixels on single-digit rolls are the
+-- better trade.
+local roll_cell_width = 24
+-- The pip textures are 32x32 sheets with the die drawn at x 2-24, y 5-26 and transparent
+-- padding around it - and the padding is lopsided (2 left, 7 right). Cropping to the die
+-- makes the texture's own edges the ones we anchor, so a pip lands in the same column as
+-- the right-aligned digits instead of ~4px to their left.
+local pip_size = 12
+local pip_left, pip_right, pip_top, pip_bottom = 2 / 32, 25 / 32, 5 / 32, 27 / 32
+-- Matches the breathing room the ungrouped rows have. Theirs varies with name length,
+-- since the name is centred in a fixed 170px row while the label is pinned 37px from the
+-- right; for their widest name it works out at ~22.6 units, which is what a grouped row's
+-- widest name gets here. Applied to both sides, or the name comes off centre.
+local grouped_name_gap = 22
+-- The roll-type label mirrors the cell zone on the far side of the name. Reserving the
+-- same width on both sides is what puts the name on the row's centre line - and so on
+-- the popup's, since lines are anchored by their TOP centre.
+local roll_type_zone = 37
+-- The label is centred in a box just big enough for it, for the same reason the roll
+-- cells are: left-aligning "MS" (16 units of ink) and "OS" (14) lines up their left edges
+-- and dumps the whole difference on the right. The box is narrower than the zone it sits
+-- in, so ungrouped rows offset its anchor by the difference to keep the label where it
+-- has always been. Fontstrings are not clipped by their container, so a wider label than
+-- this still renders in full - it just centres on the same point.
+local roll_type_label_width = 16
+local spent_cell_alpha = 0.5
+local single_roll_width = 170
+
+-- Colour encodes the roll *type*, so emphasis lives on the alpha axis instead.
+---@param roll_type RollType
+---@param roll number
+local function cell_text( roll_type, roll )
+  if roll_type == m.Types.RollType.SoftRes then return blue( roll ) end
+  return m.roll_type_color( roll_type, roll )
+end
+
+---@param roll_type RollType
+---@diagnostic disable-next-line: unused-local
+local function cell_icon_texture( roll_type )
+  -- Bonus rolls will pick assets\\icon-gold.tga here.
+  return "Interface\\AddOns\\RollFor\\assets\\icon-white2.tga"
+end
 
 ---@class GuiElements
 ---@field item_link fun( parent: Frame ): Frame
@@ -230,7 +276,7 @@ end
 
 function M.roll( parent )
   local frame = m.create_backdrop_frame( m.api, "Button", nil, parent )
-  frame:SetWidth( 170 )
+  frame:SetWidth( single_roll_width )
   frame:SetHeight( 14 )
   frame:SetFrameStrata( "DIALOG" )
   frame:SetFrameLevel( parent:GetFrameLevel() + 1 )
@@ -296,9 +342,132 @@ function M.roll( parent )
   player_name:SetPoint( "CENTER", frame, "CENTER", 0, 0 )
   frame.player_name = player_name
 
-  local roll_type_container = M.create_text_in_container( "Button", frame, 37, "LEFT" )
-  roll_type_container:SetPoint( "RIGHT", 0, 0 )
+  local roll_type_container = M.create_text_in_container( "Button", frame, roll_type_label_width, "CENTER" )
+  roll_type_container:SetPoint( "RIGHT", -(roll_type_zone - roll_type_label_width), 0 )
   frame.roll_type = roll_type_container.inner
+
+  frame.cells = {}
+
+  -- Each cell is its own frame and its contents are centred in it, so a column of rolls
+  -- lines up on the numbers' centres. Right-aligning them instead lines up the advance
+  -- edges, which puts the font's uneven side bearings on show: "75" is a 14px ink block
+  -- where "50" is 17px, so right-aligned they start 3px apart.
+  ---@param index number
+  local function create_cell( index )
+    local cell = M.create_text_in_container( "Button", frame, roll_cell_width, "CENTER" )
+    cell.icon = M.icon( cell, false, pip_size, pip_size )
+    cell.icon:SetTexCoord( pip_left, pip_right, pip_top, pip_bottom )
+    cell.icon:SetPoint( "CENTER", 0, 0 )
+    table.insert( frame.cells, index, cell )
+
+    return cell
+  end
+
+  -- Grouped mode: one row per player, one cell per roll, the name centred between the
+  -- cell zone and the roll-type label.
+  local side_zone = roll_type_zone
+
+  -- Lines are anchored by their TOP centre to the line above, so grouped rows must all
+  -- come out the same width or their cell columns drift apart. The name column is sized
+  -- to the widest name in the popup, which is only known once every row has its text -
+  -- hence a separate step the popup re-runs afterwards.
+  ---@param name_zone number
+  local function layout_name( name_zone )
+    player_name:ClearAllPoints()
+    player_name:SetPoint( "CENTER", frame, "LEFT", side_zone + grouped_name_gap + name_zone / 2, 0 )
+
+    roll_type_container:ClearAllPoints()
+    roll_type_container:SetPoint( "LEFT", frame, "LEFT", side_zone + grouped_name_gap + name_zone + grouped_name_gap, 0 )
+
+    -- Symmetric by construction, so the name's centre is the row's centre.
+    frame:SetWidth( side_zone * 2 + grouped_name_gap * 2 + name_zone )
+  end
+
+  frame.set_name_zone = layout_name
+
+  ---@param cells table[] -- { roll_type = RollType, roll = number? }
+  ---@param cell_count number -- uniform across the popup, so the name column lines up
+  ---@param best_index number? -- the player's own best cast roll, rendered at full alpha
+  frame.set_cells = function( cells, cell_count, best_index )
+    local count = getn( cells )
+
+    -- Whichever side needs more room sets the width of both, or the name comes off centre.
+    side_zone = (cell_count or count) * roll_cell_width
+    if roll_type_zone > side_zone then side_zone = roll_type_zone end
+
+    roll_container:Hide()
+    icon:Hide()
+
+    roll_type_container:Show()
+    frame.roll_type:SetText( m.roll_type_color( cells[ 1 ].roll_type, m.roll_type_abbrev( cells[ 1 ].roll_type ) ) )
+
+
+    -- Cells arrive in cast order with the pending ones trailing. On screen the cast rolls
+    -- sit against the name and the pending pips fill in to their left, so the numbers form
+    -- one block that right-aligns on the name. Cast cells keep their chronological order.
+    local ordered, best_slot = {}, nil
+
+    for i = 1, count do
+      if not cells[ i ].roll then table.insert( ordered, cells[ i ] ) end
+    end
+
+    for i = 1, count do
+      if cells[ i ].roll then
+        table.insert( ordered, cells[ i ] )
+        if i == best_index then best_slot = getn( ordered ) end
+      end
+    end
+
+    for i = 1, count do
+      local cell = frame.cells[ i ] or create_cell( i )
+      local data = ordered[ i ]
+
+      -- Cells fill from the right of the zone, so a player with fewer rolls than the
+      -- widest gets his blanks on the left and his cells still abut the name.
+      cell:ClearAllPoints()
+      cell:SetPoint( "LEFT", side_zone - (count - i + 1) * roll_cell_width, 0 )
+
+      if data.roll then
+        cell.inner:SetText( cell_text( data.roll_type, data.roll ) )
+        cell.icon:Hide()
+        cell:SetAlpha( i == best_slot and 1 or spent_cell_alpha )
+      else
+        cell.inner:SetText( "" )
+        cell.icon:SetTexture( cell_icon_texture( data.roll_type ) )
+        cell.icon:Show()
+        cell:SetAlpha( 1 )
+      end
+
+      cell:Show()
+    end
+
+    -- Line frames are pooled and reused across refreshes, so surplus cells left over from
+    -- a previous, longer row have to be hidden explicitly or their numbers bleed into
+    -- this one. frame.clear only hides the line frame, not its children.
+    for i = count + 1, getn( frame.cells ) do
+      frame.cells[ i ]:Hide()
+    end
+
+    layout_name( player_name:GetStringWidth() )
+  end
+
+  -- The same pooled frame may come back as an ungrouped row, so grouped mode has to be
+  -- undoable.
+  frame.set_single_cell = function()
+    for i = 1, getn( frame.cells ) do
+      frame.cells[ i ]:Hide()
+    end
+
+    roll_container:Show()
+    roll_type_container:Show()
+    roll_type_container:ClearAllPoints()
+    roll_type_container:SetPoint( "RIGHT", -(roll_type_zone - roll_type_label_width), 0 )
+
+    player_name:ClearAllPoints()
+    player_name:SetPoint( "CENTER", frame, "CENTER", 0, 0 )
+
+    frame:SetWidth( single_roll_width )
+  end
 
   return frame
 end

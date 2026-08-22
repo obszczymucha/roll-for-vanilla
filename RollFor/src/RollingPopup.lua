@@ -156,8 +156,14 @@ function M.new( popup_builder, content_transformer, db, config )
     local close_button_callback = find_close_button_callback( data.buttons )
     toggle_esc( popup:GetName(), close_button_callback )
 
-    for _, v in ipairs( content_transformer.transform( data ) ) do
+    local content = content_transformer.transform( data )
+
+    local grouped_rows = {}
+    local line_list
+
+    for _, v in ipairs( content ) do
       popup.add_line( v.type, function( type, frame, lines )
+        line_list = lines
         if type == "item_link_with_icon" then
           frame:SetItem( v, v.link and m.ItemUtils.get_tooltip_link( v.link ) )
         elseif type == "text" then
@@ -165,15 +171,23 @@ function M.new( popup_builder, content_transformer, db, config )
         elseif type == "icon_text" then
           frame:SetText( v.value )
         elseif type == "roll" then
-          frame.roll_type:SetText( m.roll_type_color( v.roll_type, m.roll_type_abbrev( v.roll_type ) ) )
-          frame.player_name:SetText( c( v.player_name, v.player_class ) )
-
-          if v.roll then
-            frame.roll:SetText( blue( v.roll ) )
-            frame.icon:Hide()
+          if v.rolls then
+            -- Grouped row: one row per player, one cell per roll.
+            frame.player_name:SetText( c( v.player_name, v.player_class ) )
+            frame.set_cells( v.rolls, v.cell_count, v.best_index )
+            table.insert( grouped_rows, frame )
           else
-            frame.roll:SetText( "" )
-            frame.icon:Show()
+            frame.set_single_cell()
+            frame.roll_type:SetText( m.roll_type_color( v.roll_type, m.roll_type_abbrev( v.roll_type ) ) )
+            frame.player_name:SetText( c( v.player_name, v.player_class ) )
+
+            if v.roll then
+              frame.roll:SetText( blue( v.roll ) )
+              frame.icon:Hide()
+            else
+              frame.roll:SetText( "" )
+              frame.icon:Show()
+            end
           end
         elseif type == "button" then
           frame:SetWidth( v.width or button_defaults.width )
@@ -228,6 +242,24 @@ function M.new( popup_builder, content_transformer, db, config )
           end
         end
       end, v.padding )
+    end
+
+    -- Every grouped row has to end up the same width, and the widest name is only known
+    -- once all of them have their text. Size the name column here, then re-measure the
+    -- popup so it grows to fit instead of the names spilling past its border.
+    if getn( grouped_rows ) > 0 then
+      local name_zone = 0
+
+      for _, frame in ipairs( grouped_rows ) do
+        local width = frame.player_name:GetStringWidth()
+        if width > name_zone then name_zone = width end
+      end
+
+      for _, frame in ipairs( grouped_rows ) do
+        frame.set_name_zone( name_zone )
+      end
+
+      if line_list then popup:resize( line_list ) end
     end
   end
 

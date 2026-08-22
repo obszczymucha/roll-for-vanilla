@@ -36,6 +36,62 @@ M.button_definitions = {
 
 local top_padding = 11
 
+-- Roll types that collapse into a single row per player, one cell per roll. Everything
+-- else keeps the one-line-per-roll shape, because its per-row roll-type label is what
+-- distinguishes the lines. Bonus rolls join this set when they land.
+local groupable_roll_types = {
+  [ RT.SoftRes ] = true
+}
+
+-- The number of cells the widest grouped row needs. It has to be uniform across the
+-- whole popup, or the name column shifts between the main roll list and the tie list.
+---@param rolls RollData[]
+---@param current number?
+---@return number
+local function max_cell_count( rolls, current )
+  local result = current or 0
+  local counts = {}
+
+  for i = 1, getn( rolls ) do
+    local roll = rolls[ i ]
+
+    if groupable_roll_types[ roll.roll_type ] then
+      local count = (counts[ roll.player_name ] or 0) + 1
+      counts[ roll.player_name ] = count
+      if count > result then result = count end
+    end
+  end
+
+  return result
+end
+
+---@param a table
+---@param b table
+local function by_cast_order( a, b )
+  if a.ordinal and b.ordinal then return a.ordinal < b.ordinal end
+  if a.ordinal then return true end
+  return false
+end
+
+-- Cells arrive sorted by value (that's how the roll data is sorted), but a row reads in
+-- cast order with the pending cells trailing. The best cell is marked for emphasis
+-- instead, which is what makes the row ordering legible.
+---@param row table
+local function finalize_row( row )
+  table.sort( row.rolls, by_cast_order )
+
+  local best_roll
+
+  for i, cell in ipairs( row.rolls ) do
+    if cell.roll and (not best_roll or cell.roll > best_roll) then
+      best_roll = cell.roll
+      row.best_index = i
+    end
+
+    cell.ordinal = nil -- internal sort key; not part of the rendered cell
+  end
+end
+
 ---@alias RollingPopupButtonType
 ---| "Roll"
 ---| "AwardWinner"
@@ -97,20 +153,53 @@ function M.new( config )
 
   ---@param result table
   ---@param rolls RollData[]
-  local function add_rolls( result, rolls )
+  ---@param cell_count number? -- precomputed so it stays uniform across popup sections
+  local function add_rolls( result, rolls, cell_count )
     M.debug.add( "rolls_content" )
+
+    cell_count = cell_count or max_cell_count( rolls )
+
+    local rows = {}
+    local grouped = {}
 
     for i = 1, getn( rolls ) do
       local roll = rolls[ i ]
+      local padding = i == 1 and top_padding or nil
 
-      table.insert( result, {
-        type = "roll",
-        roll_type = roll.roll_type,
-        player_name = roll.player_name,
-        player_class = roll.player_class,
-        roll = roll.roll,
-        padding = i == 1 and top_padding or nil
-      } )
+      if groupable_roll_types[ roll.roll_type ] then
+        local row = rows[ roll.player_name ]
+
+        -- The input is already sorted best-roll-first, so first-sighting order is row order.
+        if not row then
+          row = {
+            type = "roll",
+            player_name = roll.player_name,
+            player_class = roll.player_class,
+            rolls = {},
+            cell_count = cell_count,
+            padding = padding
+          }
+
+          rows[ roll.player_name ] = row
+          table.insert( grouped, row )
+          table.insert( result, row )
+        end
+
+        table.insert( row.rolls, { roll_type = roll.roll_type, roll = roll.roll, ordinal = roll.ordinal } )
+      else
+        table.insert( result, {
+          type = "roll",
+          roll_type = roll.roll_type,
+          player_name = roll.player_name,
+          player_class = roll.player_class,
+          roll = roll.roll,
+          padding = padding
+        } )
+      end
+    end
+
+    for _, row in ipairs( grouped ) do
+      finalize_row( row )
     end
   end
 
@@ -357,11 +446,18 @@ function M.new( config )
     local content = {}
 
     add_item( content, data.roll_data.item_link, data.roll_data.item_tooltip_link, data.roll_data.item_texture, data.roll_data.item_count, data.roll_data.item_quantity )
-    add_rolls( content, data.roll_data.rolls )
+
+    local cell_count = max_cell_count( data.roll_data.rolls )
+
+    for _, iteration in ipairs( data.tie_iterations ) do
+      cell_count = max_cell_count( iteration.rolls, cell_count )
+    end
+
+    add_rolls( content, data.roll_data.rolls, cell_count )
 
     for _, iteration in ipairs( data.tie_iterations ) do
       add_text( content, string.format( "There was a tie (%s):", blue( iteration.tied_roll ) ), top_padding )
-      add_rolls( content, iteration.rolls )
+      add_rolls( content, iteration.rolls, cell_count )
     end
 
     if data.roll_data.waiting_for_rolls then
