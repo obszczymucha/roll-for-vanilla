@@ -276,7 +276,7 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_tie_if_rol
     text( "There was a tie (75):", 11 ),
     sr_row( p1, { false }, 2, 11 ),
     sr_row( p4, { false }, 2 ),
-    empty_line( 5 )
+    empty_line( 10 )
   )
 
   -- When
@@ -973,7 +973,7 @@ function SoftResTieRollSpec:should_display_tie_rolls()
     text( "There was a tie (69):", 11 ),
     roll_placeholder( p2, 11 ),
     roll_placeholder( p1 ),
-    empty_line( 5 )
+    empty_line( 10 )
   )
 
   -- When
@@ -1009,7 +1009,7 @@ function SoftResTieRollSpec:should_display_tie_rolls()
     text( "There was a tie (42):", 11 ),
     roll_placeholder( p2, 11 ),
     roll_placeholder( p1 ),
-    empty_line( 5 )
+    empty_line( 10 )
   )
 
   -- When

@@ -1296,7 +1296,7 @@ function NormalTieRollSpec:should_display_tie_rolls()
     text( "There was a tie (69):", 11 ),
     roll_placeholder( p2, "MainSpec", 11 ),
     roll_placeholder( p1, "MainSpec" ),
-    empty_line( 5 )
+    empty_line( 10 )
   )
 
   -- When
@@ -1332,7 +1332,7 @@ function NormalTieRollSpec:should_display_tie_rolls()
     text( "There was a tie (42):", 11 ),
     roll_placeholder( p2, "MainSpec", 11 ),
     roll_placeholder( p1, "MainSpec" ),
-    empty_line( 5 )
+    empty_line( 10 )
   )
 
   -- When
@@ -1751,7 +1751,7 @@ function MultiRollSpec:should_display_all_winners()
     text( "There was a tie (75):", 11 ),
     roll_placeholder( gotchi, "MainSpec", 11 ),
     roll_placeholder( leftuppercut, "MainSpec" ),
-    empty_line( 5 )
+    empty_line( 10 )
   )
 
   -- When
