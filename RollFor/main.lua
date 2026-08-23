@@ -714,7 +714,14 @@ local function show_how_to_roll()
   end
 end
 
-local function on_reset_dropped_loot_announce_command()
+local function on_reset_dropped_loot_announce_command( args )
+  -- Overloaded: bare /rfr resets the dropped-loot announce as it always has, /rfr with
+  -- arguments feeds a simulated roll into the chat parser (see Sandbox).
+  if args and not string.find( args, "^%s*$" ) then
+    M.sandbox.roll( args )
+    return
+  end
+
   M.dropped_loot_announce.reset()
 end
 
@@ -763,6 +770,8 @@ local function setup_slash_commands()
 
   SLASH_RFT1 = "/rft"
   M.api().SlashCmdList[ "RFT" ] = M.sandbox.run
+  SLASH_RFSETUP1 = "/rfsetup"
+  M.api().SlashCmdList[ "RFSETUP" ] = M.sandbox.setup
 
   if M.rf_test_loot_facade then
     SLASH_RFTEST1 = "/rftest"

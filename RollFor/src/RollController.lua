@@ -24,6 +24,7 @@ local sid = m.SoftRes.softres_item_data
 
 ---@class RollController
 ---@field preview RollControllerPreviewFn
+---@field reset_item fun( item_id: ItemId )
 ---@field start fun( strategy_type: RollingStrategyType, item: Item, item_count: number, item_quantity: number, seconds: number?, message: string? )
 ---@field winners_found fun( item: Item, item_count: number, winners: Winner[], strategy: RollingStrategyType, skip_tracking: boolean? )
 ---@field finish fun()
@@ -91,6 +92,15 @@ function M.new(
     local roll_tracker = m.RollTracker.new( item )
     roll_trackers[ item.id ] = roll_tracker
     return roll_tracker
+  end
+
+  -- Drop everything remembered about an item so it can be rolled from scratch. preview()
+  -- otherwise re-opens the finished popup for an item whose rolling already completed.
+  ---@param item_id ItemId
+  local function reset_item( item_id )
+    if not item_id then return end
+    roll_trackers[ item_id ] = nil
+    rolling_popup_data[ item_id ] = nil
   end
 
   ---@alias RollControllerEvent
@@ -1506,6 +1516,7 @@ function M.new(
   ---@type RollController
   return {
     preview = preview,
+    reset_item = reset_item,
     start = start,
     winners_found = winners_found,
     finish = finish,
