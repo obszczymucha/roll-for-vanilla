@@ -34,10 +34,10 @@ end
 ---@field should_be_visible fun()
 ---@field should_be_hidden fun()
 ---@field click fun( button_type: OptionsFrameButtonType )
----@field toggle_setting fun( key: string )
----@field change_slider fun( key: string, value: number )
----@field change_editbox fun( key: string, value: number )
----@field change_dropdown fun( key: string, value: any )
+---@field toggle_setting fun( label: string )
+---@field change_slider fun( label: string, value: number )
+---@field change_editbox fun( label: string, value: number )
+---@field change_dropdown fun( label: string, value: any )
 
 ---@param popup_builder PopupBuilder
 ---@param config Config
@@ -77,33 +77,32 @@ function M.new( popup_builder, config, db )
     end
   end
 
-  options.toggle_setting = function( key )
-    if not model then return end
-
-    if not model.settings then
-      error( "There were no settings to toggle." )
+  -- Settings are one flat list now, and they carry no key -- the label is what identifies a
+  -- control to someone reading the options window, so that is what tests address it by.
+  local function find_setting( label )
+    if not model or not model.settings then
+      error( "There were no settings to change.", 3 )
     end
 
     for _, setting in ipairs( model.settings ) do
-      if setting.key == key then setting.on_toggle() end
+      if setting.label == label then return setting end
     end
+
+    error( string.format( "There was no setting labelled: %s", label ), 3 )
   end
 
-  local function change_setting( category, key, value )
-    if not model then return end
-
-    if not model[ category ] then
-      error( string.format( "There were no %s to change.", category ) )
-    end
-
-    for _, setting in ipairs( model[ category ] ) do
-      if setting.key == key then setting.on_change( value ) end
-    end
+  local function change_setting( label, value )
+    find_setting( label ).on_change( value )
   end
 
-  options.change_slider = function( key, value ) change_setting( "sliders", key, value ) end
-  options.change_editbox = function( key, value ) change_setting( "editboxes", key, value ) end
-  options.change_dropdown = function( key, value ) change_setting( "dropdowns", key, value ) end
+  options.toggle_setting = function( label )
+    local setting = find_setting( label )
+    setting.on_change( not setting.value )
+  end
+
+  options.change_slider = change_setting
+  options.change_editbox = change_setting
+  options.change_dropdown = change_setting
 
   local function should_be_visible( level )
     if not options.is_visible() then

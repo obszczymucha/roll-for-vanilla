@@ -132,16 +132,18 @@ end
 ---@param value number
 ---@param min number
 ---@param max number
+---@param precision number?
 ---@param padding number?
-function M.slider( label, value, min, max, padding )
-  return { type = "slider", label = label, value = value, min = min, max = max, padding = padding }
+function M.slider( label, value, min, max, precision, padding )
+  return { type = "slider", label = label, value = value, min = min, max = max, precision = precision or 0, padding = padding }
 end
 
 ---@param label string
 ---@param value number
+---@param precision number?
 ---@param padding number?
-function M.editbox( label, value, padding )
-  return { type = "editbox", label = label, value = value, padding = padding }
+function M.editbox( label, value, precision, padding )
+  return { type = "editbox", label = label, value = value, precision = precision or 0, padding = padding }
 end
 
 ---@param label string

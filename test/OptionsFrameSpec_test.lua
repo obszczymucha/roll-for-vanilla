@@ -24,7 +24,7 @@ local function default_setting_values()
     master_loot_frame_rows = 5,
     ms_roll_threshold = 100,
     os_roll_threshold = 99,
-    tmog_roll_threshold = 98,
+    resistance_check_throttle = 1.0,
     master_loot_threshold = ItemQuality.Rare,
   }
 end
@@ -51,10 +51,6 @@ local function mock_config( toggles, setting_overrides )
     config[ "set_" .. key ] = function( value ) db[ key ] = value; return true end
   end
 
-  for key in pairs( toggle_definitions ) do
-    config[ "toggle_" .. key ] = function() db[ key ] = not db[ key ] end
-  end
-
   return config, db
 end
 
@@ -70,22 +66,35 @@ local master_loot_threshold_options = {
   { value = ItemQuality.Epic, label = RollFor.colorize_item_by_quality( "Epic", ItemQuality.Epic ) },
 }
 
--- The full options popup content in the order OptionsFrameContentTransformer emits it: title,
--- checkboxes, editboxes, sliders, dropdown, buttons. `value_overrides` swaps in non-default
--- editbox/slider/dropdown values; trailing varargs are extra checkbox lines to show.
+-- Padding OptionsFrameContentTransformer gives a line: the first setting is spaced off the
+-- title, the rest are spaced by what kind of control they are.
+local type_paddings = { checkbox = 2, editbox = 7, slider = 7, dropdown = 5 }
+
+-- The full options popup content in the order OptionsFrame declares it: title, checkboxes,
+-- editboxes, sliders, dropdown, buttons. `value_overrides` swaps in non-default editbox/slider/
+-- dropdown values; trailing varargs are the checkbox lines to show, in declaration order.
 ---@param value_overrides table<string, any>?
 local function default_popup( value_overrides, ... )
   local v = default_setting_values()
   for key, value in pairs( value_overrides or {} ) do v[ key ] = value end
 
-  local content = { title }
-  for _, line in ipairs( { ... } ) do table.insert( content, line ) end
+  local settings = {}
+  for _, line in ipairs( { ... } ) do table.insert( settings, line ) end
 
-  table.insert( content, editbox( "MS roll threshold", v.ms_roll_threshold, 10 ) )
-  table.insert( content, editbox( "OS roll threshold", v.os_roll_threshold, 4 ) )
-  table.insert( content, slider( "Default rolling time (seconds)", v.default_rolling_time_seconds, 4, 15, 10 ) )
-  table.insert( content, slider( "Master loot frame rows", v.master_loot_frame_rows, 5, 20, 4 ) )
-  table.insert( content, dropdown( "Master loot threshold", v.master_loot_threshold, master_loot_threshold_options, 10 ) )
+  table.insert( settings, editbox( "MS roll threshold", v.ms_roll_threshold, 0 ) )
+  table.insert( settings, editbox( "OS roll threshold", v.os_roll_threshold, 0 ) )
+  table.insert( settings, editbox( "Resistance check throttle", v.resistance_check_throttle, 1 ) )
+  table.insert( settings, slider( "Default rolling time (seconds)", v.default_rolling_time_seconds, 4, 15, 0 ) )
+  table.insert( settings, slider( "Master loot frame rows", v.master_loot_frame_rows, 5, 20, 0 ) )
+  table.insert( settings, dropdown( "Master loot threshold", v.master_loot_threshold, master_loot_threshold_options ) )
+
+  local content = { title }
+
+  for i, line in ipairs( settings ) do
+    line.padding = i == 1 and 10 or type_paddings[ line.type ]
+    table.insert( content, line )
+  end
+
   table.insert( content, options_buttons( "Close" ) )
 
   return unpack( content )
@@ -136,9 +145,9 @@ function OptionsFrameSpec:should_toggle_visibility()
   options.should_be_hidden()
 end
 
-function OptionsFrameSpec:should_display_boolean_config_settings_as_checkboxes_sorted_by_label()
+function OptionsFrameSpec:should_display_boolean_config_settings_as_checkboxes_in_declaration_order()
   -- Given
-  local config = mock_config( { zeta_setting = true, alpha_setting = false } )
+  local config = mock_config( { classic_look = true, auto_loot = false } )
   local options = new_options( config )
 
   -- When
@@ -147,9 +156,21 @@ function OptionsFrameSpec:should_display_boolean_config_settings_as_checkboxes_s
   -- Then
   options.should_display( default_popup(
     nil,
-    checkbox( "alpha_setting", false, 10 ),
-    checkbox( "zeta_setting", true, 2 )
+    checkbox( "auto_loot", false ),
+    checkbox( "classic_look", true )
   ) )
+end
+
+function OptionsFrameSpec:should_not_display_a_boolean_setting_the_config_does_not_define()
+  -- Given
+  local config = mock_config( { auto_loot = false, not_a_real_setting = true } )
+  local options = new_options( config )
+
+  -- When
+  options.show()
+
+  -- Then
+  options.should_display( default_popup( nil, checkbox( "auto_loot", false ) ) )
 end
 
 function OptionsFrameSpec:should_toggle_a_boolean_config_setting_when_its_checkbox_is_clicked()
@@ -177,13 +198,10 @@ function OptionsFrameSpec:should_not_display_superwow_auto_loot_coins_setting()
   options.show()
 
   -- Then
-  options.should_display( default_popup(
-    nil,
-    checkbox( "auto_loot", false, 10 )
-  ) )
+  options.should_display( default_popup( nil, checkbox( "auto_loot", false ) ) )
 end
 
-function OptionsFrameSpec:should_display_slider_settings_with_their_bounds_sorted_by_label()
+function OptionsFrameSpec:should_display_slider_settings_with_their_bounds()
   -- Given
   local config = mock_config( nil, { default_rolling_time_seconds = 12, master_loot_frame_rows = 8 } )
   local options = new_options( config )
@@ -202,13 +220,13 @@ function OptionsFrameSpec:should_change_a_slider_config_setting_when_its_value_c
   options.show()
 
   -- When
-  options.change_slider( "master_loot_frame_rows", 12 )
+  options.change_slider( "Master loot frame rows", 12 )
 
   -- Then
   eq( db.master_loot_frame_rows, 12 )
 end
 
-function OptionsFrameSpec:should_display_editbox_settings_sorted_by_label()
+function OptionsFrameSpec:should_display_editbox_settings()
   -- Given
   local config = mock_config( nil, { ms_roll_threshold = 95, os_roll_threshold = 90 } )
   local options = new_options( config )
@@ -227,7 +245,7 @@ function OptionsFrameSpec:should_change_an_editbox_config_setting_when_a_valid_v
   options.show()
 
   -- When
-  options.change_editbox( "ms_roll_threshold", 95 )
+  options.change_editbox( "MS roll threshold", 95 )
 
   -- Then
   eq( db.ms_roll_threshold, 95 )
@@ -252,7 +270,7 @@ function OptionsFrameSpec:should_change_a_dropdown_config_setting_when_an_option
   options.show()
 
   -- When
-  options.change_dropdown( "master_loot_threshold", ItemQuality.Epic )
+  options.change_dropdown( "Master loot threshold", ItemQuality.Epic )
 
   -- Then
   eq( db.master_loot_threshold, ItemQuality.Epic )

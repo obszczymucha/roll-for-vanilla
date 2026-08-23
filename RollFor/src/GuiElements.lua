@@ -463,6 +463,20 @@ function M.slider( parent )
   -- screen while dragging; committed_value is what on_change was last called with.
   local pending_value
   local committed_value
+  -- Decimal places the knob snaps to and the readout shows. 0 means whole numbers, which is
+  -- what the SetValueStep above already enforces until SetPrecision says otherwise.
+  local m_precision = 0
+
+  local function format_value( value )
+    if not value then return "" end
+    if m_precision > 0 then return string.format( "%." .. m_precision .. "f", value ) end
+
+    return string.format( "%d", math.floor( value + 0.5 ) )
+  end
+
+  local function round( value )
+    return tonumber( format_value( value ) )
+  end
 
   container.SetText = function( _, text )
     label:SetText( text )
@@ -473,10 +487,17 @@ function M.slider( parent )
     slider:SetMinMaxValues( min or 0, max or 100 )
   end
 
+  -- Must be called before SetValue: it decides the step the knob snaps to and how the readout
+  -- is formatted.
+  container.SetPrecision = function( _, precision )
+    m_precision = precision or 0
+    slider:SetValueStep( m_precision > 0 and 1 / (10 ^ m_precision) or 1 )
+  end
+
   container.SetValue = function( _, value )
     updating = true
     slider:SetValue( value )
-    if slider_text then slider_text:SetText( tostring( value ) ) end
+    if slider_text then slider_text:SetText( format_value( value ) ) end
     pending_value = value
     committed_value = value
     updating = false
@@ -485,8 +506,8 @@ function M.slider( parent )
   slider:SetScript( "OnValueChanged", function( _, value )
     if m.vanilla then value = arg1 end ---@diagnostic disable-line: undefined-global
 
-    value = math.floor( value + 0.5 )
-    if slider_text then slider_text:SetText( tostring( value ) ) end
+    value = round( value )
+    if slider_text then slider_text:SetText( format_value( value ) ) end
     pending_value = value
 
     if updating then return end
@@ -592,20 +613,42 @@ function M.editbox( parent )
 
   -- Last committed valid value. Restored whenever the typed text is rejected.
   local last_valid_value
+  -- Decimal places this box accepts and displays. 0 means whole numbers only, which is also what
+  -- the SetNumeric above enforces until SetPrecision says otherwise.
+  local m_precision = 0
+
+  local function format_value( value )
+    if not value then return "" end
+    if m_precision > 0 then return string.format( "%." .. m_precision .. "f", value ) end
+
+    return string.format( "%d", math.floor( value + 0.5 ) )
+  end
 
   local function revert()
-    edit:SetText( last_valid_value ~= nil and tostring( last_valid_value ) or "" )
+    edit:SetText( format_value( last_valid_value ) )
   end
 
   -- Range/legality is Config's call, not ours: on_change (a Config setter) returns whether it
   -- accepted the value. We only rule out text that isn't even a number (e.g. an emptied box).
   local function commit()
-    local value = tonumber( edit:GetText() )
+    -- Round to our precision first, so the setter never sees more decimals than we display.
+    local value = tonumber( format_value( tonumber( edit:GetText() ) ) )
+
+    -- Enter runs commit and then drops focus, which runs commit again. Bail out when nothing
+    -- actually changed, so the setter (and its notification) only fires once per edit. The text
+    -- still needs normalizing: typing 1.52 at precision 1 rounds to the value we already hold,
+    -- but the box is showing what was typed.
+    if format_value( value ) == format_value( last_valid_value ) then
+      revert()
+      edit:ClearFocus()
+      return
+    end
+
     local accepted = value ~= nil and container.on_change and container.on_change( value )
 
     if accepted then
       last_valid_value = value
-      edit:SetText( tostring( value ) )
+      edit:SetText( format_value( value ) )
     else
       revert()
     end
@@ -625,9 +668,16 @@ function M.editbox( parent )
     container:SetWidth( label:GetWidth() + value_gap + edit_width )
   end
 
+  -- Must be called before SetValue: it decides how the value is rendered and whether the box
+  -- will even accept a decimal point.
+  container.SetPrecision = function( _, precision )
+    m_precision = precision or 0
+    edit:SetNumeric( m_precision == 0 )
+  end
+
   container.SetValue = function( _, value )
     last_valid_value = value
-    edit:SetText( tostring( value ) )
+    edit:SetText( format_value( value ) )
   end
 
   return container

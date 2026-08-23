@@ -74,34 +74,6 @@ function GenericSpec:should_not_roll_if_not_in_group()
   )
 end
 
-function GenericSpec:should_print_usage_if_in_party_and_no_item_is_provided()
-  -- Given
-  player( "Psikutas" )
-  is_in_party( "Psikutas", "Obszczymucha" )
-
-  -- When
-  roll_for_raw( "" )
-
-  -- Then
-  m.chat.assert(
-    c( "RollFor: Usage: /rf <item> [seconds]" )
-  )
-end
-
-function GenericSpec:should_print_usage_if_in_raid_and_no_item_is_provided()
-  -- Given
-  player( "Psikutas" )
-  is_in_raid( leader( "Psikutas" ), "Obszczymucha" )
-
-  -- When
-  roll_for_raw( "" )
-
-  -- Then
-  m.chat.assert(
-    c( "RollFor: Usage: /rf <item> [seconds]" )
-  )
-end
-
 function GenericSpec:should_print_usage_if_in_party_and_invalid_item_is_provided()
   -- Given
   player( "Psikutas" )

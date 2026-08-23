@@ -500,6 +500,15 @@ local function on_roll_command( roll_slash_command )
       return
     end
 
+    -- A bare /rf is a request for the options window, not an incomplete roll command. Restoring a
+    -- dismissed rolling popup still wins, same as it did when this printed usage instead.
+    if roll_slash_command == RollSlashCommand.NormalRoll and string.find( args, "^%s*$" ) then
+      if M.roll_for_receiver.show() then return end
+
+      M.options.toggle()
+      return
+    end
+
     -- if string.find( args, "^autolootdb print" ) then
     --   m.AutoLootDb.on_print_command()
     --   return

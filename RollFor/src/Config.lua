@@ -19,10 +19,17 @@ local M = {}
 
 ---@alias Config table
 
+---@class ConfigToggle
+---@field cmd string
+---@field display string
+---@field negate boolean?
+---@field hidden boolean?
+
 ---@param db table
 ---@param event_bus EventBus
 function M.new( db, event_bus )
   local callbacks = {}
+  ---@type table<string, ConfigToggle>
   local toggles = {
     [ "auto_loot" ] = { cmd = "auto-loot", display = "Auto-loot", help = "toggle auto-loot" },
     [ "superwow_auto_loot_coins" ] = { cmd = "superwow-auto-loot-coins", display = "Auto-loot coins with SuperWoW", help = "toggle auto-loot coins with SuperWoW" },
@@ -58,9 +65,10 @@ function M.new( db, event_bus )
     if db.master_loot_threshold == nil then db.master_loot_threshold = ItemQuality.Rare end
     if db.auto_loot == nil then db.auto_loot = true end
     if db.auto_loot_announce == nil then db.auto_loot_announce = true end
+    if db.resistance_check_throttle == nil then db.resistance_check_throttle = 1.0 end
   end
 
-  local function print( toggle_key )
+  local function print_toggle( toggle_key )
     local toggle = toggles[ toggle_key ]
     if not toggle then return end
 
@@ -69,7 +77,7 @@ function M.new( db, event_bus )
     notify_subscribers( toggle_key, value )
   end
 
-  local function toggle( toggle_key )
+  local function toggle_fn( toggle_key )
     return function()
       if db[ toggle_key ] then
         db[ toggle_key ] = false
@@ -77,7 +85,23 @@ function M.new( db, event_bus )
         db[ toggle_key ] = true
       end
 
-      print( toggle_key )
+      print_toggle( toggle_key )
+
+      if toggles[ toggle_key ].requires_reload then
+        event_bus.notify( "config_change_requires_ui_reload", { key = toggle_key } )
+      end
+    end
+  end
+
+  ---@param toggle_key string
+  local function set_toggle( toggle_key )
+    ---@param value boolean
+    return function( value )
+      local toggle = toggles[ toggle_key ]
+      if not toggle then return end
+
+      db[ toggle_key ] = value
+      print_toggle( toggle_key )
 
       if toggles[ toggle_key ].requires_reload then
         event_bus.notify( "config_change_requires_ui_reload", { key = toggle_key } )
@@ -159,7 +183,17 @@ function M.new( db, event_bus )
     return true
   end
 
+  -- Roll thresholds are whole numbers within the roll range. Returns the coerced value, or nil
+  -- if the input isn't one, so the setters below can reject it.
+  local function valid_threshold( value )
+    value = tonumber( value )
+    if not value or value < 1 or value > 100 or math.floor( value ) ~= value then return nil end
+
+    return value
+  end
+
   local function set_ms_roll_threshold( value )
+    value = valid_threshold( value )
     if not value then return false end
 
     db.ms_roll_threshold = value
@@ -170,6 +204,7 @@ function M.new( db, event_bus )
   end
 
   local function set_os_roll_threshold( value )
+    value = valid_threshold( value )
     if not value then return false end
 
     db.os_roll_threshold = value
@@ -180,6 +215,7 @@ function M.new( db, event_bus )
   end
 
   local function set_tmog_roll_threshold( value )
+    value = valid_threshold( value )
     if not value then return false end
 
     db.tmog_roll_threshold = value
@@ -199,6 +235,21 @@ function M.new( db, event_bus )
     return true
   end
 
+  local function print_resistance_check_throttle()
+    info( string.format( "Resistance check throttle: %s seconds", hl( db.resistance_check_throttle ) ) )
+  end
+
+  local function set_resistance_check_throttle( value )
+    value = tonumber( value )
+    if not value or value < 0.1 or value > 10 then return false end
+
+    db.resistance_check_throttle = value
+    print_resistance_check_throttle()
+    notify_subscribers( "resistance_check_throttle", value )
+
+    return true
+  end
+
   local function print_settings()
     print_header( "RollFor Configuration" )
     print_default_rolling_time()
@@ -209,7 +260,7 @@ function M.new( db, event_bus )
 
     for toggle_key, setting in pairs( toggles ) do
       if not setting.hidden then
-        print( toggle_key )
+        print_toggle( toggle_key )
       end
     end
 
@@ -346,6 +397,7 @@ function M.new( db, event_bus )
 
     m.print( string.format( "%s - reset rolling popup position", rfc( "reset-rolling-popup" ) ) )
     m.print( string.format( "%s - reset loot frame position", rfc( "reset-loot-frame" ) ) )
+    m.print( string.format( "%s - set resistance check throttle", rfc( "resistance-check-throttle" ) ) )
   end
 
   local function lock_minimap_button()
@@ -383,7 +435,7 @@ function M.new( db, event_bus )
 
     for toggle_key, setting in pairs( toggles ) do
       if args == string.format( "config %s", setting.cmd ) then
-        toggle( toggle_key )()
+        toggle_fn( toggle_key )()
         return
       end
     end
@@ -485,7 +537,7 @@ function M.new( db, event_bus )
     end
   end
 
-  local function printfn( setting_key ) return function() print( setting_key ) end end
+  local function printfn( setting_key ) return function() print_toggle( setting_key ) end end
 
   local config = {
     configure_ms_threshold = configure_ms_threshold,
@@ -498,7 +550,7 @@ function M.new( db, event_bus )
     ms_roll_threshold = get( "ms_roll_threshold" ),
     on_command = on_command,
     os_roll_threshold = get( "os_roll_threshold" ),
-    print = print,
+    print = print_toggle,
     print_help = print_help,
     print_raid_roll_settings = printfn( "auto_raid_roll" ),
     reset_rolling_popup = reset_rolling_popup,
@@ -521,11 +573,13 @@ function M.new( db, event_bus )
     set_os_roll_threshold = set_os_roll_threshold,
     set_tmog_roll_threshold = set_tmog_roll_threshold,
     set_master_loot_threshold = set_master_loot_threshold,
+    resistance_check_throttle = get( "resistance_check_throttle" ),
+    set_resistance_check_throttle = set_resistance_check_throttle
   }
 
   for toggle_key, _ in pairs( toggles ) do
     config[ toggle_key ] = get( toggle_key )
-    config[ "toggle_" .. toggle_key ] = toggle( toggle_key )
+    config[ "set_" .. toggle_key ] = set_toggle( toggle_key )
   end
 
   return config

@@ -54,120 +54,136 @@ local function add_title( content, title )
   table.insert( content, { type = "text", value = blue( title ), padding = 6 } )
 end
 
----@class OptionsFrameBooleanSetting
----@field key string
+---@alias OptionsSetting BooleanSetting|NumberSetting|ConstrainedNumberSetting|StringChoiceSetting
+
+---@class BooleanSetting
+---@field type "boolean"
 ---@field label string
 ---@field value boolean
----@field on_toggle fun()
+---@field on_change fun( value: boolean )
 
----@param content table
----@param settings OptionsFrameBooleanSetting[]
-local function add_settings( content, settings )
-  for i, setting in ipairs( settings or {} ) do
-    local padding = i == 1 and 10 or 2
-
-    table.insert( content, {
-      type = "checkbox",
-      label = setting.label,
-      value = setting.value,
-      on_click = setting.on_toggle,
-      padding = padding
-    } )
-  end
-end
-
----@class OptionsFrameSliderSetting
----@field key string
+---@class NumberSetting
+---@field type "number"
 ---@field label string
 ---@field value number
+---@field precision number
+---@field on_change fun( value: number )
+
+---@class ConstrainedNumberSetting
+---@field type "constrained_number"
+---@field label string
+---@field value number
+---@field precision number
 ---@field min number
 ---@field max number
 ---@field on_change fun( value: number )
 
----@param content table
----@param sliders OptionsFrameSliderSetting[]
-local function add_sliders( content, sliders )
-  for i, setting in ipairs( sliders or {} ) do
-    local padding = i == 1 and 10 or 4
-
-    table.insert( content, {
-      type = "slider",
-      label = setting.label,
-      value = setting.value,
-      min = setting.min,
-      max = setting.max,
-      on_change = setting.on_change,
-      padding = padding
-    } )
-  end
-end
-
----@class OptionsFrameEditboxSetting
----@field key string
----@field label string
----@field value number
----@field on_change fun( value: number ): boolean
-
----@param content table
----@param editboxes OptionsFrameEditboxSetting[]
-local function add_editboxes( content, editboxes )
-  for i, setting in ipairs( editboxes or {} ) do
-    local padding = i == 1 and 10 or 4
-
-    table.insert( content, {
-      type = "editbox",
-      label = setting.label,
-      value = setting.value,
-      on_change = setting.on_change,
-      padding = padding
-    } )
-  end
-end
-
----@class OptionsFrameDropdownOption
+---@class ValueLabel
 ---@field value any
 ---@field label string
 
----@class OptionsFrameDropdownSetting
----@field key string
+---@class StringChoiceSetting
+---@field type "choice"
 ---@field label string
 ---@field value any
----@field options OptionsFrameDropdownOption[]
+---@field choices ValueLabel[]
 ---@field on_change fun( value: any )
 
 ---@param content table
----@param dropdowns OptionsFrameDropdownSetting[]
-local function add_dropdowns( content, dropdowns )
-  for i, setting in ipairs( dropdowns or {} ) do
-    local padding = i == 1 and 10 or 4
+---@param setting BooleanSetting
+---@param padding number
+local function add_checkbox( content, setting, padding )
+  table.insert( content, {
+    type = "checkbox",
+    label = setting.label,
+    value = setting.value,
+    on_click = setting.on_change,
+    padding = padding
+  } )
+end
 
-    table.insert( content, {
-      type = "dropdown",
-      label = setting.label,
-      value = setting.value,
-      options = setting.options,
-      on_change = setting.on_change,
-      padding = padding
-    } )
-  end
+---@param content table
+---@param setting NumberSetting
+---@param padding number
+local function add_editbox( content, setting, padding )
+  table.insert( content, {
+    type = "editbox",
+    label = setting.label,
+    value = setting.value,
+    precision = setting.precision,
+    on_change = setting.on_change,
+    padding = padding
+  } )
+end
+
+---@param content table
+---@param setting ConstrainedNumberSetting
+---@param padding number
+local function add_slider( content, setting, padding )
+  table.insert( content, {
+    type = "slider",
+    label = setting.label,
+    value = setting.value,
+    precision = setting.precision,
+    min = setting.min,
+    max = setting.max,
+    on_change = setting.on_change,
+    padding = padding
+  } )
+end
+
+---@param content table
+---@param setting StringChoiceSetting
+---@param padding number
+local function add_dropdown( content, setting, padding )
+  table.insert( content, {
+    type = "dropdown",
+    label = setting.label,
+    value = setting.value,
+    options = setting.choices,
+    on_change = setting.on_change,
+    padding = padding
+  } )
 end
 
 ---@class OptionsFrameData
 ---@field title string?
----@field settings OptionsFrameBooleanSetting[]
----@field sliders OptionsFrameSliderSetting[]
----@field editboxes OptionsFrameEditboxSetting[]
----@field dropdowns OptionsFrameDropdownSetting[]
+---@field settings OptionsSetting[]
 ---@field buttons OptionsFrameButtonWithCallback[]
 
 ---@param data OptionsFrameData
 local function transform( data )
+  ---@param type "boolean"|"number"|"constrained_number"|"choice"
+  local function get_padding( type )
+    if type == "boolean" then
+      return 2
+    elseif type == "number" then
+      return 7
+    elseif type == "constrained_number" then
+      return 7
+    else
+      return 5
+    end
+  end
+
   local content = {}
+
   add_title( content, data.title )
-  add_settings( content, data.settings )
-  add_editboxes( content, data.editboxes )
-  add_sliders( content, data.sliders )
-  add_dropdowns( content, data.dropdowns )
+
+  for i, setting in ipairs( data.settings ) do
+    local padding = i == 1 and 10 or get_padding( setting.type )
+
+    if setting.type == "boolean" then
+      add_checkbox( content, setting, padding )
+    elseif setting.type == "number" then
+      add_editbox( content, setting, padding )
+    elseif setting.type == "constrained_number" then
+      add_slider( content, setting, padding )
+    elseif setting.type == "choice" then
+      add_dropdown( content, setting, padding )
+    end
+  end
+
   add_buttons( content, data.buttons )
 
   return content

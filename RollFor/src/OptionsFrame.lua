@@ -64,6 +64,7 @@ function M.new( popup_builder, content_transformer, config, db )
         :on_drag_stop( on_drag_stop )
         :strata( "DIALOG" )
         :self_centered_anchor()
+        :esc()
         :hidden()
         :build()
 
@@ -89,10 +90,11 @@ function M.new( popup_builder, content_transformer, config, db )
         elseif type == "checkbox" then
           frame:SetText( v.label or "" )
           frame:SetChecked( v.value )
-          frame.on_click = v.on_click or function() end
+          frame.on_click = v.on_click and v.on_click or function() end
         elseif type == "slider" then
           frame:SetText( v.label or "" )
           frame:SetMinMaxValues( v.min, v.max )
+          frame:SetPrecision( v.precision )
           frame:SetValue( v.value )
           frame.on_change = v.on_change or function() end
         elseif type == "dropdown" then
@@ -102,6 +104,7 @@ function M.new( popup_builder, content_transformer, config, db )
           frame.on_change = v.on_change or function() end
         elseif type == "editbox" then
           frame:SetText( v.label or "" )
+          frame:SetPrecision( v.precision )
           frame:SetValue( v.value )
           frame.on_change = v.on_change or function() end
         elseif type == "text" then
@@ -125,126 +128,118 @@ function M.new( popup_builder, content_transformer, config, db )
     end
   end
 
-  local excluded_settings = {
-    superwow_auto_loot_coins = true
+  local master_loot_threshold_choices = {
+    { value = ItemQuality.Uncommon, label = m.colorize_item_by_quality( "Uncommon", ItemQuality.Uncommon ) },
+    { value = ItemQuality.Rare,     label = m.colorize_item_by_quality( "Rare", ItemQuality.Rare ) },
+    { value = ItemQuality.Epic,     label = m.colorize_item_by_quality( "Epic", ItemQuality.Epic ) },
   }
 
-  -- What this popup shows and which widget renders it: purely a GUI concern. Config only exposes
-  -- validated get_key()/set_key() primitives per setting; it has no notion of "slider" or "dropdown".
-  local slider_descriptors = {
-    { key = "default_rolling_time_seconds", label = "Default rolling time (seconds)", min = 4, max = 15 },
-    { key = "master_loot_frame_rows", label = "Master loot frame rows", min = 5, max = 20 },
-  }
+  ---@param settings OptionsSetting[]
+  ---@param toggle_key string
+  local function add_toggle( settings, toggle_key )
+    ---@type ConfigToggle
+    local toggle = config.toggles[ toggle_key ]
+    if not toggle then return end
 
-  local editbox_descriptors = {
-    { key = "ms_roll_threshold", label = "MS roll threshold" },
-    { key = "os_roll_threshold", label = "OS roll threshold" },
-    { key = "tmog_roll_threshold", label = "TMOG roll threshold", hidden = m.bcc },
-  }
-
-  local dropdown_descriptors = {
-    {
-      key = "master_loot_threshold",
-      label = "Master loot threshold",
-      options = {
-        { value = ItemQuality.Uncommon, label = m.colorize_item_by_quality( "Uncommon", ItemQuality.Uncommon ) },
-        { value = ItemQuality.Rare, label = m.colorize_item_by_quality( "Rare", ItemQuality.Rare ) },
-        { value = ItemQuality.Epic, label = m.colorize_item_by_quality( "Epic", ItemQuality.Epic ) },
-      }
+    ---@type BooleanSetting
+    local setting = {
+      type = "boolean",
+      label = toggle.display,
+      value = config[ toggle_key ](),
+      on_change = config[ "set_" .. toggle_key ]
     }
-  }
 
-  ---@return OptionsFrameBooleanSetting[]
-  local function boolean_settings()
-    local result = {}
-
-    for toggle_key, setting in pairs( config.toggles or {} ) do
-      if not setting.hidden and not excluded_settings[ toggle_key ] then
-        table.insert( result, {
-          key = toggle_key,
-          label = setting.display,
-          value = config[ toggle_key ](),
-          on_toggle = config[ "toggle_" .. toggle_key ]
-        } )
-      end
-    end
-
-    table.sort( result, function( a, b ) return a.label < b.label end )
-
-    return result
+    table.insert( settings, setting )
   end
 
-  ---@return OptionsFrameSliderSetting[]
-  local function slider_settings()
-    local result = {}
+  ---@param settings OptionsSetting[]
+  ---@param key string
+  ---@param label string
+  ---@param precision number
+  local function add_number( settings, key, label, precision )
+    local get_value = config[ key ]
+    if not get_value then return end
 
-    for _, descriptor in ipairs( slider_descriptors ) do
-      if not descriptor.hidden then
-        table.insert( result, {
-          key = descriptor.key,
-          label = descriptor.label,
-          value = config[ descriptor.key ](),
-          min = descriptor.min,
-          max = descriptor.max,
-          on_change = config[ "set_" .. descriptor.key ]
-        } )
-      end
-    end
+    ---@type NumberSetting
+    local setting = {
+      type = "number",
+      label = label,
+      value = get_value(),
+      precision = precision,
+      on_change = config[ "set_" .. key ]
+    }
 
-    table.sort( result, function( a, b ) return a.label < b.label end )
-
-    return result
+    table.insert( settings, setting )
   end
 
-  ---@return OptionsFrameEditboxSetting[]
-  local function editbox_settings()
-    local result = {}
+  ---@param settings OptionsSetting[]
+  ---@param key string
+  ---@param label string
+  ---@param min number
+  ---@param max number
+  ---@param precision number
+  local function add_slider( settings, key, label, min, max, precision )
+    local get_value = config[ key ]
+    if not get_value then return end
 
-    for _, descriptor in ipairs( editbox_descriptors ) do
-      if not descriptor.hidden then
-        table.insert( result, {
-          key = descriptor.key,
-          label = descriptor.label,
-          value = config[ descriptor.key ](),
-          on_change = config[ "set_" .. descriptor.key ]
-        } )
-      end
-    end
+    ---@type ConstrainedNumberSetting
+    local setting = {
+      type = "constrained_number",
+      label = label,
+      value = get_value(),
+      precision = precision,
+      min = min,
+      max = max,
+      on_change = config[ "set_" .. key ]
+    }
 
-    table.sort( result, function( a, b ) return a.label < b.label end )
-
-    return result
+    table.insert( settings, setting )
   end
 
-  ---@return OptionsFrameDropdownSetting[]
-  local function dropdown_settings()
-    local result = {}
+  ---@param settings OptionsSetting[]
+  ---@param key string
+  ---@param label string
+  ---@param choices ValueLabel[]
+  local function add_choice( settings, key, label, choices )
+    local get_value = config[ key ]
+    if not get_value then return end
 
-    for _, descriptor in ipairs( dropdown_descriptors ) do
-      if not descriptor.hidden then
-        table.insert( result, {
-          key = descriptor.key,
-          label = descriptor.label,
-          value = config[ descriptor.key ](),
-          options = descriptor.options,
-          on_change = config[ "set_" .. descriptor.key ]
-        } )
-      end
-    end
+    ---@type StringChoiceSetting
+    local setting = {
+      type = "choice",
+      label = label,
+      value = get_value(),
+      choices = choices,
+      on_change = config[ "set_" .. key ]
+    }
 
-    table.sort( result, function( a, b ) return a.label < b.label end )
-
-    return result
+    table.insert( settings, setting )
   end
 
   ---@return OptionsFrameData
   local function default_content()
+    local settings = {}
+
+    add_toggle( settings, "auto_loot" )
+    add_toggle( settings, "auto_loot_announce" )
+    add_toggle( settings, "auto_loot_messages" )
+    add_toggle( settings, "auto_group_loot" )
+    add_toggle( settings, "auto_master_loot" )
+    add_toggle( settings, "auto_raid_roll" )
+    add_toggle( settings, "show_ml_warning" )
+    add_toggle( settings, "rolling_popup_lock" )
+    add_toggle( settings, "raid_roll_again" )
+    add_toggle( settings, "classic_look" )
+    add_number( settings, "ms_roll_threshold", "MS roll threshold", 0 )
+    add_number( settings, "os_roll_threshold", "OS roll threshold", 0 )
+    add_number( settings, "resistance_check_throttle", "Resistance check throttle", 1 )
+    add_slider( settings, "default_rolling_time_seconds", "Default rolling time (seconds)", 4, 15, 0 )
+    add_slider( settings, "master_loot_frame_rows", "Master loot frame rows", 5, 20, 0 )
+    add_choice( settings, "master_loot_threshold", "Master loot threshold", master_loot_threshold_choices )
+
     return {
       title = "RollFor Options",
-      settings = boolean_settings(),
-      sliders = slider_settings(),
-      editboxes = editbox_settings(),
-      dropdowns = dropdown_settings(),
+      settings = settings,
       buttons = {
         { type = "Close", callback = function() if popup then popup:Hide() end end }
       }

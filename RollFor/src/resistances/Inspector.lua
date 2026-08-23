@@ -9,7 +9,7 @@ local getn = m.getn
 
 -- The server only serves one inspect request at a time and rate limits them,
 -- so requests are queued and fired one by one.
-local THROTTLE = 1.5   -- seconds between two inspect requests
+local THROTTLE = 1.0   -- seconds between two inspect requests
 local TIMEOUT = 2.5    -- consider a request lost after this long
 local MAX_RETRIES = 3  -- the server silently drops requests it doesn't like
 local TICK = 0.2
