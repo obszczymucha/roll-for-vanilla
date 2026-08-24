@@ -1,7 +1,7 @@
 ## Interface: 20505
 ## Title: RollFor
 ## Author: Obszczymucha
-## Version: 4.8.3
+## Version: 4.8.4
 ## Notes: An automated item roller with soft ressing support via softres.it.
 ## SavedVariables: RollForDb
 ## SavedVariablesPerCharacter: RollForCharDb
@@ -104,7 +104,7 @@ src\resistances\ResistanceCheck.lua
 src\resistances\ResistanceFrameContentTransformer.lua
 src\resistances\ResistanceFrame.lua
 src\UiReloadPopup.lua
-src\Sandbox.lua
+src\RollSimulator.lua
 src\ModernLootFrameSkin.lua
 src\OgLootFrameSkin.lua
 src\GargulBridge.lua

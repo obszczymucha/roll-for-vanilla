@@ -1,11 +1,11 @@
 RollFor = RollFor or {}
 local m = RollFor
 
-if m.Sandbox then return end
+if m.RollSimulator then return end
 
 local M = {}
 
----@class Sandbox
+---@class RollSimulator
 ---@field run fun( args: string? )
 ---@field setup fun( args: string? )
 ---@field roll fun( args: string? )
@@ -409,8 +409,9 @@ function M.new( main )
 
   m.slash_cmd( "rft", run )
   m.slash_cmd( "rfsetup", setup )
+  m.slash_cmd( "rfr", roll )
 
-  ---@type Sandbox
+  ---@type RollSimulator
   return {
     run = run,
     setup = setup,
@@ -418,5 +419,5 @@ function M.new( main )
   }
 end
 
-m.Sandbox = M
+m.RollSimulator = M
 return M

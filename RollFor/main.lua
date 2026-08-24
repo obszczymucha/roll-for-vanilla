@@ -397,7 +397,7 @@ local function create_components()
     M.player_info
   )
 
-  M.sandbox = m.Sandbox.new( M )
+  M.roll_simulator = m.RollSimulator.new( M )
 
   M.gargul_bridge = m.GargulBridge.new( M.player_info, M.roll_controller, M.config, function() return M.softres_db.data end, M.softres )
 
@@ -699,15 +699,20 @@ local function show_how_to_roll()
   end
 end
 
-local function on_reset_dropped_loot_announce_command( args )
-  -- Overloaded: bare /rfr resets the dropped-loot announce as it always has, /rfr with
-  -- arguments feeds a simulated roll into the chat parser (see Sandbox).
-  if args and not string.find( args, "^%s*$" ) then
-    M.sandbox.roll( args )
+local function reset_usage()
+  info( string.format( "Usage: %s", hl( "/rfreset <command>" ) ) )
+  info( string.format( "  %s - %s", hl( "announce" ), "reset the dropped loot announcement" ) )
+end
+
+local function on_reset_command( args )
+  local command = string.match( args or "", "^%s*(%S*)" )
+
+  if command == "announce" then
+    M.dropped_loot_announce.reset( true )
     return
   end
 
-  M.dropped_loot_announce.reset()
+  reset_usage()
 end
 
 local function on_rftest_command()
@@ -729,7 +734,7 @@ local function setup_slash_commands()
   slash_cmd( "htr", in_group_check( show_how_to_roll ) )
   slash_cmd( "cr", is_rolling_check( M.roll_controller.cancel_rolling ) )
   slash_cmd( "fr", is_rolling_check( M.roll_controller.finish_rolling_early ) )
-  slash_cmd( "rfr", on_reset_dropped_loot_announce_command )
+  slash_cmd( "rfreset", on_reset_command )
   slash_cmd( "sr", on_softres_command )
 
   if M.rf_test_loot_facade then

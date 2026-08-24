@@ -271,7 +271,7 @@ end
 
 ---@class DroppedLootAnnounce
 ---@field on_loot_opened fun()
----@field reset fun()
+---@field reset fun( verbose: boolean? )
 
 ---@param loot_list LootList
 ---@param chat Chat
@@ -334,12 +334,15 @@ function M.new( loot_list, chat, softres, winner_tracker, player_info, auto_loot
     announcing = false
   end
 
-  local function reset()
+  ---@param verbose boolean?
+  local function reset( verbose )
     local former_size = m.count_elements( announced_source_ids )
     announced_source_ids = {}
 
     if former_size > 0 then
       m.pretty_print( "Loot announcement has been reset." )
+    elseif verbose then
+      m.pretty_print( "No loot was announced." )
     end
   end
 
