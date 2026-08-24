@@ -186,7 +186,8 @@ local function data( name, resistance_type, personal, total, neck )
     personal = personal,
     personal_by_type = by_type( resistance_type, personal ),
     total = total,
-    missing_neck = not neck or nil,
+    -- The neck requirement is a shadow one, so a fire row never carries it.
+    missing_neck = resistance_type == Shadow and not neck or nil,
     scanning = false,
     failed = false
   }
@@ -650,6 +651,20 @@ function ResistanceCheckSpec:should_report_a_neck_that_falls_short_as_missing()
 
   -- Then
   eq( sut.get_rows(), { data( "Psikutas", Shadow, 60, 60 ) } )
+end
+
+function ResistanceCheckSpec:should_say_nothing_about_the_shadow_neck_of_a_fire_geared_player()
+  -- A fire set comes with a fire neck, which has no shadow resistance on it. The
+  -- row reports fire, so the shadow neck requirement isn't theirs to fail.
+  -- Given
+  local sut = check()
+
+  -- When
+  sut.scan()
+  sut.gear_scanner.complete( "raid1", { [ Shadow ] = 0, [ Fire ] = 302, neck = { [ Fire ] = 30 } } )
+
+  -- Then
+  eq( sut.get_rows()[ 1 ].missing_neck, nil )
 end
 
 function ResistanceCheckSpec:should_say_nothing_about_the_neck_of_a_player_scanned_before_it_was_tracked()

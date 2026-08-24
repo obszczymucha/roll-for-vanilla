@@ -27,7 +27,7 @@ local NECK_MINIMUM = 40
 ---@field personal_by_type ResistanceTotals? -- gear and food per school, nil when there's no data
 ---@field total number?                      -- personal plus the raid buff, nil when there's no data
 ---@field food number?                       -- how much of personal came from food, nil when none did
----@field missing_neck boolean?              -- true when the required neck isn't worn, nil when it is or isn't known
+---@field missing_neck boolean?              -- true when the required neck isn't worn, nil when it is, isn't known, or the reported school isn't the one the neck rule covers
 ---@field scanning boolean
 ---@field failed boolean -- the last scan couldn't reach them; not the same as never scanned
 
@@ -121,10 +121,15 @@ function M.new( db, group_roster, gear_scanner, buff_scanner, parser, registry )
     result.total = result.personal + (buffs[ resistance_type ] or 0)
     result.food = food > 0 and food or nil
 
+    -- The neck requirement belongs to one school, so it has nothing to say about
+    -- a row reporting another one: a fire-geared player wears a fire neck, and
+    -- flagging that as missing would judge them against the wrong fight.
     -- Gear cached before the neck was tracked has nothing to say either way, so
     -- it says nothing rather than accusing everyone of turning up without one.
-    local neck = db.neck[ player.name ]
-    if neck and (neck[ NECK_TYPE ] or 0) < NECK_MINIMUM then result.missing_neck = true end
+    if resistance_type == NECK_TYPE then
+      local neck = db.neck[ player.name ]
+      if neck and (neck[ NECK_TYPE ] or 0) < NECK_MINIMUM then result.missing_neck = true end
+    end
 
     return result
   end
