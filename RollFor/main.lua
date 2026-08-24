@@ -316,7 +316,8 @@ local function create_components()
   )
 
   -- TODO: Add type.
-  M.softres_gui = m.SoftResGui.new( M.api, M.import_encoded_softres_data, M.softres_check, M.softres, clear_data, M.dropped_loot_announce.reset )
+  M.softres_gui = m.SoftResGui.new( M.api, M.import_encoded_softres_data, M.softres_check, M.softres, clear_data, M.dropped_loot_announce.reset,
+    function() return M.roll_simulator and M.roll_simulator.is_simulating() end )
 
   -- TODO: Add type.
   M.trade_tracker = m.TradeTracker.new( M.ace_timer, M.chat, trade_complete_callback )

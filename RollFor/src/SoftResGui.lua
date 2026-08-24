@@ -31,7 +31,7 @@ local control_backdrop = {
   insets = { left = 3, right = 3, top = 3, bottom = 3 }
 }
 
-local function create_frame( api, on_import, on_clear, on_cancel, on_dirty )
+local function create_frame( api, on_import, on_clear, on_cancel, on_dirty, is_locked )
   local frame = m.create_backdrop_frame( api(), "Frame", "RollForSoftResLootFrame", UIParent )
   frame:Hide()
   frame:SetWidth( 565 )
@@ -82,7 +82,9 @@ local function create_frame( api, on_import, on_clear, on_cancel, on_dirty )
   frame.editbox = editbox
 
   editbox:SetScript( "OnEscapePressed", function() editbox:ClearFocus() end )
-  scroll_frame:SetScript( "OnMouseUp", function() editbox:SetFocus() end )
+  scroll_frame:SetScript( "OnMouseUp", function()
+    if not is_locked() then editbox:SetFocus() end
+  end )
 
   local function fix_size()
     scroll_child:SetHeight( scroll_frame:GetHeight() )
@@ -94,6 +96,8 @@ local function create_frame( api, on_import, on_clear, on_cancel, on_dirty )
   scroll_frame:SetScript( "OnSizeChanged", fix_size )
 
   local cancel_button = api().CreateFrame( "Button", nil, frame, "UIPanelButtonTemplate" )
+  frame.cancel_button = cancel_button
+
   cancel_button:SetScript( "OnClick", function()
     frame:Hide()
     editbox:SetText( on_cancel() or "" )
@@ -105,6 +109,7 @@ local function create_frame( api, on_import, on_clear, on_cancel, on_dirty )
   cancel_button:SetText( "Close" )
 
   local clear_button = api().CreateFrame( "Button", nil, frame, "UIPanelButtonTemplate" )
+  frame.clear_button = clear_button
 
   clear_button:SetScript( "OnClick",
     function()
@@ -183,6 +188,20 @@ local function create_frame( api, on_import, on_clear, on_cancel, on_dirty )
     end )
   end
 
+  local sim_overlay = api().CreateFrame( "Frame", nil, backdrop )
+  sim_overlay:SetAllPoints( backdrop )
+  sim_overlay:SetFrameLevel( scroll_frame:GetFrameLevel() + 10 )
+  sim_overlay:EnableMouse( true )
+  sim_overlay:Hide()
+  frame.sim_overlay = sim_overlay
+
+  local sim_label = sim_overlay:CreateFontString( nil, "OVERLAY", "GameFontNormal" )
+  sim_label:SetPoint( "CENTER", sim_overlay, "CENTER", 0, 0 )
+  sim_label:SetWidth( 320 )
+  sim_label:SetJustifyH( "CENTER" )
+  sim_label:SetTextColor( 1, 0.184, 0.184, 1 )
+  sim_label:SetText( "Testing in progress.\n\nSoft-res data cannot be imported until you reload the UI." )
+
   local label = frame:CreateFontString( nil, "OVERLAY", "GameFontNormal" )
   label:SetPoint( "BOTTOMLEFT", frame, "BOTTOMLEFT", 20, 22 )
   label:SetTextColor( 1, 1, 1, 1 )
@@ -194,11 +213,37 @@ local function create_frame( api, on_import, on_clear, on_cancel, on_dirty )
   return frame
 end
 
-function M.new( api, import_encoded_softres_data, softres_check, softres, clear_data, reset_loot_announcements )
+---@param is_simulating fun(): boolean
+function M.new( api, import_encoded_softres_data, softres_check, softres, clear_data, reset_loot_announcements, is_simulating )
   local softres_data
   local edit_box_text
   local dirty = false
   local frame
+
+  local function locked()
+    return is_simulating and is_simulating() and true or false
+  end
+
+  -- RollSimulator wipes the soft-res data to fake its own and never restores it, so an
+  -- import landing mid-simulation would mix real rollers into the fake raid. The window
+  -- stays inert until the reload that ends the simulation.
+  local function apply_lock()
+    if not frame then return end
+
+    local editbox = frame.editbox
+
+    if locked() then
+      editbox:ClearFocus()
+      editbox:SetText( "" )
+      editbox:EnableMouse( false )
+      if editbox.EnableKeyboard then editbox:EnableKeyboard( false ) end
+      frame.sim_overlay:Show()
+    else
+      editbox:EnableMouse( true )
+      if editbox.EnableKeyboard then editbox:EnableKeyboard( true ) end
+      frame.sim_overlay:Hide()
+    end
+  end
 
   local function on_import( close_window_fn )
     import_encoded_softres_data( edit_box_text, function()
@@ -234,6 +279,13 @@ function M.new( api, import_encoded_softres_data, softres_check, softres, clear_
   end
 
   local function on_dirty( import_button, clear_button, cancel_button )
+    if locked() then
+      cancel_button:SetText( "Close" )
+      import_button:Disable()
+      clear_button:Disable()
+      return
+    end
+
     local text = frame.editbox:GetText()
     if text == "" then text = nil end
 
@@ -265,20 +317,30 @@ function M.new( api, import_encoded_softres_data, softres_check, softres, clear_
   end
 
   local function toggle()
-    if not frame then frame = create_frame( api, on_import, on_clear, on_cancel, on_dirty ) end
+    if not frame then frame = create_frame( api, on_import, on_clear, on_cancel, on_dirty, locked ) end
 
     if frame:IsVisible() then
       frame:Hide()
     else
       dirty = false
       frame.editbox:SetText( softres_data or "" )
+      apply_lock()
 
       frame:Show()
 
-      if not softres_data or softres_data == "" then
+      if not locked() and (not softres_data or softres_data == "") then
         frame.editbox:SetFocus()
       end
     end
+  end
+
+  -- The simulator calls this when it starts, so a window that is already open locks
+  -- itself instead of waiting to be reopened.
+  local function refresh()
+    if not frame then return end
+
+    apply_lock()
+    on_dirty( frame.import_button, frame.clear_button, frame.cancel_button )
   end
 
   local function load( data )
@@ -298,7 +360,8 @@ function M.new( api, import_encoded_softres_data, softres_check, softres, clear_
   return {
     toggle = toggle,
     load = load,
-    clear = clear
+    clear = clear,
+    refresh = refresh
   }
 end
 

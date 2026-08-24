@@ -9,6 +9,7 @@ local M = {}
 ---@field run fun( args: string? )
 ---@field setup fun( args: string? )
 ---@field roll fun( args: string? )
+---@field is_simulating fun(): boolean
 
 -- Dev harness for eyeballing the rolling popup without a raid, loot or master loot.
 -- It feeds the popup handcrafted roll data directly, bypassing the loot facade and the
@@ -26,10 +27,14 @@ local M = {}
 --
 --   /rfsetup 2x[Item] Drutree,Mendunia,Pinp 2,1,1
 --   /rfr Drutree 56
---   /rfsetup reset
 --
 -- The item has to be a real link (shift-click it) or an item id, because that is what
 -- ArgsParser matches on. Roll counts are positional and default to 1.
+--
+-- Simulating replaces the roster, the chat and the soft-res data in place and never puts
+-- them back - reloading the UI is what ends it. So both commands refuse to run while any
+-- soft-res data is loaded, and once /rfsetup has started the import window locks itself.
+-- Clear your soft-res data through the import window first if you want to test.
 ---@param main table
 function M.new( main )
   local RT = m.Types.RollType
@@ -38,7 +43,25 @@ function M.new( main )
   local hearthstone = 6948
 
   local step = 0
-  local saved
+  local simulating = false
+
+  -- /rfsetup destroys the imported soft-res data (SoftRes.import clears and unpersists
+  -- before it transforms) and /rft hijacks the rolling popup, so neither may run while
+  -- there is real data loaded. Dropping it through the import window is the deliberate
+  -- opt-in, and /reload is the way back.
+  local function softres_data_present()
+    if m.getn( main.unfiltered_softres.get_items() ) > 0 then return true end
+    return main.softres_db.data and true or false
+  end
+
+  ---@return boolean -- true when the command must not run
+  local function testing_blocked()
+    if simulating or not softres_data_present() then return false end
+
+    m.info( string.format( "Soft-res data is loaded - %s.", m.colors.red( "testing is not possible" ) ) )
+    m.info( string.format( "Clear it in the import window (%s) first.", m.colors.hl( "/sr" ) ) )
+    return true
+  end
 
   -- Cycled so the rows come out in different class colours.
   local sim_classes = { "Warrior", "Mage", "Rogue", "Priest", "Druid", "Hunter", "Paladin", "Shaman", "Warlock" }
@@ -194,6 +217,8 @@ function M.new( main )
 
   ---@param args string?
   local function run( args )
+    if testing_blocked() then return end
+
     local requested = args and tonumber( (string.gsub( args, "%s", "" )) )
 
     if args and string.find( args, "?", 1, true ) then return list() end
@@ -218,26 +243,10 @@ function M.new( main )
 
   -- GroupRoster and PlayerInfo are plain tables of closures that every other component
   -- captured by reference, so overwriting their fields in place is what makes the fake
-  -- raid visible everywhere. Originals are kept so `reset` can put them back.
+  -- raid visible everywhere. Nothing here is reversible - /reload is the way out.
   ---@param players Player[]
   local function fake_group( players )
     local roster, info = main.group_roster, main.player_info
-
-    if not saved then
-      saved = {
-        get_all_players_in_my_group = roster.get_all_players_in_my_group,
-        get_group_players = roster.get_group_players,
-        get_group_unit_tokens = roster.get_group_unit_tokens,
-        is_player_in_my_group = roster.is_player_in_my_group,
-        find_player = roster.find_player,
-        am_i_in_group = roster.am_i_in_group,
-        am_i_in_raid = roster.am_i_in_raid,
-        is_master_looter = info.is_master_looter,
-        announce = main.chat.announce,
-        softres_get = main.softres.get,
-        softres_get_all_rollers = main.softres.get_all_rollers
-      }
-    end
 
     -- Chat.announce always SendChatMessage's to RAID or PARTY. Solo that goes nowhere, and
     -- the announcements are half of what there is to check, so echo them locally instead.
@@ -298,44 +307,19 @@ function M.new( main )
     info.is_master_looter = function() return true end
   end
 
-  local function reset()
-    if not saved then
-      m.info( "Nothing to reset." )
-      return
-    end
-
-    local roster, info = main.group_roster, main.player_info
-
-    roster.get_all_players_in_my_group = saved.get_all_players_in_my_group
-    roster.get_group_players = saved.get_group_players
-    roster.get_group_unit_tokens = saved.get_group_unit_tokens
-    roster.is_player_in_my_group = saved.is_player_in_my_group
-    roster.find_player = saved.find_player
-    roster.am_i_in_group = saved.am_i_in_group
-    roster.am_i_in_raid = saved.am_i_in_raid
-    info.is_master_looter = saved.is_master_looter
-    main.chat.announce = saved.announce
-    main.softres.get = saved.softres_get
-    main.softres.get_all_rollers = saved.softres_get_all_rollers
-    saved = nil
-
-    main.unfiltered_softres.import( nil )
-    m.info( "Simulation off. Soft-res data is cleared - re-import yours." )
-  end
-
   local function setup_usage()
     m.info( string.format( "Usage: %s", m.colors.hl( "/rfsetup 2x[Item] Drutree,Mendunia,Pinp 2,1,1" ) ) )
-    m.info( "Shift-click the item to insert its link. Roll counts are positional, default 1." )
-    m.info( string.format( "Omit the names for a normal roll. %s injects a roll, %s ends it.",
-      m.colors.hl( "/rfr <name> <roll>" ), m.colors.hl( "/rfsetup reset" ) ) )
+    m.info( string.format( "Omit the names for a normal roll. %s injects a roll.", m.colors.hl( "/rfr <name> <roll>" ) ) )
+    m.info( string.format( "Requires no soft-res data loaded. %s ends the simulation.", m.colors.hl( "/reload" ) ) )
   end
 
   ---@param args string?
   local function setup( args )
     args = args or ""
 
-    if string.find( args, "^%s*reset" ) then return reset() end
-    if string.find( args, "^%s*$" ) or string.find( args, "^%s*%?" ) then return setup_usage() end
+    if testing_blocked() then return end
+
+    if string.find( args, "^%s*$" ) then return setup_usage() end
 
     local item, count, _, rest = main.args_parser.parse( args )
 
@@ -365,6 +349,8 @@ function M.new( main )
     end
 
     fake_group( players )
+    simulating = true
+    main.softres_gui.refresh()
 
     main.unfiltered_softres.import( {
       metadata = { id = "SIM", instance = 0, instances = {}, origin = "raidres" },
@@ -379,7 +365,7 @@ function M.new( main )
     m.info( string.format( "Simulating %s%s with %s soft-resser%s. %s to end.",
       count > 1 and (count .. "x") or "", item.link,
       m.colors.hl( m.getn( players ) ), m.getn( players ) == 1 and "" or "s",
-      m.colors.hl( "/rfsetup reset" ) ) )
+      m.colors.hl( "/reload" ) ) )
 
     main.roll_controller.preview( item, count )
   end
@@ -415,7 +401,8 @@ function M.new( main )
   return {
     run = run,
     setup = setup,
-    roll = roll
+    roll = roll,
+    is_simulating = function() return simulating end
   }
 end
 
