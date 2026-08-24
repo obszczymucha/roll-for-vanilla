@@ -75,6 +75,10 @@ function M.mock_config( configuration )
     end,
     default_rolling_time_seconds = function() return 8 end,
     master_loot_frame_rows = function() return 5 end,
+    sr_roll_spacing = function()
+      if config and config.sr_roll_spacing then return config.sr_roll_spacing end
+      return 24
+    end,
     roll_threshold = function()
       return {
         value = 100,

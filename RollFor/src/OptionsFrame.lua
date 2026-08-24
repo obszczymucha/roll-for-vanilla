@@ -235,6 +235,7 @@ function M.new( popup_builder, content_transformer, config, db )
     add_number( settings, "resistance_check_throttle", "Resistance check throttle", 1 )
     add_slider( settings, "default_rolling_time_seconds", "Default rolling time (seconds)", 4, 15, 0 )
     add_slider( settings, "master_loot_frame_rows", "Master loot frame rows", 5, 20, 0 )
+    add_slider( settings, "sr_roll_spacing", "SR roll spacing", 16, 28, 1 )
     add_choice( settings, "master_loot_threshold", "Master loot threshold", master_loot_threshold_choices )
 
     return {

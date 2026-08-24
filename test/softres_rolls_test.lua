@@ -53,6 +53,7 @@ local mock_config = function( config )
         rolling_popup = function() return true end,
         default_rolling_time_seconds = function() return 8 end,
         master_loot_frame_rows = function() return 5 end,
+        sr_roll_spacing = function() return 24 end,
         superwow_auto_loot_coins = function() return true end,
         classic_look = function() return false end,
       }

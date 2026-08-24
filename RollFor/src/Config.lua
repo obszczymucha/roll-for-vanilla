@@ -66,6 +66,7 @@ function M.new( db, event_bus )
     if db.auto_loot == nil then db.auto_loot = true end
     if db.auto_loot_announce == nil then db.auto_loot_announce = true end
     if db.resistance_check_throttle == nil then db.resistance_check_throttle = 1.0 end
+    if db.sr_roll_spacing == nil then db.sr_roll_spacing = 20 end
   end
 
   local function print_toggle( toggle_key )
@@ -246,6 +247,23 @@ function M.new( db, event_bus )
     db.resistance_check_throttle = value
     print_resistance_check_throttle()
     notify_subscribers( "resistance_check_throttle", value )
+
+    return true
+  end
+
+  -- Soft-res rolls for one player render as a row of flush cells, so the cell width is
+  -- what separates two rolls (or two pending placeholders) on screen.
+  local function print_sr_roll_spacing()
+    info( string.format( "SR roll spacing: %s", hl( db.sr_roll_spacing ) ) )
+  end
+
+  local function set_sr_roll_spacing( value )
+    value = tonumber( value )
+    if not value or value < 16 or value > 28 then return false end
+
+    db.sr_roll_spacing = value
+    print_sr_roll_spacing()
+    notify_subscribers( "sr_roll_spacing", value )
 
     return true
   end
@@ -574,7 +592,9 @@ function M.new( db, event_bus )
     set_tmog_roll_threshold = set_tmog_roll_threshold,
     set_master_loot_threshold = set_master_loot_threshold,
     resistance_check_throttle = get( "resistance_check_throttle" ),
-    set_resistance_check_throttle = set_resistance_check_throttle
+    set_resistance_check_throttle = set_resistance_check_throttle,
+    sr_roll_spacing = get( "sr_roll_spacing" ),
+    set_sr_roll_spacing = set_sr_roll_spacing
   }
 
   for toggle_key, _ in pairs( toggles ) do

@@ -40,6 +40,8 @@ function M.new( popup_builder, content_transformer, db, config )
 
   local top_padding = config.classic_look() and 14 or 8
   local on_hide ---@type fun()?
+  local last_data ---@type RollingPopupData? -- kept so a config change can re-render what is on screen
+  local refresh ---@type fun( _: any, data: RollingPopupData ) -- forward declared: create_popup subscribes to it
 
   ---@param frame_name string?
   ---@param close_button_callback fun()?
@@ -132,6 +134,11 @@ function M.new( popup_builder, content_transformer, db, config )
       if result then result:position( M.center_point ) end
     end )
 
+    -- Purely visual, so the popup redraws in place instead of waiting for the next roll.
+    config.subscribe( "sr_roll_spacing", function()
+      if last_data and popup and popup:IsVisible() then refresh( nil, last_data ) end
+    end )
+
     return result
   end
 
@@ -146,7 +153,8 @@ function M.new( popup_builder, content_transformer, db, config )
   end
 
   ---@param data RollingPopupData
-  local function refresh( _, data )
+  refresh = function( _, data )
+    last_data = data
     M.debug.add( string.format( "refresh( type: %s )", data.type or "nil" ) )
     M.debug.add( string.format( "buttons: %s", data.buttons and m.prettify_table( data.buttons, function( b ) return b.type end ) or "nil" ) )
 
@@ -174,7 +182,7 @@ function M.new( popup_builder, content_transformer, db, config )
           if v.rolls then
             -- Grouped row: one row per player, one cell per roll.
             frame.player_name:SetText( c( v.player_name, v.player_class ) )
-            frame.set_cells( v.rolls, v.cell_count, v.best_index )
+            frame.set_cells( v.rolls, v.cell_count, v.best_index, config.sr_roll_spacing() )
             table.insert( grouped_rows, frame )
           else
             frame.set_single_cell()

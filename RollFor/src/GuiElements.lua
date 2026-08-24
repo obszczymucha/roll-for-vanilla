@@ -9,7 +9,9 @@ local getn = m.getn
 
 -- Grouped (soft-res) row metrics. The cell width is fixed at three digits: a ragged grid
 -- across 25 rows is unscannable, and the wasted pixels on single-digit rolls are the
--- better trade.
+-- better trade. Cells sit flush against each other, so the cell width *is* the gap
+-- between two rolls - which is why it is configurable (sr_roll_spacing); this is only
+-- the fallback for callers that pass nothing.
 local roll_cell_width = 24
 -- The pip textures are 32x32 sheets with the die drawn at x 2-24, y 5-26 and transparent
 -- padding around it - and the padding is lopsided (2 left, 7 right). Cropping to the die
@@ -17,6 +19,9 @@ local roll_cell_width = 24
 -- the right-aligned digits instead of ~4px to their left.
 local pip_size = 12
 local pip_left, pip_right, pip_top, pip_bottom = 2 / 32, 25 / 32, 5 / 32, 27 / 32
+-- The cropped die is still a hair right of where the digits' ink centre lands, so the pip
+-- is nudged a pixel left to sit in the same column as the numbers it stands in for.
+local pip_x_offset = -1
 -- Matches the breathing room the ungrouped rows have. Theirs varies with name length,
 -- since the name is centred in a fixed 170px row while the label is pinned 37px from the
 -- right; for their widest name it works out at ~22.6 units, which is what a grouped row's
@@ -348,16 +353,20 @@ function M.roll( parent )
 
   frame.cells = {}
 
+  -- The gap between two of a player's rolls is the cell width, since the cells are flush
+  -- and their contents centred. set_cells refreshes it from the config on every render.
+  local cell_width = roll_cell_width
+
   -- Each cell is its own frame and its contents are centred in it, so a column of rolls
   -- lines up on the numbers' centres. Right-aligning them instead lines up the advance
   -- edges, which puts the font's uneven side bearings on show: "75" is a 14px ink block
   -- where "50" is 17px, so right-aligned they start 3px apart.
   ---@param index number
   local function create_cell( index )
-    local cell = M.create_text_in_container( "Button", frame, roll_cell_width, "CENTER" )
+    local cell = M.create_text_in_container( "Button", frame, cell_width, "CENTER" )
     cell.icon = M.icon( cell, false, pip_size, pip_size )
     cell.icon:SetTexCoord( pip_left, pip_right, pip_top, pip_bottom )
-    cell.icon:SetPoint( "CENTER", 0, 0 )
+    cell.icon:SetPoint( "CENTER", pip_x_offset, 0 )
     table.insert( frame.cells, index, cell )
 
     return cell
@@ -388,11 +397,13 @@ function M.roll( parent )
   ---@param cells table[] -- { roll_type = RollType, roll = number? }
   ---@param cell_count number -- uniform across the popup, so the name column lines up
   ---@param best_index number? -- the player's own best cast roll, rendered at full alpha
-  frame.set_cells = function( cells, cell_count, best_index )
+  ---@param width number? -- gap between adjacent rolls; defaults to the built-in metric
+  frame.set_cells = function( cells, cell_count, best_index, width )
     local count = getn( cells )
+    cell_width = width or roll_cell_width
 
     -- Whichever side needs more room sets the width of both, or the name comes off centre.
-    side_zone = (cell_count or count) * roll_cell_width
+    side_zone = (cell_count or count) * cell_width
     if roll_type_zone > side_zone then side_zone = roll_type_zone end
 
     roll_container:Hide()
@@ -424,8 +435,10 @@ function M.roll( parent )
 
       -- Cells fill from the right of the zone, so a player with fewer rolls than the
       -- widest gets his blanks on the left and his cells still abut the name.
+      -- Pooled cells were sized by whatever spacing was in force when they were created.
+      cell:SetWidth( cell_width )
       cell:ClearAllPoints()
-      cell:SetPoint( "LEFT", side_zone - (count - i + 1) * roll_cell_width, 0 )
+      cell:SetPoint( "LEFT", side_zone - (count - i + 1) * cell_width, 0 )
 
       if data.roll then
         cell.inner:SetText( cell_text( data.roll_type, data.roll ) )

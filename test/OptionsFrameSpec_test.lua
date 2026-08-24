@@ -25,6 +25,7 @@ local function default_setting_values()
     ms_roll_threshold = 100,
     os_roll_threshold = 99,
     resistance_check_throttle = 1.0,
+    sr_roll_spacing = 24,
     master_loot_threshold = ItemQuality.Rare,
   }
 end
@@ -86,6 +87,7 @@ local function default_popup( value_overrides, ... )
   table.insert( settings, editbox( "Resistance check throttle", v.resistance_check_throttle, 1 ) )
   table.insert( settings, slider( "Default rolling time (seconds)", v.default_rolling_time_seconds, 4, 15, 0 ) )
   table.insert( settings, slider( "Master loot frame rows", v.master_loot_frame_rows, 5, 20, 0 ) )
+  table.insert( settings, slider( "SR roll spacing", v.sr_roll_spacing, 16, 28, 1 ) )
   table.insert( settings, dropdown( "Master loot threshold", v.master_loot_threshold, master_loot_threshold_options ) )
 
   local content = { title }
