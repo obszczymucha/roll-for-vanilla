@@ -72,6 +72,8 @@ end
 ---@field editbox fun( parent: Frame ): Frame
 ---@field tree_node fun( parent: Frame ): Frame
 ---@field resistance_row fun( parent: Frame ): Frame
+---@field eligibility_row fun( parent: Frame ): Frame
+---@field bonus_roll_row fun( parent: Frame ): Frame
 
 local M = {}
 
@@ -1239,6 +1241,258 @@ function M.resistance_row( parent )
   clear_button:SetScript( "OnClick", function()
     if container.on_clear then container.on_clear() end
   end )
+
+  return container
+end
+
+-- Same fixed-geometry reasoning as resistance_row above: the popup sizes itself
+-- from the widest line, so a self-measuring row would be a different width per
+-- player and the columns would drift.
+local eligibility_row_height = 16
+local eligibility_row_checkbox_size = 18
+local eligibility_row_width = 240
+
+local eligibility_row_columns = {
+  { field = "player", x = 24, width = 108, justify = "LEFT" },
+  -- Wide enough for "Shadow 180" and the slack a longer reason would want.
+  { field = "reason", x = 136, width = 100, justify = "LEFT" }
+}
+
+-- A row in the bonus roll eligibility list: a checkbox, then Player / Reason at
+-- fixed offsets. The column-title row is the same widget (SetHeader) so the
+-- titles line up with the values underneath them.
+function M.eligibility_row( parent )
+  local container = m.api.CreateFrame( "Frame", nil, parent )
+  container:SetHeight( eligibility_row_height )
+  container:SetWidth( eligibility_row_width )
+
+  local checkbox = m.api.CreateFrame( "CheckButton", nil, container, "UICheckButtonTemplate" )
+  checkbox:SetWidth( eligibility_row_checkbox_size )
+  checkbox:SetHeight( eligibility_row_checkbox_size )
+  checkbox:SetPoint( "LEFT", container, "LEFT", 0, 0 )
+
+  -- Reaches a little past the row on both sides so it reads as a band rather
+  -- than a box around the text, exactly as the resistance list's rows do.
+  local hover_highlight = container:CreateTexture( nil, "BACKGROUND" )
+  hover_highlight:SetTexture( "Interface\\Buttons\\WHITE8x8" )
+  hover_highlight:SetVertexColor( unpack( resistance_row_hover_color ) )
+  hover_highlight:SetPoint( "TOPLEFT", container, "TOPLEFT", -resistance_row_hover_overhang, 1 )
+  hover_highlight:SetPoint( "BOTTOMRIGHT", container, "BOTTOMRIGHT", resistance_row_hover_overhang, -1 )
+  hover_highlight:Hide()
+
+  local is_header = false
+
+  local columns = {}
+
+  for _, column in ipairs( eligibility_row_columns ) do
+    local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+    label:SetWidth( column.width )
+    label:SetHeight( eligibility_row_height )
+    label:SetJustifyH( column.justify )
+    label:SetTextColor( unpack( resistance_row_text_color ) )
+    label:SetPoint( "LEFT", container, "LEFT", column.x, 0 )
+    columns[ column.field ] = label
+  end
+
+  -- FrameBuilder caches line frames per line type and reuses them across
+  -- refreshes, so every column is written on every call -- including the checked
+  -- state, which would otherwise keep whichever player occupied this frame last.
+  container.SetRow = function( _, row )
+    for _, column in ipairs( eligibility_row_columns ) do
+      columns[ column.field ]:SetText( row[ column.field ] or "" )
+    end
+
+    checkbox:SetChecked( row.checked and true or false )
+
+    -- Rows are recycled between refreshes and a hidden frame never gets its
+    -- OnLeave, so a stale highlight would follow the frame to its next row.
+    hover_highlight:Hide()
+  end
+
+  container.SetHeader = function( _, header )
+    is_header = header and true or false
+    local color = is_header and resistance_row_header_color or resistance_row_text_color
+
+    -- The column titles are a legend, so there is nothing there to tick.
+    if is_header then
+      checkbox:Hide()
+      hover_highlight:Hide()
+    else
+      checkbox:Show()
+    end
+
+    for _, column in ipairs( eligibility_row_columns ) do
+      columns[ column.field ]:SetTextColor( unpack( color ) )
+    end
+  end
+
+  container:EnableMouse( true )
+
+  container:SetScript( "OnEnter", function()
+    if is_header then return end
+    hover_highlight:Show()
+  end )
+
+  container:SetScript( "OnLeave", function()
+    hover_highlight:Hide()
+  end )
+
+  -- A mouse-enabled row swallows the click the popup needs to start dragging,
+  -- so the row hands it back rather than making most of the frame undraggable.
+  container:RegisterForDrag( "LeftButton" )
+
+  local function forward_to_popup( script )
+    return function()
+      local handler = parent:GetScript( script )
+      if handler then handler( parent ) end
+    end
+  end
+
+  container:SetScript( "OnDragStart", forward_to_popup( "OnDragStart" ) )
+  container:SetScript( "OnDragStop", forward_to_popup( "OnDragStop" ) )
+
+  checkbox:SetScript( "OnClick", function()
+    if container.on_check then container.on_check( checkbox:GetChecked() and true or false ) end
+  end )
+
+  return container
+end
+
+-- Same fixed-geometry reasoning as the rows above. No checkbox and no clear button --
+-- this is a read display of an earned, roster-independent fact, not something driven
+-- by a click.
+local bonus_roll_row_height = 14
+local bonus_roll_row_width = 200
+
+local bonus_roll_row_columns = {
+  { field = "player", x = 8, width = 140, justify = "LEFT" },
+  { field = "rolls", x = 148, width = 44, justify = "RIGHT" }
+}
+
+-- A row in the bonus roll list: Player / Rolls at fixed offsets, with a tooltip on
+-- hover naming the bosses that paid for them. The column-title row is the same widget
+-- (SetHeader) so the titles line up with the values underneath them.
+function M.bonus_roll_row( parent )
+  local container = m.api.CreateFrame( "Frame", nil, parent )
+  container:SetHeight( bonus_roll_row_height )
+  container:SetWidth( bonus_roll_row_width )
+
+  -- Reaches a little past the row on both sides so it reads as a band rather than a
+  -- box around the text, exactly as the resistance list's rows do.
+  local hover_highlight = container:CreateTexture( nil, "BACKGROUND" )
+  hover_highlight:SetTexture( "Interface\\Buttons\\WHITE8x8" )
+  hover_highlight:SetVertexColor( unpack( resistance_row_hover_color ) )
+  hover_highlight:SetPoint( "TOPLEFT", container, "TOPLEFT", -resistance_row_hover_overhang, 1 )
+  hover_highlight:SetPoint( "BOTTOMRIGHT", container, "BOTTOMRIGHT", resistance_row_hover_overhang, -1 )
+  hover_highlight:Hide()
+
+  local is_header = false
+
+  local columns = {}
+
+  for _, column in ipairs( bonus_roll_row_columns ) do
+    local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+    label:SetWidth( column.width )
+    label:SetHeight( bonus_roll_row_height )
+    label:SetJustifyH( column.justify )
+    label:SetTextColor( unpack( resistance_row_text_color ) )
+    label:SetPoint( "LEFT", container, "LEFT", column.x, 0 )
+    columns[ column.field ] = label
+  end
+
+  -- FrameBuilder caches line frames per line type and reuses them across refreshes, so
+  -- every column is written on every call -- and the tooltip lines with it, since a
+  -- frame left holding a stale list would name the wrong player's bosses on hover.
+  container.SetRow = function( _, row )
+    for _, column in ipairs( bonus_roll_row_columns ) do
+      columns[ column.field ]:SetText( row[ column.field ] or "" )
+    end
+
+    container.tooltip_lines = row.tooltip_lines
+
+    -- Rows are recycled between refreshes and a hidden frame never gets its OnLeave, so
+    -- a stale highlight would follow the frame to its next row.
+    hover_highlight:Hide()
+  end
+
+  container.SetHeader = function( _, header )
+    is_header = header and true or false
+    local color = is_header and resistance_row_header_color or resistance_row_text_color
+
+    if is_header then hover_highlight:Hide() end
+
+    for _, column in ipairs( bonus_roll_row_columns ) do
+      columns[ column.field ]:SetTextColor( unpack( color ) )
+    end
+  end
+
+  container:EnableMouse( true )
+
+  -- The tooltip's first line always uses the big header font, so swap it to the
+  -- regular body font for the first boss name and put it back afterwards -- the
+  -- tooltip is shared with the rest of the UI.
+  local function set_title_font( font )
+    local title = m.api.GameTooltip.TextLeft1
+    if title then title:SetFontObject( font ) end
+  end
+
+  -- Whether this row is the one currently showing the tooltip. Only the owner puts the
+  -- title font back and hides it: without this, a row that never opened a tooltip would
+  -- close whichever frame's tooltip happens to be up when the mouse crosses it.
+  local showing_tooltip = false
+
+  local function hide_tooltip()
+    if not showing_tooltip then return end
+
+    showing_tooltip = false
+    set_title_font( m.api.GameTooltipHeaderText )
+    m.api.GameTooltip:Hide()
+  end
+
+  container:SetScript( "OnEnter", function()
+    if is_header then return end
+    hover_highlight:Show()
+
+    local lines = container.tooltip_lines
+    if not lines or getn( lines ) == 0 then return end
+
+    m.api.GameTooltip:SetOwner( container, "ANCHOR_RIGHT" )
+
+    for _, line in ipairs( lines ) do
+      m.api.GameTooltip:AddLine( line, 1, 1, 1 )
+    end
+
+    set_title_font( m.api.GameTooltipText )
+    showing_tooltip = true
+    m.api.GameTooltip:Show()
+  end )
+
+  container:SetScript( "OnLeave", function()
+    hover_highlight:Hide()
+    hide_tooltip()
+  end )
+
+  -- A row hovered when the list redraws is hidden out from under the mouse and never
+  -- gets its OnLeave, which would leave the swapped title font on the shared tooltip
+  -- for the rest of the session -- every tooltip in the UI, not just this window's.
+  container:SetScript( "OnHide", function()
+    hover_highlight:Hide()
+    hide_tooltip()
+  end )
+
+  -- A mouse-enabled row swallows the click the popup needs to start dragging, so the
+  -- row hands it back rather than making most of the frame undraggable.
+  container:RegisterForDrag( "LeftButton" )
+
+  local function forward_to_popup( script )
+    return function()
+      local handler = parent:GetScript( script )
+      if handler then handler( parent ) end
+    end
+  end
+
+  container:SetScript( "OnDragStart", forward_to_popup( "OnDragStart" ) )
+  container:SetScript( "OnDragStop", forward_to_popup( "OnDragStop" ) )
 
   return container
 end

@@ -360,7 +360,10 @@ function M.new_roll_for()
     deps[ "AutoLoot" ] = auto_loot
 
     require( "src/RollResultAnnouncer" ).new( chat, roll_controller, config )
-    local dropped_loot = require( "src/DroppedLoot" ).new( db( "dummy" ), loot_list, player_info )
+    local boss_killed = deps[ "BossKilled" ] or require( "src/BossKilled" ).new( db( "boss_killed" ) )
+    deps[ "BossKilled" ] = boss_killed
+
+    local dropped_loot = require( "src/DroppedLoot" ).new( db( "dummy" ), loot_list, player_info, boss_killed )
     local dropped_loot_announce = require( "src/DroppedLootAnnounce" ).new(
       loot_list,
       chat,

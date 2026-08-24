@@ -22,11 +22,12 @@ local NECK_MINIMUM = 40
 ---@class ResistanceRow
 ---@field player_name string
 ---@field class PlayerClass?
----@field resistance_type ResistanceType? -- nil when there's no data
----@field personal number?                -- gear and food, nil when there's no data
----@field total number?                   -- personal plus the raid buff, nil when there's no data
----@field food number?                    -- how much of personal came from food, nil when none did
----@field missing_neck boolean?           -- true when the required neck isn't worn, nil when it is or isn't known
+---@field resistance_type ResistanceType?    -- nil when there's no data
+---@field personal number?                   -- gear and food for the reported school, nil when there's no data
+---@field personal_by_type ResistanceTotals? -- gear and food per school, nil when there's no data
+---@field total number?                      -- personal plus the raid buff, nil when there's no data
+---@field food number?                       -- how much of personal came from food, nil when none did
+---@field missing_neck boolean?              -- true when the required neck isn't worn, nil when it is or isn't known
 ---@field scanning boolean
 ---@field failed boolean -- the last scan couldn't reach them; not the same as never scanned
 
@@ -103,8 +104,20 @@ function M.new( db, group_roster, gear_scanner, buff_scanner, parser, registry )
 
     local buffs = registry.resolve( names )
 
+    -- The same gear-plus-food sum as personal, but kept per school instead of
+    -- collapsed to the reported one. A caller judging more than one school --
+    -- bonus roll eligibility asks about Fire *or* Shadow -- can't work from
+    -- personal alone, since the player reported as Fire may be the one who
+    -- qualifies on Shadow. Food is an all-schools buff, so it lands on each.
+    local personal_by_type = {}
+
+    for _, buffed_type in ipairs( registry.buffed_resistance_types() ) do
+      personal_by_type[ buffed_type ] = (totals[ buffed_type ] or 0) + food
+    end
+
     result.resistance_type = resistance_type
     result.personal = personal + food
+    result.personal_by_type = personal_by_type
     result.total = result.personal + (buffs[ resistance_type ] or 0)
     result.food = food > 0 and food or nil
 

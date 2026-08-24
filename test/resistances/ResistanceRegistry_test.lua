@@ -141,4 +141,18 @@ function DefaultReportedTypeSpec:should_honour_a_custom_threshold()
   eq( registry.default_reported_type( { [ Shadow ] = 10, [ Fire ] = 60 }, 50 ), Fire )
 end
 
+MinimumSpec = {}
+
+function MinimumSpec:should_report_the_minimum_of_each_school_the_run_cares_about()
+  eq( registry.minimum( Fire ), 295 )
+  eq( registry.minimum( Shadow ), 174 )
+end
+
+function MinimumSpec:should_report_nothing_for_a_school_with_no_requirement()
+  -- Nil rather than zero, so a caller can tell "no requirement" from "a
+  -- requirement anyone meets".
+  eq( registry.minimum( ResistanceRegistry.ResistanceType.Frost ), nil )
+  eq( registry.minimum( ResistanceRegistry.ResistanceType.Nature ), nil )
+end
+
 os.exit( lu.LuaUnit.run() )

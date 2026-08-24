@@ -140,6 +140,18 @@ local function failed( name )
   return { player_name = name, class = "Warrior", scanning = false, failed = true }
 end
 
+-- Every gear table in this file names one school, so the other one is whatever
+-- the food added and nothing else. Tests that gear both schools pass the pair
+-- in explicitly.
+---@param resistance_type ResistanceType
+---@param personal number -- gear and food for the school that was geared
+---@param food number? -- how much of personal came from food
+local function by_type( resistance_type, personal, food )
+  local other = resistance_type == Shadow and Fire or Shadow
+
+  return { [ resistance_type ] = personal, [ other ] = food or 0 }
+end
+
 ---@param name string
 ---@param resistance_type ResistanceType
 ---@param personal number -- gear and food
@@ -151,6 +163,7 @@ local function food_data( name, resistance_type, personal, total, food )
     class = "Warrior",
     resistance_type = resistance_type,
     personal = personal,
+    personal_by_type = by_type( resistance_type, personal, food ),
     total = total,
     food = food,
     -- Nothing here equips a neck, so every scanned row says so.
@@ -171,6 +184,7 @@ local function data( name, resistance_type, personal, total, neck )
     class = "Warrior",
     resistance_type = resistance_type,
     personal = personal,
+    personal_by_type = by_type( resistance_type, personal ),
     total = total,
     missing_neck = not neck or nil,
     scanning = false,
@@ -222,6 +236,40 @@ function ResistanceCheckSpec:should_switch_to_fire_for_a_fire_geared_player()
 
   -- Then
   eq( sut.get_rows(), { data( "Psikutas", Fire, 302, 302 ) } )
+end
+
+function ResistanceCheckSpec:should_report_personal_for_both_schools_not_just_the_reported_one()
+  -- The reported school is Fire only because the fire gear is over 150, but the
+  -- shadow number is still there and callers that ask about shadow get it.
+  -- Given
+  local sut = check()
+
+  -- When
+  sut.scan()
+  sut.gear_scanner.complete( "raid1", { [ Fire ] = 160, [ Shadow ] = 180 } )
+
+  -- Then
+  local row = sut.get_rows()[ 1 ]
+  eq( row.resistance_type, Fire )
+  eq( row.personal, 160 )
+  eq( row.personal_by_type, { [ Fire ] = 160, [ Shadow ] = 180 } )
+end
+
+function ResistanceCheckSpec:should_count_food_towards_every_school_of_personal_by_type()
+  -- Food is an all-schools buff, so it lands on both numbers, exactly as it
+  -- already lands on the reported one.
+  -- Given
+  local sut = check( {
+    buffs = { [ "raid1" ] = { "Well Fed" } },
+    tooltips = { [ "Well Fed" ] = { all_schools = 8 } }
+  } )
+
+  -- When
+  sut.scan()
+  sut.gear_scanner.complete( "raid1", { [ Fire ] = 160, [ Shadow ] = 180 } )
+
+  -- Then
+  eq( sut.get_rows()[ 1 ].personal_by_type, { [ Fire ] = 168, [ Shadow ] = 188 } )
 end
 
 function ResistanceCheckSpec:should_mark_a_player_as_scanning_until_their_gear_arrives()

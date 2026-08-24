@@ -163,7 +163,7 @@ end
 ---@param resistance_check table
 local function new_frame( resistance_check )
   local db = Db.new( {} )
-  return resistance_frame_mock.new( popup_builder.new(), resistance_check, db( "resistance_frame" ) )
+  return resistance_frame_mock.new( popup_builder.new(), resistance_check, db( "resistance_frame" ), ResistanceRegistry.new() )
 end
 
 ResistanceFrameSpec = {}

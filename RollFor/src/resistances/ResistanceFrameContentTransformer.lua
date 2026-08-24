@@ -5,11 +5,12 @@ if m.ResistanceFrameContentTransformer then return end
 
 local M = {}
 
--- The only two schools the column can ever report: the client's own color for
--- the name, and the value a player is expected to reach.
-local schools = {
-  [ m.ResistanceRegistry.ResistanceType.Fire ] = { label = m.colorize( "ff8000", "Fire" ), minimum = 295 },
-  [ m.ResistanceRegistry.ResistanceType.Shadow ] = { label = m.colorize( "8080ff", "Shadow" ), minimum = 174 }
+-- The only two schools the column can ever report, with the client's own color
+-- for each name. What a player is expected to reach is the registry's to say --
+-- that's the run's rule, not presentation -- so it's filled in per instance.
+local school_labels = {
+  [ m.ResistanceRegistry.ResistanceType.Fire ] = m.colorize( "ff8000", "Fire" ),
+  [ m.ResistanceRegistry.ResistanceType.Shadow ] = m.colorize( "8080ff", "Shadow" )
 }
 
 ---@param label string
@@ -120,7 +121,8 @@ end
 
 ---@param content table
 ---@param rows ResistanceFrameRow[]
-local function add_rows( content, rows )
+---@param schools table<ResistanceType, table>
+local function add_rows( content, rows, schools )
   for i, row in ipairs( rows or {} ) do
     local school = schools[ row.resistance_type ]
 
@@ -138,17 +140,26 @@ local function add_rows( content, rows )
   end
 end
 
----@param data ResistanceFrameData
-local function transform( data )
-  local content = {}
-  add_header( content )
-  add_rows( content, data.rows )
-  add_buttons( content, data.buttons )
+---@param registry ResistanceRegistry
+---@return ResistanceFrameContentTransformer
+function M.new( registry )
+  local schools = {}
 
-  return content
-end
+  for resistance_type, label in pairs( school_labels ) do
+    schools[ resistance_type ] = { label = label, minimum = registry.minimum( resistance_type ) }
+  end
 
-function M.new()
+  ---@param data ResistanceFrameData
+  local function transform( data )
+    local content = {}
+    add_header( content )
+    add_rows( content, data.rows, schools )
+    add_buttons( content, data.buttons )
+
+    return content
+  end
+
+  ---@type ResistanceFrameContentTransformer
   return {
     transform = transform
   }

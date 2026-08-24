@@ -4,7 +4,7 @@ local M = {}
 local u = require( "test/utils" )
 local _, eq = u.luaunit( "assertEquals" )
 require( "src/ListPopup" ) -- the window shell the frame is built on
-local ResistanceFrame = require( "src/resistances/ResistanceFrame" )
+local ResistanceBonusRollEligibilityFrame = require( "src/resistances/ResistanceBonusRollEligibilityFrame" )
 
 local function strip_functions( t )
   for _, line in ipairs( t ) do
@@ -19,8 +19,8 @@ local function strip_functions( t )
 end
 
 -- Only the title is decolorized. The row cells keep their color codes on
--- purpose: the class color and the red dash of a failed inspect are part of
--- what the rows are supposed to say.
+-- purpose: the class color and the color of the reason are part of what the
+-- rows are supposed to say.
 local function cleanse( t )
   return u.map( strip_functions( t ), function( v )
     if v.type == "text" and v.value then
@@ -31,28 +31,28 @@ local function cleanse( t )
   end )
 end
 
----@class ResistanceFrameMock : ResistanceFrame
+---@class ResistanceBonusRollEligibilityFrameMock : ResistanceBonusRollEligibilityFrame
 ---@field content fun(): table
 ---@field should_display fun( ...: table ): table
 ---@field is_visible fun(): boolean
 ---@field should_be_visible fun()
 ---@field should_be_hidden fun()
----@field click fun( button_type: ResistanceFrameButtonType )
----@field clear_row fun( player_name: string )
+---@field click fun( button_type: BonusRollEligibilityFrameButtonType )
+---@field check_row fun( player_name: string, checked: boolean )
 ---@field render_count fun(): number
 
 ---@param popup_builder PopupBuilder
+---@param eligibility ResistanceBonusRollEligibility
 ---@param resistance_check ResistanceCheck
 ---@param db table
----@param registry ResistanceRegistry
-function M.new( popup_builder, resistance_check, db, registry )
+function M.new( popup_builder, eligibility, resistance_check, db )
   local transformed_content
   local renders = 0
-  local model ---@type ResistanceFrameData?
+  local model ---@type BonusRollEligibilityFrameData?
 
-  local real_transformer = require( "src/resistances/ResistanceFrameContentTransformer" ).new( registry )
+  local real_transformer = require( "src/resistances/ResistanceBonusRollEligibilityFrameContentTransformer" ).new()
 
-  ---@type ResistanceFrameContentTransformer
+  ---@type BonusRollEligibilityFrameContentTransformer
   local spying_transformer = {
     transform = function( data )
       model = data
@@ -62,7 +62,8 @@ function M.new( popup_builder, resistance_check, db, registry )
     end
   }
 
-  local frame = ResistanceFrame.new( popup_builder, spying_transformer, resistance_check, db )
+  local frame = ResistanceBonusRollEligibilityFrame.new( popup_builder, spying_transformer, eligibility,
+    resistance_check, db )
 
   frame.content = function() return transformed_content and cleanse( transformed_content ) or {} end
   frame.render_count = function() return renders end
@@ -84,22 +85,24 @@ function M.new( popup_builder, resistance_check, db, registry )
     end
   end
 
-  frame.clear_row = function( player_name )
+  -- The checkbox reports what it now shows, so the test says what the player
+  -- ticked it to rather than that they clicked it.
+  frame.check_row = function( player_name, checked )
     if not model then return end
 
     for _, row in ipairs( model.rows or {} ) do
       if row.player_name == player_name then
-        row.on_clear()
+        row.on_check( checked and true or false )
         return
       end
     end
 
-    error( string.format( "There was no row for %s to clear.", player_name ), 2 )
+    error( string.format( "There was no row for %s to check.", player_name ), 2 )
   end
 
   local function should_be_visible( level )
     if not frame.is_visible() then
-      error( "Resistance frame is hidden.", level )
+      error( "Bonus roll eligibility frame is hidden.", level )
     end
   end
 
@@ -114,11 +117,11 @@ function M.new( popup_builder, resistance_check, db, registry )
 
   frame.should_be_hidden = function()
     if frame.is_visible() then
-      error( "Resistance frame is visible.", 2 )
+      error( "Bonus roll eligibility frame is visible.", 2 )
     end
   end
 
-  ---@type ResistanceFrameMock
+  ---@type ResistanceBonusRollEligibilityFrameMock
   return frame
 end
 

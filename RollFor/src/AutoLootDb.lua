@@ -1386,6 +1386,59 @@ function M.has_enabled_items( db )
   return false
 end
 
+-- "Trash" is not a boss. Every raid has a node by that name, and the same trash
+-- drops are listed under several of them, so the name on its own doesn't even
+-- say which raid an item came from. The lookup below skips them.
+local TRASH = "Trash"
+
+-- A few items belong to more than one boss even after trash is dropped, and only
+-- one of those bosses can actually have dropped it: Karazhan's Opera event picks
+-- one of The Big Bad Wolf / The Wizard of Oz / Romulo and Julianne per lockout
+-- and all three share six items. Nothing in the item id says which one it was,
+-- so the lowest (dungeon order, boss order, name) wins -- an arbitrary answer,
+-- but a stable one, and stability is what a catalogue lookup owes its callers:
+-- pairs() order isn't fixed, so returning the first match found would name a
+-- different boss on different calls. Callers that must not guess at all screen
+-- those items out beforehand; BossKilled.ignored_items does.
+---@return boolean -- whether the candidate sorts ahead of the best one so far
+local function sorts_first( dungeon_order, boss_order, boss_name, best )
+  if not best then return true end
+  if dungeon_order ~= best.dungeon_order then return dungeon_order < best.dungeon_order end
+  if boss_order ~= best.boss_order then return boss_order < best.boss_order end
+
+  return boss_name < best.boss_name
+end
+
+-- Which boss drops this item, according to the catalogue. Reads the static `ids`
+-- above, not the persisted db: who drops what is a fact about the game, not
+-- about what the user ticked in the autoloot GUI.
+--
+-- Walks the catalogue rather than keeping an item id index, for the same reason
+-- the enabled/selection queries above keep none: a full walk is ~868 entries and
+-- runs a handful of times per loot window, which measures at a few hundredths of
+-- a millisecond. An index would only be memoising that.
+---@param item_id number
+---@return string? -- nil for trash drops and for anything not in the catalogue
+function M.find_boss( item_id )
+  if not item_id then return nil end
+
+  local best
+
+  for _, dungeon_entry in pairs( ids ) do
+    for boss_name, boss_entry in pairs( dungeon_entry.bosses or {} ) do
+      if boss_name ~= TRASH and boss_entry.items and boss_entry.items[ item_id ] then
+        local dungeon_order, boss_order = dungeon_entry.order or 0, boss_entry.order or 0
+
+        if sorts_first( dungeon_order, boss_order, boss_name, best ) then
+          best = { dungeon_order = dungeon_order, boss_order = boss_order, boss_name = boss_name }
+        end
+      end
+    end
+  end
+
+  return best and best.boss_name or nil
+end
+
 -- Only used by the fetch tool below (dump_to_db / on_item_info_received) -- its output is meant
 -- to be inspected/pasted back, so unlike the permanent `ids` entries it also includes a real,
 -- client-generated `link` (the whole point right now: reading the true |cffXXXXXX per quality off

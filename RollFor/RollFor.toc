@@ -1,7 +1,7 @@
 ## Interface: 11200
 ## Title: RollFor
 ## Author: Obszczymucha
-## Version: 4.8.7
+## Version: 4.8.9
 ## Notes: An automated item roller with soft ressing support via raidres.fly.dev.
 ## SavedVariables: RollForDb
 ## SavedVariablesPerCharacter: RollForCharDb
@@ -23,6 +23,8 @@ src\WowApi.lua
 src\Config.lua
 src\ItemUtils.lua
 src\AutoLootDb.lua
+src\RaidLockout.lua
+src\BossKilled.lua
 src\Tree.lua
 src\AutoLootTree.lua
 src\EventFrame.lua
@@ -76,6 +78,7 @@ src\RollController.lua
 src\RollingPopup.lua
 src\RollingPopupContentTransformer.lua
 src\GuiElements.lua
+src\ListPopup.lua
 src\WelcomePopup.lua
 src\InstaRaidRollRollingLogic.lua
 src\EventBus.lua
@@ -101,10 +104,17 @@ src\resistances\ResistanceRegistry.lua
 src\resistances\ResistanceParser.lua
 src\resistances\GearScanner.lua
 src\resistances\ResistanceCheck.lua
+src\resistances\ResistanceBonusRollEligibility.lua
+src\resistances\ResistanceBonusRollRegistry.lua
+src\resistances\ResistanceBonusRollFrameContentTransformer.lua
+src\resistances\ResistanceBonusRollFrame.lua
+src\resistances\ResistanceBonusRollEligibilityFrameContentTransformer.lua
+src\resistances\ResistanceBonusRollEligibilityFrame.lua
 src\resistances\ResistanceFrameContentTransformer.lua
 src\resistances\ResistanceFrame.lua
-src\UiReloadPopup.lua
+src\ConfirmationDialog.lua
 src\RollSimulator.lua
+src\DropSimulator.lua
 src\ModernLootFrameSkin.lua
 src\OgLootFrameSkin.lua
 src\GargulBridge.lua

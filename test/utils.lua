@@ -104,6 +104,11 @@ function M.mock_wow_api()
   M.modules().api.C_AddOns = { GetAddOnMetadata = function() return "2.6" end }
   M.modules().api.tinsert = table.insert
   M.modules().api.PlaySound = function() end
+  -- Raid saves. The real client always has these; a character with none is what the
+  -- integration tests are, so they answer as one rather than being left off.
+  M.modules().api.RequestRaidInfo = function() end
+  M.modules().api.GetNumSavedInstances = function() return 0 end
+  M.modules().api.GetSavedInstanceInfo = function() return nil end
   M.modules().api.C_ChatInfo = {}
   M.modules().api.C_ChatInfo.SendAddonMessage = function() end
   M.modules().api.C_ChatInfo.RegisterAddonMessagePrefix = function() end
@@ -911,6 +916,9 @@ function M.load_real_stuff( req )
   r( "src/Interface" )
   r( "src/ItemUtils" )
   r( "src/AutoLootDb" )
+  r( "src/RaidLockout" )
+  r( "src/BossKilled" )
+  r( "src/DropSimulator" )
   r( "src/Tree" )
   r( "src/AutoLootTree" )
   r( "src/LootFacade" )
@@ -986,11 +994,18 @@ function M.load_real_stuff( req )
   r( "src/resistances/ResistanceParser" )
   r( "src/resistances/GearScanner" )
   r( "src/resistances/ResistanceCheck" )
+  r( "src/resistances/ResistanceBonusRollEligibility" )
+  r( "src/resistances/ResistanceBonusRollRegistry" )
+  r( "src/resistances/ResistanceBonusRollFrameContentTransformer" )
+  r( "src/resistances/ResistanceBonusRollFrame" )
+  r( "src/resistances/ResistanceBonusRollEligibilityFrameContentTransformer" )
+  r( "src/resistances/ResistanceBonusRollEligibilityFrame" )
   r( "src/resistances/ResistanceFrameContentTransformer" )
   r( "src/resistances/ResistanceFrame" )
-  r( "src/UiReloadPopup" )
+  r( "src/ConfirmationDialog" )
   r( "src/RollSimulator" )
   r( "src/GuiElements" )
+  r( "src/ListPopup" )
   r( "src/ModernLootFrameSkin" )
   r( "src/OgLootFrameSkin" )
   r( "src/RollForBroadcast" )

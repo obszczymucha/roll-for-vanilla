@@ -110,6 +110,69 @@ local function get_dummy_items()
   return result
 end
 
+-- "a", "a and b", "a, b and c". Nil for an empty list, which is what makes the summary
+-- below able to say "nothing to lose" by returning it straight through.
+---@param items string[]
+---@return string?
+local function join_and( items )
+  local count = getn( items )
+  if count < 2 then return items[ 1 ] end
+
+  return string.format( "%s and %s", table.concat( items, ", ", 1, count - 1 ), items[ count ] )
+end
+
+-- What a lockout turning over would forget: "9 boss kills, 14 bonus rolls and 12
+-- eligible players", or nil when there is nothing to lose.
+--
+-- Read by the subscriber that does the wiping, just before it wipes, and by the drop
+-- simulator before it asks whether you meant it -- so the sentence you agree to and the
+-- sentence you get afterwards can't drift apart.
+---@return string?
+local function describe_lockout_loss()
+  local counted = {
+    { count = getn( M.boss_killed.get_killed_bosses() ), noun = "boss kill" },
+    { count = M.resistance_bonus_roll_registry.count_all(), noun = "bonus roll" },
+    { count = M.resistance_bonus_roll_eligibility.count_eligible(), noun = "eligible player" }
+  }
+
+  local lost = {}
+
+  for _, entry in ipairs( counted ) do
+    -- Only the number is highlighted, not the whole clause -- "9 boss kills" reads
+    -- better than a solid block of color with no number to actually pick out of it.
+    if entry.count > 0 then
+      table.insert( lost, string.format( "%s %s%s",
+        hl( entry.count ), entry.noun, entry.count == 1 and "" or "s" ) )
+    end
+  end
+
+  return join_and( lost )
+end
+
+-- Asks before rolling the lockout over, and only when there's something to lose -- being
+-- made to confirm losing nothing is friction for its own sake, and an empty record is
+-- what you're testing against most of the time.
+--
+-- Lives here rather than in the simulator so that one keeps its narrow pair of
+-- dependencies instead of growing the registry, eligibility and a popup just to ask a
+-- question about them.
+---@param on_confirmed fun()
+local function confirm_lockout_reset( on_confirmed )
+  local lost = describe_lockout_loss()
+
+  if not lost then
+    on_confirmed()
+    return
+  end
+
+  M.confirmation_dialog.show( {
+    title = "Roll the raid lockout over?",
+    lines = { string.format( "This will forget %s.", lost ) },
+    question = "There's no getting them back. Continue?",
+    on_yes = on_confirmed
+  } )
+end
+
 local function create_components()
   ---@type AceTimer
   M.ace_timer = lib_stub( "AceTimer-3.0" )
@@ -134,8 +197,10 @@ local function create_components()
     return popup_builder_factory( m.FrameBuilder, bottom_margin or popup_bottom_margin, popup_bottom_button_margin, side_margin or popup_side_margin )
   end
 
-  ---@type UiReloadPopup
-  M.ui_reload_popup = m.UiReloadPopup.new( popup_builder( classic and 37 or 27 ), M.config )
+  ---@type ConfirmationDialog
+  local confirmation_margin = m.ConfirmationDialog.bottom_margin
+  M.confirmation_dialog = m.ConfirmationDialog.new(
+    popup_builder( classic and confirmation_margin.classic or confirmation_margin.modern ), M.config )
 
   M.api = function() return m.api end
 
@@ -180,6 +245,10 @@ local function create_components()
   ---@type ResistanceCheck
   M.resistance_check = m.ResistanceCheck.new( db( "resistance_check" ), M.group_roster,
     M.gear_scanner, M.buff_scanner, M.resistance_parser, M.resistance_registry )
+
+  ---@type ResistanceBonusRollEligibility
+  M.resistance_bonus_roll_eligibility = m.ResistanceBonusRollEligibility.new(
+    db( "resistance_bonus_roll_eligibility" ), M.group_roster, M.resistance_check, M.resistance_registry )
 
   -- TODO: Add type.
   M.version_broadcast = m.VersionBroadcast.new( db( "version_broadcast" ), M.player_info, version.str )
@@ -238,8 +307,25 @@ local function create_components()
   ---@type SoftResLootList
   M.loot_list = m.SoftResLootListDecorator.new( M.raw_loot_list, M.softres )
 
+  ---@type RaidLockout
+  M.raid_lockout = m.RaidLockout.new( db( "raid_lockout" ), M.api(), m.EventFrame.new( m.api ) )
+
+  ---@type BossKilled
+  M.boss_killed = m.BossKilled.new( db( "boss_killed" ) )
+
+  -- Subscribed here, before the registry, so this fires first: listeners run in
+  -- subscription order, and "X was killed" reads better above "Bonus Roll granted"
+  -- than below it.
+  M.boss_killed.subscribe( function( boss_name )
+    info( string.format( "%s was killed.", hl( boss_name ) ) )
+  end )
+
   ---@type DroppedLoot
-  M.dropped_loot = m.DroppedLoot.new( db( "dropped_loot" ), M.loot_list, M.player_info )
+  M.dropped_loot = m.DroppedLoot.new( db( "dropped_loot" ), M.loot_list, M.player_info, M.boss_killed )
+
+  ---@type ResistanceBonusRollRegistry
+  M.resistance_bonus_roll_registry = m.ResistanceBonusRollRegistry.new(
+    db( "resistance_bonus_roll_registry" ), M.boss_killed, M.resistance_bonus_roll_eligibility )
 
   ---@type MasterLootCandidates
   M.master_loot_candidates = m.MasterLootCandidates.new( M.api(), M.group_roster, M.raw_loot_list ) -- remove group_roster for testing (dummy candidates)
@@ -400,6 +486,8 @@ local function create_components()
 
   M.roll_simulator = m.RollSimulator.new( M )
 
+  M.drop_simulator = m.DropSimulator.new( M.boss_killed, M.raid_lockout, confirm_lockout_reset )
+
   M.gargul_bridge = m.GargulBridge.new( M.player_info, M.roll_controller, M.config, function() return M.softres_db.data end, M.softres )
 
   M.roll_for_broadcast = m.RollForBroadcast.new( M.roll_controller, M.config )
@@ -418,11 +506,28 @@ local function create_components()
   M.autoloot_frame = m.AutoLootFrame.new( popup_builder(), autoloot_frame_content_transformer, db( "autoloot_frame" ) )
 
   ---@type ResistanceFrameContentTransformer
-  local resistance_frame_content_transformer = m.ResistanceFrameContentTransformer.new()
+  local resistance_frame_content_transformer = m.ResistanceFrameContentTransformer.new( M.resistance_registry )
 
   ---@type ResistanceFrame
   M.resistance_frame = m.ResistanceFrame.new( popup_builder(), resistance_frame_content_transformer,
     M.resistance_check, db( "resistance_frame" ) )
+
+  ---@type BonusRollEligibilityFrameContentTransformer
+  local resistance_bonus_roll_eligibility_frame_content_transformer =
+      m.ResistanceBonusRollEligibilityFrameContentTransformer.new()
+
+  ---@type ResistanceBonusRollEligibilityFrame
+  M.resistance_bonus_roll_eligibility_frame = m.ResistanceBonusRollEligibilityFrame.new( popup_builder(),
+    resistance_bonus_roll_eligibility_frame_content_transformer, M.resistance_bonus_roll_eligibility,
+    M.resistance_check, db( "resistance_bonus_roll_eligibility_frame" ) )
+
+  ---@type BonusRollFrameContentTransformer
+  local resistance_bonus_roll_frame_content_transformer = m.ResistanceBonusRollFrameContentTransformer.new()
+
+  ---@type ResistanceBonusRollFrame
+  M.resistance_bonus_roll_frame = m.ResistanceBonusRollFrame.new( popup_builder(),
+    resistance_bonus_roll_frame_content_transformer, M.resistance_bonus_roll_registry, M.group_roster,
+    db( "resistance_bonus_roll_frame" ) )
 
   m.AutoLootTree.init( M.autoloot_db )
 end
@@ -441,8 +546,31 @@ local function subscribe_for_component_events()
     M.dropped_loot.clear()
   end )
 
+  -- A new lockout is a new set of bosses to kill, so last week's record is not just
+  -- stale, it's wrong -- the rolls those kills paid for expire with them, and so does
+  -- who was eligible to earn them. Said out loud rather than wiped quietly, but only
+  -- when there was something to lose.
+  M.raid_lockout.subscribe( function( changed )
+    -- Counted before the wipe, obviously, but also before it for a second reason: this
+    -- is the same sentence the simulator showed when it asked.
+    local lost = describe_lockout_loss()
+
+    M.boss_killed.reset()
+    M.resistance_bonus_roll_registry.reset()
+    M.resistance_bonus_roll_eligibility.reset()
+
+    if not lost then return end
+
+    info( string.format( "New lockout (%s) - %s forgotten.",
+      hl( table.concat( changed, ", " ) ), lost ) )
+  end )
+
   M.config_event_bus.subscribe( "config_change_requires_ui_reload", function()
-    M.ui_reload_popup.show()
+    M.confirmation_dialog.show( {
+      title = "This change requires a UI reload.",
+      question = "Reload the UI now?",
+      on_yes = function() m.api.ReloadUI() end
+    } )
   end )
 end
 
@@ -754,6 +882,9 @@ function M.on_player_login()
   info( string.format( "Loaded (%s).", hl( string.format( "v%s", version.str ) ) ) )
 
   M.version_broadcast.broadcast()
+  -- Answers as UPDATE_INSTANCE_INFO, which is where a lockout that turned over while
+  -- we were logged out gets noticed.
+  M.raid_lockout.refresh()
   M.import_encoded_softres_data( M.softres_db.data )
   M.softres_gui.load( M.softres_db.data )
 
@@ -792,6 +923,8 @@ end
 function M.on_group_changed()
   M.name_matcher.auto_match()
   M.resistance_frame.on_group_changed()
+  M.resistance_bonus_roll_eligibility_frame.on_group_changed()
+  M.resistance_bonus_roll_frame.on_group_changed()
   update_minimap_icon()
 end
 

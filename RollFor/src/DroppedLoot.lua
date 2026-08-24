@@ -16,8 +16,9 @@ local getn = m.getn
 ---@param db table
 ---@param loot_list LootList
 ---@param player_info PlayerInfo
+---@param boss_killed BossKilled
 ---@return DroppedLoot
-function M.new( db, loot_list, player_info )
+function M.new( db, loot_list, player_info, boss_killed )
   db.dropped_items = db.dropped_items or {}
 
   local function get_dropped_item_id( item_name )
@@ -73,6 +74,9 @@ function M.new( db, loot_list, player_info )
     for _, item in ipairs( loot_list.get_items() ) do
       if is_registerable( item ) then
         add( item.id, item.name )
+        -- Told about every drop, not just the first: which of them names a boss
+        -- and whether that boss is already on the list is its own business.
+        boss_killed.on_item_dropped( item.id )
       end
     end
   end

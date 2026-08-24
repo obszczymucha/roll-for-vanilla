@@ -33,6 +33,15 @@ local all_resistance_types = {
 -- The schools a buff report covers.
 local buffed_resistance_types = { M.ResistanceType.Shadow, M.ResistanceType.Fire }
 
+-- What each school is expected to reach. Fire and Shadow are the only two the
+-- run cares about. This lives here rather than next to the display colors
+-- because more than one caller judges against it: the resistance list colors
+-- its numbers by it, and bonus roll eligibility is decided by it.
+local minimums = {
+  [ M.ResistanceType.Fire ] = 295,
+  [ M.ResistanceType.Shadow ] = 174
+}
+
 local Shadow, Fire = M.ResistanceType.Shadow, M.ResistanceType.Fire
 
 -- Anyone wearing this much fire resistance is in a fire set, not a shadow one.
@@ -87,6 +96,7 @@ end
 ---@class ResistanceRegistry
 ---@field resolve fun( buff_names: string[] ): ResistanceBuffs
 ---@field default_reported_type fun( totals: ResistanceTotals, threshold: number? ): ResistanceType, number
+---@field minimum fun( resistance_type: ResistanceType ): number?
 ---@field all_resistance_types fun(): ResistanceType[]
 ---@field buffed_resistance_types fun(): ResistanceType[]
 
@@ -121,10 +131,19 @@ function M.new()
     return Shadow, totals[ Shadow ] or 0
   end
 
+  -- What this school has to reach. nil for a school the run has no requirement
+  -- for, so callers can tell "no minimum" from "a minimum of zero".
+  ---@param resistance_type ResistanceType
+  ---@return number?
+  local function minimum( resistance_type )
+    return minimums[ resistance_type ]
+  end
+
   ---@type ResistanceRegistry
   return {
     resolve = resolve,
     default_reported_type = default_reported_type,
+    minimum = minimum,
     all_resistance_types = function() return all_resistance_types end,
     buffed_resistance_types = function() return buffed_resistance_types end
   }

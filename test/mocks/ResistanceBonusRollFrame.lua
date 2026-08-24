@@ -4,7 +4,7 @@ local M = {}
 local u = require( "test/utils" )
 local _, eq = u.luaunit( "assertEquals" )
 require( "src/ListPopup" ) -- the window shell the frame is built on
-local ResistanceFrame = require( "src/resistances/ResistanceFrame" )
+local ResistanceBonusRollFrame = require( "src/resistances/ResistanceBonusRollFrame" )
 
 local function strip_functions( t )
   for _, line in ipairs( t ) do
@@ -18,9 +18,7 @@ local function strip_functions( t )
   return t
 end
 
--- Only the title is decolorized. The row cells keep their color codes on
--- purpose: the class color and the red dash of a failed inspect are part of
--- what the rows are supposed to say.
+-- Only the title is decolorized.
 local function cleanse( t )
   return u.map( strip_functions( t ), function( v )
     if v.type == "text" and v.value then
@@ -31,28 +29,27 @@ local function cleanse( t )
   end )
 end
 
----@class ResistanceFrameMock : ResistanceFrame
+---@class ResistanceBonusRollFrameMock : ResistanceBonusRollFrame
 ---@field content fun(): table
 ---@field should_display fun( ...: table ): table
 ---@field is_visible fun(): boolean
 ---@field should_be_visible fun()
 ---@field should_be_hidden fun()
----@field click fun( button_type: ResistanceFrameButtonType )
----@field clear_row fun( player_name: string )
+---@field click fun( button_type: BonusRollFrameButtonType )
 ---@field render_count fun(): number
 
 ---@param popup_builder PopupBuilder
----@param resistance_check ResistanceCheck
+---@param registry ResistanceBonusRollRegistry
+---@param group_roster GroupRoster
 ---@param db table
----@param registry ResistanceRegistry
-function M.new( popup_builder, resistance_check, db, registry )
+function M.new( popup_builder, registry, group_roster, db )
   local transformed_content
   local renders = 0
-  local model ---@type ResistanceFrameData?
+  local model ---@type BonusRollFrameData?
 
-  local real_transformer = require( "src/resistances/ResistanceFrameContentTransformer" ).new( registry )
+  local real_transformer = require( "src/resistances/ResistanceBonusRollFrameContentTransformer" ).new()
 
-  ---@type ResistanceFrameContentTransformer
+  ---@type BonusRollFrameContentTransformer
   local spying_transformer = {
     transform = function( data )
       model = data
@@ -62,7 +59,7 @@ function M.new( popup_builder, resistance_check, db, registry )
     end
   }
 
-  local frame = ResistanceFrame.new( popup_builder, spying_transformer, resistance_check, db )
+  local frame = ResistanceBonusRollFrame.new( popup_builder, spying_transformer, registry, group_roster, db )
 
   frame.content = function() return transformed_content and cleanse( transformed_content ) or {} end
   frame.render_count = function() return renders end
@@ -84,22 +81,9 @@ function M.new( popup_builder, resistance_check, db, registry )
     end
   end
 
-  frame.clear_row = function( player_name )
-    if not model then return end
-
-    for _, row in ipairs( model.rows or {} ) do
-      if row.player_name == player_name then
-        row.on_clear()
-        return
-      end
-    end
-
-    error( string.format( "There was no row for %s to clear.", player_name ), 2 )
-  end
-
   local function should_be_visible( level )
     if not frame.is_visible() then
-      error( "Resistance frame is hidden.", level )
+      error( "Bonus roll frame is hidden.", level )
     end
   end
 
@@ -114,11 +98,11 @@ function M.new( popup_builder, resistance_check, db, registry )
 
   frame.should_be_hidden = function()
     if frame.is_visible() then
-      error( "Resistance frame is visible.", 2 )
+      error( "Bonus roll frame is visible.", 2 )
     end
   end
 
-  ---@type ResistanceFrameMock
+  ---@type ResistanceBonusRollFrameMock
   return frame
 end
 
