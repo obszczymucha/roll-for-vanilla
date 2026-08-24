@@ -114,6 +114,14 @@ function M.new( item_on_roll )
         local data = { player_name = player.name, player_class = player.class, roll_type = RT.SoftRes }
         table.insert( result, data )
       end
+
+      -- A bonus roll is another roll in the player's allowance, so it gets a placeholder
+      -- of its own rather than a row of its own.
+      for _ = 1, player.bonus_rolls or 0 do
+        ---@type RollData
+        local data = { player_name = player.name, player_class = player.class, roll_type = RT.BonusRoll }
+        table.insert( result, data )
+      end
     end
 
     return result
@@ -146,6 +154,10 @@ function M.new( item_on_roll )
       for _, player in ipairs( soft_ressers or {} ) do
         for _ = 1, player.rolls or 1 do
           add( player.name, player.class, RT.SoftRes )
+        end
+
+        for _ = 1, player.bonus_rolls or 0 do
+          add( player.name, player.class, RT.BonusRoll )
         end
       end
     end
@@ -183,6 +195,11 @@ function M.new( item_on_roll )
     for _, player in ipairs( required_rolling_players or {} ) do
       for _ = 1, player.rolls or 1 do
         add( player.name, player.class, rolling_strategy == RS.SoftResRoll and RT.SoftRes or RS.TieRoll )
+      end
+
+      -- Only the soft-res roll has a bonus allowance; a tie re-roll is one roll each.
+      for _ = 1, player.bonus_rolls or 0 do
+        add( player.name, player.class, RT.BonusRoll )
       end
     end
   end

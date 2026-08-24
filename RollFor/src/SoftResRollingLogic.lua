@@ -9,8 +9,11 @@ local getn = m.getn
 local map = m.map
 local take = m.take
 local hl = m.colors.hl
+local RT = m.Types.RollType ---@type RT
 local roll_type = m.Types.RollType.SoftRes
 local strategy = m.Types.RollingStrategy.SoftResRoll
+local available_rolls = m.RollingLogicUtils.available_rolls
+local consume_roll = m.RollingLogicUtils.consume_roll
 
 ---@type MakeRollFn
 local make_roll = m.Types.make_roll
@@ -29,7 +32,7 @@ local function has_everyone_rolled( rollers, rolls )
 end
 
 local function players_with_available_rolls( rollers )
-  return m.filter( rollers, function( roller ) return roller.rolls > 0 end )
+  return m.filter( rollers, function( roller ) return available_rolls( roller ) > 0 end )
 end
 
 -- One player, one item. Every roll beyond a player's best one is spent, so only their
@@ -117,6 +120,7 @@ end
 ---@param winner_tracker WinnerTracker
 ---@param master_loot_candidates MasterLootCandidates
 ---@param controller RollControllerFacade
+---@param bonus_roll_registry ResistanceBonusRollRegistry
 function M.new(
     chat,
     ace_timer,
@@ -130,13 +134,19 @@ function M.new(
     config,
     winner_tracker,
     master_loot_candidates,
-    controller
+    controller,
+    bonus_roll_registry
 )
   local rolls = {}
   local rolling = false
   local seconds_left = seconds
   local timer
   local player_count = getn( players )
+
+  -- What this rolling has spent, so a cancel can hand it all back. Only a cancel refunds:
+  -- a rolling that merely finishes without an award keeps its spends.
+  ---@type BonusRollToken[]
+  local spent_tokens = {}
 
   local function sort_rolls()
     table.sort( rolls, function( a, b )
@@ -150,7 +160,7 @@ function M.new(
 
   local function have_all_rolls_been_exhausted()
     for _, v in ipairs( players ) do
-      if v.rolls > 0 then return winner_found( players, rolls, item_count ) end
+      if available_rolls( v ) > 0 then return winner_found( players, rolls, item_count ) end
     end
 
     return true
@@ -160,6 +170,21 @@ function M.new(
     for _, player in ipairs( players ) do
       if player.name == player_name then return player end
     end
+  end
+
+  -- Deducted the moment it is cast, and said out loud: a bonus roll is a thing the player
+  -- earned and is now out of, and the number left is what stops the next argument.
+  ---@param player RollingPlayer
+  ---@param roll number
+  local function spend_bonus_roll( player, roll )
+    local token = bonus_roll_registry.use( player.name, item.id, item.link, roll )
+    if not token then return end
+
+    table.insert( spent_tokens, token )
+
+    local left = bonus_roll_registry.count_for_item( player.name, item.id )
+    chat.info( string.format( "%s used a %s on %s (%s). %s left.",
+      m.colorize_player_by_class( player.name, player.class ), hl( "Bonus Roll" ), item.link, hl( roll ), hl( left ) ) )
   end
 
   local function stop_timer()
@@ -228,15 +253,20 @@ function M.new(
       return
     end
 
-    if player.rolls == 0 then
+    -- Which pool this roll comes out of is the only thing bonus rolls change here. The
+    -- soft-res allowance is spent first; everything past it is a bonus roll.
+    local roll_type_used = consume_roll( player )
+
+    if not roll_type_used then
       chat.info( m.msg.rolls_exhausted( player.name, player.class, roll ) )
       controller.roll_was_ignored( player.name, player.class, roll_type, roll, "Rolled too many times." )
       return
     end
 
-    player.rolls = player.rolls - 1
-    table.insert( rolls, make_roll( player, roll_type, roll ) )
-    controller.roll_was_accepted( player.name, player.class, roll_type, roll )
+    if roll_type_used == RT.BonusRoll then spend_bonus_roll( player, roll ) end
+
+    table.insert( rolls, make_roll( player, roll_type_used, roll ) )
+    controller.roll_was_accepted( player.name, player.class, roll_type_used, roll )
 
     find_winner( State.AfterRoll )
   end
@@ -262,10 +292,22 @@ function M.new(
     timer = ace_timer.ScheduleRepeatingTimer( M, on_timer, 1.7 )
   end
 
+  -- The raid announcement has to say what a player's allowance actually is, and the two
+  -- pools don't add up into one number: "Drutree [3 rolls]" would read as three soft-res
+  -- rolls. So they're reported split -- "Drutree [1 roll +1 bonus]" -- and a player with
+  -- one plain soft-res roll and nothing else stays the bare name it has always been.
+  ---@param player RollingPlayer
   local function format_name_with_rolls( player )
     if player_count == item_count then return player.name end
-    local roll_count = player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
-    return string.format( "%s%s", player.name, roll_count )
+
+    local bonus_rolls = player.bonus_rolls or 0
+    local bonus = bonus_rolls > 0 and string.format( " +%s bonus", bonus_rolls ) or ""
+
+    if player.rolls <= 1 and bonus == "" then return player.name end
+
+    local rolls_str = string.format( "%s roll%s", player.rolls, player.rolls == 1 and "" or "s" )
+
+    return string.format( "%s [%s%s]", player.name, rolls_str, bonus )
   end
 
   local function start_rolling()
@@ -307,6 +349,11 @@ function M.new(
 
   local function cancel_rolling()
     stop_listening()
+
+    -- A rolling the ML canceled never happened, so the bonus rolls it spent go back.
+    bonus_roll_registry.refund( spent_tokens )
+    spent_tokens = {}
+
     print_rolling_complete( true )
     chat.announce( string.format( "Rolling for %s was canceled.", item.link ) )
   end

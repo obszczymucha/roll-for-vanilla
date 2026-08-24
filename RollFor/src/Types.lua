@@ -42,19 +42,22 @@ end
 ---| "OffSpec"
 ---| "Transmog"
 ---| "SoftRes"
+---| "BonusRoll"
 
 ---@class RT
 ---@field MainSpec "MainSpec"
 ---@field OffSpec "OffSpec"
 ---@field Transmog "Transmog"
 ---@field SoftRes "SoftRes"
+---@field BonusRoll "BonusRoll"
 
 ---@type RT
 M.RollType = {
   MainSpec = "MainSpec",
   OffSpec = "OffSpec",
   Transmog = "Transmog",
-  SoftRes = "SoftRes"
+  SoftRes = "SoftRes",
+  BonusRoll = "BonusRoll"
 }
 
 --- @alias RollingStrategyType
@@ -182,26 +185,30 @@ end
 ---@field class string
 ---@field online boolean
 ---@field rolls number
+---@field bonus_rolls number? -- extra rolls earned by a resistance Bonus Roll; nil reads as zero
 ---@field type "RollingPlayer"
 
 ---@alias MakeRollingPlayerFn fun(
 ---  name: string,
 ---  class: PlayerClass,
 ---  online: boolean,
----  rolls: number ): RollingPlayer
+---  rolls: number,
+---  bonus_rolls: number? ): RollingPlayer
 
 ---@type MakeRollingPlayerFn
 ---@param name string
 ---@param class PlayerClass
 ---@param online boolean
 ---@param rolls number
+---@param bonus_rolls number?
 ---@return RollingPlayer
-function M.make_rolling_player( name, class, online, rolls )
+function M.make_rolling_player( name, class, online, rolls, bonus_rolls )
   return {
     name = name,
     class = class,
     online = online,
     rolls = rolls,
+    bonus_rolls = bonus_rolls,
     type = PlayerType.RollingPlayer
   }
 end

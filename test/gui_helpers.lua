@@ -25,6 +25,10 @@ end
 
 -- Soft-res rolls render as one row per player with a cell per roll, so their expected
 -- shape is a `rolls` array rather than a single `roll`.
+--
+-- A cell is a roll value, `false` for a pending soft-res cell, or `{ br = <roll|false> }`
+-- for a bonus one -- the bonus roll being an extra cell on the player's own row rather
+-- than a row of its own.
 ---@param player Player
 ---@param cells table -- cast rolls in cast order; `false` for a pending cell
 ---@param cell_count number? -- widest grouped row in the popup; defaults to this row's own
@@ -33,8 +37,14 @@ function M.sr_row( player, cells, cell_count, padding )
   local rolls = {}
   local best_index, best_roll
 
-  for i, roll in ipairs( cells ) do
-    table.insert( rolls, { roll_type = RT.SoftRes, roll = roll ~= false and roll or nil } )
+  for i, cell in ipairs( cells ) do
+    local is_bonus = type( cell ) == "table"
+    -- Not `is_bonus and cell.br or cell`: a pending bonus cell is `{ br = false }`, and
+    -- `false or cell` would hand back the wrapper table as the roll value.
+    local roll = cell
+    if is_bonus then roll = cell.br end
+
+    table.insert( rolls, { roll_type = is_bonus and RT.BonusRoll or RT.SoftRes, roll = roll ~= false and roll or nil } )
 
     if roll ~= false and (not best_roll or roll > best_roll) then
       best_roll = roll
@@ -58,6 +68,15 @@ end
 ---@param cell_count number?
 function M.sr_roll_placeholder( player, padding, cell_count )
   return M.sr_row( player, { false }, cell_count, padding )
+end
+
+-- A player owed one soft-res roll and one bonus roll, neither cast yet. The bonus pip
+-- leads, which is how the popup renders it.
+---@param player Player
+---@param padding number?
+---@param cell_count number?
+function M.bonus_roll_placeholder( player, padding, cell_count )
+  return M.sr_row( player, { { br = false }, false }, cell_count, padding )
 end
 
 ---@param player Player

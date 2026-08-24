@@ -35,6 +35,7 @@ local sid = m.SoftRes.softres_item_data
 ---@param config Config
 ---@param softres GroupAwareSoftRes
 ---@param player_info PlayerInfo
+---@param bonus_roll_registry ResistanceBonusRollRegistry
 function M.new(
     group_roster,
     loot_list,
@@ -44,7 +45,8 @@ function M.new(
     winner_tracker,
     config,
     softres,
-    player_info
+    player_info,
+    bonus_roll_registry
 )
   ---@param item Item
   ---@param item_count number
@@ -104,6 +106,8 @@ function M.new(
       on_softres_rolls_available,
       roll_controller_facade
   )
+    -- Already annotated with each player's bonus allowance by SoftResBonusRollDecorator,
+    -- so nothing here has to ask about bonus rolls. The registry below is the write path.
     local sr_item = sid( item.id, item_quantity )
     ---@type RollingPlayer[]
     local softressing_players = softres.get( sr_item )
@@ -146,7 +150,8 @@ function M.new(
       config,
       winner_tracker,
       master_loot_candidates,
-      roll_controller_facade
+      roll_controller_facade,
+      bonus_roll_registry
     ), needs_rolling and softressing_players or nil, leftover_softressers
   end
 
@@ -170,6 +175,8 @@ function M.new(
   end
 
   local function tie_roll( players, item, item_count, item_quantity, on_rolling_finished, roll_type, roll_controller_facade )
+    -- One roll each, and bonus_rolls left nil: bonus rolls are spent in the main roll and
+    -- do not carry into the tie that follows it.
     local rollers = m.map( players,
       ---@param player RollingPlayer
       function( player )

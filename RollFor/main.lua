@@ -250,6 +250,20 @@ local function create_components()
   M.resistance_bonus_roll_eligibility = m.ResistanceBonusRollEligibility.new(
     db( "resistance_bonus_roll_eligibility" ), M.group_roster, M.resistance_check, M.resistance_registry )
 
+  ---@type BossKilled
+  M.boss_killed = m.BossKilled.new( db( "boss_killed" ) )
+
+  -- Subscribed here, before the registry, so this fires first: listeners run in
+  -- subscription order, and "X was killed" reads better above "Bonus Roll granted"
+  -- than below it.
+  M.boss_killed.subscribe( function( boss_name )
+    info( string.format( "%s was killed.", hl( boss_name ) ) )
+  end )
+
+  ---@type ResistanceBonusRollRegistry
+  M.resistance_bonus_roll_registry = m.ResistanceBonusRollRegistry.new(
+    db( "resistance_bonus_roll_registry" ), M.boss_killed, M.resistance_bonus_roll_eligibility )
+
   -- TODO: Add type.
   M.version_broadcast = m.VersionBroadcast.new( db( "version_broadcast" ), M.player_info, version.str )
 
@@ -281,8 +295,11 @@ local function create_components()
   ---@type SoftRes
   M.nether_vortex_softres = m.SoftResNetherVortexDecorator.new( M.awarded_loot_softres )
 
+  -- Outermost, so bonus rolls are only ever annotated onto players who are actually in
+  -- the group -- the present-players decorator has already dropped everyone else.
   ---@type GroupAwareSoftRes
-  M.softres = M.present_softres( M.nether_vortex_softres )
+  M.softres = m.SoftResBonusRollDecorator.new(
+    M.present_softres( M.nether_vortex_softres ), M.resistance_bonus_roll_registry, M.config )
 
   M.softres_check = m.SoftResCheck.new( M.nether_vortex_softres, M.group_roster, M.name_matcher, M.ace_timer,
     M.absent_softres, db( "softres_check" ) )
@@ -310,22 +327,8 @@ local function create_components()
   ---@type RaidLockout
   M.raid_lockout = m.RaidLockout.new( db( "raid_lockout" ), M.api(), m.EventFrame.new( m.api ) )
 
-  ---@type BossKilled
-  M.boss_killed = m.BossKilled.new( db( "boss_killed" ) )
-
-  -- Subscribed here, before the registry, so this fires first: listeners run in
-  -- subscription order, and "X was killed" reads better above "Bonus Roll granted"
-  -- than below it.
-  M.boss_killed.subscribe( function( boss_name )
-    info( string.format( "%s was killed.", hl( boss_name ) ) )
-  end )
-
   ---@type DroppedLoot
   M.dropped_loot = m.DroppedLoot.new( db( "dropped_loot" ), M.loot_list, M.player_info, M.boss_killed )
-
-  ---@type ResistanceBonusRollRegistry
-  M.resistance_bonus_roll_registry = m.ResistanceBonusRollRegistry.new(
-    db( "resistance_bonus_roll_registry" ), M.boss_killed, M.resistance_bonus_roll_eligibility )
 
   ---@type MasterLootCandidates
   M.master_loot_candidates = m.MasterLootCandidates.new( M.api(), M.group_roster, M.raw_loot_list ) -- remove group_roster for testing (dummy candidates)
@@ -442,7 +445,8 @@ local function create_components()
     M.winner_tracker,
     M.config,
     M.softres,
-    M.player_info
+    M.player_info,
+    M.resistance_bonus_roll_registry
   )
 
   ---@type RollingLogic

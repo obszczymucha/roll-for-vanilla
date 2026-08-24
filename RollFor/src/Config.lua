@@ -42,6 +42,7 @@ function M.new( db, event_bus )
     [ "rolling_popup_lock" ] = { cmd = "rolling-popup-lock", display = "Rolling popup lock", help = "toggle rolling popup lock" },
     [ "raid_roll_again" ] = { cmd = "raid-roll-again", display = string.format( "%s button", hl( "Raid roll again" ) ), help = string.format( "toggle %s button", hl( "Raid roll again" ) ) },
     [ "classic_look" ] = { cmd = "classic-look", display = "Classic look", help = "toggle classic look", requires_reload = true },
+    [ "resistance_bonus_rolls_enabled" ] = { cmd = "bonus-rolls", display = "Resistance Bonus Rolls", help = "toggle resistance bonus rolls" },
   }
 
   local function notify_subscribers( event, value )
@@ -67,6 +68,7 @@ function M.new( db, event_bus )
     if db.auto_loot_announce == nil then db.auto_loot_announce = true end
     if db.resistance_check_throttle == nil then db.resistance_check_throttle = 1.0 end
     if db.sr_roll_spacing == nil then db.sr_roll_spacing = 20 end
+    if db.resistance_bonus_rolls_enabled == nil then db.resistance_bonus_rolls_enabled = true end
   end
 
   local function print_toggle( toggle_key )

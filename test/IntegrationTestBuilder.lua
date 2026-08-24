@@ -9,6 +9,9 @@ local SoftResAwardedLootDecorator = require( "src/SoftResAwardedLootDecorator" )
 local SoftResNetherVortexDecorator = require( "src/SoftResNetherVortexDecorator" )
 local NetherVortexAwardedLootDecorator = require( "src/NetherVortexAwardedLootDecorator" )
 local SoftResDecorator = require( "src/SoftResPresentPlayersDecorator" )
+local SoftResBonusRollDecorator = require( "src/SoftResBonusRollDecorator" )
+require( "src/AutoLootDb" )
+local ResistanceBonusRollRegistry = require( "src/resistances/ResistanceBonusRollRegistry" )
 local SoftRes, Db = require( "src/SoftRes" ), require( "src/Db" )
 local RollingLogic = require( "src/RollingLogic" )
 local sr, hr, make_data = u.soft_res_item, u.hard_res_item, u.create_softres_data ---@diagnostic disable-line: unused-local
@@ -21,6 +24,21 @@ local BindType = IU.BindType
 u.mock_wow_api()
 
 local M = {}
+
+-- The bonus roll registry's two collaborators, inert. Specs seed grants directly through
+-- builder.bonus_rolls rather than playing out a kill, so the registry only needs to be able
+-- to subscribe to the kill feed and read eligibility's rows -- neither of which fires here.
+---@return BossKilled
+local function inert_boss_killed()
+  ---@diagnostic disable-next-line: missing-fields
+  return { subscribe = function() end }
+end
+
+---@return ResistanceBonusRollEligibility
+local function inert_eligibility()
+  ---@diagnostic disable-next-line: missing-fields
+  return { get_rows = function() return {} end }
+end
 
 ---@param name string
 ---@param class PlayerClass?
@@ -85,21 +103,29 @@ function M.mock_config( configuration )
         str = "/roll"
       }
     end,
-    classic_look = function() return false end
+    classic_look = function() return false end,
+    resistance_bonus_rolls_enabled = function()
+      if config and config.resistance_bonus_rolls_enabled ~= nil then return config.resistance_bonus_rolls_enabled end
+      return true
+    end
   }
 end
 
+-- The same chain main.lua builds, bonus-roll decorator outermost.
 ---@param group_roster GroupRoster
 ---@param awarded_loot AwardedLoot
+---@param bonus_roll_registry ResistanceBonusRollRegistry
+---@param config Config
 ---@param data table?
 ---@return GroupAwareSoftRes
 ---@return AwardedLoot
-local function group_aware_softres( group_roster, awarded_loot, data )
+local function group_aware_softres( group_roster, awarded_loot, bonus_roll_registry, config, data )
   local raw_softres = SoftRes.new()
   local vortex_awarded_loot = NetherVortexAwardedLootDecorator.new( awarded_loot )
   local awarded_loot_softres = SoftResAwardedLootDecorator.new( vortex_awarded_loot, raw_softres )
   local nether_vortex_softres = SoftResNetherVortexDecorator.new( awarded_loot_softres )
-  local result = SoftResDecorator.new( group_roster, nether_vortex_softres )
+  local present_softres = SoftResDecorator.new( group_roster, nether_vortex_softres )
+  local result = SoftResBonusRollDecorator.new( present_softres, bonus_roll_registry, config )
 
   if data then
     result.import( data )
@@ -234,6 +260,15 @@ function M.new_roll_for()
     return self
   end
 
+  -- Bonus rolls seeded straight into the registry -- { Drutree = { "Mother Shahraz" } } --
+  -- rather than played out through eligibility and a kill, which is a different module's
+  -- test.
+  ---@param grants table<string, string[]>
+  function builder.bonus_rolls( self, grants )
+    dependencies[ "BonusRollGrants" ] = grants
+    return self
+  end
+
   ---@param threshold number
   function builder.loot_threshold( self, threshold )
     u.loot_threshold( threshold )
@@ -267,12 +302,19 @@ function M.new_roll_for()
     deps[ "LootFacade" ] = loot_facade
 
     local raw_awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ), chat )
-    local softres, awarded_loot
-    if deps[ "SoftResData" ] then
-      softres, awarded_loot = group_aware_softres( group_roster, raw_awarded_loot, deps[ "SoftResData" ] )
-    else
-      softres, awarded_loot = group_aware_softres( group_roster, raw_awarded_loot )
+
+    local bonus_roll_registry = ResistanceBonusRollRegistry.new(
+      db( "resistance_bonus_roll_registry" ), inert_boss_killed(), inert_eligibility() )
+    deps[ "ResistanceBonusRollRegistry" ] = bonus_roll_registry
+
+    for player_name, bosses in pairs( deps[ "BonusRollGrants" ] or {} ) do
+      for _, boss_name in ipairs( bosses ) do
+        bonus_roll_registry.grant( player_name, boss_name, C.Warrior )
+      end
     end
+
+    local softres, awarded_loot = group_aware_softres(
+      group_roster, raw_awarded_loot, bonus_roll_registry, config, deps[ "SoftResData" ] )
     deps[ "SoftRes" ] = softres
 
     local raw_loot_list = require( "mocks/LootList" ).new( loot_facade )
@@ -325,7 +367,8 @@ function M.new_roll_for()
       winner_tracker,
       config,
       softres,
-      player_info
+      player_info,
+      bonus_roll_registry
     )
     deps[ "RollingStrategyFactory" ] = strategy_factory
 
@@ -404,6 +447,8 @@ function M.new_roll_for()
       roll = rolling_logic.on_roll,
       roll_controller = roll_controller,
       awarded_loot = awarded_loot, ---@type AwardedLoot
+      bonus_roll_registry = bonus_roll_registry, ---@type ResistanceBonusRollRegistry
+      softres = softres, ---@type GroupAwareSoftRes
       reset_announcements = dropped_loot_announce.reset,
       enable_debug = enable_debug
     }

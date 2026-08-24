@@ -56,6 +56,7 @@ local mock_config = function( config )
         sr_roll_spacing = function() return 24 end,
         superwow_auto_loot_coins = function() return true end,
         classic_look = function() return false end,
+        resistance_bonus_rolls_enabled = function() return true end,
       }
     end
   }

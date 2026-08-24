@@ -297,8 +297,23 @@ function M.new( main )
       return rollers
     end
 
-    main.softres.get = function( item_data ) return enrich( main.nether_vortex_softres.get( item_data ) ) end
-    main.softres.get_all_rollers = function() return enrich( main.nether_vortex_softres.get_all_rollers() ) end
+    -- Everything *above* the present-players layer still has to run, so it is rebuilt here
+    -- rather than reproduced. Hardcoding the stand-in as "nether_vortex plus class
+    -- enrichment" is what silently dropped bonus rolls from /rfsetup the moment a new
+    -- decorator went on top: the simulator was pinning what the outermost layer was.
+    -- Anything added above present-players from now on gets wrapped here too.
+    -- Cloned rather than built from scratch: the stand-in *is* the current softres with the
+    -- present-players filtering swapped out, so it has to keep the rest of the interface.
+    -- Re-running /rfsetup is idempotent -- .get is overwritten before it is wrapped again.
+    local stand_in = m.clone( main.softres )
+    stand_in.get = function( item_data ) return enrich( main.nether_vortex_softres.get( item_data ) ) end
+    stand_in.get_all_rollers = function() return enrich( main.nether_vortex_softres.get_all_rollers() ) end
+
+    local simulated = m.SoftResBonusRollDecorator.new(
+      stand_in, main.resistance_bonus_roll_registry, main.config )
+
+    main.softres.get = simulated.get
+    main.softres.get_all_rollers = simulated.get_all_rollers
 
     roster.is_player_in_my_group = function( name ) return by_name[ name ] and true or false end
     roster.find_player = function( name ) return by_name[ name ] end

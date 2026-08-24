@@ -31,7 +31,8 @@ local function mock_config()
         rolling_popup = function() return true end,
         raid_roll_again = function() return false end,
         default_rolling_time_seconds = function() return 8 end,
-        classic_look = function() return false end
+        classic_look = function() return false end,
+        resistance_bonus_rolls_enabled = function() return true end
       }
     end
   }

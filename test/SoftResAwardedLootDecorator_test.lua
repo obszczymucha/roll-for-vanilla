@@ -53,8 +53,8 @@ function SoftResAwardedLootDecoratorSpec:should_return_all_softressing_players()
 
   -- Then
   eq( result, {
-    { name = "Jogobobek",    rolls = 1, class = "Warrior", type = "Roller" },
-    { name = "Obszczymucha", rolls = 2, class = "Warrior", type = "Roller" }
+    { name = "Jogobobek",    rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" },
+    { name = "Obszczymucha", rolls = 2, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 
@@ -71,7 +71,7 @@ function SoftResAwardedLootDecoratorSpec:should_not_return_players_that_received
 
   -- Then
   eq( result, {
-    { name = "Obszczymucha", rolls = 2, class = "Warrior", type = "Roller" }
+    { name = "Obszczymucha", rolls = 2, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 
@@ -88,7 +88,7 @@ function SoftResAwardedLootDecoratorSpec:should_not_subtract_rolls()
 
   -- Then
   eq( result, {
-    { name = "Obszczymucha", rolls = 2, class = "Warrior", type = "Roller" }
+    { name = "Obszczymucha", rolls = 2, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 

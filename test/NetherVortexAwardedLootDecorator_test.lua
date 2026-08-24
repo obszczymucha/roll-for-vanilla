@@ -25,7 +25,7 @@ function NetherVortexAwardedLootDecoratorSpec:should_behave_normally_for_non_vor
 
   -- Then
   eq( result, {
-    { name = "Obszczymucha", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Obszczymucha", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 
@@ -45,7 +45,7 @@ function NetherVortexAwardedLootDecoratorSpec:should_exclude_player_from_single_
 
   -- Then - Jogobobek should be excluded from single
   eq( result, {
-    { name = "Obszczymucha", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Obszczymucha", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 
@@ -65,8 +65,8 @@ function NetherVortexAwardedLootDecoratorSpec:should_not_exclude_player_from_dou
 
   -- Then - Jogobobek should still be eligible for double
   eq( result, {
-    { name = "Jogobobek",    rolls = 1, class = "Warrior", type = "Roller" },
-    { name = "Obszczymucha", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Jogobobek",    rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" },
+    { name = "Obszczymucha", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 
@@ -86,7 +86,7 @@ function NetherVortexAwardedLootDecoratorSpec:should_exclude_player_from_double_
 
   -- Then - Jogobobek should be excluded from double
   eq( result, {
-    { name = "Obszczymucha", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Obszczymucha", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 
@@ -106,8 +106,8 @@ function NetherVortexAwardedLootDecoratorSpec:should_not_exclude_player_from_sin
 
   -- Then - Jogobobek should still be eligible for single
   eq( result, {
-    { name = "Jogobobek",    rolls = 1, class = "Warrior", type = "Roller" },
-    { name = "Obszczymucha", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Jogobobek",    rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" },
+    { name = "Obszczymucha", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 
@@ -126,8 +126,8 @@ function NetherVortexAwardedLootDecoratorSpec:should_allow_player_to_roll_on_dou
 
   -- Then both players are eligible for single
   eq( single_rollers, {
-    { name = "Jogobobek",    rolls = 1, class = "Warrior", type = "Roller" },
-    { name = "Obszczymucha", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Jogobobek",    rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" },
+    { name = "Obszczymucha", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 
   -- When Jogobobek wins and is awarded the single vortex
@@ -135,7 +135,7 @@ function NetherVortexAwardedLootDecoratorSpec:should_allow_player_to_roll_on_dou
 
   -- Then Jogobobek is no longer eligible for single
   eq( softres.get( sid( 30183, 1 ) ), {
-    { name = "Obszczymucha", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Obszczymucha", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 
   -- When double vortex drops
@@ -143,8 +143,8 @@ function NetherVortexAwardedLootDecoratorSpec:should_allow_player_to_roll_on_dou
 
   -- Then Jogobobek is still eligible for double
   eq( double_rollers, {
-    { name = "Jogobobek",    rolls = 1, class = "Warrior", type = "Roller" },
-    { name = "Obszczymucha", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Jogobobek",    rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" },
+    { name = "Obszczymucha", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 
@@ -166,10 +166,10 @@ function NetherVortexAwardedLootDecoratorSpec:should_exclude_player_from_both_af
 
   -- Then
   eq( single_result, {
-    { name = "Obszczymucha", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Obszczymucha", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
   eq( double_result, {
-    { name = "Obszczymucha", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Obszczymucha", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 

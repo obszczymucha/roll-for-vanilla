@@ -6,6 +6,7 @@ local lu, eq = u.luaunit( "assertEquals" )
 u.multi_require_src( "DebugBuffer", "Module", "Types" )
 require( "src/modules" )
 local Db = require( "src/Db" )
+require( "src/AutoLootDb" ) -- use() resolves the item's boss through the catalogue
 local popup_builder = require( "mocks/PopupBuilder" )
 local frame_mock = require( "mocks/ResistanceBonusRollFrame" )
 local ResistanceBonusRollRegistry = require( "src/resistances/ResistanceBonusRollRegistry" )
@@ -223,6 +224,26 @@ function BonusRollFrameSpec:should_name_every_boss_that_paid_for_the_rolls_in_th
 
   -- Then
   frame.should_display( popup( { line( "Psikutas", 3, { SHAHRAZ, COUNCIL, ILLIDAN } ) } ) )
+end
+
+-- Marking a spent roll rather than deleting it is what makes this line possible, and this
+-- line is the reason it's worth doing: it's what settles an argument about a roll after
+-- the item has been handed out.
+function BonusRollFrameSpec:should_say_what_a_spent_roll_went_on_in_the_tooltip()
+  -- Given
+  local frame = new_frame( { player( "Psikutas", true ) } )
+  frame.show()
+  frame.boss_killed.kill( SHAHRAZ )
+  frame.boss_killed.kill( COUNCIL )
+
+  -- When (spent on a Council item, which takes the earlier Mother roll)
+  frame.registry.use( "Psikutas", 32331, "[Cloak of the Illidari Council]", 87 )
+
+  -- Then (the count is the *unused* rolls; the spent one is greyed and says where it went)
+  frame.should_display( popup( { line( "Psikutas", 1, {
+    RollFor.colors.grey( "Mother Shahraz - spent on [Cloak of the Illidari Council] (87)" ),
+    COUNCIL
+  } ) } ) )
 end
 
 function BonusRollFrameSpec:should_sort_most_rolls_first_then_by_name()

@@ -70,14 +70,27 @@ end
 
 -- One line per boss that paid for a roll, in the order they were granted -- which is
 -- the order they were killed in. Nothing here dates them; the row itself is the answer
--- to "how many", the tooltip is only "which ones".
+-- to "how many", the tooltip is "which ones" and, for the ones already gone, what they
+-- went on.
+--
+-- The spend record is the whole reason entries are marked rather than deleted: it is what
+-- settles an argument about a roll after the item has been handed out. Spent lines are
+-- greyed, so the unused ones -- the rolls the player can still actually cast -- are what
+-- the eye lands on.
 ---@param row BonusRollRegistryRow
 ---@return string[]
 local function tooltip_lines( row )
   local result = {}
 
   for _, entry in ipairs( row.entries ) do
-    table.insert( result, entry.boss_name )
+    local used = entry.used_on
+
+    if used then
+      table.insert( result, m.colors.grey( string.format( "%s - spent on %s (%s)",
+        entry.boss_name, used.item_link, used.roll ) ) )
+    else
+      table.insert( result, entry.boss_name )
+    end
   end
 
   return result

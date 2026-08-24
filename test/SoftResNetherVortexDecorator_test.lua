@@ -23,8 +23,8 @@ function SoftResNetherVortexDecoratorSpec:should_pass_through_non_vortex_item_un
 
   -- Then
   eq( result, {
-    { name = "Jogobobek",    rolls = 1, class = "Warrior", type = "Roller" },
-    { name = "Obszczymucha", rolls = 2, class = "Warrior", type = "Roller" }
+    { name = "Jogobobek",    rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" },
+    { name = "Obszczymucha", rolls = 2, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 
@@ -40,7 +40,7 @@ function SoftResNetherVortexDecoratorSpec:should_return_player_with_1_sr_for_sin
 
   -- Then
   eq( result, {
-    { name = "Jogobobek", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Jogobobek", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 
@@ -70,7 +70,7 @@ function SoftResNetherVortexDecoratorSpec:should_return_player_with_3_sr_for_sin
 
   -- Then
   eq( result, {
-    { name = "Jogobobek", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Jogobobek", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 
@@ -100,7 +100,7 @@ function SoftResNetherVortexDecoratorSpec:should_return_player_with_2_sr_for_dou
 
   -- Then
   eq( result, {
-    { name = "Jogobobek", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Jogobobek", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 
@@ -116,7 +116,7 @@ function SoftResNetherVortexDecoratorSpec:should_return_player_with_3_sr_for_dou
 
   -- Then
   eq( result, {
-    { name = "Jogobobek", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Jogobobek", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 
@@ -133,7 +133,7 @@ function SoftResNetherVortexDecoratorSpec:should_filter_correctly_with_mixed_sr_
 
   -- Then - only Jogobobek (1 SR) is eligible for single
   eq( single_result, {
-    { name = "Jogobobek", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Jogobobek", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 
   -- When - double vortex
@@ -141,7 +141,7 @@ function SoftResNetherVortexDecoratorSpec:should_filter_correctly_with_mixed_sr_
 
   -- Then - only Obszczymucha (2 SR) is eligible for double
   eq( double_result, {
-    { name = "Obszczymucha", rolls = 1, class = "Warrior", type = "Roller" }
+    { name = "Obszczymucha", rolls = 1, bonus_rolls = 0, class = "Warrior", type = "Roller" }
   } )
 end
 

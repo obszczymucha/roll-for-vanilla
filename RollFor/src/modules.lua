@@ -45,6 +45,11 @@ M.colors = {
   end,
   pink = function( text )
     return string.format( "|cffdf8eed%s|r", text ) ---@type ColorFn
+  end,
+  -- Blizzard's own gold, so a bonus roll reads as a reward rather than as a fifth
+  -- arbitrary hue next to the blue soft-res rolls.
+  gold = function( text )
+    return string.format( "|cffffd100%s|r", text ) ---@type ColorFn
   end
 }
 
@@ -589,6 +594,8 @@ function M.roll_type_color( roll_type, text )
     return M.colors.pink( text or "transmog" )
   elseif roll_type == M.Types.RollType.SoftRes then
     return M.colors.orange( text or "soft-res" )
+  elseif roll_type == M.Types.RollType.BonusRoll then
+    return M.colors.gold( text or "bonus" )
   else
     return M.colors.white( text or "PrincessKenny" )
   end
@@ -603,6 +610,8 @@ function M.roll_type_abbrev_chat( roll_type )
     return "TMOG"
   elseif roll_type == M.Types.RollType.SoftRes then
     return "SR"
+  elseif roll_type == M.Types.RollType.BonusRoll then
+    return "BR"
   elseif roll_type == M.Types.RollType.RaidRoll then
     return "RR"
   else
@@ -619,12 +628,47 @@ function M.roll_type_abbrev( roll_type )
     return "TM"
   elseif roll_type == M.Types.RollType.SoftRes then
     return "SR"
+  elseif roll_type == M.Types.RollType.BonusRoll then
+    return "BR"
   elseif roll_type == M.Types.RollType.RaidRoll then
     return "RR"
   else
     error( string.format( "RollType %s not handled.", roll_type ) )
     return M.colors.white( roll_type )
   end
+end
+
+-- Display order for the roll list. Replaces sorting on the roll type's *name*, which
+-- happened to give the order below and would have put "BonusRoll" ahead of everything.
+--
+-- Soft-res and bonus rolls share a rank on purpose: they're the same contest, so they
+-- have to sort against each other by value rather than one type being shoved to one end.
+---@param roll_type RollType
+---@return number
+function M.roll_type_rank( roll_type )
+  if roll_type == M.Types.RollType.MainSpec then
+    return 1
+  elseif roll_type == M.Types.RollType.OffSpec then
+    return 2
+  elseif roll_type == M.Types.RollType.SoftRes then
+    return 3
+  elseif roll_type == M.Types.RollType.BonusRoll then
+    return 3
+  elseif roll_type == M.Types.RollType.Transmog then
+    return 4
+  else
+    return 5
+  end
+end
+
+-- Which rolls are the same contest. An 87 is an 87 whether it came out of a player's
+-- soft-res allowance or their bonus roll, so tie detection has to see one type here.
+---@param roll_type RollType
+---@return RollType
+function M.roll_type_tier( roll_type )
+  if roll_type == M.Types.RollType.BonusRoll then return M.Types.RollType.SoftRes end
+
+  return roll_type
 end
 
 function M.possesive_case( player_name )

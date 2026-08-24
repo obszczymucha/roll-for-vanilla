@@ -5,6 +5,7 @@ if m.GuiElements then return end
 
 local hl = m.colors.hl
 local blue = m.colors.blue
+local gold = m.colors.gold
 local getn = m.getn
 
 -- Grouped (soft-res) row metrics. The cell width is fixed at three digits: a ragged grid
@@ -46,14 +47,33 @@ local single_roll_width = 170
 ---@param roll number
 local function cell_text( roll_type, roll )
   if roll_type == m.Types.RollType.SoftRes then return blue( roll ) end
+  if roll_type == m.Types.RollType.BonusRoll then return gold( roll ) end
   return m.roll_type_color( roll_type, roll )
 end
 
+-- The two sheets are drawn with their opaque die at identical bounds, so the pip crop and
+-- offset above apply to both unchanged.
 ---@param roll_type RollType
----@diagnostic disable-next-line: unused-local
 local function cell_icon_texture( roll_type )
-  -- Bonus rolls will pick assets\\icon-gold.tga here.
+  if roll_type == m.Types.RollType.BonusRoll then
+    return "Interface\\AddOns\\RollFor\\assets\\icon-gold.tga"
+  end
+
   return "Interface\\AddOns\\RollFor\\assets\\icon-white2.tga"
+end
+
+-- What the row's roll-type label says. A player holding only pending cells can have a
+-- bonus cell first, and labelling the whole row "BR" would misreport it: the row is a
+-- soft-res row that happens to carry a bonus roll. Under the soft-ressers-only scope
+-- every bonus row also holds SR cells, so the fallback is only ever defensive.
+---@param cells table[]
+---@return RollType
+local function row_roll_type( cells )
+  for i = 1, getn( cells ) do
+    if cells[ i ].roll_type ~= m.Types.RollType.BonusRoll then return cells[ i ].roll_type end
+  end
+
+  return cells[ 1 ].roll_type
 end
 
 ---@class GuiElements
@@ -412,7 +432,8 @@ function M.roll( parent )
     icon:Hide()
 
     roll_type_container:Show()
-    frame.roll_type:SetText( m.roll_type_color( cells[ 1 ].roll_type, m.roll_type_abbrev( cells[ 1 ].roll_type ) ) )
+    local label_roll_type = row_roll_type( cells )
+    frame.roll_type:SetText( m.roll_type_color( label_roll_type, m.roll_type_abbrev( label_roll_type ) ) )
 
 
     -- Cells arrive in cast order with the pending ones trailing. On screen the cast rolls
