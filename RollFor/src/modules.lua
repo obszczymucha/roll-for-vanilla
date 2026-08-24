@@ -205,6 +205,24 @@ function M.dbg( message )
   M.pretty_print( message, M.colors.grey )
 end
 
+---Registers a slash command.
+---@param command string The command, with or without the leading slash, e.g. "rf" or "/rf".
+---@param callback fun( args: string )
+function M.slash_cmd( command, callback )
+  local name = string.gsub( command, "^/", "" )
+  local cmd = string.upper( name )
+
+  M.api.SlashCmdList = M.api.SlashCmdList or {}
+
+  if M.api.SlashCmdList[ cmd ] then
+    M.dbg( string.format( "Cannot create command %s. Command already exists.", hl( string.format( "/%s", string.lower( name ) ) ) ) )
+    return
+  end
+
+  M.api[ string.format( "SLASH_%s1", cmd ) ] = string.format( "/%s", string.lower( name ) )
+  M.api.SlashCmdList[ cmd ] = callback
+end
+
 function M.count_elements( t, f )
   local result = 0
 

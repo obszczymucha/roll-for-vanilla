@@ -237,6 +237,7 @@ function M.new_roll_for()
   end
 
   function builder.build()
+    u.mock_slashcmdlist() -- Drop the previous build's commands so this one can register its own.
     u.zone_name()
     u.loot_threshold( 2 )
     u.targetting_enemy( "Princess Kenny" )

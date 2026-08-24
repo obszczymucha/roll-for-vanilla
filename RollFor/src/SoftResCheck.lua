@@ -239,6 +239,9 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
     end
   end
 
+  m.slash_cmd( "srs", show_softres )
+  m.slash_cmd( "src", check_softres )
+
   return {
     check_softres = check_softres,
     show_softres = show_softres,

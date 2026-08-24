@@ -59,7 +59,7 @@ function M.new( main )
     return { player_name = name, player_class = class, roll_type = roll_type, roll = roll }
   end
 
-  local function item()
+  local function make_item()
     ---@diagnostic disable-next-line: redundant-parameter
     local _, link = m.api.GetItemInfo( hearthstone )
     link = link or "|cffffffff|Hitem:6948::::::::20:257::::::|h[Hearthstone]|h|r"
@@ -70,7 +70,7 @@ function M.new( main )
   ---@param rolls table[]
   ---@param strategy RollingStrategyType?
   local function roll_popup( rolls, strategy )
-    local link, tooltip_link, texture = item()
+    local link, tooltip_link, texture = make_item()
 
     -- The transformer trusts its input to be sorted, exactly as RollTracker leaves it.
     m.RollingLogicUtils.sort_roll_data( rolls )
@@ -406,6 +406,9 @@ function M.new( main )
     local upper = (spec == "os" or spec == "OS") and main.config.os_roll_threshold() or main.config.ms_roll_threshold()
     main.on_chat_msg_system( string.format( "%s rolls %d (1-%d)", name, tonumber( value ), upper ) )
   end
+
+  m.slash_cmd( "rft", run )
+  m.slash_cmd( "rfsetup", setup )
 
   ---@type Sandbox
   return {

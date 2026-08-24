@@ -9,7 +9,6 @@ local getn = m.getn
 local hl = m.colors.hl
 local grey = m.colors.grey
 local item_utils = m.ItemUtils ---@type ItemUtils
-local _G = getfenv( 0 ) ---@diagnostic disable-line: deprecated
 
 ---@class AwardedLootItemData
 ---@field item_id ItemId
@@ -132,11 +131,8 @@ function M.new( db, chat )
     end
   end
 
-  _G[ "SlashCmdList" ] = _G[ "SlashCmdList" ] or {}
-  _G[ "SLASH_AWARD1" ] = "/award"
-  _G[ "SlashCmdList" ][ "AWARD" ] = make_command( "/award", award )
-  _G[ "SLASH_UNAWARD1" ] = "/unaward"
-  _G[ "SlashCmdList" ][ "UNAWARD" ] = make_command( "/unaward", unaward )
+  m.slash_cmd( "award", make_command( "/award", award ) )
+  m.slash_cmd( "unaward", make_command( "/unaward", unaward ) )
 
   ---@type AwardedLoot
   return {

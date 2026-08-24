@@ -11,6 +11,7 @@ local getn = m.getn
 local info = m.pretty_print
 local hl = m.colors.highlight
 local RollSlashCommand = m.Types.RollSlashCommand
+local slash_cmd = m.slash_cmd
 local alid = m.AwardedLoot.awarded_loot_item_data
 
 local function clear_data()
@@ -560,22 +561,6 @@ local function on_roll_command( roll_slash_command )
   end
 end
 
-local function on_show_sorted_rolls_command( args )
-  if M.rolling_logic.is_rolling() then
-    info( "Rolling is in progress." )
-    return
-  end
-
-  if args then
-    for limit in string.gmatch( args, "(%d+)" ) do
-      M.rolling_logic.show_sorted_rolls( tonumber( limit ) )
-      return
-    end
-  end
-
-  M.rolling_logic.show_sorted_rolls( 5 )
-end
-
 local function is_rolling_check( f )
   return m.is_rolling_check( M.rolling_logic, M.chat, f )
 end
@@ -737,49 +722,21 @@ end
 
 local function setup_slash_commands()
   -- Roll For commands
-  SLASH_RF1 = RollSlashCommand.NormalRoll
-  M.api().SlashCmdList[ "RF" ] = on_roll_command( RollSlashCommand.NormalRoll )
-  SLASH_ARF1 = RollSlashCommand.NoSoftResRoll
-  M.api().SlashCmdList[ "ARF" ] = in_group_check( on_roll_command( RollSlashCommand.NoSoftResRoll ) )
-  SLASH_RR1 = RollSlashCommand.RaidRoll
-  M.api().SlashCmdList[ "RR" ] = in_group_check( on_roll_command( RollSlashCommand.RaidRoll ) )
-  SLASH_IRR1 = RollSlashCommand.InstaRaidRoll
-  M.api().SlashCmdList[ "IRR" ] = in_group_check( on_roll_command( RollSlashCommand.InstaRaidRoll ) )
-  SLASH_HTR1 = "/htr"
-  M.api().SlashCmdList[ "HTR" ] = in_group_check( show_how_to_roll )
-  SLASH_CR1 = "/cr"
-  M.api().SlashCmdList[ "CR" ] = is_rolling_check( M.roll_controller.cancel_rolling )
-  SLASH_FR1 = "/fr"
-  M.api().SlashCmdList[ "FR" ] = is_rolling_check( M.roll_controller.finish_rolling_early )
-  SLASH_SSR1 = "/ssr"
-  M.api().SlashCmdList[ "SSR" ] = on_show_sorted_rolls_command
-  SLASH_RFR1 = "/rfr"
-  M.api().SlashCmdList[ "RFR" ] = on_reset_dropped_loot_announce_command
-  SLASH_RFRES1 = "/rfres"
-  M.api().SlashCmdList[ "RFRES" ] = function() M.resistance_frame.toggle() end
-
-  -- Soft Res commands
-  SLASH_SR1 = "/sr"
-  M.api().SlashCmdList[ "SR" ] = on_softres_command
-  SLASH_SRS1 = "/srs"
-  M.api().SlashCmdList[ "SRS" ] = M.softres_check.show_softres
-  SLASH_SRC1 = "/src"
-  M.api().SlashCmdList[ "SRC" ] = M.softres_check.check_softres
-  SLASH_SRO1 = "/sro"
-  M.api().SlashCmdList[ "SRO" ] = M.name_matcher.manual_match
-
-  SLASH_RFT1 = "/rft"
-  M.api().SlashCmdList[ "RFT" ] = M.sandbox.run
-  SLASH_RFSETUP1 = "/rfsetup"
-  M.api().SlashCmdList[ "RFSETUP" ] = M.sandbox.setup
+  slash_cmd( RollSlashCommand.NormalRoll, on_roll_command( RollSlashCommand.NormalRoll ) )
+  slash_cmd( RollSlashCommand.NoSoftResRoll, in_group_check( on_roll_command( RollSlashCommand.NoSoftResRoll ) ) )
+  slash_cmd( RollSlashCommand.RaidRoll, in_group_check( on_roll_command( RollSlashCommand.RaidRoll ) ) )
+  slash_cmd( RollSlashCommand.InstaRaidRoll, in_group_check( on_roll_command( RollSlashCommand.InstaRaidRoll ) ) )
+  slash_cmd( "htr", in_group_check( show_how_to_roll ) )
+  slash_cmd( "cr", is_rolling_check( M.roll_controller.cancel_rolling ) )
+  slash_cmd( "fr", is_rolling_check( M.roll_controller.finish_rolling_early ) )
+  slash_cmd( "rfr", on_reset_dropped_loot_announce_command )
+  slash_cmd( "sr", on_softres_command )
 
   if M.rf_test_loot_facade then
-    SLASH_RFTEST1 = "/rftest"
-    M.api().SlashCmdList[ "RFTEST" ] = on_rftest_command
+    slash_cmd( "rftest", on_rftest_command )
   end
 
-  --SLASH_DROPPED1 = "/DROPPED"
-  --M.api().SlashCmdList[ "DROPPED" ] = simulate_loot_dropped
+  --slash_cmd( "dropped", simulate_loot_dropped )
 end
 
 function M.on_player_login()

@@ -338,6 +338,21 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
   roll_controller.subscribe( "cancel_rolling", cancel_rolling )
   roll_controller.subscribe( "start", start )
 
+  -- /ssr replays the last standings, so it only makes sense once rolling has finished.
+  m.slash_cmd( "ssr", function( args )
+    if is_rolling() then
+      chat.info( "Rolling is in progress." )
+      return
+    end
+
+    for limit in string.gmatch( args or "", "(%d+)" ) do
+      show_sorted_rolls( tonumber( limit ) )
+      return
+    end
+
+    show_sorted_rolls( 5 )
+  end )
+
   ---@type RollingLogic
   return {
     on_rolling_finished = on_rolling_finished,

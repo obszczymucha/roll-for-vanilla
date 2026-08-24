@@ -145,6 +145,8 @@ function M.new( db, api, absent_unfiltered_softres, name_matcher, softres_status
     return remove_duplicates( auto_matches, matches ), remove_duplicates( remove_duplicates( auto_not_matches, matches ), auto_matches ), matches
   end
 
+  m.slash_cmd( "sro", manual_match )
+
   local decorator = clone( name_matcher )
   decorator.manual_match = manual_match
   decorator.is_matched = is_matched

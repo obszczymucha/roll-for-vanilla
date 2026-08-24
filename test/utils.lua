@@ -364,6 +364,12 @@ function M.modules()
 end
 
 function M.mock_slashcmdlist()
+  -- Wipe the previous test's commands. Registering a slash command is a no-op if
+  -- the command already exists, so stale callbacks would shadow the new ones.
+  for k in pairs( m_slashcmdlist ) do
+    m_slashcmdlist[ k ] = nil
+  end
+
   M.modules().api.SlashCmdList = m_slashcmdlist
 end
 

@@ -186,6 +186,8 @@ function M.new( popup_builder, content_transformer, resistance_check, db )
   -- land. Nothing to redraw while it's hidden.
   resistance_check.subscribe( refresh_if_visible )
 
+  m.slash_cmd( "rfres", toggle )
+
   ---@type ResistanceFrame
   return {
     show = show,
