@@ -74,21 +74,35 @@ local function cell( row, value )
   return tostring( value )
 end
 
+-- What Personal doesn't say on its own. Food is already counted in the number,
+-- so the star only says part of it isn't gear; the dash says the resistance neck
+-- is missing, whatever the number adds up to. Total gets neither -- both markers
+-- are about what the player brought themselves.
+---@param row ResistanceFrameRow
+---@return string -- empty when there's nothing to point out
+local function markers( row )
+  local result = ""
+
+  if row.food then result = result .. "*" end
+  if row.missing_neck then result = result .. "-" end
+
+  return result
+end
+
 -- Both numbers are judged against the school's minimum on their own, so a row
--- can show gear that falls short next to a buffed total that doesn't. Food is
--- already counted in both; the star only says part of Personal isn't gear.
+-- can show gear that falls short next to a buffed total that doesn't. Markers
+-- ride inside the color, so they read as part of the number.
 ---@param row ResistanceFrameRow
 ---@param value number?
 ---@param school table?
----@param food number? -- how much of personal came from food
+---@param suffix string? -- what markers() had to say about this number
 ---@return string
-local function value_cell( row, value, school, food )
+local function value_cell( row, value, school, suffix )
   if row.scanning or value == nil then return cell( row, value ) end
 
   local color = value >= school.minimum and m.colors.green or m.colors.red
-  local text = food and string.format( "%s*", value ) or tostring( value )
 
-  return color( text )
+  return color( string.format( "%s%s", value, suffix or "" ) )
 end
 
 ---@param content table
@@ -114,7 +128,7 @@ local function add_rows( content, rows )
       type = "resistance_row",
       player = m.colorize_player_by_class( row.player_name, row.class ),
       resistance = cell( row, school and school.label ),
-      personal = value_cell( row, row.personal, school, row.food ),
+      personal = value_cell( row, row.personal, school, markers( row ) ),
       total = value_cell( row, row.total, school ),
       -- Nothing cached means nothing to clear, so the row doesn't offer it.
       clearable = row.personal ~= nil,

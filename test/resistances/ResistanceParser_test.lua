@@ -112,4 +112,19 @@ function ResistanceParserSpec:should_keep_well_fed_out_of_the_gear_totals()
   eq( shadow( { [ 1 ] = { "Resistance to all schools of magic increased by 8." } } ), 0 )
 end
 
+function ResistanceParserSpec:should_read_one_slot_on_its_own()
+  -- Given: the neck is slot 2
+  local totals = parser.parse_slot( {
+    [ 2 ] = { "Pendant of Frozen Flame", "+40 Shadow Resistance" },
+    [ 5 ] = { "Robe of the Void", "+15 Shadow Resistance" }
+  }, 2 )
+
+  -- Then
+  eq( totals[ Shadow ], 40 )
+end
+
+function ResistanceParserSpec:should_read_zero_from_an_empty_slot()
+  eq( parser.parse_slot( { [ 5 ] = { "Robe of the Void", "+15 Shadow Resistance" } }, 2 )[ Shadow ], 0 )
+end
+
 os.exit( lu.LuaUnit.run() )

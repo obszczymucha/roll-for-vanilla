@@ -14,6 +14,7 @@ local ALL_SCHOOLS = "all schools of magic"
 
 ---@class ResistanceParser
 ---@field parse fun( gear: GearLines ): ResistanceTotals
+---@field parse_slot fun( gear: GearLines, slot: number ): ResistanceTotals
 ---@field parse_all_schools fun( lines: string[]? ): number
 
 -- Turns tooltip text into resistance numbers. Reads nothing from the game
@@ -119,6 +120,15 @@ function M.new( api, registry )
     return totals
   end
 
+  -- One slot on its own, so a caller can ask what a single piece brings -- the
+  -- resistance neck, say -- without knowing anything about tooltips.
+  ---@param gear GearLines
+  ---@param slot number
+  ---@return ResistanceTotals -- all zeros when nothing is in that slot
+  local function parse_slot( gear, slot )
+    return parse( { [ slot ] = gear[ slot ] } )
+  end
+
   -- Food says "Resistance to all schools of magic increased by 8." -- no client
   -- format string exposes that wording, so the distinctive part of it is matched
   -- directly. A client that words it differently reads 0 rather than guessing.
@@ -138,6 +148,7 @@ function M.new( api, registry )
   ---@type ResistanceParser
   return {
     parse = parse,
+    parse_slot = parse_slot,
     parse_all_schools = parse_all_schools
   }
 end

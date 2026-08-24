@@ -11,6 +11,14 @@ local getn = m.getn
 -- grants, so its tooltip has to be read to find out.
 local WELL_FED = { [ "Well Fed" ] = true }
 
+-- The neck the run calls for, judged on its own so the GUI can point out who
+-- turned up without it. What gets cached is the neck's whole resistance
+-- breakdown rather than a yes/no, so retuning these takes effect on the next
+-- redraw without re-scanning anyone.
+local NECK_SLOT = 2
+local NECK_TYPE = m.ResistanceRegistry.ResistanceType.Shadow
+local NECK_MINIMUM = 40
+
 ---@class ResistanceRow
 ---@field player_name string
 ---@field class PlayerClass?
@@ -18,6 +26,7 @@ local WELL_FED = { [ "Well Fed" ] = true }
 ---@field personal number?                -- gear and food, nil when there's no data
 ---@field total number?                   -- personal plus the raid buff, nil when there's no data
 ---@field food number?                    -- how much of personal came from food, nil when none did
+---@field missing_neck boolean?           -- true when the required neck isn't worn, nil when it is or isn't known
 ---@field scanning boolean
 ---@field failed boolean -- the last scan couldn't reach them; not the same as never scanned
 
@@ -42,6 +51,7 @@ function M.new( db, group_roster, gear_scanner, buff_scanner, parser, registry )
   -- The cache has to live one level down to be enumerable, and so clear_all can
   -- drop the whole thing in one write.
   db.gear = db.gear or {}
+  db.neck = db.neck or {}
 
   local m_scanning = {}
   local m_scanning_count = 0
@@ -98,6 +108,11 @@ function M.new( db, group_roster, gear_scanner, buff_scanner, parser, registry )
     result.total = result.personal + (buffs[ resistance_type ] or 0)
     result.food = food > 0 and food or nil
 
+    -- Gear cached before the neck was tracked has nothing to say either way, so
+    -- it says nothing rather than accusing everyone of turning up without one.
+    local neck = db.neck[ player.name ]
+    if neck and (neck[ NECK_TYPE ] or 0) < NECK_MINIMUM then result.missing_neck = true end
+
     return result
   end
 
@@ -148,6 +163,7 @@ function M.new( db, group_roster, gear_scanner, buff_scanner, parser, registry )
         M.debug.add( string.format( "%s: %s", name, error_type ) )
       else
         db.gear[ name ] = parser.parse( gear )
+        db.neck[ name ] = parser.parse_slot( gear, NECK_SLOT )
         M.debug.add( string.format( "cached %s", name ) )
       end
 
@@ -182,6 +198,7 @@ function M.new( db, group_roster, gear_scanner, buff_scanner, parser, registry )
   ---@param player_name string
   local function clear( player_name )
     db.gear[ player_name ] = nil
+    db.neck[ player_name ] = nil
     m_failed[ player_name ] = nil
     M.debug.add( string.format( "cleared %s", player_name ) )
     notify()
@@ -189,6 +206,7 @@ function M.new( db, group_roster, gear_scanner, buff_scanner, parser, registry )
 
   local function clear_all()
     db.gear = {}
+    db.neck = {}
 
     for player_name in pairs( m_failed ) do
       m_failed[ player_name ] = nil

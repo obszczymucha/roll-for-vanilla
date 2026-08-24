@@ -92,6 +92,7 @@ function M.new( popup_builder, content_transformer, resistance_check, db )
         personal = row.personal,
         total = row.total,
         food = row.food,
+        missing_neck = row.missing_neck,
         scanning = row.scanning,
         failed = row.failed,
         on_clear = function() resistance_check.clear( player_name ) end

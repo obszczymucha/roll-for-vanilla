@@ -117,7 +117,8 @@ end
 ---@param name string
 ---@param class PlayerClass
 ---@param food number? -- how much of personal came from a Well Fed buff
-local function scanned( name, class, resistance_type, personal, total, food )
+---@param missing_neck boolean? -- true when the required resistance neck isn't worn
+local function scanned( name, class, resistance_type, personal, total, food, missing_neck )
   return {
     player_name = name,
     class = class,
@@ -125,6 +126,7 @@ local function scanned( name, class, resistance_type, personal, total, food )
     personal = personal,
     total = total,
     food = food,
+    missing_neck = missing_neck,
     scanning = false,
     failed = false
   }
@@ -475,6 +477,43 @@ function ResistanceFrameSpec:should_star_the_gear_without_disturbing_its_colour(
 
   -- Then
   frame.should_display( popup( { line( "Obszczymucha", "Mage", fire, at_least( "302*" ), at_least( "327" ) ) } ) )
+end
+
+function ResistanceFrameSpec:should_dash_the_gear_of_a_player_without_the_resistance_neck()
+  -- The dash is about the neck, not the number: 302 clears fire's 295 and still
+  -- gets marked.
+  -- Given
+  local frame = new_frame( mock_resistance_check( { scanned( "Obszczymucha", "Mage", Fire, 302, 327, nil, true ) } ) )
+
+  -- When
+  frame.show()
+
+  -- Then
+  frame.should_display( popup( { line( "Obszczymucha", "Mage", fire, at_least( "302-" ), at_least( "327" ) ) } ) )
+end
+
+function ResistanceFrameSpec:should_mark_food_and_a_missing_neck_together()
+  -- Given
+  local frame = new_frame( mock_resistance_check( { scanned( "Psikutas", "Warrior", Shadow, 130, 200, 8, true ) } ) )
+
+  -- When
+  frame.show()
+
+  -- Then
+  frame.should_display( popup( { line( "Psikutas", "Warrior", shadow, below( "130*-" ), at_least( "200" ) ) } ) )
+end
+
+function ResistanceFrameSpec:should_leave_the_total_unmarked()
+  -- Both markers are about what the player brought themselves, so neither
+  -- follows the buffed total.
+  -- Given
+  local frame = new_frame( mock_resistance_check( { scanned( "Psikutas", "Warrior", Shadow, 180, 240, 8, true ) } ) )
+
+  -- When
+  frame.show()
+
+  -- Then
+  frame.should_display( popup( { line( "Psikutas", "Warrior", shadow, at_least( "180*-" ), at_least( "240" ) ) } ) )
 end
 
 os.exit( lu.LuaUnit.run() )

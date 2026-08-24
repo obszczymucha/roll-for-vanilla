@@ -83,10 +83,13 @@ local function mock_buff_scanner( buffs, tooltips )
 end
 
 -- The real parser is covered by its own tests; here the "gear lines" are the
--- totals and a buff tooltip is just the number it grants.
+-- totals and a buff tooltip is just the number it grants. The neck's totals ride
+-- along under a key of their own, because slot numbers and resistance types
+-- share the same small integers and would otherwise collide.
 local function mock_parser()
   return {
     parse = function( gear ) return gear end,
+    parse_slot = function( gear ) return gear.neck or {} end,
     parse_all_schools = function( lines ) return lines and lines.all_schools or 0 end
   }
 end
@@ -117,6 +120,7 @@ local function check( options )
   sut.buffs = buffs
   sut.gear_scanner = gear_scanner
   sut.cached_gear = function() return saved.resistance_check.gear end
+  sut.cached_neck = function() return saved.resistance_check.neck end
 
   return sut
 end
@@ -149,6 +153,8 @@ local function food_data( name, resistance_type, personal, total, food )
     personal = personal,
     total = total,
     food = food,
+    -- Nothing here equips a neck, so every scanned row says so.
+    missing_neck = true,
     scanning = false,
     failed = false
   }
@@ -158,13 +164,15 @@ end
 ---@param resistance_type ResistanceType
 ---@param personal number
 ---@param total number
-local function data( name, resistance_type, personal, total )
+---@param neck boolean? -- true when the required resistance neck is equipped
+local function data( name, resistance_type, personal, total, neck )
   return {
     player_name = name,
     class = "Warrior",
     resistance_type = resistance_type,
     personal = personal,
     total = total,
+    missing_neck = not neck or nil,
     scanning = false,
     failed = false
   }
@@ -570,6 +578,71 @@ function ResistanceCheckSpec:should_leave_food_unset_for_a_player_who_is_not_wel
 
   -- Then
   eq( sut.get_rows(), { data( "Psikutas", Shadow, 60, 130 ) } )
+end
+
+function ResistanceCheckSpec:should_report_a_neck_that_meets_the_requirement()
+  -- Given
+  local sut = check()
+
+  -- When
+  sut.scan()
+  sut.gear_scanner.complete( "raid1", { [ Shadow ] = 60, neck = { [ Shadow ] = 40 } } )
+
+  -- Then
+  eq( sut.get_rows(), { data( "Psikutas", Shadow, 60, 60, true ) } )
+end
+
+function ResistanceCheckSpec:should_report_a_neck_that_falls_short_as_missing()
+  -- Given
+  local sut = check()
+
+  -- When
+  sut.scan()
+  sut.gear_scanner.complete( "raid1", { [ Shadow ] = 60, neck = { [ Shadow ] = 39 } } )
+
+  -- Then
+  eq( sut.get_rows(), { data( "Psikutas", Shadow, 60, 60 ) } )
+end
+
+function ResistanceCheckSpec:should_say_nothing_about_the_neck_of_a_player_scanned_before_it_was_tracked()
+  -- Gear cached by an older version has no neck entry, which is not the same as
+  -- having scanned an empty neck slot.
+  -- Given
+  local sut = check()
+
+  -- When
+  sut.scan()
+  sut.gear_scanner.complete( "raid1", { [ Shadow ] = 60 } )
+  sut.cached_neck()[ "Psikutas" ] = nil
+
+  -- Then
+  eq( sut.get_rows()[ 1 ].missing_neck, nil )
+end
+
+function ResistanceCheckSpec:should_forget_the_neck_along_with_the_gear()
+  -- Given
+  local sut = check()
+  sut.scan()
+  sut.gear_scanner.complete( "raid1", { [ Shadow ] = 60, neck = { [ Shadow ] = 40 } } )
+
+  -- When
+  sut.clear( "Psikutas" )
+
+  -- Then
+  eq( sut.cached_neck(), {} )
+end
+
+function ResistanceCheckSpec:should_forget_every_neck_when_clearing_all()
+  -- Given
+  local sut = check()
+  sut.scan()
+  sut.gear_scanner.complete( "raid1", { [ Shadow ] = 60, neck = { [ Shadow ] = 40 } } )
+
+  -- When
+  sut.clear_all()
+
+  -- Then
+  eq( sut.cached_neck(), {} )
 end
 
 os.exit( lu.LuaUnit.run() )
