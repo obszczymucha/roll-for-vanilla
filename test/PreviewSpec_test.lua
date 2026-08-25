@@ -835,7 +835,7 @@ function PreviewSoftRessedItemSpec:should_display_roll_button_that_starts_rollin
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.party( "Roll for [Hearthstone]: SR by Obszczymucha and Psikutas [2 rolls]" )
+  chat.party( "Roll for [Hearthstone]. SR by Obszczymucha and Psikutas [2 rolls]" )
 end
 
 function PreviewSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_raid()
@@ -876,7 +876,7 @@ function PreviewSoftRessedItemSpec:should_display_roll_button_that_starts_rollin
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Hearthstone]: SR by Obszczymucha and Psikutas [2 rolls]" )
+  chat.raid_warning( "Roll for [Hearthstone]. SR by Obszczymucha and Psikutas [2 rolls]" )
 end
 
 function PreviewSoftRessedItemSpec:should_reset_the_preview_if_loot_was_closed_and_reopened_with_the_same_item_but_different_count()

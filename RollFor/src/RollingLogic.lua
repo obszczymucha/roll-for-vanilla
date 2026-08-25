@@ -58,8 +58,13 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     end
 
     roll_controller.waiting_for_rolls()
-    local message = m.prettify_table( remaining_rollers, transform )
-    chat.announce( string.format( "SR rolls remaining: %s", message ) )
+
+    -- Split rather than formatted whole: the per-player string grew a bonus roll count,
+    -- and a raid where everyone owes one runs out of chat message well before it runs out
+    -- of rollers.
+    for _, message in ipairs( m.split_message( "SR rolls remaining: ", remaining_rollers, transform ) ) do
+      chat.announce( message )
+    end
   end
 
   ---@param strategy RollingStrategy

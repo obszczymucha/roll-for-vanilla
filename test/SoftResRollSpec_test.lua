@@ -62,7 +62,7 @@ function WaitForRemainingRollsSpec:should_finish_early_if_two_items_drop_and_the
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  rw( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
+  rw( "Roll for 2x[Bag]. 2 top rolls win. SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp" )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
     sr_row( p1, { false, false }, 2, 11 ),
@@ -138,7 +138,7 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_win_if_rol
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  rw( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
+  rw( "Roll for 2x[Bag]. 2 top rolls win. SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp" )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
     sr_row( p1, { false, false }, 2, 11 ),
@@ -227,7 +227,7 @@ function WaitForRemainingRollsSpec:should_wait_for_remaining_roll_and_tie_if_rol
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  rw( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
+  rw( "Roll for 2x[Bag]. 2 top rolls win. SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp" )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
     sr_row( p1, { false, false }, 2, 11 ),
@@ -356,7 +356,7 @@ function WaitForRemainingRollsSpec:should_finish_early_if_two_top_rolls_tie()
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  rw( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp. 2 top rolls win." )
+  rw( "Roll for 2x[Bag]. 2 top rolls win. SR by Drutree [2 rolls], Mendunia, Mufasapowel [2 rolls] and Pinp" )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
     sr_row( p1, { false, false }, 2, 11 ),
@@ -432,7 +432,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  rw( "Roll for [Bag]: SR by Obszczymucha and Psikutas" )
+  rw( "Roll for [Bag]. SR by Obszczymucha and Psikutas" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     roll_placeholder( p2, 11 ),
@@ -612,7 +612,7 @@ function WaitForRemainingRollsSpec:should_cancel_rolling_and_display_initial_set
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  rw( "Roll for [Bag]: SR by Obszczymucha and Psikutas" )
+  rw( "Roll for [Bag]. SR by Obszczymucha and Psikutas" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     roll_placeholder( p2, 11 ),
@@ -696,7 +696,7 @@ function WaitForRemainingRollsSpec:should_wait_for_all_sr_players_to_roll_and_aw
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  rw( "Roll for 2x[Bag]: SR by Jimmy, Obszczymucha and Psikutas. 2 top rolls win." )
+  rw( "Roll for 2x[Bag]. 2 top rolls win. SR by Jimmy, Obszczymucha and Psikutas" )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
     roll_placeholder( p3, 11 ),
@@ -950,7 +950,7 @@ function SoftResTieRollSpec:should_display_tie_rolls()
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  rw( "Roll for [Bag]: SR by Obszczymucha and Psikutas" )
+  rw( "Roll for [Bag]. SR by Obszczymucha and Psikutas" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     roll_placeholder( p2, 11 ),
@@ -1143,7 +1143,7 @@ function SoftResTieRollSpec:should_not_tie_roll_if_sring_player_rolls_the_same_a
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  rw( "Roll for [Bag]: SR by Goldblood and Maulfunction [2 rolls]" )
+  rw( "Roll for [Bag]. SR by Goldblood and Maulfunction [2 rolls]" )
   rf.rolling_popup.should_display(
     item_link( item, 1 ),
     sr_row( p2, { false }, 2, 11 ),
@@ -1315,7 +1315,7 @@ function NetherVortexSpec:should_handle_single_and_double_vortex_drops_across_mu
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  rw( "Roll for [Nether Vortex]: SR by Alfa and Beta" )
+  rw( "Roll for [Nether Vortex]. SR by Alfa and Beta" )
 
   -- When both roll
   rf.roll( p1, 80, 1, 100 )
@@ -1425,7 +1425,7 @@ function NetherVortexSpec:should_handle_single_and_double_vortex_drops_across_mu
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  rw( "Roll for [Nether Vortex]: SR by Alfa and Beta" )
+  rw( "Roll for [Nether Vortex]. SR by Alfa and Beta" )
 
   -- When both roll
   rf.roll( p1, 30, 1, 100 )
@@ -1800,7 +1800,7 @@ function MultipleSrRollsPerPlayerSpec:should_not_award_both_copies_to_the_same_p
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  rw( "Roll for 2x[Bag]: SR by Drutree [2 rolls], Mendunia and Pinp. 2 top rolls win." )
+  rw( "Roll for 2x[Bag]. 2 top rolls win. SR by Drutree [2 rolls], Mendunia and Pinp" )
 
   -- When (Drutree burns both of his rolls before anyone else rolls)
   rf.roll( p1, 91, 1, 100 )

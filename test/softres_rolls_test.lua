@@ -115,11 +115,41 @@ function SoftResIntegrationSpec:should_only_process_rolls_from_players_who_soft_
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: SR by Ponpon and Psikutas" ),
+    rw( "Roll for [Hearthstone]. SR by Ponpon and Psikutas" ),
     c( "RollFor: Rikus didn't SR [Hearthstone]. This roll (100) is ignored." ),
     c( "RollFor: Obszczymucha didn't SR [Hearthstone]. This roll (42) is ignored." ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone] (SR)." ),
     rolling_finished()
+  )
+end
+
+-- Enough soft-ressers that the roll call cannot share a line with the item link. The
+-- raid warning then carries only the item, and the list follows in raid chat.
+function SoftResIntegrationSpec:should_split_a_long_roll_call_off_the_raid_warning_and_into_raid_chat()
+  -- Given
+  local names = { "Obszczymucha", "Thundershock", "Sylvanaris", "Bearlyalive", "Nightwhisper",
+    "Mordekaiser", "Shadowmourne", "Blizzhoofer", "Faerthurin", "Zugzugmore" }
+
+  player( "Psikutas" )
+  is_in_raid( leader( "Psikutas" ), unpack( names ) )
+
+  -- Two rolls each, so the annotation pushes the line past what chat will take.
+  local softres = {}
+  for _, name in ipairs( names ) do
+    table.insert( softres, sr( name, 123 ) )
+    table.insert( softres, sr( name, 123 ) )
+  end
+  soft_res( unpack( softres ) )
+
+  -- When
+  roll_for( "Hearthstone", 1, 123 )
+
+  -- Then
+  m.chat.assert(
+    rw( "Roll for [Hearthstone] (SR)" ),
+    r( "SR by Bearlyalive [2 rolls], Blizzhoofer [2 rolls], Faerthurin [2 rolls], Mordekaiser [2 rolls], " ..
+      "Nightwhisper [2 rolls], Obszczymucha [2 rolls], Shadowmourne [2 rolls], Sylvanaris [2 rolls], " ..
+      "Thundershock [2 rolls] and Zugzugmore [2 rolls]" )
   )
 end
 
@@ -138,7 +168,7 @@ function SoftResIntegrationSpec:should_ignore_offspec_rolls_by_players_who_soft_
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: SR by Ponpon and Psikutas" ),
+    rw( "Roll for [Hearthstone]. SR by Ponpon and Psikutas" ),
     c( "RollFor: Psikutas did SR [Hearthstone], but didn't /roll. This roll (69) is ignored." ),
     r( "Stopping rolls in 3", "2", "1" ),
     r( "SR rolls remaining: Psikutas (1 roll)" ),
@@ -162,7 +192,7 @@ function SoftResIntegrationSpec:should_announce_current_highest_roller_if_a_play
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: SR by Ponpon and Psikutas" ),
+    rw( "Roll for [Hearthstone]. SR by Ponpon and Psikutas" ),
     c( "RollFor: Psikutas did SR [Hearthstone], but didn't /roll. This roll (69) is ignored." ),
     r( "Stopping rolls in 3", "2", "1" ),
     r( "SR rolls remaining: Psikutas (1 roll)" ),
@@ -184,7 +214,7 @@ function SoftResIntegrationSpec:should_announce_all_missing_sr_rolls_if_players_
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: SR by Ponpon [2 rolls], Psikutas [2 rolls] and Rikus" ),
+    rw( "Roll for [Hearthstone]. SR by Ponpon [2 rolls], Psikutas [2 rolls] and Rikus" ),
     r( "Stopping rolls in 3", "2", "1" ),
     r( "SR rolls remaining: Ponpon (1 roll), Psikutas (2 rolls) and Rikus (1 roll)" )
   )
@@ -202,7 +232,7 @@ function SoftResIntegrationSpec:should_announce_all_missing_sr_rolls_if_none_of_
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: SR by Ponpon [2 rolls], Psikutas [2 rolls] and Rikus" ),
+    rw( "Roll for [Hearthstone]. SR by Ponpon [2 rolls], Psikutas [2 rolls] and Rikus" ),
     r( "Stopping rolls in 3", "2", "1" ),
     r( "SR rolls remaining: Ponpon (2 rolls), Psikutas (2 rolls) and Rikus (1 roll)" )
   )
@@ -220,7 +250,7 @@ function SoftResIntegrationSpec:should_announce_all_missing_sr_rolls_if_none_of_
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: SR by Ponpon [2 rolls], Psikutas [2 rolls] and Rikus" ),
+    rw( "Roll for [Hearthstone]. SR by Ponpon [2 rolls], Psikutas [2 rolls] and Rikus" ),
     r( "Stopping rolls in 3", "2", "1" ),
     r( "SR rolls remaining: Ponpon (2 rolls), Psikutas (2 rolls) and Rikus (1 roll)" )
   )
@@ -241,7 +271,7 @@ function SoftResIntegrationSpec:should_allow_multiple_rolls_if_a_player_soft_res
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: SR by Ponpon and Psikutas [2 rolls]" ),
+    rw( "Roll for [Hearthstone]. SR by Ponpon and Psikutas [2 rolls]" ),
     c( "RollFor: Ponpon exhausted their rolls. This roll (100) is ignored." ),
     cr( "Psikutas rolled the highest (99) for [Hearthstone] (SR)." ),
     rolling_finished()
@@ -268,7 +298,7 @@ function SoftResIntegrationSpec:should_ask_for_a_reroll_if_there_is_a_tie_and_ig
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: SR by Pimp, Ponpon, Psikutas and Rikus" ),
+    rw( "Roll for [Hearthstone]. SR by Pimp, Ponpon, Psikutas and Rikus" ),
     cr( "Pimp, Ponpon and Psikutas rolled the highest (69) for [Hearthstone] (SR)." ),
     r( "Pimp, Ponpon and Psikutas /roll for [Hearthstone] now." ),
     c( "RollFor: Rikus didn't tie roll for [Hearthstone]. This roll (100) is ignored." ),
@@ -297,7 +327,7 @@ function SoftResIntegrationSpec:should_not_ask_for_a_reroll_if_there_is_a_tie_an
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: SR by Pimp, Ponpon, Psikutas [2 rolls] and Rikus" ),
+    rw( "Roll for [Hearthstone]. SR by Pimp, Ponpon, Psikutas [2 rolls] and Rikus" ),
     r( "Stopping rolls in 3", "2", "1" ),
     r( "SR rolls remaining: Psikutas (1 roll)" ),
     cr( "Psikutas rolled the highest (70) for [Hearthstone] (SR)." ),
@@ -477,14 +507,14 @@ function SoftResIntegrationSpec:should_not_allow_a_sr_winner_to_roll_again_if_th
   -- Then it should not count Trololoo in the list of SRers, because he already got one.
   m.chat.assert(
     r( "Jin'do the Hexxer dropped 1 item:", "1. [Primal Hakkari Idol] (SR by Bomanz, Elizalee [2 rolls] and Trololoo)" ),
-    rw( "Roll for [Primal Hakkari Idol]: SR by Bomanz, Elizalee [2 rolls] and Trololoo" ),
+    rw( "Roll for [Primal Hakkari Idol]. SR by Bomanz, Elizalee [2 rolls] and Trololoo" ),
     r( "Stopping rolls in 3", "2", "1" ),
     r( "SR rolls remaining: Bomanz (1 roll)" ),
     cr( "Trololoo rolled the highest (100) for [Primal Hakkari Idol] (SR)." ),
     rolling_finished(),
     c( "RollFor: Trololoo received [Primal Hakkari Idol]." ),
     r( "Bloodlord Mandokir dropped 1 item:", "1. [Primal Hakkari Idol] (SR by Bomanz and Elizalee [2 rolls])" ),
-    rw( "Roll for [Primal Hakkari Idol]: SR by Bomanz and Elizalee [2 rolls]" ),
+    rw( "Roll for [Primal Hakkari Idol]. SR by Bomanz and Elizalee [2 rolls]" ),
     cr( "Bomanz rolled the highest (94) for [Primal Hakkari Idol] (SR)." ),
     rolling_finished()
   )
@@ -530,14 +560,14 @@ function SoftResIntegrationSpec:should_not_allow_a_double_sr_winner_to_roll_agai
   -- Then it should not count Elizalee in the list of SRers, because he already got one.
   m.chat.assert(
     r( "Jin'do the Hexxer dropped 1 item:", "1. [Primal Hakkari Idol] (SR by Bomanz, Elizalee [2 rolls] and Trololoo)" ),
-    rw( "Roll for [Primal Hakkari Idol]: SR by Bomanz, Elizalee [2 rolls] and Trololoo" ),
+    rw( "Roll for [Primal Hakkari Idol]. SR by Bomanz, Elizalee [2 rolls] and Trololoo" ),
     r( "Stopping rolls in 3", "2", "1" ),
     r( "SR rolls remaining: Bomanz (1 roll)" ),
     cr( "Elizalee rolled the highest (100) for [Primal Hakkari Idol] (SR)." ),
     rolling_finished(),
     c( "RollFor: Elizalee received [Primal Hakkari Idol]." ),
     r( "Bloodlord Mandokir dropped 1 item:", "1. [Primal Hakkari Idol] (SR by Bomanz and Trololoo)" ),
-    rw( "Roll for [Primal Hakkari Idol]: SR by Bomanz and Trololoo" ),
+    rw( "Roll for [Primal Hakkari Idol]. SR by Bomanz and Trololoo" ),
     cr( "Bomanz rolled the highest (94) for [Primal Hakkari Idol] (SR)." ),
     rolling_finished()
   )
@@ -560,7 +590,7 @@ function SoftResIntegrationSpec:should_only_process_rolls_from_players_who_soft_
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: SR by Ponpon, Psikutas and Sälvatrucha" ),
+    rw( "Roll for [Hearthstone]. SR by Ponpon, Psikutas and Sälvatrucha" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Sälvatrucha rolled the highest (69) for [Hearthstone] (SR)." ),
     rolling_finished()
@@ -580,7 +610,7 @@ function SoftResIntegrationSpec:should_stop_rolling_if_player_who_won_still_has_
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: SR by Ponpon and Psikutas [2 rolls]" ),
+    rw( "Roll for [Hearthstone]. SR by Ponpon and Psikutas [2 rolls]" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone] (SR)." ),
     rolling_finished()
   )

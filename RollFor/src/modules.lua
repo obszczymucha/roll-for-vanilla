@@ -324,8 +324,130 @@ function M.set_game_tooltip_with_item_id( item_id )
   M.api.GameTooltip:SetHyperlink( string.format( "item:%s:0:0:0:0:0:0:0", item_id ) )
 end
 
--- TODO: This should split the string into two if the length exceeds 255 so we don't blow up.
--- The function should return a table instead that we could then iterate on.
+-- SendChatMessage takes at most 255 bytes, markup and all: an item link spends 67-90 of
+-- them before a single name is written. Over the limit the message does not arrive
+-- mangled, it does not arrive at all, so nothing that builds a raid announcement out of
+-- a player list may assume it fits.
+M.chat_message_limit = 255
+
+-- Where the byte at `i` starts something that must not be cut in half, this is the index
+-- of that thing's last byte; otherwise it is `i`. Whole hyperlinks are atomic because
+-- half of one renders as garbage, and multi-byte UTF-8 characters are atomic because
+-- half of one is not a character at all.
+---@param text string
+---@param i number
+---@return number
+local function atom_end( text, i )
+  local patterns = {
+    "^|c%x%x%x%x%x%x%x%x|H.-|h.-|h|r", -- colored hyperlink: an item link
+    "^|H.-|h.-|h|r",                   -- bare hyperlink
+    "^|T.-|t",                         -- inline texture
+    "^|c%x%x%x%x%x%x%x%x",             -- color code, opening
+    "^|r",                             -- color code, closing
+    "^||"                              -- escaped pipe
+  }
+
+  for _, pattern in ipairs( patterns ) do
+    local _, last = string.find( text, pattern, i )
+    if last then return last end
+  end
+
+  local byte = string.byte( text, i )
+  if not byte then return i end
+
+  -- UTF-8 lead bytes say how many continuation bytes follow. Names on non-English realms
+  -- are the reason this matters.
+  if byte >= 240 then return i + 3 end
+  if byte >= 224 then return i + 2 end
+  if byte >= 192 then return i + 1 end
+
+  return i
+end
+
+-- A message that stops mid-list looks like a message that got cut off, because that is
+-- exactly what it is. These say so: the line that runs out ends in one, and the line that
+-- picks it up starts with the other. Both cost bytes, so both are reserved for before any
+-- content is packed -- adding them afterwards is how a splitter overflows its own limit.
+local CONTINUES = ", ..."  -- ends a message that has more of the list to come
+local RESUMES = "..."      -- begins the message carrying the rest
+
+-- Free text has no list to comma off, so the markers stand on their own.
+local CONTINUES_TEXT = " ..."
+local RESUMES_TEXT = "... "
+
+-- The last resort, one step above losing the message entirely: hard-split text that is
+-- still too long into pieces that fit, breaking on a space where there is one and
+-- between atoms where there isn't. M.split_message already breaks announcements on
+-- element boundaries, so reaching this means something built a long line another way.
+---@param text string
+---@param limit number?
+---@return string[]
+function M.chunk_text( text, limit )
+  limit = limit or M.chat_message_limit
+  if not text or string.len( text ) <= limit then return { text } end
+
+  local result = {}
+  local length = string.len( text )
+  local line_start, i = 1, 1
+  local last_space -- index of the last byte that could end a line before a space
+  local first = true
+
+  -- Every line has to keep room for the marker saying it continues; every line after the
+  -- first also pays for the one saying it resumed. The final line does not need the
+  -- former, so it is budgeted a few bytes tighter than it strictly has to be -- always
+  -- safe, and never worth an extra pass to find out.
+  local function width()
+    return limit - string.len( CONTINUES_TEXT ) - (first and 0 or string.len( RESUMES_TEXT ))
+  end
+
+  local function emit( from, to, continues )
+    local line = string.sub( text, from, to )
+    if not first then line = RESUMES_TEXT .. line end
+    if continues then line = line .. CONTINUES_TEXT end
+
+    table.insert( result, line )
+    first = false
+  end
+
+  while i <= length do
+    local last = atom_end( text, i )
+
+    if last - line_start + 1 > width() then
+      -- This atom overflows the line. Break before it, preferring the last space so we
+      -- don't cut a word; a single atom wider than the whole limit goes out oversized
+      -- rather than being dropped.
+      --
+      -- Unless the atom that didn't fit is itself a space, in which case the line already
+      -- ends on a word boundary and falling back to the previous space would throw away
+      -- a whole word's worth of the line.
+      local cut = string.sub( text, i, last ) == " " and i - 1 or last_space or i - 1
+      if cut < line_start then cut = last end
+
+      -- Where the next line picks up, which is also the answer to whether this one
+      -- continues at all: an atom too wide for any line takes the rest of the text with
+      -- it, and a message that ends in "..." with nothing following it is a lie.
+      local next_start = cut + 1
+
+      while string.sub( text, next_start, next_start ) == " " do
+        next_start = next_start + 1
+      end
+
+      emit( line_start, cut, next_start <= length )
+
+      line_start = next_start
+      last_space = nil
+      i = line_start
+    else
+      if string.sub( text, i, last ) == " " then last_space = i - 1 end
+      i = last + 1
+    end
+  end
+
+  if line_start <= length then emit( line_start, length, false ) end
+
+  return result
+end
+
 function M.prettify_table( t, f )
   local result = ""
 
@@ -346,6 +468,62 @@ function M.prettify_table( t, f )
   end
 
   result = result .. " and " .. (f and f( t[ getn( t ) ] ) or t[ getn( t ) ])
+  return result
+end
+
+-- prettify_table for things that get announced to the raid: same list, but broken into as
+-- many messages as it takes for each one to fit in a chat message.
+--
+-- The prefix and the suffix are what makes this a message builder rather than a list
+-- formatter. They are the fixed parts of the announcement -- "Roll for <item link>: SR by "
+-- and ". 2 top rolls win." -- and the budget for the list is whatever they leave behind.
+-- Formatting the list first and asking about its length afterwards is what makes a
+-- message overflow: by then the item link has already been paid for.
+--
+-- Breaks only ever land between elements, so a name or an item link is never cut. The
+-- separator at a break is dropped -- the line break separates them well enough.
+---@param prefix string? -- goes on the first message only
+---@param t table
+---@param f (fun( element: any ): string)?
+---@param suffix string? -- goes on the last message only
+---@param limit number?
+---@return string[]
+function M.split_message( prefix, t, f, suffix, limit )
+  prefix = prefix or ""
+  suffix = suffix or ""
+  limit = limit or M.chat_message_limit
+
+  local count = getn( t )
+  if count == 0 then return { prefix .. suffix } end
+
+  local result = {}
+  local buffer = prefix
+  local in_buffer = 0
+
+  for i = 1, count do
+    local element = f and f( t[ i ] ) or t[ i ]
+    local separator = in_buffer == 0 and "" or (i == count and " and " or ", ")
+
+    -- What still has to fit once this element is placed: the suffix if it is the last
+    -- one, otherwise the marker that says the list carries on. Reserved rather than
+    -- appended -- whether this message continues isn't known until the next element
+    -- doesn't fit, and by then there would be no room left to say so.
+    local reserved = i == count and suffix or CONTINUES
+
+    if in_buffer > 0 and string.len( buffer .. separator .. element .. reserved ) > limit then
+      table.insert( result, buffer .. CONTINUES )
+      buffer = RESUMES .. element
+      in_buffer = 1
+    else
+      buffer = buffer .. separator .. element
+      in_buffer = in_buffer + 1
+    end
+
+    if i == count then buffer = buffer .. suffix end
+  end
+
+  table.insert( result, buffer )
+
   return result
 end
 

@@ -28,8 +28,17 @@ function M.new( api, group_roster, player_info )
     end
   end
 
+  -- The last line of defence against the 255 byte chat limit. Callers that build a
+  -- message out of a player list are expected to have split it on element boundaries
+  -- already (m.split_message), because that reads better than anything that can be done
+  -- from here -- but a message that arrives here too long still goes out in pieces
+  -- rather than not going out at all.
   local function announce( text, use_raid_warning )
-    api.SendChatMessage( text, get_roll_announcement_chat_type( use_raid_warning ) )
+    local chat_type = get_roll_announcement_chat_type( use_raid_warning )
+
+    for _, chunk in ipairs( m.chunk_text( text ) ) do
+      api.SendChatMessage( chunk, chat_type )
+    end
   end
 
   local function info( message, color_fn, module_name )

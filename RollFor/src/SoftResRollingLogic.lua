@@ -312,11 +312,38 @@ function M.new(
 
   local function start_rolling()
     local count_str = item_count > 1 and string.format( "%sx", item_count ) or ""
-    local x_rolls_win = item_count > 1 and string.format( ". %d top rolls win.", item_count ) or ""
-    local ressed_by = m.prettify_table( map( players, format_name_with_rolls ) )
+
+    -- One fact per sentence, in the order the raid needs them: what is up, how many win,
+    -- who is in. The period is a separator between them rather than a terminator, so it
+    -- only appears when something actually follows -- which is what keeps the wording the
+    -- same whether the roll call rides along or gets lifted out into raid chat.
+    local x_rolls_win = item_count > 1 and string.format( " %d top rolls win.", item_count ) or ""
 
     if player_count > item_count then
-      chat.announce( string.format( "Roll for %s%s: SR by %s%s", count_str, item.link, ressed_by, x_rolls_win ), true )
+      local roll_call = map( players, format_name_with_rolls )
+
+      -- The item link alone is a third of the chat limit, and every bonus roll annotation
+      -- is another ~18 bytes on top of a name, so the roll call is built against what the
+      -- fixed parts leave over instead of being formatted and hoped for.
+      local prefix = string.format( "Roll for %s%s.%s SR by ", count_str, item.link, x_rolls_win )
+      local messages = m.split_message( prefix, roll_call )
+
+      if getn( messages ) == 1 then
+        chat.announce( messages[ 1 ], true )
+      else
+        -- Too many soft-ressers to fit, so the two stop competing for the same line. The
+        -- raid warning keeps what everyone has to see -- the item and how many win -- and
+        -- the roll call follows in raid chat, where several lines are not an assault.
+        local header = string.format( "Roll for %s%s (SR)%s", count_str, item.link,
+          x_rolls_win ~= "" and string.format( ".%s", x_rolls_win ) or "" )
+
+        chat.announce( header, true )
+
+        for _, message in ipairs( m.split_message( "SR by ", roll_call ) ) do
+          chat.announce( message )
+        end
+      end
+
       accept_rolls()
       return
     end

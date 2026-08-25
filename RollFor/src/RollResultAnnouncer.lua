@@ -28,10 +28,10 @@ function M.new( chat, roll_controller, config )
     local rerolling = winners[ 1 ].rerolling
     local item = winners[ 1 ].item
 
-    local function message( rollers, f )
+    -- Everything after the roller list, which is what the list has left to spend.
+    local function suffix( f )
       return string.format(
-        "%s %srolled the %shighest (%s) for %s%s.",
-        rollers,
+        " %srolled the %shighest (%s) for %s%s.",
         rerolling and "re-" or "",
         top_roll and "" or "next ",
         f and f( roll_value ) or roll_value,
@@ -40,9 +40,16 @@ function M.new( chat, roll_controller, config )
       )
     end
 
-    local rollers = m.prettify_table( winners, function( p ) return p.name end )
-    chat.info( message( rollers, hl ) )
-    chat.announce( message( rollers ) )
+    local function message( rollers, f )
+      return string.format( "%s%s", rollers, suffix( f ) )
+    end
+
+    local name_of = function( p ) return p.name end
+    chat.info( message( m.prettify_table( winners, name_of ), hl ) )
+
+    for _, announcement in ipairs( m.split_message( nil, winners, name_of, suffix() ) ) do
+      chat.announce( announcement )
+    end
   end
 
   ---@param winners Winner[]
@@ -87,8 +94,12 @@ function M.new( chat, roll_controller, config )
     end
 
     if strategy == RS.SoftResRoll and winner_count <= item_count and not winners[ 1 ].winning_roll then
-      local ressed_by = m.prettify_table( m.map( winners, function( winner ) return winner.name end ) )
-      chat.announce( string.format( "%s soft-ressed %s.", ressed_by, item.link ), true )
+      local names = m.map( winners, function( winner ) return winner.name end )
+      local suffix = string.format( " soft-ressed %s.", item.link )
+
+      for _, announcement in ipairs( m.split_message( nil, names, nil, suffix ) ) do
+        chat.announce( announcement, true )
+      end
 
       return
     end
@@ -114,14 +125,12 @@ function M.new( chat, roll_controller, config )
         end
       end )
 
-    local top_rollers_str = m.prettify_table( player_names )
     local top_rollers_str_colored = m.prettify_table( player_names, hl )
     local roll_type_str = roll_type == RT.MainSpec and "" or string.format( " (%s)", m.roll_type_abbrev_chat( roll_type ) )
 
-    local function message( rollers, f )
+    local function suffix( f )
       return string.format(
-        "%s %srolled the %shighest (%s) for %s%s.",
-        rollers,
+        " %srolled the %shighest (%s) for %s%s.",
         rerolling and "re-" or "",
         top_roll and "" or "next ",
         f and f( roll_value ) or roll_value,
@@ -131,8 +140,15 @@ function M.new( chat, roll_controller, config )
       )
     end
 
+    local function message( rollers, f )
+      return string.format( "%s%s", rollers, suffix( f ) )
+    end
+
     chat.info( message( top_rollers_str_colored ) )
-    chat.announce( message( top_rollers_str ) )
+
+    for _, announcement in ipairs( m.split_message( nil, player_names, nil, suffix() ) ) do
+      chat.announce( announcement )
+    end
   end
 
   ---@param event TieStartEvent
@@ -156,10 +172,12 @@ function M.new( chat, roll_controller, config )
         return roll_data.player_name
       end )
 
-    local top_rollers_str = m.prettify_table( player_names )
     local roll_threshold_str = config.roll_threshold( roll_type ).str
+    local tail = string.format( " %s for %s%s now.%s", roll_threshold_str, prefix, item.link, suffix )
 
-    chat.announce( string.format( "%s %s for %s%s now.%s", top_rollers_str, roll_threshold_str, prefix, item.link, suffix ) )
+    for _, announcement in ipairs( m.split_message( nil, player_names, nil, tail ) ) do
+      chat.announce( announcement )
+    end
   end
 
   local function on_tick( data )
