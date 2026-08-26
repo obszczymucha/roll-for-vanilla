@@ -197,7 +197,6 @@ function M.new( item_on_roll )
         add( player.name, player.class, rolling_strategy == RS.SoftResRoll and RT.SoftRes or RS.TieRoll )
       end
 
-      -- Only the soft-res roll has a bonus allowance; a tie re-roll is one roll each.
       for _ = 1, player.bonus_rolls or 0 do
         add( player.name, player.class, RT.BonusRoll )
       end
@@ -246,6 +245,12 @@ function M.new( item_on_roll )
 
     for _, player in ipairs( players or {} ) do
       add( player.name, player.class, roll_type )
+
+      -- A bonus roll the player never needed is still his, and it carries into the tie the
+      -- same way it sat in the round before it: an extra cell on his own row.
+      for _ = 1, player.bonus_rolls or 0 do
+        add( player.name, player.class, RT.BonusRoll )
+      end
     end
   end
 

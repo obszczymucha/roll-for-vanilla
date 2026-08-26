@@ -202,5 +202,140 @@ function M.has_rolls_left( rollers, player_name )
   return false
 end
 
+-- Whether the rolling can stop before every roll has been cast. Shared by both rounds: a
+-- tie round carries bonus rolls too, so it can reach the same "nothing left can change
+-- this" state the soft-res round can.
+
+function M.has_everyone_rolled( rollers, rolls )
+  local rolled_player_names = {}
+  map( rolls, function( roll ) rolled_player_names[ roll.player.name ] = true end )
+
+  for _, roller in ipairs( rollers ) do
+    if not rolled_player_names[ roller.name ] then return false end
+  end
+
+  return true
+end
+
+function M.players_with_available_rolls( rollers )
+  return m.filter( rollers, function( roller ) return M.available_rolls( roller ) > 0 end )
+end
+
+-- Whether the rolling is already decided: everyone still holding rolls is in the winning
+-- set, so nothing they have left can change who wins.
+--
+-- A tie on the cut-off line normally means it *can* still change -- one of the tied players
+-- rolling higher breaks it -- so it is not a stopping point. The exception is a tie on the
+-- highest roll there is: nobody can beat it, and nobody outside it can join it, which is
+-- what the loop below rules out. The rolls the tied players still hold can then only be
+-- spent, never used -- and a bonus roll is deducted the moment it is cast, so waiting for
+-- them costs those players rolls in a contest that is already over.
+---@param max_roll number -- the highest a /roll can come back with
+function M.are_remaining_rollers_already_winners( rollers, rolls, item_count, max_roll )
+  local candidates = M.best_roll_per_player( rolls )
+  local top_roll_count = M.count_top_roll_winners( candidates, item_count )
+  local rollers_with_remaining_rolls = M.players_with_available_rolls( rollers )
+  local roller_count = getn( rollers_with_remaining_rolls )
+  local roll_count = getn( rolls )
+
+  if roller_count == 0 or roll_count == 0 then return false end
+
+  -- The roll on the cut-off line is the contested one, which is not always the top one:
+  -- with two items up and a 100 followed by two 87s, it is the 87 that is tied, and an 87
+  -- can still be improved on.
+  if top_roll_count > item_count and candidates[ top_roll_count ].roll < max_roll then return false end
+
+  local top_winner_names = {}
+  for i = 1, top_roll_count do
+    top_winner_names[ candidates[ i ].player.name ] = true
+  end
+
+  for _, roller in ipairs( rollers_with_remaining_rolls ) do
+    if not top_winner_names[ roller.name ] then return false end
+  end
+
+  return true
+end
+
+function M.winner_found( rollers, rolls, item_count, max_roll )
+  return M.has_everyone_rolled( rollers, rolls ) and M.are_remaining_rollers_already_winners( rollers, rolls, item_count, max_roll )
+end
+
+-- One player, one prize: every roll beyond a player's best one is spent, so only their
+-- best roll can win. `rolls` must be sorted descending, so the first roll seen for a
+-- player is their best one.
+--
+-- Shared by both rolling logics: a tie round now carries bonus rolls too, so it has the
+-- same "a player may hold several rolls" problem the soft-res round has.
+---@param rolls Roll[]
+---@return Roll[]
+function M.best_roll_per_player( rolls )
+  local seen, result = {}, {}
+
+  for _, roll in ipairs( rolls ) do
+    if not seen[ roll.player.name ] then
+      seen[ roll.player.name ] = true
+      table.insert( result, roll )
+    end
+  end
+
+  return result
+end
+
+-- Expects the candidate rolls (one per player) sorted descending. Returns how many of
+-- them win, which exceeds item_count when the roll on the cut-off line is tied.
+---@param candidates Roll[]
+---@param item_count number
+---@return number
+function M.count_top_roll_winners( candidates, item_count )
+  if getn( candidates ) == 0 then return 0 end
+
+  local function split_by_roll()
+    local result = {}
+    local last_roll
+
+    for _, roll in ipairs( candidates ) do
+      if not last_roll or last_roll ~= roll.roll then
+        table.insert( result, { roll } )
+        last_roll = roll.roll
+      else
+        table.insert( result[ getn( result ) ], roll )
+      end
+    end
+
+    return result
+  end
+
+  local result = 0
+
+  for _, group in ipairs( split_by_roll() ) do
+    result = result + getn( group )
+    if result >= item_count then return result end
+  end
+
+  return result
+end
+
+-- Casting a bonus roll is what spends it, in the tie round exactly as in the soft-res one.
+-- Announced with the count left, because a bonus roll is a thing the player earned and is
+-- now out of, and that number is what stops the next argument.
+---@param registry ResistanceBonusRollRegistry
+---@param chat Chat
+---@param item Item
+---@param player RollingPlayer
+---@param roll number
+---@return BonusRollToken?
+function M.spend_bonus_roll( registry, chat, item, player, roll )
+  local token = registry.use( player.name, item.id, item.link, roll )
+  if not token then return nil end
+
+  local left = registry.count_for_item( player.name, item.id )
+  chat.info( string.format( "%s used a %s on %s (%s). %s left.",
+    m.colorize_player_by_class( player.name, player.class ), m.colors.hl( "Bonus Roll" ), item.link,
+    m.colors.hl( roll ), m.colors.hl( left ) ) )
+
+  return token
+end
+
 m.RollingLogicUtils = M
 return M

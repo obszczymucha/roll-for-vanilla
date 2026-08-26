@@ -407,8 +407,67 @@ function BonusRollSpec:should_call_the_tie_when_no_remaining_roll_can_change_it(
     r( "Ayla and Borkul rolled the highest (100) for [The Skull of Gul'dan] (SR)." )
   )
 
-  -- And (her three are untouched: the tie re-roll is one roll each)
+  -- And (nothing of hers has been spent to get here: she never needed a bonus roll)
   eq( rf.bonus_roll_registry.count( "Ayla" ), 3 )
+  eq( rf.bonus_roll_registry.count( "Borkul" ), 0 )
+
+  -- When (the tie roll starts)
+  rf.ace_timer.tick()
+
+  -- Then (a tie roll is a roll like any other, so the same rule applies: one roll each,
+  -- plus whatever bonus rolls a player still holds. Borkul spent his three climbing to
+  -- 100 and gets one; Ayla never needed hers and brings all three. That leaves them on
+  -- five rolls each for the item -- which is what one roll each does not.)
+  chat.assert(
+    r( "Princess Kenny dropped 1 item:" ),
+    r( "1. [The Skull of Gul'dan] (SR by Ayla and Borkul)" ),
+    rw( "Roll for [The Skull of Gul'dan]. SR by Ayla [1 roll +3 bonus] and Borkul [1 roll +3 bonus]" ),
+    c( "RollFor: Borkul used a Bonus Roll on [The Skull of Gul'dan] (11). 2 left." ),
+    r( "Stopping rolls in 3" ),
+    r( "2" ),
+    c( "RollFor: Borkul used a Bonus Roll on [The Skull of Gul'dan] (12). 1 left." ),
+    r( "1" ),
+    r( "SR rolls remaining: Ayla (3 bonus rolls) and Borkul (1 bonus roll)" ),
+    c( "RollFor: Borkul used a Bonus Roll on [The Skull of Gul'dan] (100). 0 left." ),
+    c( "RollFor: Ayla and Borkul rolled the highest (100) for [The Skull of Gul'dan] (SR)." ),
+    r( "Ayla and Borkul rolled the highest (100) for [The Skull of Gul'dan] (SR)." ),
+    r( "Ayla [1 roll +3 bonus] and Borkul /roll for [The Skull of Gul'dan] now." )
+  )
+
+  -- When (she plays her four out and Borkul his one)
+  rf.roll( p1, 55, 1, 100 )
+  rf.roll( p1, 70, 1, 100 )
+  rf.roll( p1, 80, 1, 100 )
+  rf.roll( p1, 90, 1, 100 )
+  rf.roll( p2, 42, 1, 100 )
+
+  -- Then (each of hers counts and is deducted, and her best one takes the item -- she is
+  -- judged on her best roll, not handed a winning slot per roll)
+  chat.assert(
+    r( "Princess Kenny dropped 1 item:" ),
+    r( "1. [The Skull of Gul'dan] (SR by Ayla and Borkul)" ),
+    rw( "Roll for [The Skull of Gul'dan]. SR by Ayla [1 roll +3 bonus] and Borkul [1 roll +3 bonus]" ),
+    c( "RollFor: Borkul used a Bonus Roll on [The Skull of Gul'dan] (11). 2 left." ),
+    r( "Stopping rolls in 3" ),
+    r( "2" ),
+    c( "RollFor: Borkul used a Bonus Roll on [The Skull of Gul'dan] (12). 1 left." ),
+    r( "1" ),
+    r( "SR rolls remaining: Ayla (3 bonus rolls) and Borkul (1 bonus roll)" ),
+    c( "RollFor: Borkul used a Bonus Roll on [The Skull of Gul'dan] (100). 0 left." ),
+    c( "RollFor: Ayla and Borkul rolled the highest (100) for [The Skull of Gul'dan] (SR)." ),
+    r( "Ayla and Borkul rolled the highest (100) for [The Skull of Gul'dan] (SR)." ),
+    r( "Ayla [1 roll +3 bonus] and Borkul /roll for [The Skull of Gul'dan] now." ),
+    c( "RollFor: Ayla used a Bonus Roll on [The Skull of Gul'dan] (70). 2 left." ),
+    c( "RollFor: Ayla used a Bonus Roll on [The Skull of Gul'dan] (80). 1 left." ),
+    c( "RollFor: Ayla used a Bonus Roll on [The Skull of Gul'dan] (90). 0 left." ),
+    c( "RollFor: Ayla re-rolled the highest (90) for [The Skull of Gul'dan] (BR)." ),
+    r( "Ayla re-rolled the highest (90) for [The Skull of Gul'dan] (BR)." ),
+    c( "RollFor: Rolling for [The Skull of Gul'dan] finished." )
+  )
+
+  -- And (five rolls each at the item, and every bonus roll either of them earned has been
+  -- cast: nobody is left holding rolls that were never usable)
+  eq( rf.bonus_roll_registry.count( "Ayla" ), 0 )
   eq( rf.bonus_roll_registry.count( "Borkul" ), 0 )
 end
 
@@ -454,6 +513,91 @@ function BonusRollSpec:should_keep_rolling_when_a_tie_below_the_top_roll_can_sti
     r( "Drutree rolled the highest (90) for [Nadina's Pendant of Purity] (BR)." ),
     c( "RollFor: Rolling for [Nadina's Pendant of Purity] finished." )
   )
+end
+
+-- The 100-100 tie, played up to the point where the tie roll is open and the shared part
+-- of the transcript is asserted: Ayla holds the three bonus rolls she never needed, Borkul
+-- has none. Each test below carries on from there with its own rolls, so what it asserts
+-- is only its own.
+---@param chat ChatApiMock
+local function a_tie_on_the_top_roll( chat )
+  local loot_facade = mock_loot_facade()
+  local item, p1, p2 = i( "The Skull of Gul'dan", SKULL ), p( "Ayla" ), p( "Borkul" )
+  local grants = { SHAHRAZ, COUNCIL, ILLIDAN }
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, SKULL ), sr( p2.name, SKULL ) )
+      :bonus_rolls( { Ayla = grants, Borkul = grants } )
+      :build()
+
+  loot_facade.notify( "LootOpened", item )
+  rf.loot_frame.click( 1 )
+  rf.rolling_popup.click( "Roll" )
+
+  rf.roll( p1, 100, 1, 100 )
+  rf.roll( p2, 10, 1, 100 )
+  rf.roll( p2, 11, 1, 100 )
+  rf.roll( p2, 12, 1, 100 )
+  rf.roll( p2, 100, 1, 100 )
+  rf.ace_timer.tick()
+
+  chat.raid( "Princess Kenny dropped 1 item:" )
+  chat.raid( "1. [The Skull of Gul'dan] (SR by Ayla and Borkul)" )
+  chat.raid_warning( "Roll for [The Skull of Gul'dan]. SR by Ayla [1 roll +3 bonus] and Borkul [1 roll +3 bonus]" )
+  chat.console( "RollFor: Borkul used a Bonus Roll on [The Skull of Gul'dan] (11). 2 left." )
+  chat.console( "RollFor: Borkul used a Bonus Roll on [The Skull of Gul'dan] (12). 1 left." )
+  chat.console( "RollFor: Borkul used a Bonus Roll on [The Skull of Gul'dan] (100). 0 left." )
+  chat.console( "RollFor: Ayla and Borkul rolled the highest (100) for [The Skull of Gul'dan] (SR)." )
+  chat.raid( "Ayla and Borkul rolled the highest (100) for [The Skull of Gul'dan] (SR)." )
+  chat.raid( "Ayla [1 roll +3 bonus] and Borkul /roll for [The Skull of Gul'dan] now." )
+
+  return rf, item, p1, p2
+end
+
+-- Borkul rolls first and Ayla's tie roll already beats him. He is out of rolls, so there is
+-- nothing left that can change the result -- the same condition that ends the soft-res
+-- round. Her three bonus rolls are not needed and stay hers.
+function BonusRollSpec:should_end_the_tie_when_the_tie_roll_already_beats_a_player_out_of_rolls()
+  -- Given
+  local chat = mock_chat()
+  local rf, _, p1, p2 = a_tie_on_the_top_roll( chat )
+
+  -- When
+  rf.roll( p2, 42, 1, 100 )
+  rf.roll( p1, 55, 1, 100 )
+
+  -- Then
+  chat.console( "RollFor: Ayla re-rolled the highest (55) for [The Skull of Gul'dan] (SR)." )
+  chat.raid( "Ayla re-rolled the highest (55) for [The Skull of Gul'dan] (SR)." )
+  chat.console( "RollFor: Rolling for [The Skull of Gul'dan] finished." )
+  eq( rf.bonus_roll_registry.count( "Ayla" ), 3 )
+end
+
+-- Borkul rolls first and Ayla's tie roll is behind it, so she works through the bonus rolls
+-- she brought until one of them takes it. Each is deducted as it is cast, and the item is
+-- decided on her best.
+function BonusRollSpec:should_let_her_climb_past_him_with_the_bonus_rolls_she_brought_to_the_tie()
+  -- Given
+  local chat = mock_chat()
+  local rf, _, p1, p2 = a_tie_on_the_top_roll( chat )
+
+  -- When
+  rf.roll( p2, 42, 1, 100 )
+  rf.roll( p1, 30, 1, 100 )
+  rf.roll( p1, 35, 1, 100 )
+  rf.roll( p1, 40, 1, 100 )
+  rf.roll( p1, 90, 1, 100 )
+
+  -- Then
+  chat.console( "RollFor: Ayla used a Bonus Roll on [The Skull of Gul'dan] (35). 2 left." )
+  chat.console( "RollFor: Ayla used a Bonus Roll on [The Skull of Gul'dan] (40). 1 left." )
+  chat.console( "RollFor: Ayla used a Bonus Roll on [The Skull of Gul'dan] (90). 0 left." )
+  chat.console( "RollFor: Ayla re-rolled the highest (90) for [The Skull of Gul'dan] (BR)." )
+  chat.raid( "Ayla re-rolled the highest (90) for [The Skull of Gul'dan] (BR)." )
+  chat.console( "RollFor: Rolling for [The Skull of Gul'dan] finished." )
+  eq( rf.bonus_roll_registry.count( "Ayla" ), 0 )
 end
 
 os.exit( lu.LuaUnit.run( "-v", "-T", "Spec", "-m", "should", "-o", "text" ) )

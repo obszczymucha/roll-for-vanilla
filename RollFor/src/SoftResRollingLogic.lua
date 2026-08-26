@@ -14,113 +14,15 @@ local roll_type = m.Types.RollType.SoftRes
 local strategy = m.Types.RollingStrategy.SoftResRoll
 local available_rolls = m.RollingLogicUtils.available_rolls
 local consume_roll = m.RollingLogicUtils.consume_roll
+local best_roll_per_player = m.RollingLogicUtils.best_roll_per_player
+local count_top_roll_winners = m.RollingLogicUtils.count_top_roll_winners
+local players_with_available_rolls = m.RollingLogicUtils.players_with_available_rolls
+local winner_found = m.RollingLogicUtils.winner_found
 
 ---@type MakeRollFn
 local make_roll = m.Types.make_roll
 
 local State = { AfterRoll = 1, TimerStopped = 2, ManualStop = 3 }
-
-local function has_everyone_rolled( rollers, rolls )
-  local rolled_player_names = {}
-  map( rolls, function( roll ) rolled_player_names[ roll.player.name ] = true end )
-
-  for _, roller in ipairs( rollers ) do
-    if not rolled_player_names[ roller.name ] then return false end
-  end
-
-  return true
-end
-
-local function players_with_available_rolls( rollers )
-  return m.filter( rollers, function( roller ) return available_rolls( roller ) > 0 end )
-end
-
--- One player, one item. Every roll beyond a player's best one is spent, so only their
--- best roll can win. `rolls` is sorted descending, so the first roll we see for a player
--- is their best one.
-local function best_roll_per_player( rolls )
-  local seen, result = {}, {}
-
-  for _, roll in ipairs( rolls ) do
-    if not seen[ roll.player.name ] then
-      seen[ roll.player.name ] = true
-      table.insert( result, roll )
-    end
-  end
-
-  return result
-end
-
--- Expects the candidate rolls (one per player) sorted descending. Returns how many of
--- them win, which exceeds item_count when the roll on the cut-off line is tied.
-local function count_top_roll_winners( candidates, item_count )
-  if getn( candidates ) == 0 then return 0 end
-
-  local function split_by_roll()
-    local result = {}
-    local last_roll
-
-    for _, roll in ipairs( candidates ) do
-      if not last_roll or last_roll ~= roll.roll then
-        table.insert( result, { roll } )
-        last_roll = roll.roll
-      else
-        table.insert( result[ getn( result ) ], roll )
-      end
-    end
-
-    return result
-  end
-
-  local result = 0
-
-  for _, group in ipairs( split_by_roll() ) do
-    result = result + getn( group )
-    if result >= item_count then return result end
-  end
-
-  return result
-end
-
--- Whether the rolling is already decided: everyone still holding rolls is in the winning
--- set, so nothing they have left can change who wins.
---
--- A tie on the cut-off line normally means it *can* still change -- one of the tied players
--- rolling higher breaks it -- so it is not a stopping point. The exception is a tie on the
--- highest roll there is: nobody can beat it, and nobody outside it can join it, which is
--- what the loop below rules out. The rolls the tied players still hold can then only be
--- spent, never used -- and a bonus roll is deducted the moment it is cast, so waiting for
--- them costs those players rolls in a contest that is already over.
----@param max_roll number -- the highest a /roll can come back with
-local function are_remaining_rollers_already_winners( rollers, rolls, item_count, max_roll )
-  local candidates = best_roll_per_player( rolls )
-  local top_roll_count = count_top_roll_winners( candidates, item_count )
-  local rollers_with_remaining_rolls = players_with_available_rolls( rollers )
-  local roller_count = getn( rollers_with_remaining_rolls )
-  local roll_count = getn( rolls )
-
-  if roller_count == 0 or roll_count == 0 then return false end
-
-  -- The roll on the cut-off line is the contested one, which is not always the top one:
-  -- with two items up and a 100 followed by two 87s, it is the 87 that is tied, and an 87
-  -- can still be improved on.
-  if top_roll_count > item_count and candidates[ top_roll_count ].roll < max_roll then return false end
-
-  local top_winner_names = {}
-  for i = 1, top_roll_count do
-    top_winner_names[ candidates[ i ].player.name ] = true
-  end
-
-  for _, roller in ipairs( rollers_with_remaining_rolls ) do
-    if not top_winner_names[ roller.name ] then return false end
-  end
-
-  return true
-end
-
-local function winner_found( rollers, rolls, item_count, max_roll )
-  return has_everyone_rolled( rollers, rolls ) and are_remaining_rollers_already_winners( rollers, rolls, item_count, max_roll )
-end
 
 ---@param chat Chat
 ---@param ace_timer AceTimer
@@ -175,7 +77,7 @@ function M.new(
 
   local function have_all_rolls_been_exhausted()
     for _, v in ipairs( players ) do
-      if available_rolls( v ) > 0 then return winner_found( players, rolls, item_count, config.ms_roll_threshold() ) end
+      if available_rolls( v ) > 0 then return winner_found( players, rolls, item_count, config.roll_threshold( roll_type ).value ) end
     end
 
     return true
@@ -187,19 +89,11 @@ function M.new(
     end
   end
 
-  -- Deducted the moment it is cast, and said out loud: a bonus roll is a thing the player
-  -- earned and is now out of, and the number left is what stops the next argument.
   ---@param player RollingPlayer
   ---@param roll number
   local function spend_bonus_roll( player, roll )
-    local token = bonus_roll_registry.use( player.name, item.id, item.link, roll )
-    if not token then return end
-
-    table.insert( spent_tokens, token )
-
-    local left = bonus_roll_registry.count_for_item( player.name, item.id )
-    chat.info( string.format( "%s used a %s on %s (%s). %s left.",
-      m.colorize_player_by_class( player.name, player.class ), hl( "Bonus Roll" ), item.link, hl( roll ), hl( left ) ) )
+    local token = m.RollingLogicUtils.spend_bonus_roll( bonus_roll_registry, chat, item, player, roll )
+    if token then table.insert( spent_tokens, token ) end
   end
 
   local function stop_timer()

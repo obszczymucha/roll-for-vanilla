@@ -175,12 +175,15 @@ function M.new(
   end
 
   local function tie_roll( players, item, item_count, item_quantity, on_rolling_finished, roll_type, roll_controller_facade )
-    -- One roll each, and bonus_rolls left nil: bonus rolls are spent in the main roll and
-    -- do not carry into the tie that follows it.
+    -- A tie roll is a roll like any other, so the allowance rule is the same one: one roll
+    -- each, plus whatever bonus rolls the player still holds. Spending them in the round
+    -- that produced the tie is not what earns the tie -- a player who reached it on his
+    -- first roll would otherwise be down every roll he never needed, and the player who
+    -- spent his to get there would have had the more rolls at the item.
     local rollers = m.map( players,
       ---@param player RollingPlayer
       function( player )
-        return make_rolling_player( player.name, player.class, player.online, 1 )
+        return make_rolling_player( player.name, player.class, player.online, 1, player.bonus_rolls )
       end
     )
 
@@ -193,7 +196,8 @@ function M.new(
       on_rolling_finished,
       roll_type,
       config,
-      roll_controller_facade
+      roll_controller_facade,
+      bonus_roll_registry
     )
   end
 

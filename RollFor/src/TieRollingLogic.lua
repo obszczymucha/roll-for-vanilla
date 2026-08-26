@@ -9,6 +9,11 @@ local getn = m.getn
 local take = m.take
 local RollType = m.Types.RollType
 local hl = m.colors.hl
+local available_rolls = m.RollingLogicUtils.available_rolls
+local consume_roll = m.RollingLogicUtils.consume_roll
+local best_roll_per_player = m.RollingLogicUtils.best_roll_per_player
+local count_top_roll_winners = m.RollingLogicUtils.count_top_roll_winners
+local winner_found = m.RollingLogicUtils.winner_found
 
 ---@type MakeRollFn
 local make_roll = m.Types.make_roll
@@ -22,10 +27,17 @@ local make_roll = m.Types.make_roll
 ---@param roll_type RollType
 ---@param config Config
 ---@param controller RollControllerFacade
-function M.new( chat, players, item, item_count, item_quantity, on_rolling_finished, roll_type, config, controller )
+---@param bonus_roll_registry ResistanceBonusRollRegistry
+function M.new( chat, players, item, item_count, item_quantity, on_rolling_finished, roll_type, config, controller,
+                bonus_roll_registry )
   local rolls = {}
   local rolling = false
   local player_count = getn( players )
+
+  -- What this round has spent, so a cancel can hand it all back -- the same contract the
+  -- soft-res round keeps.
+  ---@type BonusRollToken[]
+  local spent_tokens = {}
 
   ---@param player_name string
   local function find_player( player_name )
@@ -55,8 +67,18 @@ function M.new( chat, players, item, item_count, item_quantity, on_rolling_finis
       return true
     end
 
+    -- Sorted first, because the check reads each player's best roll and rolls arrive in
+    -- cast order.
+    sort_rolls()
+
+    -- Across every pool: a player holding a bonus roll into the tie still owes a roll --
+    -- unless nothing he could roll would change the result, which is the same rule the
+    -- soft-res round stops on. Without it a player whose tie roll already won would still
+    -- have to burn every bonus roll he brought.
     for _, v in ipairs( players ) do
-      if v.rolls > 0 then return false end
+      if available_rolls( v ) > 0 then
+        return winner_found( players, rolls, item_count, config.roll_threshold( roll_type ).value )
+      end
     end
 
     return true
@@ -73,37 +95,11 @@ function M.new( chat, players, item, item_count, item_quantity, on_rolling_finis
       return
     end
 
-    local function count_top_roll_winners()
-      if roll_count == 0 then return 0 end
-
-      local function split_by_roll()
-        local result = {}
-        local last_roll
-
-        for _, roll in ipairs( rolls ) do
-          if not last_roll or last_roll ~= roll.roll then
-            table.insert( result, { roll } )
-            last_roll = roll.roll
-          else
-            table.insert( result[ getn( result ) ], roll )
-          end
-        end
-
-        return result
-      end
-
-      local result = 0
-
-      for _, r in ipairs( split_by_roll() ) do
-        result = result + getn( r )
-        if result >= item_count then return result end
-      end
-
-      return result
-    end
-
-    local top_roll_winner_count = count_top_roll_winners()
-    local winner_rolls = take( rolls, top_roll_winner_count > item_count and top_roll_winner_count or item_count )
+    -- One prize per player, so a player who brought bonus rolls into the tie is judged on
+    -- his best one and cannot fill two winning slots with them.
+    local candidates = best_roll_per_player( rolls )
+    local top_roll_winner_count = count_top_roll_winners( candidates, item_count )
+    local winner_rolls = take( candidates, top_roll_winner_count > item_count and top_roll_winner_count or item_count )
 
     on_rolling_finished( item, item_count, item_quantity, winner_rolls, true )
   end
@@ -137,14 +133,26 @@ function M.new( chat, players, item, item_count, item_quantity, on_rolling_finis
       return
     end
 
-    if player.rolls == 0 then
+    -- The tie roll is spent first and the bonus rolls are the overflow, exactly as in the
+    -- round that produced the tie.
+    local roll_type_used = consume_roll( player )
+
+    if not roll_type_used then
       chat.info( m.msg.rolls_exhausted( player.name, player.class, roll ) )
       return
     end
 
-    player.rolls = player.rolls - 1
-    table.insert( rolls, make_roll( player, roll_type, roll ) )
-    controller.roll_was_accepted( roller.name, player.class, roll_type, roll )
+    -- The cell keeps the pool it came out of, so a bonus roll still renders gold and still
+    -- reports as BR when it wins. Everything else is the tie's own roll type.
+    local recorded_roll_type = roll_type_used == RollType.BonusRoll and RollType.BonusRoll or roll_type
+
+    if roll_type_used == RollType.BonusRoll then
+      local token = m.RollingLogicUtils.spend_bonus_roll( bonus_roll_registry, chat, item, player, roll )
+      if token then table.insert( spent_tokens, token ) end
+    end
+
+    table.insert( rolls, make_roll( player, recorded_roll_type, roll ) )
+    controller.roll_was_accepted( roller.name, player.class, recorded_roll_type, roll )
 
     if have_all_rolls_been_exhausted() then find_winner() end
   end
@@ -170,6 +178,8 @@ function M.new( chat, players, item, item_count, item_quantity, on_rolling_finis
 
   local function cancel_rolling()
     stop_listening()
+    -- A rolling the ML canceled never happened, so the bonus rolls it spent go back.
+    if bonus_roll_registry then bonus_roll_registry.refund( spent_tokens ) end
     print_rolling_complete( true )
     chat.announce( string.format( "Rolling for %s was canceled.", item.link ) )
   end
