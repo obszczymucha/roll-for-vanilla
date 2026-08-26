@@ -11,14 +11,17 @@ local item_link, text, buttons = gui.item_link, gui.text, gui.buttons
 local sr_row, sr_roll_placeholder = gui.sr_row, gui.sr_roll_placeholder
 local bonus_roll_placeholder = gui.bonus_roll_placeholder
 local sr = u.soft_res_item
+local c, r, rw = u.console_message, u.raid_message, u.raid_warning
 
 local SHAHRAZ = "Mother Shahraz"
 local COUNCIL = "The Illidari Council"
+local ILLIDAN = "Illidan Stormrage"
 
 -- Real catalogue ids: the bonus allowance is resolved through AutoLootDb, so made-up ids
 -- would prove nothing but that unknown items grant nothing.
 local PENDANT = 32370 -- Nadina's Pendant of Purity, Mother Shahraz
 local CLOAK = 32331   -- Cloak of the Illidari Council
+local SKULL = 32483   -- The Skull of Gul'dan, Illidan Stormrage
 
 ---@param name string
 ---@param item_id number
@@ -346,6 +349,110 @@ function BonusRollSpec:should_offer_one_roll_on_a_mother_item_and_two_on_a_counc
     sr_row( p1, { { br = false }, { br = false }, false }, 3, 11 ),
     sr_roll_placeholder( p2, nil, 3 ),
     buttons( "Roll", "AwardOther", "Close" )
+  )
+end
+
+-- A tie on 100 is over the moment it happens: 100 is the highest roll there is, so nobody
+-- left holding rolls can beat it, and the only player still holding any is already in the
+-- tie. Waiting on her asks her to spend three bonus rolls that cannot change the result --
+-- and they are deducted the moment she casts them, so the wait costs her the rolls.
+--
+-- The rolling has to call the tie itself. Leaving it to the master looter to finish early
+-- is what the addon is for.
+function BonusRollSpec:should_call_the_tie_when_no_remaining_roll_can_change_it()
+  -- Given (both hold a Mother, a Council and an Illidan roll, and both soft-ressed the
+  -- last Illidan item, so each has one soft-res roll and three bonus rolls)
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, p1, p2 = i( "The Skull of Gul'dan", SKULL ), p( "Ayla" ), p( "Borkul" )
+  local grants = { SHAHRAZ, COUNCIL, ILLIDAN }
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, SKULL ), sr( p2.name, SKULL ) )
+      :bonus_rolls( { Ayla = grants, Borkul = grants } )
+      :build()
+
+  loot_facade.notify( "LootOpened", item )
+  rf.loot_frame.click( 1 )
+  rf.rolling_popup.click( "Roll" )
+
+  -- When (Ayla casts her soft-res roll and cannot improve on it; Borkul works through his
+  -- allowance while the clock runs down, then ties her with his last bonus roll)
+  rf.roll( p1, 100, 1, 100 )
+  rf.ace_timer.repeating_tick( 2 )
+  rf.roll( p2, 10, 1, 100 )
+  rf.ace_timer.repeating_tick( 2 )
+  rf.roll( p2, 11, 1, 100 )
+  rf.ace_timer.repeating_tick( 2 )
+  rf.roll( p2, 12, 1, 100 )
+  rf.ace_timer.repeating_tick( 2 )
+  rf.roll( p2, 100, 1, 100 )
+
+  -- Then (the timer running out on Borkul is correct -- he was behind and still owed a
+  -- roll that could change the result. His 100 is where it ends: nothing Ayla has left can
+  -- beat it, so the tie is called here, with no Finish early clicked)
+  chat.assert(
+    r( "Princess Kenny dropped 1 item:" ),
+    r( "1. [The Skull of Gul'dan] (SR by Ayla and Borkul)" ),
+    rw( "Roll for [The Skull of Gul'dan]. SR by Ayla [1 roll +3 bonus] and Borkul [1 roll +3 bonus]" ),
+    c( "RollFor: Borkul used a Bonus Roll on [The Skull of Gul'dan] (11). 2 left." ),
+    r( "Stopping rolls in 3" ),
+    r( "2" ),
+    c( "RollFor: Borkul used a Bonus Roll on [The Skull of Gul'dan] (12). 1 left." ),
+    r( "1" ),
+    r( "SR rolls remaining: Ayla (3 bonus rolls) and Borkul (1 bonus roll)" ),
+    c( "RollFor: Borkul used a Bonus Roll on [The Skull of Gul'dan] (100). 0 left." ),
+    c( "RollFor: Ayla and Borkul rolled the highest (100) for [The Skull of Gul'dan] (SR)." ),
+    r( "Ayla and Borkul rolled the highest (100) for [The Skull of Gul'dan] (SR)." )
+  )
+
+  -- And (her three are untouched: the tie re-roll is one roll each)
+  eq( rf.bonus_roll_registry.count( "Ayla" ), 3 )
+  eq( rf.bonus_roll_registry.count( "Borkul" ), 0 )
+end
+
+-- The other side of that rule. A tie below the highest roll is not decided: the bonus roll
+-- Drutree still holds can break it, so the rolling has to stay open for it -- and does.
+function BonusRollSpec:should_keep_rolling_when_a_tie_below_the_top_roll_can_still_be_broken()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local item, p1, p2 = i( "Nadina's Pendant of Purity", PENDANT ), p( "Drutree" ), p( "Mendunia" )
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :raid_roster( p1, p2 )
+      :chat( chat )
+      :soft_res_data( sr( p1.name, PENDANT ), sr( p2.name, PENDANT ) )
+      :bonus_rolls( { Drutree = { SHAHRAZ } } )
+      :build()
+
+  loot_facade.notify( "LootOpened", item )
+  rf.loot_frame.click( 1 )
+  rf.rolling_popup.click( "Roll" )
+
+  -- When (they tie on 87 and Drutree still has his bonus roll)
+  rf.roll( p1, 87, 1, 100 )
+  rf.roll( p2, 87, 1, 100 )
+
+  -- Then (no tie is called: his bonus roll can still settle it outright)
+  chat.assert(
+    r( "Princess Kenny dropped 1 item:" ),
+    r( "1. [Nadina's Pendant of Purity] (SR by Drutree and Mendunia)" ),
+    rw( "Roll for [Nadina's Pendant of Purity]. SR by Drutree [1 roll +1 bonus] and Mendunia" )
+  )
+
+  -- When
+  rf.roll( p1, 90, 1, 100 )
+
+  -- Then
+  chat.assert(
+    r( "Princess Kenny dropped 1 item:" ),
+    r( "1. [Nadina's Pendant of Purity] (SR by Drutree and Mendunia)" ),
+    rw( "Roll for [Nadina's Pendant of Purity]. SR by Drutree [1 roll +1 bonus] and Mendunia" ),
+    c( "RollFor: Drutree used a Bonus Roll on [Nadina's Pendant of Purity] (90). 0 left." ),
+    c( "RollFor: Drutree rolled the highest (90) for [Nadina's Pendant of Purity] (BR)." ),
+    r( "Drutree rolled the highest (90) for [Nadina's Pendant of Purity] (BR)." ),
+    c( "RollFor: Rolling for [Nadina's Pendant of Purity] finished." )
   )
 end
 

@@ -82,14 +82,29 @@ local function count_top_roll_winners( candidates, item_count )
   return result
 end
 
-local function are_remaining_rollers_already_winners( rollers, rolls, item_count )
+-- Whether the rolling is already decided: everyone still holding rolls is in the winning
+-- set, so nothing they have left can change who wins.
+--
+-- A tie on the cut-off line normally means it *can* still change -- one of the tied players
+-- rolling higher breaks it -- so it is not a stopping point. The exception is a tie on the
+-- highest roll there is: nobody can beat it, and nobody outside it can join it, which is
+-- what the loop below rules out. The rolls the tied players still hold can then only be
+-- spent, never used -- and a bonus roll is deducted the moment it is cast, so waiting for
+-- them costs those players rolls in a contest that is already over.
+---@param max_roll number -- the highest a /roll can come back with
+local function are_remaining_rollers_already_winners( rollers, rolls, item_count, max_roll )
   local candidates = best_roll_per_player( rolls )
   local top_roll_count = count_top_roll_winners( candidates, item_count )
   local rollers_with_remaining_rolls = players_with_available_rolls( rollers )
   local roller_count = getn( rollers_with_remaining_rolls )
   local roll_count = getn( rolls )
 
-  if top_roll_count > item_count or roller_count == 0 or roll_count == 0 then return false end
+  if roller_count == 0 or roll_count == 0 then return false end
+
+  -- The roll on the cut-off line is the contested one, which is not always the top one:
+  -- with two items up and a 100 followed by two 87s, it is the 87 that is tied, and an 87
+  -- can still be improved on.
+  if top_roll_count > item_count and candidates[ top_roll_count ].roll < max_roll then return false end
 
   local top_winner_names = {}
   for i = 1, top_roll_count do
@@ -103,8 +118,8 @@ local function are_remaining_rollers_already_winners( rollers, rolls, item_count
   return true
 end
 
-local function winner_found( rollers, rolls, item_count )
-  return has_everyone_rolled( rollers, rolls ) and are_remaining_rollers_already_winners( rollers, rolls, item_count )
+local function winner_found( rollers, rolls, item_count, max_roll )
+  return has_everyone_rolled( rollers, rolls ) and are_remaining_rollers_already_winners( rollers, rolls, item_count, max_roll )
 end
 
 ---@param chat Chat
@@ -160,7 +175,7 @@ function M.new(
 
   local function have_all_rolls_been_exhausted()
     for _, v in ipairs( players ) do
-      if available_rolls( v ) > 0 then return winner_found( players, rolls, item_count ) end
+      if available_rolls( v ) > 0 then return winner_found( players, rolls, item_count, config.ms_roll_threshold() ) end
     end
 
     return true
