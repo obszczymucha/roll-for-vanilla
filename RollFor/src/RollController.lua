@@ -995,7 +995,7 @@ function M.new(
         not waiting_for_rolls and data.status.seconds_left or nil,
         roll_in_progress_buttons( current_iteration.rolls ),
         current_iteration.rolls,
-        {},
+        in_progress_winners( data.winners ),
         strategy_type,
         waiting_for_rolls
       )

@@ -1612,6 +1612,17 @@ function ThreeIdenticalItemsTwoSrSpec:should_auto_loot_three_items_then_rf_comma
   c( "RollFor: Obszczymucha already won [Bag] via soft-res. This roll (80) is ignored." )
   rf.roll( p3, 70, 1, 100 ) -- Jimmy
 
+  -- Then (the roll repaints the popup immediately; the soft-res winners must survive
+  -- that repaint instead of blinking out until the next tick)
+  rf.rolling_popup.should_display(
+    item_link( item, 1 ),
+    mainspec_roll( p3, 70, 11 ),
+    text( "Obszczymucha soft-ressed this item.", 11 ),
+    text( "Psikutas soft-ressed this item.", 2 ),
+    text( "Rolling ends in 3 seconds.", 11 ),
+    buttons( "FinishEarly", "Cancel" )
+  )
+
   -- When (a tick passes with only Jimmy having rolled so far)
   rf.ace_timer.repeating_tick()
 
