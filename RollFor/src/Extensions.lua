@@ -22,7 +22,7 @@ local function hl( text ) return m.colors.hl( text ) end
 
 -- Bumped when the context object or the chain contract changes in a way that would break
 -- an extension built against the previous number.
-M.API_VERSION = 1
+M.API_VERSION = 2
 
 -- What an extension is allowed to see of RollFor. Built per extension by main.lua and
 -- handed to both phases. This is the surface we commit to across versions, so it stays
@@ -30,6 +30,7 @@ M.API_VERSION = 1
 -- and this is not.
 ---@class ExtensionContext
 ---@field db fun( key: string ): table -- scoped to this extension
+---@field api fun(): table -- the WoW API table; call it, m.api style
 ---@field config Config
 ---@field chat Chat
 ---@field group_roster GroupRoster
@@ -41,13 +42,21 @@ M.API_VERSION = 1
 ---@field gui_elements table -- row widgets, keyed by line type
 ---@field softres_chain Chain
 ---@field awarded_loot_chain Chain
+---@field softres_source { register: fun( spec: SoftResSourceSpec ): boolean }
+---@field softres_tap fun( name: string ): any? -- nil before the chain is built or if no such tap
+---@field minimap { register: fun( c: MinimapContribution ), refresh: fun() }
 ---@field on_group_changed fun( callback: fun() )
 ---@field on_lockout_reset fun( callback: fun() )
 ---@field lockout_loss fun( describe: fun(): { count: number, noun: string }[] )
 ---@field is_enabled fun(): boolean -- this extension's own on/off state
 ---@field set_enabled fun( value: boolean ) -- toggles it, and asks for the UI reload
 ---@field title string
----@field get fun( name: string ): any -- on_ready only
+-- Built components by name, looked up rather than handed over wholesale so what an
+-- extension actually depends on stays visible. Valid from `on_ready` and from inside chain
+-- factories (both run after core has finished building the awarded-loot chain and, for a
+-- softres chain factory, at the exact point that link is built) -- not from `on_enable`,
+-- where the components named here don't exist yet.
+---@field get fun( name: string ): any
 
 ---@class ExtensionSpec
 ---@field name string -- unique id, also the db key

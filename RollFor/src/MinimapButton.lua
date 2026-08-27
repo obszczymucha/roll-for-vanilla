@@ -8,10 +8,7 @@ local hl = m.colors.hl
 local blue = m.colors.blue
 local grey = m.colors.grey
 local white = m.colors.white
-local green = m.colors.green
-local red = m.colors.red
 local pretty_print = m.pretty_print
-local class_color = m.colorize_player_by_class
 
 local ColorType = {
   White = "White",
@@ -20,7 +17,31 @@ local ColorType = {
   Red = "Red"
 }
 
-function M.new( api, db, manage_softres_fn, softres_check, config )
+-- What an extension contributes to the minimap button, keyed by nothing -- registration
+-- order is the only thing that matters. Read at render time (OnEnter, and whenever core
+-- recomputes the icon colour), never snapshotted, because the button is built well before
+-- extensions get a chance to register anything.
+---@class MinimapContribution
+---@field commands { cmd: string, args: string?, description: string }[]?
+---@field hint string?
+---@field status fun(): { color: string, lines: string[]? }?
+
+---@param entry { cmd: string, args: string?, description: string }
+---@return string
+local function format_command( entry )
+  if entry.args then
+    return string.format( "%s %s - %s", hl( entry.cmd ), grey( entry.args ), white( entry.description ) )
+  end
+
+  return string.format( "%s - %s", hl( entry.cmd ), white( entry.description ) )
+end
+
+---@param api fun(): table
+---@param db table
+---@param config Config
+---@param event_bus EventBus
+---@param contributions MinimapContribution[]
+function M.new( api, db, config, event_bus, contributions )
   local icon_color
 
   local function persist_angle( angle )
@@ -39,14 +60,44 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
     return config.minimap_button_hidden()
   end
 
-  local function print_players_who_did_not_softres( tooltip )
-    local result, players = softres_check.check_softres( true )
+  local function build_tooltip( tooltip )
+    tooltip:SetText( blue( "RollFor" ) )
+    tooltip:AddLine( " " )
 
-    if result == softres_check.ResultType.SomeoneIsNotSoftRessing then
-      tooltip:AddLine( white( "Missing softres:" ) )
+    tooltip:AddLine( string.format( "%s - %s", hl( "/htr" ), white( "show how to roll" ) ) )
+    tooltip:AddLine( string.format( "%s %s - %s", hl( "/rf" ), grey( "<item>" ), white( "roll for" ) ) )
+    tooltip:AddLine( string.format( "%s %s - %s", hl( "/rr" ), grey( "<item>" ), white( "raid-roll" ) ) )
+    tooltip:AddLine( string.format( "%s %s - %s", hl( "/irr" ), grey( "<item>" ), white( "insta raid-roll" ) ) )
+    tooltip:AddLine( string.format( "%s %s - %s", hl( "/arf" ), grey( "<item>" ), white( "roll for (ignore SR)" ) ) )
+    tooltip:AddLine( string.format( "%s %s %s - %s", hl( "/rf" ), grey( "<item>" ), grey( "<seconds>" ), white( "roll with custom time" ) ) )
+    tooltip:AddLine( string.format( "%s %s - %s", hl( "/rfreset" ), grey( "announce" ), white( "reset loot announce" ) ) )
+    tooltip:AddLine( string.format( "%s - %s", hl( "/cr" ), white( "cancel rolling in progress" ) ) )
+    tooltip:AddLine( string.format( "%s - %s", hl( "/fr" ), white( "finish rolling early" ) ) )
+    tooltip:AddLine( string.format( "%s - %s", hl( "/rf config" ), white( "show configuration" ) ) )
+    tooltip:AddLine( string.format( "%s - %s", hl( "/rf config help" ), white( "show configuration help" ) ) )
 
-      for _, player in pairs( players ) do
-        tooltip:AddLine( class_color( player.name, player.class ) )
+    local hint
+
+    for _, contribution in ipairs( contributions ) do
+      for _, entry in ipairs( contribution.commands or {} ) do
+        tooltip:AddLine( format_command( entry ) )
+      end
+
+      hint = hint or contribution.hint
+    end
+
+    tooltip:AddLine( " " )
+    tooltip:AddLine( hint or "Click to open options." )
+
+    for _, contribution in ipairs( contributions ) do
+      local status = contribution.status and contribution.status()
+
+      if status and status.lines then
+        tooltip:AddLine( " " )
+
+        for _, line in ipairs( status.lines ) do
+          tooltip:AddLine( line )
+        end
       end
     end
   end
@@ -55,7 +106,7 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
     local frame = api().CreateFrame( "Button", "RollForMinimapButton", api().Minimap )
 
     function frame.OnClick( self )
-      manage_softres_fn()
+      event_bus.notify( "minimap_icon_left_click" )
       self:OnEnter()
       api().GameTooltip:Hide()
     end
@@ -71,39 +122,7 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
     function frame.OnEnter( self )
       if not self.dragging then
         api().GameTooltip:SetOwner( self, "ANCHOR_LEFT" )
-        api().GameTooltip:SetText( blue( "RollFor" ) )
-
-        api().GameTooltip:AddLine( " " )
-        api().GameTooltip:AddLine( string.format( "%s - %s", hl( "/htr" ), white( "show how to roll" ) ) )
-        api().GameTooltip:AddLine( string.format( "%s %s - %s", hl( "/rf" ), grey( "<item>" ), white( "roll for" ) ) )
-        api().GameTooltip:AddLine( string.format( "%s %s - %s", hl( "/rr" ), grey( "<item>" ), white( "raid-roll" ) ) )
-        api().GameTooltip:AddLine( string.format( "%s %s - %s", hl( "/irr" ), grey( "<item>" ), white( "insta raid-roll" ) ) )
-        api().GameTooltip:AddLine( string.format( "%s %s - %s", hl( "/arf" ), grey( "<item>" ), white( "roll for (ignore SR)" ) ) )
-        api().GameTooltip:AddLine( string.format( "%s %s %s - %s", hl( "/rf" ), grey( "<item>" ), grey( "<seconds>" ), white( "roll with custom time" ) ) )
-        api().GameTooltip:AddLine( string.format( "%s - %s", hl( "/sr" ), white( "manage softres" ) ) )
-        api().GameTooltip:AddLine( string.format( "%s - %s", hl( "/sro" ), white( "fix player softres name" ) ) )
-        api().GameTooltip:AddLine( string.format( "%s - %s", hl( "/src" ), white( "check softres status" ) ) )
-        api().GameTooltip:AddLine( string.format( "%s - %s", hl( "/srs" ), white( "show softres items" ) ) )
-        api().GameTooltip:AddLine( string.format( "%s %s - %s", hl( "/rfreset" ), grey( "announce" ), white( "reset loot announce" ) ) )
-        api().GameTooltip:AddLine( string.format( "%s - %s", hl( "/cr" ), white( "cancel rolling in progress" ) ) )
-        api().GameTooltip:AddLine( string.format( "%s - %s", hl( "/fr" ), white( "finish rolling early" ) ) )
-        api().GameTooltip:AddLine( string.format( "%s - %s", hl( "/rf config" ), white( "show configuration" ) ) )
-        api().GameTooltip:AddLine( string.format( "%s - %s", hl( "/rf config help" ), white( "show configuration help" ) ) )
-        api().GameTooltip:AddLine( " " )
-        api().GameTooltip:AddLine( "Click to manage softres." )
-
-        if icon_color == ColorType.Green then
-          api().GameTooltip:AddLine( " " )
-          api().GameTooltip:AddLine( string.format( "%s %s", white( "Softres status:" ), green( "OK" ) ) )
-        elseif icon_color == ColorType.Orange then
-          api().GameTooltip:AddLine( " " )
-          print_players_who_did_not_softres( api().GameTooltip )
-        elseif icon_color == ColorType.Red then
-          api().GameTooltip:AddLine( " " )
-          api().GameTooltip:AddLine( white( "Softres status:" ) )
-          api().GameTooltip:AddLine( red( "Found outdated softres data!" ) )
-        end
-
+        build_tooltip( api().GameTooltip )
         api().GameTooltip:Show()
       end
     end
@@ -256,7 +275,10 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
 
   show()
   lock()
-  set_icon( ColorType.Red )
+  -- No source is known to be loaded yet -- that used to be spelled "Red" (outdated data)
+  -- and corrected a moment later at login, but with no soft-res source installed at all
+  -- "Red" would be a lie that never gets corrected. White until the first refresh.
+  set_icon( ColorType.White )
 
   local function toggle()
     if is_hidden() then
@@ -284,9 +306,12 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
     toggle = toggle,
     toggle_lock = toggle_lock,
     set_icon = set_icon,
+    get_icon_color = function() return icon_color end,
     ColorType = ColorType
   }
 end
+
+M.ColorType = ColorType
 
 m.MinimapButton = M
 return M

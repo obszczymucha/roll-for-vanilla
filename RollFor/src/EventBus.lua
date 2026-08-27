@@ -7,7 +7,8 @@ local M = {}
 
 ---@class EventBus
 ---@field subscribe fun( event_name: string, callback: function )
----@field notify fun( event_name: string, data: any? )
+---@field notify fun( event_name: string, data: any? ): number -- how many callbacks ran
+---@field has_subscribers fun( event_name: string ): boolean
 
 function M.new()
   local subscribers = {}
@@ -21,16 +22,29 @@ function M.new()
 
   ---@param event_name string
   ---@param data any
+  ---@return number
   local function notify( event_name, data )
+    local count = 0
+
     for _, callback in ipairs( subscribers[ event_name ] or {} ) do
       callback( data )
+      count = count + 1
     end
+
+    return count
+  end
+
+  ---@param event_name string
+  ---@return boolean
+  local function has_subscribers( event_name )
+    return subscribers[ event_name ] ~= nil and #subscribers[ event_name ] > 0
   end
 
   ---@type EventBus
   return {
     subscribe = subscribe,
-    notify = notify
+    notify = notify,
+    has_subscribers = has_subscribers
   }
 end
 

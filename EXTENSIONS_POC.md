@@ -105,6 +105,7 @@ extensions do **not** get the composition root. They get a deliberately narrow c
 ```lua
 ---@class ExtensionContext
 ---@field db fun( key: string ): table            -- scoped under RollForCharDb.extensions.<name>
+---@field api fun(): table                        -- the WoW API table; call it, m.api style
 ---@field config Config
 ---@field chat Chat
 ---@field group_roster GroupRoster
@@ -116,14 +117,23 @@ extensions do **not** get the composition root. They get a deliberately narrow c
 ---@field gui_elements table                      -- row widgets, keyed by line type
 ---@field softres_chain Chain
 ---@field awarded_loot_chain Chain
+---@field softres_source { register: fun( spec: SoftResSourceSpec ): boolean }
+---@field softres_tap fun( name: string ): any?    -- nil before the chain is built or if no such tap
+---@field minimap { register: fun( c: MinimapContribution ), refresh: fun() }
 ---@field on_group_changed fun( callback: fun() )
 ---@field on_lockout_reset fun( callback: fun() )
 ---@field lockout_loss fun( describe: fun(): { count: number, noun: string }[] )
----@field get fun( name: string ): any            -- on_ready only; built components by name
+---@field get fun( name: string ): any            -- on_ready and chain factories; built components by name
 ```
 
 This is the surface we are committing to. It is the one thing in this document that is
 expensive to change later, so it should stay small and grow only on demand.
+
+Context is now v2 (`RollFor.Extensions.API_VERSION`): the soft-res extraction in
+`SR-EXTENSION.md` added `api`, `softres_source`, `softres_tap` and `minimap`. An extension
+built against v1 (`api_version = 1`, e.g. `RollForNetherVortex`) keeps loading unchanged --
+the compatibility check only rejects an extension declaring an `api_version` *greater*
+than the host's.
 
 ### 3.3 Two phases
 

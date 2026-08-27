@@ -49,14 +49,9 @@ function M.new( main )
   -- before it transforms) and /rft hijacks the rolling popup, so neither may run while
   -- there is real data loaded. Dropping it through the import window is the deliberate
   -- opt-in, and /reload is the way back.
-  local function softres_data_present()
-    if m.getn( main.unfiltered_softres.get_items() ) > 0 then return true end
-    return main.softres_db.data and true or false
-  end
-
   ---@return boolean -- true when the command must not run
   local function testing_blocked()
-    if simulating or not softres_data_present() then return false end
+    if simulating or not m.SoftResSource.has_data() then return false end
 
     m.info( string.format( "Soft-res data is loaded - %s.", m.colors.red( "testing is not possible" ) ) )
     m.info( string.format( "Clear it in the import window (%s) first.", m.colors.hl( "/sr" ) ) )
@@ -283,39 +278,6 @@ function M.new( main )
       return result
     end
 
-    -- SoftResPresentPlayersDecorator captures group_roster.is_player_in_my_group as an
-    -- upvalue when it is constructed, so overriding the roster afterwards cannot reach it
-    -- and every simulated soft-resser is filtered out as absent. Skip just that layer by
-    -- delegating to the chain's "unfiltered" tap, which keeps every decorator below it in
-    -- play, and do its class enrichment here.
-    local function enrich( rollers )
-      for _, roller in ipairs( rollers or {} ) do
-        local player = by_name[ roller.name ]
-        roller.class = player and player.class
-      end
-
-      return rollers
-    end
-
-    -- Everything *above* the present-players layer still has to run, so it is rebuilt here
-    -- rather than reproduced. Hardcoding the stand-in as "one named decorator plus class
-    -- enrichment" is what silently dropped bonus rolls from /rfsetup the moment a new
-    -- decorator went on top: the simulator was pinning what the outermost layer was.
-    -- Anything added above present-players from now on gets wrapped here too.
-    -- Cloned rather than built from scratch: the stand-in *is* the current softres with the
-    -- present-players filtering swapped out, so it has to keep the rest of the interface.
-    -- Re-running /rfsetup is idempotent -- .get is overwritten before it is wrapped again.
-    local stand_in = m.clone( main.softres )
-    local unfiltered = main.unfiltered_view
-    stand_in.get = function( item_data ) return enrich( unfiltered.get( item_data ) ) end
-    stand_in.get_all_rollers = function() return enrich( unfiltered.get_all_rollers() ) end
-
-    local simulated = m.SoftResBonusRollDecorator.new(
-      stand_in, main.resistance_bonus_roll_registry, main.config )
-
-    main.softres.get = simulated.get
-    main.softres.get_all_rollers = simulated.get_all_rollers
-
     roster.is_player_in_my_group = function( name ) return by_name[ name ] and true or false end
     roster.find_player = function( name ) return by_name[ name ] end
     roster.am_i_in_group = function() return true end
@@ -350,29 +312,23 @@ function M.new( main )
     local roll_counts = {}
     for n in string.gmatch( counts or "", "%d+" ) do table.insert( roll_counts, tonumber( n ) ) end
 
-    local players, soft_reserves = {}, {}
+    local players, reservations = {}, {}
     local i = 0
 
     for name in string.gmatch( names or "", "[^,]+" ) do
       i = i + 1
       local rolls = roll_counts[ i ] or 1
       table.insert( players, make_player( name, sim_classes[ m.mod( i - 1, m.getn( sim_classes ) ) + 1 ], true ) )
-
-      -- One entry per roll: duplicates in a raidres import are what grant extra rolls.
-      local items = {}
-      for _ = 1, rolls do table.insert( items, { id = item.id, quality = item.quality or 3 } ) end
-      table.insert( soft_reserves, { name = name, items = items } )
+      table.insert( reservations, { name = name, rolls = rolls } )
     end
 
     fake_group( players )
     simulating = true
-    main.softres_gui.refresh()
 
-    main.unfiltered_softres.import( {
-      metadata = { id = "SIM", instance = 0, instances = {}, origin = "raidres" },
-      softreserves = soft_reserves,
-      hardreserves = {}
-    } )
+    -- Whoever is registered as the soft-res source imports these reservations and swaps
+    -- itself in above the group filter. Core no longer knows or cares what shape that
+    -- import takes.
+    main.event_bus.notify( "simulation_started", { players = players, reservations = reservations, item = item } )
 
     -- Rolling this item before leaves a finished RollTracker behind, and preview() would
     -- re-open that finished popup instead of starting over.

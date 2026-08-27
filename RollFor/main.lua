@@ -21,30 +21,35 @@ local extension_hooks = { group_changed = {}, lockout_reset = {}, lockout_loss =
 ---@type fun( extension_name: string ): ExtensionContext
 local make_extension_context
 
+-- The soft-res-side clears stay inline for now -- they move out to the source extension
+-- in Phase C. `winner_tracker.clear()` and the minimap refresh go through the event so an
+-- extension clearing its own data gets the same fan-out without calling back into core.
 local function clear_data()
   M.softres_gui.clear()
   M.name_matcher.clear( true )
   M.softres.clear( true )
-  M.minimap_button.set_icon( M.minimap_button.ColorType.White )
-  M.winner_tracker.clear()
+  M.event_bus.notify( "softres_cleared", { source = "builtin" } )
 end
 
-local function update_minimap_icon()
-  local result = M.softres_check.check_softres( true )
+local ColorSeverity = { White = 0, Green = 1, Orange = 2, Red = 3 }
 
-  if result == M.softres_check.ResultType.NoItemsFound then
-    M.minimap_button.set_icon( M.minimap_button.ColorType.White )
-  elseif result == M.softres_check.ResultType.SomeoneIsNotSoftRessing then
-    M.minimap_button.set_icon( M.minimap_button.ColorType.Orange )
-  elseif result == M.softres_check.ResultType.FoundOutdatedData then
-    M.minimap_button.set_icon( M.minimap_button.ColorType.Red )
-  else
-    M.minimap_button.set_icon( M.minimap_button.ColorType.Green )
+-- Recomputed from the contribution list rather than cached: contributions are read at
+-- render time because extensions register during on_ready, which runs after the button
+-- is built, so a button that snapshotted the list at construction would show nothing.
+local function refresh_minimap()
+  local color = m.MinimapButton.ColorType.White
+  local best = ColorSeverity[ color ]
+
+  for _, contribution in ipairs( M.minimap_contributions ) do
+    local status = contribution.status and contribution.status()
+
+    if status and status.color and ColorSeverity[ status.color ] > best then
+      color = status.color
+      best = ColorSeverity[ color ]
+    end
   end
-end
 
-local function on_softres_status_changed()
-  update_minimap_icon()
+  M.minimap_button.set_icon( color )
 end
 
 local function trade_complete_callback( recipient_name, items_given, items_received )
@@ -189,6 +194,19 @@ local function confirm_lockout_reset( on_confirmed )
   } )
 end
 
+-- The full soft-res picture before the group filter drops everyone who isn't here, or nil
+-- before the chain is built or if no such tap exists. Guarded because `Chain.build`'s
+-- `tap()` errors on an unknown name -- once a source extension owns "present_players"
+-- (Phase C), whether the "unfiltered" tap exists at all is no longer guaranteed.
+---@param name string
+---@return any?
+local function softres_tap( name )
+  if not M.softres_built then return nil end
+
+  local ok, result = pcall( M.softres_built.tap, name )
+  return ok and result or nil
+end
+
 local function create_components()
   ---@type AceTimer
   M.ace_timer = lib_stub( "AceTimer-3.0" )
@@ -196,10 +214,10 @@ local function create_components()
   local db = m.Db.new( M.char_db )
 
   ---@type EventBus
-  M.config_event_bus = m.EventBus.new()
+  M.event_bus = m.EventBus.new()
 
   ---@type Config
-  M.config = m.Config.new( db( "config" ), M.config_event_bus )
+  M.config = m.Config.new( db( "config" ), M.event_bus )
 
   local classic = M.config.classic_look()
   local popup_bottom_margin, popup_bottom_button_margin = classic and 37 or 24, classic and 14 or 7
@@ -248,7 +266,10 @@ local function create_components()
   -- create_components() so a reload doesn't accumulate the previous run's subscribers.
   extension_hooks = { group_changed = {}, lockout_reset = {}, lockout_loss = {} }
 
-  m.Extensions.attach( db( "extensions" ), M.config_event_bus )
+  ---@type MinimapContribution[]
+  M.minimap_contributions = {}
+
+  m.Extensions.attach( db( "extensions" ), M.event_bus )
 
   -- What an extension is allowed to see. Deliberately narrow: this is the surface we're
   -- committing to, and the composition root is not part of it.
@@ -263,17 +284,24 @@ local function create_components()
       db = function( key )
         return db( string.format( "extension_%s_%s", extension_name, key ) )
       end,
+      api = M.api,
       config = M.config,
       chat = M.chat,
       group_roster = M.group_roster,
       player_info = M.player_info,
       ace_timer = M.ace_timer,
-      event_bus = M.config_event_bus,
+      event_bus = M.event_bus,
       popup_builder = popup_builder,
       frame_builder = m.FrameBuilder,
       gui_elements = m.GuiElements,
       softres_chain = M.softres_chain,
       awarded_loot_chain = M.awarded_loot_chain,
+      softres_source = { register = m.SoftResSource.register },
+      softres_tap = softres_tap,
+      minimap = {
+        register = function( contribution ) table.insert( M.minimap_contributions, contribution ) end,
+        refresh = refresh_minimap
+      },
       is_enabled = function() return m.Extensions.is_enabled( extension_name ) end,
       set_enabled = function( value ) m.Extensions.set_enabled( extension_name, value ) end,
       title = extension.title,
@@ -345,11 +373,15 @@ local function create_components()
     db( "name_matcher" ), M.api,
     M.absent_softres( M.unfiltered_softres ),
     m.NameAutoMatcher.new( M.group_roster, M.unfiltered_softres, 0.57, 0.4 ),
-    on_softres_status_changed
+    refresh_minimap
   )
 
   -- The soft-res backbone. These are the names extensions anchor to, so renaming one is
-  -- a breaking change for them, not just a local rename.
+  -- a breaking change for them, not just a local rename. Added before Extensions.enable()
+  -- runs: core is still the sole owner of these three names in Phase A/B (that changes
+  -- once a source extension exists to contribute them instead), and an extension such as
+  -- RollForNetherVortex anchors to "awarded_loot" and "present_players" the moment its
+  -- on_enable runs -- so they must already be in the chain by then.
   M.softres_chain.add( {
     name = "matched_name",
     after = m.Chain.BASE,
@@ -368,40 +400,99 @@ local function create_components()
     factory = function( inner ) return M.present_softres( inner ) end
   } )
 
-  -- Outermost, so bonus rolls are only ever annotated onto players who are actually in
-  -- the group -- the present-players decorator has already dropped everyone else.
-  M.softres_chain.add( {
-    name = "bonus_roll",
-    after = "present_players",
-    factory = function( inner )
-      return m.SoftResBonusRollDecorator.new( inner, M.resistance_bonus_roll_registry, M.config )
-    end
-  } )
-
   -- The full soft-res picture before the group filter drops everyone who isn't here.
   -- SoftResCheck and the roll simulator both want exactly this, and naming it after
   -- whichever decorator happens to sit at that point is how it used to be called
   -- `nether_vortex_softres` -- a name that vanishes when the extension is off.
   M.softres_chain.tap( { name = "unfiltered", before = "present_players" } )
 
+  -- The built-in soft-res, registered through the same seam an extension uses. It goes in
+  -- last and only if nothing else claimed the slot, so installing a source extension
+  -- replaces it rather than colliding with it. Deleted in Phase C.
+  if not m.SoftResSource.get() then
+    m.SoftResSource.register( {
+      id = "builtin",
+      title = "softres.it (built in)",
+      base = function() return M.unfiltered_softres end,
+      has_data = function() return getn( M.unfiltered_softres.get_items() ) > 0 end,
+      get_import_string = function() return M.softres_db.data end
+    } )
+  end
+
   -- Extensions declare themselves here: chain links, config settings, lifecycle hooks.
   -- After the backbone exists, so they have something to anchor to; before anything is
   -- built, so their links are actually in the chain when it is.
   m.Extensions.enable( make_extension_context )
 
+  -- Anchored to a link a source extension contributes, so it is only addable when a
+  -- source is actually installed. With no source there are no soft-ressers to annotate,
+  -- so skipping it changes nothing. In Phase A/B this is always true, since core adds
+  -- "present_players" itself above; it stops being unconditional once that ownership
+  -- moves to a source extension in Phase C.
+  if M.softres_chain.has( "present_players" ) then
+    M.softres_chain.add( {
+      name = "bonus_roll",
+      after = "present_players",
+      factory = function( inner )
+        return m.SoftResBonusRollDecorator.new( inner, M.resistance_bonus_roll_registry, M.config )
+      end
+    } )
+  end
+
   ---@type AwardedLoot
   M.awarded_loot = M.awarded_loot_chain.build( M.raw_awarded_loot ).final
 
-  local softres_chain = M.softres_chain.build( M.unfiltered_softres )
+  M.softres_built = M.softres_chain.build( m.SoftResSource.base() )
 
   ---@type GroupAwareSoftRes
-  M.softres = softres_chain.final
+  M.softres = M.softres_built.final
 
   ---@type SoftRes
-  M.unfiltered_view = softres_chain.tap( "unfiltered" )
+  M.unfiltered_view = softres_tap( "unfiltered" )
 
   M.softres_check = m.SoftResCheck.new( M.unfiltered_view, M.group_roster, M.name_matcher, M.ace_timer,
     M.absent_softres, db( "softres_check" ) )
+
+  -- Core's own soft-res contribution to the minimap button, registered through the same
+  -- seam an extension uses. Reproduces today's tooltip lines and colour mapping exactly.
+  -- Deleted in Phase C, when a source extension supplies its own.
+  table.insert( M.minimap_contributions, {
+    commands = {
+      { cmd = "/sr", description = "manage softres" },
+      { cmd = "/sro", description = "fix player softres name" },
+      { cmd = "/src", description = "check softres status" },
+      { cmd = "/srs", description = "show softres items" }
+    },
+    hint = "Click to manage softres.",
+    status = function()
+      local ResultType = M.softres_check.ResultType
+      local result, players = M.softres_check.check_softres( true )
+      local ColorType = m.MinimapButton.ColorType
+      local white, green, red = m.colors.white, m.colors.green, m.colors.red
+
+      if result == ResultType.NoItemsFound then
+        return { color = ColorType.White }
+      elseif result == ResultType.SomeoneIsNotSoftRessing then
+        local lines = { white( "Missing softres:" ) }
+
+        for _, player in pairs( players ) do
+          table.insert( lines, m.colorize_player_by_class( player.name, player.class ) )
+        end
+
+        return { color = ColorType.Orange, lines = lines }
+      elseif result == ResultType.FoundOutdatedData then
+        return {
+          color = ColorType.Red,
+          lines = { white( "Softres status:" ), red( "Found outdated softres data!" ) }
+        }
+      end
+
+      return {
+        color = ColorType.Green,
+        lines = { string.format( "%s %s", white( "Softres status:" ), green( "OK" ) ) }
+      }
+    end
+  } )
 
   ---@type WinnerTracker
   M.winner_tracker = m.WinnerTracker.new( db( "winner_tracker" ) )
@@ -507,6 +598,11 @@ local function create_components()
   M.softres_gui = m.SoftResGui.new( M.api, M.import_encoded_softres_data, M.softres_check, M.softres, clear_data, M.dropped_loot_announce.reset,
     function() return M.roll_simulator and M.roll_simulator.is_simulating() end )
 
+  -- Core's own claim on the minimap click, same as an extension would make. Registered
+  -- before anything decides whether nobody else claimed it (see the fallback wired in near
+  -- the end of this function), so that fallback never fires while core still owns soft-res.
+  M.event_bus.subscribe( "minimap_icon_left_click", M.softres_gui.toggle )
+
   -- TODO: Add type.
   M.trade_tracker = m.TradeTracker.new( M.ace_timer, M.chat, trade_complete_callback )
 
@@ -514,7 +610,7 @@ local function create_components()
   M.usage_printer = m.UsagePrinter.new( M.chat )
 
   -- TODO: Add type.
-  M.minimap_button = m.MinimapButton.new( M.api, db( "minimap_button" ), M.softres_gui.toggle, M.softres_check, M.config )
+  M.minimap_button = m.MinimapButton.new( M.api, db( "minimap_button" ), M.config, M.event_bus, M.minimap_contributions )
 
   -- TODO: Add type.
   M.master_loot_warning = m.MasterLootWarning.new( M.api, M.config, m.BossList.zones, M.player_info )
@@ -588,7 +684,7 @@ local function create_components()
 
   M.drop_simulator = m.DropSimulator.new( M.boss_killed, M.raid_lockout, confirm_lockout_reset )
 
-  M.gargul_bridge = m.GargulBridge.new( M.player_info, M.roll_controller, M.config, function() return M.softres_db.data end, M.softres )
+  M.gargul_bridge = m.GargulBridge.new( M.player_info, M.roll_controller, M.config, m.SoftResSource.get_import_string, M.softres )
 
   M.roll_for_broadcast = m.RollForBroadcast.new( M.roll_controller, M.config )
   M.roll_for_receiver = m.RollForReceiver.new( M.rolling_popup, db( "receiver" ) )
@@ -668,6 +764,17 @@ local function create_components()
   -- Construction phase. Everything above exists now, so extensions that build frames or
   -- register slash commands do it here rather than in on_enable.
   m.Extensions.ready( make_extension_context )
+
+  -- Nobody claimed the click, so it does what a bare /rf does. Decided once, here, after
+  -- every extension has had its chance to subscribe during on_enable/on_ready -- the
+  -- subscriber list is fixed for the rest of the session, so this is equivalent to asking
+  -- "did anyone claim it" at click time, without the button needing to know what the
+  -- default even is. Not "nobody handled it" but literally "nobody subscribed": core's own
+  -- claim above (softres_gui.toggle) means this never fires while core still owns
+  -- soft-res.
+  if not M.event_bus.has_subscribers( "minimap_icon_left_click" ) then
+    M.event_bus.subscribe( "minimap_icon_left_click", function() M.interface_options.open() end )
+  end
 end
 
 local function subscribe_for_component_events()
@@ -707,12 +814,90 @@ local function subscribe_for_component_events()
       hl( table.concat( changed, ", " ) ), lost ) )
   end )
 
-  M.config_event_bus.subscribe( "config_change_requires_ui_reload", function()
+  M.event_bus.subscribe( "config_change_requires_ui_reload", function()
     M.confirmation_dialog.show( {
       title = "This change requires a UI reload.",
       question = "Reload the UI now?",
       on_yes = function() m.api.ReloadUI() end
     } )
+  end )
+
+  M.event_bus.subscribe( "softres_imported", function( event )
+    refresh_minimap()
+
+    -- Only on an interactive (GUI) import -- not on the login reload re-importing the
+    -- saved string, which would otherwise re-broadcast to Gargul and fire auto-master-loot
+    -- on every login.
+    if not event.interactive then return end
+
+    if M.gargul_bridge then M.gargul_bridge.broadcast_softres( event.raw ) end
+    M.auto_master_loot.on_softres_import()
+  end )
+
+  M.event_bus.subscribe( "softres_cleared", function()
+    M.winner_tracker.clear()
+    refresh_minimap()
+  end )
+
+  -- Temporary: core is still the only soft-res source, so it is also still what answers
+  -- /rfsetup's simulated reservations. Moved verbatim out of RollSimulator's old
+  -- setup()/fake_group() bodies, not rewritten. In Phase C this subscription and the
+  -- import shape below move to the source extension.
+  M.event_bus.subscribe( "simulation_started", function( event )
+    local soft_reserves = {}
+
+    for _, reservation in ipairs( event.reservations ) do
+      -- One entry per roll: duplicates in a raidres import are what grant extra rolls.
+      local items = {}
+      for _ = 1, reservation.rolls do
+        table.insert( items, { id = event.item.id, quality = event.item.quality or 3 } )
+      end
+      table.insert( soft_reserves, { name = reservation.name, items = items } )
+    end
+
+    M.unfiltered_softres.import( {
+      metadata = { id = "SIM", instance = 0, instances = {}, origin = "raidres" },
+      softreserves = soft_reserves,
+      hardreserves = {}
+    } )
+
+    local by_name = {}
+    for _, player in ipairs( event.players ) do by_name[ player.name ] = player end
+
+    -- SoftResPresentPlayersDecorator captures group_roster.is_player_in_my_group as an
+    -- upvalue when it is constructed, so overriding the roster afterwards cannot reach it
+    -- and every simulated soft-resser is filtered out as absent. Skip just that layer by
+    -- delegating to the chain's "unfiltered" tap, which keeps every decorator below it in
+    -- play, and do its class enrichment here.
+    local function enrich( rollers )
+      for _, roller in ipairs( rollers or {} ) do
+        local player = by_name[ roller.name ]
+        roller.class = player and player.class
+      end
+
+      return rollers
+    end
+
+    -- Everything *above* the present-players layer still has to run, so it is rebuilt here
+    -- rather than reproduced. Hardcoding the stand-in as "one named decorator plus class
+    -- enrichment" is what silently dropped bonus rolls from /rfsetup the moment a new
+    -- decorator went on top: the simulator was pinning what the outermost layer was.
+    -- Anything added above present-players from now on gets wrapped here too.
+    -- Cloned rather than built from scratch: the stand-in *is* the current softres with the
+    -- present-players filtering swapped out, so it has to keep the rest of the interface.
+    -- Re-running /rfsetup is idempotent -- .get is overwritten before it is wrapped again.
+    local stand_in = m.clone( M.softres )
+    local unfiltered = M.unfiltered_view
+    stand_in.get = function( item_data ) return enrich( unfiltered.get( item_data ) ) end
+    stand_in.get_all_rollers = function() return enrich( unfiltered.get_all_rollers() ) end
+
+    local simulated = m.SoftResBonusRollDecorator.new(
+      stand_in, M.resistance_bonus_roll_registry, M.config )
+
+    M.softres.get = simulated.get
+    M.softres.get_all_rollers = simulated.get_all_rollers
+
+    M.softres_gui.refresh()
   end )
 end
 
@@ -736,13 +921,14 @@ function M.import_encoded_softres_data( data, data_loaded_callback )
   M.import_softres_data( softres_data )
 
   info( "Soft-res data loaded successfully!" )
-  if data_loaded_callback then
-    data_loaded_callback( softres_data )
-    if M.gargul_bridge then M.gargul_bridge.broadcast_softres( data ) end
-    M.auto_master_loot.on_softres_import()
-  end
 
-  update_minimap_icon()
+  -- A callback means a human clicked Import; its absence means this is the login reload
+  -- re-importing the saved string. `interactive` preserves that distinction downstream --
+  -- Gargul must not be re-broadcast to and auto-master-loot must not fire on every login.
+  local interactive = data_loaded_callback ~= nil
+  if data_loaded_callback then data_loaded_callback( softres_data ) end
+
+  M.event_bus.notify( "softres_imported", { source = "builtin", raw = data, interactive = interactive } )
 end
 
 local function on_roll_command( roll_slash_command )
@@ -1023,6 +1209,12 @@ function M.on_player_login()
   -- Answers as UPDATE_INSTANCE_INFO, which is where a lockout that turned over while
   -- we were logged out gets noticed.
   M.raid_lockout.refresh()
+
+  -- In Phase A core still does the import inline right after the emit; in Phase C the
+  -- emit is all that's left here and the source extension does the import from its own
+  -- subscription. Kept at exactly this point in the login sequence so that ordering
+  -- carries over unchanged either way.
+  M.event_bus.notify( "player_login" )
   M.import_encoded_softres_data( M.softres_db.data )
   M.softres_gui.load( M.softres_db.data )
 
@@ -1064,7 +1256,7 @@ function M.on_group_changed()
     callback()
   end
 
-  update_minimap_icon()
+  refresh_minimap()
 end
 
 function M.on_chat_msg_addon( name, message )

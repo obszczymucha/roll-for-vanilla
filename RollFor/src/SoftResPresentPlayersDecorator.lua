@@ -9,17 +9,6 @@ local filter = m.filter
 local map = m.map
 local clone = m.clone
 
----@class GroupAwareSoftRes
----@field get fun( item_data: ItemData ): RollingPlayer[]
----@field get_all_rollers fun(): RollingPlayer[]
----@field is_player_softressing fun( player_name: string, item_data: ItemData? ): boolean
----@field get_items fun(): ItemData[]
----@field get_hr_item_ids fun(): ItemId[]
----@field is_item_hardressed fun( item_id: ItemId ): boolean
----@field import fun( data: RaidResData )
----@field clear fun( report: boolean )
----@field persist fun()
-
 -- I decorate given softres class with present players logic.
 -- Example: "give me all players who soft-ressed and are in the group".
 -- I also enrich the player data with class name.

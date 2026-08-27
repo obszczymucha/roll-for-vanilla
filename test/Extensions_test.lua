@@ -139,6 +139,18 @@ function CompatibilitySpec:should_treat_a_missing_api_version_as_incompatible()
   eq( Extensions.is_enabled( "vague" ), false )
 end
 
+-- Context is now v2 (api, softres_source, softres_tap, minimap were added by the soft-res
+-- extraction), but an extension built against v1 -- RollForNetherVortex among them -- must
+-- keep loading unchanged: the check only rejects a spec declaring a version *greater* than
+-- the host's.
+function CompatibilitySpec:should_keep_accepting_an_extension_built_against_api_version_1()
+  eq( Extensions.API_VERSION, 2 )
+  eq( Extensions.register( spec( "nether_vortex", { api_version = 1 } ) ), true )
+
+  eq( Extensions.all()[ 1 ].incompatible, nil )
+  eq( Extensions.is_enabled( "nether_vortex" ), true )
+end
+
 function CompatibilitySpec:should_not_enable_an_incompatible_extension_even_when_the_db_says_on()
   local db = attach()
   Extensions.register( spec( "future", { api_version = Extensions.API_VERSION + 1 } ) )

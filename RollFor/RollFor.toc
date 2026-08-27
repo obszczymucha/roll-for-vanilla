@@ -36,6 +36,7 @@ src\DroppedLoot.lua
 src\TradeTracker.lua
 src\SoftResDataTransformer.lua
 src\SoftRes.lua
+src\SoftResSource.lua
 src\DroppedLootAnnounce.lua
 src\AwardedLoot.lua
 src\SoftResAwardedLootDecorator.lua
