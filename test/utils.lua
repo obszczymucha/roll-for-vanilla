@@ -1070,6 +1070,13 @@ end
 
 function M.import_soft_res( data )
   local rf = M.load_roll_for()
+
+  -- Core's built-in import path, which only exists while core owns the soft-res source.
+  -- A test that registers a source extension gets a core with no store to import into --
+  -- the extension owns the import then. See `builtin_softres` in main.lua.
+  local source = RollFor.SoftResSource.get()
+  if source and source.id ~= "builtin" then return rf end
+
   rf.import_softres_data( data )
 
   return rf

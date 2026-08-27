@@ -109,12 +109,14 @@ test-only one.
 
 ## Known consequences still open
 
-1. **Phase B's first task is making core's built-in soft-res all-or-nothing.** Core and a
-   source extension cannot both add `matched_name`/`awarded_loot`/`present_players`. Gating
+1. ~~**Phase B's first task is making core's built-in soft-res all-or-nothing.**~~
+   **Done** — landed as a third commit on this branch rather than during Phase B, since it
+   is core-only and behaviour-identical while no source extension exists. Core and a source
+   extension cannot both add `matched_name`/`awarded_loot`/`present_players`, and gating
    just the links is not enough: `SoftResCheck` is built from the `unfiltered` tap declared
    alongside `present_players`, so skipping the links while keeping the rest constructs it
-   on `nil` and login dies in core's minimap contribution. Tried, confirmed, and written up
-   as §5.0 of `SR-EXTENSION.md`.
+   on `nil` and login dies in core's minimap contribution. The whole built-in now sits
+   behind a `builtin_softres` flag. See §5.0 of `SR-EXTENSION.md`.
 
 2. **Pre-existing bug, deliberately not fixed here:** `SoftRes.persist` writes
    `import_timestamp` into `db( "softres" )`, but `SoftResCheck` reads it from

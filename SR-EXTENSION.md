@@ -530,6 +530,14 @@ works with or without the extension installed. **Phase B is shippable.**
 
 ### 5.0 First task: make core's built-in soft-res all-or-nothing
 
+**Done — landed in core ahead of the rest of Phase B**, because it is core-only and
+shippable on its own: while no source extension exists `SoftResSource.get()` is always
+nil, the `if` is always taken, and behaviour is identical. Doing it first keeps the rest
+of Phase B to the other repo. Implemented as a file-scope `builtin_softres` local in
+`main.lua`, set immediately after `Extensions.enable()` and read by the four places that
+contribute soft-res (`create_components` twice, `subscribe_for_component_events`,
+`setup_slash_commands`) plus the login import. See the note at the end of this section.
+
 Core and the extension cannot both own `matched_name`, `awarded_loot` and
 `present_players` — whichever adds a name second gets `link 'matched_name' is already in
 the chain`. So before anything else in this phase, core's built-in soft-res becomes a
@@ -553,6 +561,22 @@ deletes the block rather than unpicking it.
 `nil`; core's minimap contribution then calls `check_softres` during login and the addon
 dies with `attempt to index a nil value (upvalue 'softres')`. This was tried — that is the
 actual error.
+
+**What the change actually touched.** The store, `NameManualMatcher` and the built-in
+`SoftResSource.register` moved down from above `Extensions.enable()` into the block (the
+matcher is core's, and nothing between the two points used it). `/src` and `/srs` register
+themselves from `SoftResCheck.new`, and `/sro` from `NameManualMatcher.new`, so they are
+gated by construction rather than by an `if` of their own; only `/sr` needed one.
+`M.on_group_changed` gained a `if M.name_matcher then` guard — it is the one consumer that
+called into the built-in from outside the block. `test/utils.lua`'s `import_soft_res`
+skips core's import path when a test has registered a source extension, since there is no
+longer a core store to import into.
+
+`SoftResSourcePrecedence_test` is where this is pinned: its probe extension now
+contributes the backbone itself, as a real source must, and `BuiltInSteppedAsideSpec`
+asserts core built none of its own — no store, matcher, `SoftResCheck` or gui, no `/sr`
+family, no minimap contribution, no `simulation_started` subscriber — while `/rfreset`
+still registers.
 
 ### 5.1 Layout
 
@@ -1023,6 +1047,8 @@ dumb; if your test needs filtering, your test belongs in RollForSoftResIt.*
 
 **Phase B** (addons repo, plus nothing in core):
 
+9a. §5.0, in core, on its own: the built-in becomes all-or-nothing behind
+    `builtin_softres`. Behaviour-identical until a source extension exists. **Done.**
 10. Scaffold `RollForSoftResIt` (TOC, entry, `.editorconfig`, `.luarc.json`, `test.sh`).
 11. Copy the moving files in, rewrite namespaces and guards.
 12. Registration, `on_ready`, options page, minimap contribution, slash commands,
