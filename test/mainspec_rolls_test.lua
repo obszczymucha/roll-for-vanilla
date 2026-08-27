@@ -1,6 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-require( "src/bcc/compat" )
+require( "src/compat" )
 local u = require( "test/utils" )
 local lu, eq = u.luaunit( "assertEquals" )
 require( "src/modules" )
@@ -27,7 +27,6 @@ local function mock_config()
         rolling_popup_lock = function() return true end,
         ms_roll_threshold = function() return 100 end,
         os_roll_threshold = function() return 99 end,
-        tmog_roll_threshold = function() return 98 end,
         roll_threshold = function()
           return {
             value = 100,
@@ -36,7 +35,6 @@ local function mock_config()
         end,
         auto_loot = function() return true end,
         superwow_auto_loot_coins = function() return false end,
-        tmog_rolling_enabled = function() return true end,
         rolling_popup = function() return true end,
         raid_roll_again = function() return false end,
         default_rolling_time_seconds = function() return 8 end,
@@ -74,7 +72,7 @@ function MainspecRollsSpec:should_finish_rolling_automatically_if_all_players_ro
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished(),
     rolling_not_in_progress()
@@ -94,7 +92,7 @@ function MainspecRollsSpec:should_finish_rolling_after_the_timer_if_not_all_play
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished(),
@@ -116,7 +114,7 @@ function MainspecRollsSpec:should_detect_and_ignore_double_rolls()
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2" ),
     c( "RollFor: Obszczymucha exhausted their rolls. This roll (100) is ignored." ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
@@ -136,7 +134,7 @@ function MainspecRollsSpec:should_recognize_multiple_rollers_for_multiple_items_
 
   -- Then
   m.chat.assert(
-    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." ),
     cr( "Obszczymucha rolled the highest (100) for [Hearthstone]." ),
     cr( "Psikutas rolled the next highest (69) for [Hearthstone]." ),
     rolling_finished()
@@ -157,7 +155,7 @@ function MainspecRollsSpec:should_recognize_multiple_rollers_for_multiple_items_
 
   -- Then
   m.chat.assert(
-    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Obszczymucha rolled the highest (100) for [Hearthstone]." ),
     cr( "Psikutas rolled the next highest (69) for [Hearthstone]." ),
@@ -204,7 +202,7 @@ function MainspecRollsSpec:should_only_record_loot_that_we_are_awarding()
   m.chat.assert(
     r( "1 item dropped:" ),
     r( "1. [Hearthstone]" ),
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished()
   )
@@ -229,7 +227,7 @@ function MainspecRollsSpec:should_only_record_loot_that_we_are_awarding()
   m.chat.assert(
     r( "1 item dropped:" ),
     r( "1. [Hearthstone]" ),
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished(),
     c( "RollFor: Psikutas received [Hearthstone]." )

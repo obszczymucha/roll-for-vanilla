@@ -1,6 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-require( "src/bcc/compat" )
+require( "src/compat" )
 local lu = require( "luaunit" )
 local eq = lu.assertEquals
 local u = require( "test/utils" )
@@ -41,7 +41,6 @@ local mock_config = function( config )
         rolling_popup_lock = function() return true end,
         ms_roll_threshold = function() return 100 end,
         os_roll_threshold = function() return 99 end,
-        tmog_roll_threshold = function() return 98 end,
         roll_threshold = function()
           return {
             value = 100,
@@ -49,7 +48,6 @@ local mock_config = function( config )
           }
         end,
         auto_loot = function() return true end,
-        tmog_rolling_enabled = function() return true end,
         rolling_popup = function() return true end,
         default_rolling_time_seconds = function() return 8 end,
         master_loot_frame_rows = function() return 5 end,
@@ -356,7 +354,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
     rw( "Psikutas soft-ressed [Hearthstone]." ),
     -- c( "RollFor [Tip]: Use /arf [Hearthstone] to roll the item and ignore the softres." ),
     c( "RollFor: Psikutas received [Hearthstone]." ),
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Ponpon rolled the highest (1) for [Hearthstone]." ),
     rolling_finished()
@@ -393,7 +391,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
     c( "RollFor: Trading with Obszczymucha complete." ),
     c( "RollFor: Traded: 1x[Hearthstone]" ),
     c( "RollFor: Obszczymucha received [Hearthstone]." ),
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Ponpon rolled the highest (1) for [Hearthstone]." ),
     rolling_finished()
@@ -432,7 +430,7 @@ function SoftResIntegrationSpec:should_allow_others_to_roll_if_player_who_soft_r
     rw( "Obszczymucha soft-ressed [Hearthstone]." ),
     -- c( "RollFor [Tip]: Use /arf [Hearthstone] to roll the item and ignore the softres." ),
     c( "RollFor: Obszczymucha received [Hearthstone]." ),
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Ponpon rolled the highest (1) for [Hearthstone]." ),
     rolling_finished()

@@ -1,6 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;./../RollFor/?.lua;../RollFor/libs/?.lua"
 
-require( "src/bcc/compat" )
+require( "src/compat" )
 local utils = require( "test/utils" )
 local lu, eq = utils.luaunit( "assertEquals" )
 local m = require( "src/modules" )
@@ -36,7 +36,6 @@ local new_softres = function()
     is_hardres_rolling = function() return false end,
     is_player_softressing = function() return false end,
     get_items = function() return {} end,
-    get_item_quality = function() return LootQuality.Poor end,
     get_hr_item_ids = function() return {} end,
     import = function() end,
     clear = function() end,

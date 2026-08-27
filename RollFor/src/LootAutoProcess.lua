@@ -64,7 +64,6 @@ function M.new( config, roll_tracker, loot_list, roll_controller, player_info )
 
   local function on_loot_closed()
     clear_table( loot_cache )
-    if m.vanilla then loot_cache.n = 0 end
   end
 
   -- local function on_loot_list_item_selected( selected_item )

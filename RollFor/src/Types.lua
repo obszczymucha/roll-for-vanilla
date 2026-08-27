@@ -40,14 +40,12 @@ end
 ---@alias RollType
 ---| "MainSpec"
 ---| "OffSpec"
----| "Transmog"
 ---| "SoftRes"
 ---| "BonusRoll"
 
 ---@class RT
 ---@field MainSpec "MainSpec"
 ---@field OffSpec "OffSpec"
----@field Transmog "Transmog"
 ---@field SoftRes "SoftRes"
 ---@field BonusRoll "BonusRoll"
 
@@ -55,7 +53,6 @@ end
 M.RollType = {
   MainSpec = "MainSpec",
   OffSpec = "OffSpec",
-  Transmog = "Transmog",
   SoftRes = "SoftRes",
   BonusRoll = "BonusRoll"
 }

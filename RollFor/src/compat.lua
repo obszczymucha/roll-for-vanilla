@@ -1,8 +1,6 @@
 RollFor = RollFor or {}
 local M = RollFor
 
-M.bcc = true
-
 ---@param t table
 ---@return number
 M.getn = function( t ) return #t end

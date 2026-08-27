@@ -53,33 +53,22 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
 
   local function create()
     local frame = api().CreateFrame( "Button", "RollForMinimapButton", api().Minimap )
-    local was_dragging = false
 
     function frame.OnClick( self )
-      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
-
       manage_softres_fn()
       self:OnEnter()
       api().GameTooltip:Hide()
     end
 
     function frame.OnMouseDown( self )
-      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
-
       self.icon:SetTexCoord( 0, 1, 0, 1 )
-      was_dragging = false
     end
 
     function frame.OnMouseUp( self )
-      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
-
       self.icon:SetTexCoord( 0.05, 0.95, 0.05, 0.95 )
-      if m.vanilla and not was_dragging then self:OnClick() end
     end
 
     function frame.OnEnter( self )
-      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
-
       if not self.dragging then
         api().GameTooltip:SetOwner( self, "ANCHOR_LEFT" )
         api().GameTooltip:SetText( blue( "RollFor" ) )
@@ -124,19 +113,14 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
     end
 
     function frame.OnDragStart( self )
-      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
-
       self.dragging = true
       self:LockHighlight()
       self.icon:SetTexCoord( 0, 1, 0, 1 )
       self:SetScript( "OnUpdate", self.OnUpdate )
       api().GameTooltip:Hide()
-      was_dragging = true
     end
 
     function frame.OnDragStop( self )
-      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
-
       self.dragging = nil
       self:SetScript( "OnUpdate", nil )
       self.icon:SetTexCoord( 0.05, 0.95, 0.05, 0.95 )
@@ -144,8 +128,6 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
     end
 
     function frame.OnUpdate( self )
-      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
-
       local mx, my = api().Minimap:GetCenter()
       local px, py = api().GetCursorPosition()
       local scale = api().Minimap:GetEffectiveScale()
@@ -161,8 +143,6 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
     --I suck at trig, so I"m not going to bother figuring it out
     ---@diagnostic disable-next-line: redefined-local
     function frame.UpdatePosition( self )
-      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
-
       local angle = math.rad( get_angle() or m.lua.random( 0, 360 ) )
       local cos = math.cos( angle )
       local sin = math.sin( angle )

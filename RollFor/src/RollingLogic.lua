@@ -259,7 +259,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     if m_rolling_strategy then m_rolling_strategy.stop_accepting_rolls( true ) end
   end
 
-  ---@param limit number
+  ---@param limit number?
   local function show_sorted_rolls( limit )
     if m_rolling_strategy then m_rolling_strategy.show_sorted_rolls( limit ) end
   end

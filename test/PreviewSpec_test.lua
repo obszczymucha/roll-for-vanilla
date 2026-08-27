@@ -1,6 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua"
 
-require( "src/bcc/compat" )
+require( "src/compat" )
 local u = require( "test/utils" )
 local lu, eq = u.luaunit( "assertEquals" ) ---@diagnostic disable-line: unused-local
 local sr, hr = u.soft_res_item, u.hard_res_item
@@ -152,7 +152,7 @@ function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rol
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.party( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.party( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
 end
 
 function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rolling_in_raid()
@@ -198,7 +198,7 @@ function PreviewNotSoftRessedItemSpec:should_display_roll_button_that_starts_rol
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
 end
 
 function PreviewNotSoftRessedItemSpec:should_display_award_other_button_that_shows_player_selection_popup_and_awards_the_item()
@@ -1025,7 +1025,7 @@ function PreviewHardResWinnersSpec:should_display_roll_button_that_starts_rollin
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.party( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.party( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" )
 end
 
 function PreviewHardResWinnersSpec:should_display_award_other_button_that_shows_player_selection_popup_and_awards_the_item()

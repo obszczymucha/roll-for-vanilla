@@ -320,11 +320,7 @@ function M.new( popup_builder, content_transformer, db, config )
   end
 
   local function ping()
-    if m.vanilla then
-      m.api.PlaySound( "igMainMenuOpen" )
-    else
-      m.api.PlaySound( m.api.SOUNDKIT.IG_MAINMENU_OPEN )
-    end
+    m.api.PlaySound( m.api.SOUNDKIT.IG_MAINMENU_OPEN )
   end
 
   local function get_anchor_point()

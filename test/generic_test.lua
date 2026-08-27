@@ -1,6 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-require( "src/bcc/compat" )
+require( "src/compat" )
 local u                              = require( "test/utils" )
 local lu                             = u.luaunit()
 local player, leader                 = u.player, u.raid_leader
@@ -23,7 +23,6 @@ local function mock_config()
         rolling_popup_lock = function() return true end,
         ms_roll_threshold = function() return 100 end,
         os_roll_threshold = function() return 99 end,
-        tmog_roll_threshold = function() return 98 end,
         roll_threshold = function()
           return {
             value = 100,
@@ -31,7 +30,6 @@ local function mock_config()
           }
         end,
         auto_loot = function() return true end,
-        tmog_rolling_enabled = function() return true end,
         rolling_popup = function() return true end,
         raid_roll_again = function() return false end,
         default_rolling_time_seconds = function() return 8 end,
@@ -114,7 +112,7 @@ function GenericSpec:should_properly_parse_multiple_item_roll_for()
 
   -- Then
   m.chat.assert(
-    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." )
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." )
   )
 end
 
@@ -129,7 +127,7 @@ function GenericSpec:should_properly_parse_multiple_item_roll_for_if_there_is_sp
 
   -- Then
   m.chat.assert(
-    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." )
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." )
   )
 end
 
@@ -143,7 +141,7 @@ function GenericSpec:should_roll_the_item_in_party_chat()
 
   -- Then
   m.chat.assert(
-    p( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+    p( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" )
   )
 end
 
@@ -158,7 +156,7 @@ function GenericSpec:should_not_roll_again_if_rolling_is_in_progress()
 
   -- Then
   m.chat.assert(
-    p( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    p( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     c( "RollFor: Rolling is in progress." )
   )
 end
@@ -173,7 +171,7 @@ function GenericSpec:should_roll_the_item_in_raid_chat()
 
   -- Then
   m.chat.assert(
-    r( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+    r( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" )
   )
 end
 
@@ -187,7 +185,7 @@ function GenericSpec:should_roll_the_item_in_raid_warning()
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" )
   )
 end
 
@@ -213,7 +211,7 @@ function GenericSpec:should_cancel_rolling()
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     c( "RollFor: Rolling for [Hearthstone] was canceled." ),
     r( "Rolling for [Hearthstone] was canceled." )
   )
@@ -241,7 +239,7 @@ function GenericSpec:should_finish_rolling()
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     cr( "No one rolled for [Hearthstone]." ),
     c( "RollFor: Rolling for [Hearthstone] finished." )
   )

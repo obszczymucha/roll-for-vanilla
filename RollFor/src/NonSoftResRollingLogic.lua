@@ -61,17 +61,12 @@ function M.new(
   local mainspec_rollers, mainspec_rolls = players, {}
   ---@type RollingPlayer[], Roll[]
   local offspec_rollers, offspec_rolls = rlu.copy_rollers( mainspec_rollers ), {}
-  ---@type RollingPlayer[], Roll[]
-  local tmog_rollers, tmog_rolls = rlu.copy_rollers( mainspec_rollers ), {}
-
   local rolling = false
   local seconds_left = seconds
   local timer
 
   local ms_threshold = config.ms_roll_threshold()
   local os_threshold = config.os_roll_threshold()
-  local tmog_threshold = config.tmog_roll_threshold()
-  local tmog_rolling_enabled = config.tmog_rolling_enabled()
 
   local function sort_rolls()
     local f = function( a, b )
@@ -84,17 +79,14 @@ function M.new(
 
     table.sort( mainspec_rolls, f )
     table.sort( offspec_rolls, f )
-    table.sort( tmog_rolls, f )
   end
 
   local function have_all_rolls_been_exhausted()
     local mainspec_roll_count = getn( mainspec_rolls )
     local offspec_roll_count = getn( offspec_rolls )
-    local tmog_roll_count = getn( tmog_rolls )
-    local total_roll_count = mainspec_roll_count + offspec_roll_count + tmog_roll_count
+    local total_roll_count = mainspec_roll_count + offspec_roll_count
 
-    if item_count == getn( tmog_rollers ) and have_all_players_rolled( tmog_rollers ) or
-        item_count == getn( offspec_rollers ) and have_all_players_rolled( offspec_rollers ) or
+    if item_count == getn( offspec_rollers ) and have_all_players_rolled( offspec_rollers ) or
         item_count == getn( mainspec_rollers ) and total_roll_count == getn( mainspec_rollers ) then
       return true
     end
@@ -124,9 +116,8 @@ function M.new(
 
     local mainspec_roll_count = count_elements( mainspec_rolls )
     local offspec_roll_count = count_elements( offspec_rolls )
-    local tmog_roll_count = count_elements( tmog_rolls )
 
-    if mainspec_roll_count == 0 and offspec_roll_count == 0 and tmog_roll_count == 0 then
+    if mainspec_roll_count == 0 and offspec_roll_count == 0 then
       on_rolling_finished( item, item_count, item_quantity, {} )
       return
     end
@@ -134,7 +125,7 @@ function M.new(
     sort_rolls()
 
     ---@type Roll[]
-    local all_rolls = merge( {}, mainspec_rolls, offspec_rolls, tmog_rolls )
+    local all_rolls = merge( {}, mainspec_rolls, offspec_rolls )
     local roll_count = getn( all_rolls )
 
     local function count_top_roll_winners()
@@ -177,13 +168,11 @@ function M.new(
   ---@param min number
   ---@param max number
   local function on_roll( roller, roll, min, max )
-    if not rolling or min ~= 1 or (max ~= tmog_threshold and max ~= os_threshold and max ~= ms_threshold) then return end
-    if max == tmog_threshold and not tmog_rolling_enabled then return end
+    if not rolling or min ~= 1 or (max ~= os_threshold and max ~= ms_threshold) then return end
 
     local ms_roll = max == ms_threshold
-    local os_roll = max == os_threshold
-    local roll_type = ms_roll and RollType.MainSpec or os_roll and RollType.OffSpec or RollType.Transmog
-    local rollers = ms_roll and mainspec_rollers or os_roll and offspec_rollers or tmog_rollers
+    local roll_type = ms_roll and RollType.MainSpec or RollType.OffSpec
+    local rollers = ms_roll and mainspec_rollers or offspec_rollers
     local player = find_player( roller.name, rollers ) ---@type RollingPlayer
 
     if not player then
@@ -204,7 +193,7 @@ function M.new(
     end
 
     player.rolls = player.rolls - 1
-    local t = ms_roll and mainspec_rolls or os_roll and offspec_rolls or tmog_rolls
+    local t = ms_roll and mainspec_rolls or offspec_rolls
     table.insert( t, make_roll( player, roll_type, roll ) )
     controller.roll_was_accepted( player.name, player.class, roll_type, roll )
 
@@ -233,9 +222,8 @@ function M.new(
 
   local function start_rolling()
     local count_str = item_count > 1 and string.format( "%sx", item_count ) or ""
-    local tmog_info = config.tmog_rolling_enabled() and string.format( " or /roll %s (TMOG)", config.tmog_roll_threshold() ) or ""
     local default_ms = config.ms_roll_threshold() ~= 100 and string.format( "%s ", config.ms_roll_threshold() ) or ""
-    local roll_info = string.format( " /roll %s(MS) or /roll %s (OS)%s", default_ms, config.os_roll_threshold(), tmog_info )
+    local roll_info = string.format( " /roll %s(MS) or /roll %s (OS)", default_ms, config.os_roll_threshold() )
     local info_str = info and info ~= "" and string.format( " %s", info ) or roll_info
     local x_rolls_win = item_count > 1 and string.format( ". %d top rolls win.", item_count ) or ""
 
@@ -269,7 +257,6 @@ function M.new(
     sort_rolls()
     show( "Mainspec", mainspec_rolls )
     show( "Offspec", offspec_rolls )
-    show( "Transmog", tmog_rolls )
   end
 
   local function print_rolling_complete( canceled )

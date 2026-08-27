@@ -50,23 +50,11 @@ function M.new( api, group_roster, loot_list )
     local players = group_roster.get_all_players_in_my_group()
 
     for i = 1, 40 do
-      -- There's probably a better way of separating the APIs. For now I'm leaving it like this.
-      if m.vanilla then
-        ---@diagnostic disable-next-line: missing-parameter
-        local name = api.GetMasterLootCandidate( i )
+      local name = api.GetMasterLootCandidate( slot, i )
 
-        for _, p in ipairs( players ) do
-          if name == p.name then
-            table.insert( result, make_item_candidate( name, p.class, p.online ) )
-          end
-        end
-      else
-        local name = api.GetMasterLootCandidate( slot, i )
-
-        for _, p in ipairs( players ) do
-          if name == p.name then
-            table.insert( result, make_item_candidate( name, p.class, p.online ) )
-          end
+      for _, p in ipairs( players ) do
+        if name == p.name then
+          table.insert( result, make_item_candidate( name, p.class, p.online ) )
         end
       end
     end
@@ -94,14 +82,8 @@ function M.new( api, group_roster, loot_list )
 
   local function get_index( slot, player_name )
     for i = 1, 40 do
-      if m.vanilla then
-        ---@diagnostic disable-next-line: missing-parameter
-        local name = api.GetMasterLootCandidate( i )
-        if name == player_name then return i end
-      else
-        local name = api.GetMasterLootCandidate( slot, i )
-        if name == player_name then return i end
-      end
+      local name = api.GetMasterLootCandidate( slot, i )
+      if name == player_name then return i end
     end
   end
 

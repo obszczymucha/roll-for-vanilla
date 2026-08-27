@@ -36,18 +36,10 @@ function M.new( loot_list, api, autoloot_db, config, player_info, chat )
 
   local function find_my_candidate_index( slot )
     for i = 1, 40 do
-      if m.vanilla then
-        local name = m.api.GetMasterLootCandidate( i )
+      local name = m.api.GetMasterLootCandidate( slot, i )
 
-        if name == api().UnitName( "player" ) then
-          return i
-        end
-      else
-        local name = m.api.GetMasterLootCandidate( slot, i )
-
-        if name == api().UnitName( "player" ) then
-          return i
-        end
+      if name == api().UnitName( "player" ) then
+        return i
       end
     end
   end

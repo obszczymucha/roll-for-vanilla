@@ -224,7 +224,7 @@ function M.new( rolling_popup, db )
       if not state then return end
       local rt = payload.roll_type
       local btn = rt == "MainSpec" and roll_button( "MS", payload.ms ) or
-          (rt == "OffSpec" or rt == "Transmog") and roll_button( "OS", payload.os_roll ) or
+          rt == "OffSpec" and roll_button( "OS", payload.os_roll ) or
           roll_button( "Roll", payload.ms )
       state.buttons = { btn, close_button }
       state.waiting_for_rolls = true

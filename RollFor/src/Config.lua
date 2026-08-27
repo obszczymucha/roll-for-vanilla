@@ -13,10 +13,6 @@ local ItemQuality = m.Types.ItemQuality
 
 local M = {}
 
----@alias Expansion
----| "Vanilla"
----| "BCC"
-
 ---@alias Config table
 
 ---@class ConfigToggle
@@ -56,9 +52,7 @@ function M.new( db, event_bus )
   local function init()
     if not db.ms_roll_threshold then db.ms_roll_threshold = 100 end
     if not db.os_roll_threshold then db.os_roll_threshold = 99 end
-    if not db.tmog_roll_threshold then db.tmog_roll_threshold = 98 end
     if not db.superwow_auto_loot_coins then db.superwow_auto_loot_coins = true end
-    if db.tmog_rolling_enabled == nil then db.tmog_rolling_enabled = true end
     if db.show_ml_warning == nil then db.show_ml_warning = false end
     if db.default_rolling_time_seconds == nil then db.default_rolling_time_seconds = 8 end
     if db.master_loot_frame_rows == nil then db.master_loot_frame_rows = 5 end
@@ -125,17 +119,8 @@ function M.new( db, event_bus )
   local function print_roll_thresholds()
     local ms_threshold = db.ms_roll_threshold
     local os_threshold = db.os_roll_threshold
-    local tmog_threshold = db.tmog_roll_threshold
-    local tmog_info = string.format( ", %s %s", hl( "TMOG" ), tmog_threshold ) or ""
 
-    info( string.format( "Roll thresholds: %s %s, %s %s%s", hl( "MS" ), ms_threshold, hl( "OS" ), os_threshold, tmog_info ) )
-  end
-
-  local function print_transmog_rolling_setting( show_threshold )
-    if m.bcc then return end
-    local tmog_rolling_enabled = db.tmog_rolling_enabled
-    local threshold = show_threshold and tmog_rolling_enabled and string.format( " (%s)", hl( db.tmog_roll_threshold ) ) or ""
-    info( string.format( "Transmog rolling is %s%s.", tmog_rolling_enabled and m.msg.enabled or m.msg.disabled, threshold ) )
+    info( string.format( "Roll thresholds: %s %s, %s %s", hl( "MS" ), ms_threshold, hl( "OS" ), os_threshold ) )
   end
 
   local function print_default_rolling_time()
@@ -217,17 +202,6 @@ function M.new( db, event_bus )
     return true
   end
 
-  local function set_tmog_roll_threshold( value )
-    value = valid_threshold( value )
-    if not value then return false end
-
-    db.tmog_roll_threshold = value
-    print_roll_thresholds()
-    notify_subscribers( "tmog_roll_threshold", value )
-
-    return true
-  end
-
   local function set_master_loot_threshold( quality )
     if not master_loot_threshold_name( quality ) then return false end
 
@@ -276,7 +250,6 @@ function M.new( db, event_bus )
     print_master_loot_frame_rows()
     print_master_loot_threshold()
     print_roll_thresholds()
-    print_transmog_rolling_setting()
 
     for toggle_key, setting in pairs( toggles ) do
       if not setting.hidden then
@@ -372,21 +345,6 @@ function M.new( db, event_bus )
     info( string.format( "Usage: %s <threshold>", hl( "/rf config os" ) ) )
   end
 
-  local function configure_tmog_threshold( args )
-    if args == "config tmog" then
-      db.tmog_rolling_enabled = not db.tmog_rolling_enabled
-      print_transmog_rolling_setting( true )
-      return
-    end
-
-    for value in string.gmatch( args, "config tmog (%d+)" ) do
-      set_tmog_roll_threshold( tonumber( value ) )
-      return
-    end
-
-    info( string.format( "Usage: %s <threshold>", hl( "/rf config tmog" ) ) )
-  end
-
   local function print_help()
     local v = function( name ) return string.format( "%s%s%s", hl( "<" ), grey( name ), hl( ">" ) ) end
     local function rfc( cmd ) return string.format( "%s%s", blue( "/rf config" ), cmd and string.format( " %s", hl( cmd ) ) or "" ) end
@@ -403,11 +361,6 @@ function M.new( db, event_bus )
     m.print( string.format( "%s %s - set MS rolling threshold ", rfc( "ms" ), v( "threshold" ) ) )
     m.print( string.format( "%s - show OS rolling threshold ", rfc( "os" ) ) )
     m.print( string.format( "%s %s - set OS rolling threshold ", rfc( "os" ), v( "threshold" ) ) )
-
-    if m.vanilla then
-      m.print( string.format( "%s - toggle TMOG rolling", rfc( "tmog" ) ) )
-      m.print( string.format( "%s %s - set TMOG rolling threshold", rfc( "tmog" ), v( "threshold" ) ) )
-    end
 
     for _, setting in pairs( toggles ) do
       if not setting.hidden then
@@ -500,11 +453,6 @@ function M.new( db, event_bus )
       return
     end
 
-    if string.find( args, "^config tmog" ) then
-      configure_tmog_threshold( args )
-      return
-    end
-
     if string.find( args, "^config default%-rolling%-time" ) then
       configure_default_rolling_time( args )
       return
@@ -529,9 +477,7 @@ function M.new( db, event_bus )
   end
 
   local function roll_threshold( roll_type )
-    local threshold = (roll_type == RollType.MainSpec or roll_type == RollType.SoftRes) and db.ms_roll_threshold or
-        roll_type == RollType.OffSpec and db.os_roll_threshold or
-        db.tmog_roll_threshold
+    local threshold = roll_type == RollType.OffSpec and db.os_roll_threshold or db.ms_roll_threshold
     local threshold_str = string.format( "/roll%s", threshold == 100 and "" or string.format( " %s", threshold ) )
 
     return {
@@ -543,15 +489,7 @@ function M.new( db, event_bus )
   init()
 
   ---@param setting_key string
-  ---@param expansion Expansion?
-  ---@param not_available_value any?
-  local function get( setting_key, expansion, not_available_value )
-    if expansion and (expansion == "Vanilla" and m.bcc or expansion == "BCC" and m.vanilla) then
-      return function()
-        return not_available_value
-      end
-    end
-
+  local function get( setting_key )
     return function()
       return db[ setting_key ]
     end
@@ -562,7 +500,6 @@ function M.new( db, event_bus )
   local config = {
     configure_ms_threshold = configure_ms_threshold,
     configure_os_threshold = configure_os_threshold,
-    configure_tmog_threshold = configure_tmog_threshold,
     hide_minimap_button = hide_minimap_button,
     lock_minimap_button = lock_minimap_button,
     minimap_button_hidden = get( "minimap_button_hidden" ),
@@ -579,8 +516,6 @@ function M.new( db, event_bus )
     show_minimap_button = show_minimap_button,
     subscribe = subscribe,
     toggles = toggles,
-    tmog_roll_threshold = get( "tmog_roll_threshold" ),
-    tmog_rolling_enabled = get( "tmog_rolling_enabled", "Vanilla", false ),
     unlock_minimap_button = unlock_minimap_button,
     default_rolling_time_seconds = get( "default_rolling_time_seconds" ),
     master_loot_frame_rows = get( "master_loot_frame_rows" ),
@@ -591,7 +526,6 @@ function M.new( db, event_bus )
     set_master_loot_frame_rows = set_master_loot_frame_rows,
     set_ms_roll_threshold = set_ms_roll_threshold,
     set_os_roll_threshold = set_os_roll_threshold,
-    set_tmog_roll_threshold = set_tmog_roll_threshold,
     set_master_loot_threshold = set_master_loot_threshold,
     resistance_check_throttle = get( "resistance_check_throttle" ),
     set_resistance_check_throttle = set_resistance_check_throttle,

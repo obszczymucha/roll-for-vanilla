@@ -35,8 +35,6 @@ function M.new( player_info, roll_controller, config, get_import_string, softres
   local function rolls_for_type( roll_type )
     if roll_type == "OffSpec" then
       return { { "OS", 1, config.os_roll_threshold() } }
-    elseif roll_type == "Transmog" then
-      return { { "TMOG", 1, config.tmog_roll_threshold() } }
     end
     return { { "MS", 1, config.ms_roll_threshold() } }
   end
@@ -112,16 +110,10 @@ function M.new( player_info, roll_controller, config, get_import_string, softres
       return { { "MS", 1, config.ms_roll_threshold() } }
     end
 
-    local rolls = {
+    return {
       { "MS", 1, config.ms_roll_threshold() },
       { "OS", 1, config.os_roll_threshold() },
     }
-
-    if config.tmog_rolling_enabled() then
-      table.insert( rolls, { "TMOG", 1, config.tmog_roll_threshold() } )
-    end
-
-    return rolls
   end
 
   ---@param event RollingStartedEvent

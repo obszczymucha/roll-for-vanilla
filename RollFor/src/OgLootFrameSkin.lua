@@ -114,7 +114,7 @@ function M.new( frame_builder )
     name_texture:SetWidth( 133 )
     name_texture:SetHeight( 62 )
     name_texture:SetPoint( "LEFT", -15, 0 )
-    container.icon = gui.create_icon_in_container( m.vanilla and "LootButton" or "Button", container, w, h, icon_zoom )
+    container.icon = gui.create_icon_in_container( "Button", container, w, h, icon_zoom )
     container.icon:SetPoint( "LEFT", container, "LEFT", 20, 0 )
     local pushed_texture = container.icon:CreateTexture( nil, "OVERLAY" )
     pushed_texture:SetAllPoints( container.icon )
@@ -137,12 +137,7 @@ function M.new( frame_builder )
     container.comment.inner:SetAllPoints( container.comment )
     container.comment.inner.text:ClearAllPoints()
 
-    -- Small differences in rendering between OG and modern clients.
-    if m.vanilla then
-      container.comment.inner.text:SetPoint( "CENTER", container.comment.inner, "CENTER", 0, 1 )
-    else
-      container.comment.inner.text:SetPoint( "CENTER", container.comment.inner, "CENTER", 1, 0 )
-    end
+    container.comment.inner.text:SetPoint( "CENTER", container.comment.inner, "CENTER", 1, 0 )
 
     container.comment.inner:SetScale( 0.7 )
     container.comment.inner:SetFrameLevel( container.comment:GetFrameLevel() + 1 )
@@ -234,21 +229,11 @@ function M.new( frame_builder )
 
       container.icon:SetScript( "OnClick", v.is_enabled and not v.is_selected and v.click_fn or modifier_fn )
 
-      if m.vanilla then
-        -- Fucking hell this took forever to figure out. Fuck you Blizzard.
-        -- For looting to work in vanilla, the frame must be of a "LootButton" type and
-        -- then it comes with the SetSlot function that we need to use to set the slot.
-        -- This will probably be a pain in the ass when porting.
-        container.icon:SetSlot( v.slot or 0 )
-      end
-
       update()
       resize()
     end
 
     local function on_enter( self )
-      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
-
       if not item or item.is_enabled then container.icon.highlight_texture:Show() end
       if not item then return end
 
@@ -278,7 +263,6 @@ function M.new( frame_builder )
     container.name:SetScript( "OnEnter", function( self )
       if not item then return end
       if item.comment_tooltip then
-        if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
         self.tooltip_scale = m.api.GameTooltip:GetScale()
         m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
@@ -297,8 +281,6 @@ function M.new( frame_builder )
     end )
 
     container.name:SetScript( "OnLeave", function( self )
-      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
-
       m.api.GameTooltip:Hide()
       m.api.GameTooltip:SetScale( self.tooltip_scale or 1 )
       mouse_down = false
