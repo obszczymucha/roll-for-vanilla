@@ -1,6 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua"
 
-require( "src/bcc/compat" )
+require( "src/compat" )
 local u = require( "test/utils" )
 local lu = u.luaunit()
 local builder = require( "test/IntegrationTestBuilder" )
@@ -58,7 +58,7 @@ function NoOneRollsSpec:should_display_roll_button_that_rolls()
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     text( "Rolling ends in 8 seconds.", 11 ),
@@ -166,7 +166,7 @@ function NoOneRollsSpec:should_display_cancel_button_that_cancels()
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     text( "Rolling ends in 8 seconds.", 11 ),
@@ -271,7 +271,7 @@ function NoOneRollsSpec:should_display_finish_early_button_that_finishes_early()
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     text( "Rolling ends in 8 seconds.", 11 ),
@@ -371,7 +371,7 @@ function NoOneRollsSpec:should_not_display_finish_early_button_if_no_one_rolled(
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     text( "Rolling ends in 8 seconds.", 11 ),
@@ -458,7 +458,7 @@ function NoOneRollsSpec:should_display_close_button_that_closes_the_popup()
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     text( "Rolling ends in 8 seconds.", 11 ),
@@ -600,7 +600,7 @@ function NoOneRollsSpec:should_auto_raid_roll_when_enabled_and_there_are_no_winn
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     text( "Rolling ends in 8 seconds.", 11 ),
@@ -703,7 +703,7 @@ function NoOneRollsSpec:should_display_raid_roll_button_that_raid_rolls()
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     text( "Rolling ends in 8 seconds.", 11 ),
@@ -819,7 +819,7 @@ function SomeoneRolledSpec:should_display_roll_button_that_rolls()
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     text( "Rolling ends in 8 seconds.", 11 ),
@@ -983,7 +983,7 @@ function SomeoneRolledSpec:should_display_roll_button_that_rolls_for_multiple_it
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for 2x[Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." )
+  chat.raid_warning( "Roll for 2x[Bag]: /roll (MS) or /roll 99 (OS). 2 top rolls win." )
   rf.rolling_popup.should_display(
     item_link( item2, 2 ),
     text( "Rolling ends in 8 seconds.", 11 ),
@@ -1166,7 +1166,7 @@ function SomeoneRolledSpec:should_display_close_button_that_closes_the_popup_and
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     text( "Rolling ends in 8 seconds.", 11 ),
@@ -1275,7 +1275,7 @@ function NormalTieRollSpec:should_display_tie_rolls()
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     text( "Rolling ends in 8 seconds.", 11 ),
@@ -1481,7 +1481,7 @@ function NormalTieRollSpec:should_not_consider_ms_and_tm_rolls_tie()
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
   rf.rolling_popup.should_display(
     item_link( item2, 1 ),
     text( "Rolling ends in 8 seconds.", 11 ),
@@ -1573,7 +1573,7 @@ function NoOneRollsSpec:should_show_award_button_when_looting_the_corpse_again_i
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Essence Gatherer]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.raid_warning( "Roll for [Essence Gatherer]: /roll (MS) or /roll 99 (OS)" )
   rf.rolling_popup.should_display(
     item_link( item, 1 ),
     text( "Rolling ends in 8 seconds.", 11 ),
@@ -1665,7 +1665,7 @@ function MultiRollSpec:should_display_all_winners()
     text( "Rolling ends in 8 seconds.", 11 ),
     buttons( "Cancel" )
   )
-  chat.raid_warning( "Roll for 6x[Void Crystal]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 6 top rolls win." )
+  chat.raid_warning( "Roll for 6x[Void Crystal]: /roll (MS) or /roll 99 (OS). 6 top rolls win." )
 
   -- When (Tachikoma does not roll)
   rf.roll( superclassic, 37, 1, 100 )
@@ -1853,7 +1853,7 @@ function MultiRollSpec:should_not_tie_roll_when_the_tie_does_not_cross_the_item_
     text( "Rolling ends in 8 seconds.", 11 ),
     buttons( "Cancel" )
   )
-  chat.raid_warning( "Roll for 6x[Void Crystal]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 6 top rolls win." )
+  chat.raid_warning( "Roll for 6x[Void Crystal]: /roll (MS) or /roll 99 (OS). 6 top rolls win." )
 
   -- When (Gotchi and Maazh tie at 77 for the 5th and 6th item and Tachikoma does not roll)
   rf.roll( superclassic, 37, 1, 100 )

@@ -1,6 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-require( "src/bcc/compat" )
+require( "src/compat" )
 local u = require( "test/utils" )
 local lu = u.luaunit()
 local player, leader, is_in_raid = u.player, u.raid_leader, u.is_in_raid
@@ -21,7 +21,6 @@ local function mock_config()
         rolling_popup_lock = function() return true end,
         ms_roll_threshold = function() return 100 end,
         os_roll_threshold = function() return 99 end,
-        tmog_roll_threshold = function() return 98 end,
         roll_threshold = function()
           return {
             value = 100,
@@ -29,7 +28,6 @@ local function mock_config()
           }
         end,
         auto_loot = function() return true end,
-        tmog_rolling_enabled = function() return true end,
         rolling_popup = function() return true end,
         raid_roll_again = function() return false end,
         default_rolling_time_seconds = function() return 8 end,
@@ -65,7 +63,7 @@ function OffspecRollsSpec:should_not_finish_rolling_automatically_if_all_players
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone] (OS)." ),
     rolling_finished()
@@ -84,7 +82,7 @@ function OffspecRollsSpec:should_finish_rolling_automatically_if_number_of_items
 
   -- Then
   m.chat.assert(
-    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." ),
     cr( "Obszczymucha rolled the highest (100) for [Hearthstone] (OS)." ),
     cr( "Psikutas rolled the next highest (69) for [Hearthstone] (OS)." ),
     rolling_finished()
@@ -106,7 +104,7 @@ function OffspecRollsSpec:should_not_finish_rolling_automatically_if_number_of_i
 
   -- Then
   m.chat.assert(
-    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Obszczymucha rolled the highest (100) for [Hearthstone] (OS)." ),
     cr( "Psikutas rolled the next highest (69) for [Hearthstone] (OS)." ),
@@ -129,7 +127,7 @@ function OffspecRollsSpec:should_detect_and_ignore_double_rolls()
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2" ),
     c( "RollFor: Obszczymucha exhausted their rolls. This roll (100) is ignored." ),
     r( "1" ),

@@ -99,8 +99,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
     for _, item_id in pairs( hardressed_item_ids ) do
       local id = item_id and tonumber( item_id )
       if item_id and id and id > 0 then
-        local quality = softres.get_item_quality( item_id )
-        local item_link = m.fetch_item_link( item_id, quality )
+        local item_link = m.fetch_item_link( item_id )
 
         if not item_link and hr_refetch_retries < 3 then
           m.set_game_tooltip_with_item_id( item_id )
@@ -153,8 +152,7 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
 
       if item_id and id and id > 0 and (not filter_item_id or id == filter_item_id) then
         local players = softres.get( sr_item )
-        local quality = softres.get_item_quality( item_id )
-        local item_link = m.fetch_item_link( item_id, quality )
+        local item_link = m.fetch_item_link( item_id )
         local quantity_suffix = sr_item.item_quantity and sr_item.item_quantity > 1
             and string.format( " (%s)", sr_item.item_quantity )
             or ""

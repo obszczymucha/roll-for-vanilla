@@ -23,12 +23,11 @@ WowApiDump_20260822.txt
 
 
 ## Target client: BCC only
-Only the BCC build (`RollFor-BCC.toc`, Interface 20505) is a supported target.
-Ignore vanilla entirely:
+BCC (`RollFor/RollFor.toc`, Interface 20505) is the only target. The vanilla
+build has been removed, so:
 
-- Don't check whether an API exists in 1.12, don't add vanilla fallbacks, and
-  don't flag a change for breaking `RollFor.toc` (Interface 11200).
-- `sync-vanilla.sh` and the vanilla `.toc` are legacy. The vanilla code is
-  slated for removal; don't invest in keeping it working.
+- Don't check whether an API exists in 1.12 and don't add vanilla fallbacks.
+- Don't reintroduce a `m.vanilla` / `m.bcc` split. `src/compat.lua` exists for
+  shared helpers, not for branching on the client.
 - The reference client under `wow-ui-source.git/classic_anniversary` is the
   authority on what an API returns.

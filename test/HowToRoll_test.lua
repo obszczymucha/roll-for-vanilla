@@ -1,6 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-require( "src/bcc/compat" )
+require( "src/compat" )
 local u = require( "test/utils" )
 local lu = u.luaunit()
 local player, leader = u.player, u.raid_leader
@@ -19,7 +19,6 @@ local function mock_config()
         rolling_popup_lock = function() return true end,
         ms_roll_threshold = function() return 100 end,
         os_roll_threshold = function() return 99 end,
-        tmog_roll_threshold = function() return 98 end,
         roll_threshold = function()
           return {
             value = 100,
@@ -27,7 +26,6 @@ local function mock_config()
           }
         end,
         auto_loot = function() return true end,
-        tmog_rolling_enabled = function() return true end,
         rolling_popup = function() return true end,
         raid_roll_again = function() return false end,
         default_rolling_time_seconds = function() return 8 end,
@@ -75,8 +73,7 @@ function HowToRollSpec:should_show_how_to_roll_if_in_party()
   m.chat.assert(
     p( "How to roll:" ),
     p( "For main-spec, type: /roll" ),
-    p( "For off-spec, type: /roll 99" ),
-    p( "For transmog, type: /roll 98" )
+    p( "For off-spec, type: /roll 99" )
   )
 end
 
@@ -92,8 +89,7 @@ function HowToRollSpec:should_show_how_to_roll_if_in_raid()
   m.chat.assert(
     r( "How to roll:" ),
     r( "For main-spec, type: /roll" ),
-    r( "For off-spec, type: /roll 99" ),
-    r( "For transmog, type: /roll 98" )
+    r( "For off-spec, type: /roll 99" )
   )
 end
 
@@ -109,8 +105,7 @@ function HowToRollSpec:should_show_how_to_roll_if_in_raid_and_a_leader()
   m.chat.assert(
     r( "How to roll:" ),
     r( "For main-spec, type: /roll" ),
-    r( "For off-spec, type: /roll 99" ),
-    r( "For transmog, type: /roll 98" )
+    r( "For off-spec, type: /roll 99" )
   )
 end
 

@@ -301,7 +301,7 @@ function M.dump( o )
   return s .. "}"
 end
 
-function M.fetch_item_link( item_id, quality )
+function M.fetch_item_link( item_id )
   if not item_id then return end
 
   local id = tonumber( item_id )
@@ -313,11 +313,7 @@ function M.fetch_item_link( item_id, quality )
     return
   end
 
-  if M.vanilla then
-    return string.format( "%s|H%s|h[%s]|h|r", M.api.ITEM_QUALITY_COLORS[ quality or 0 ].hex, details, name )
-  else
-    return details
-  end
+  return details
 end
 
 function M.set_game_tooltip_with_item_id( item_id )
@@ -768,8 +764,6 @@ function M.roll_type_color( roll_type, text )
     return M.colors.green( text or "main-spec" )
   elseif roll_type == M.Types.RollType.OffSpec then
     return M.colors.grey( text or "off-spec" )
-  elseif roll_type == M.Types.RollType.Transmog then
-    return M.colors.pink( text or "transmog" )
   elseif roll_type == M.Types.RollType.SoftRes then
     return M.colors.orange( text or "soft-res" )
   elseif roll_type == M.Types.RollType.BonusRoll then
@@ -784,8 +778,6 @@ function M.roll_type_abbrev_chat( roll_type )
     return "MS"
   elseif roll_type == M.Types.RollType.OffSpec then
     return "OS"
-  elseif roll_type == M.Types.RollType.Transmog then
-    return "TMOG"
   elseif roll_type == M.Types.RollType.SoftRes then
     return "SR"
   elseif roll_type == M.Types.RollType.BonusRoll then
@@ -802,8 +794,6 @@ function M.roll_type_abbrev( roll_type )
     return "MS"
   elseif roll_type == M.Types.RollType.OffSpec then
     return "OS"
-  elseif roll_type == M.Types.RollType.Transmog then
-    return "TM"
   elseif roll_type == M.Types.RollType.SoftRes then
     return "SR"
   elseif roll_type == M.Types.RollType.BonusRoll then
@@ -832,10 +822,8 @@ function M.roll_type_rank( roll_type )
     return 3
   elseif roll_type == M.Types.RollType.BonusRoll then
     return 3
-  elseif roll_type == M.Types.RollType.Transmog then
-    return 4
   else
-    return 5
+    return 4
   end
 end
 

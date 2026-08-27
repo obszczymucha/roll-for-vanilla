@@ -1449,7 +1449,7 @@ local function resolve_item( item_id )
   local name, _, quality, _, _, _, _, _, _, texture = m.api.GetItemInfo( item_id )
   if not name then return end
 
-  local link = m.fetch_item_link( item_id, quality )
+  local link = m.fetch_item_link( item_id )
   if not link then return end
 
   return { enabled = true, name = name, icon = texture, quality = quality, link = link }

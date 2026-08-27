@@ -22,7 +22,7 @@ local err = m.err
 ---@param loot_list LootList
 ---@param roll_controller RollController
 function M.new( master_loot_candidates, loot_award_callback, loot_list, roll_controller )
-  ---@type { player: ItemCandidate|Winner, item: Item }?
+  ---@type { player: ItemCandidate|Winner, item: MasterLootDistributableItem }?
   local m_confirmed = nil
   local m_slot_cache = {}
 

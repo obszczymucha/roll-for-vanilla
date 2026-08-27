@@ -244,7 +244,7 @@ function M.new( player_info, loot_facade, loot_list, loot_frame, roll_controller
 
           local master_loot = m.is_master_loot()
 
-          if m.bcc and (not master_loot or is_coin or item.quality < 2) then
+          if not master_loot or is_coin or item.quality < 2 then
             local slot = loot_list.get_slot( item.id )
             if slot then loot_facade.loot_slot( slot ) end
             return

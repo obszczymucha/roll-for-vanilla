@@ -156,21 +156,11 @@ function M.new( frame_builder )
       container.icon:SetScript( "OnClick", v.is_enabled and not v.is_selected and v.click_fn or modifier_fn )
       container.comment:SetScript( "OnClick", v.is_enabled and not v.is_selected and v.click_fn or modifier_fn )
 
-      if m.vanilla then
-        -- Fucking hell this took forever to figure out. Fuck you Blizzard.
-        -- For looting to work in vanilla, the frame must be of a "LootButton" type and
-        -- then it comes with the SetSlot function that we need to use to set the slot.
-        -- This will probably be a pain in the ass when porting.
-        container:SetSlot( v.slot or 0 )
-      end
-
       update()
       resize()
     end
 
     local function on_enter( self )
-      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
-
       if not item then return end
       if item.tooltip_link then
         m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
@@ -199,7 +189,6 @@ function M.new( frame_builder )
     container.comment:SetScript( "OnEnter", function( self )
       if not item then return end
       if item.comment_tooltip then
-        if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
 
         self.tooltip_scale = m.api.GameTooltip:GetScale()
         m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
@@ -221,8 +210,6 @@ function M.new( frame_builder )
     end )
 
     container.comment:SetScript( "OnLeave", function( self )
-      if m.vanilla then self = this end ---@diagnostic disable-line: undefined-global
-
       m.api.GameTooltip:Hide()
       m.api.GameTooltip:SetScale( self.tooltip_scale or 1 )
       mouse_down = false

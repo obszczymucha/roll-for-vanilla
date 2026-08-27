@@ -24,7 +24,6 @@ end
 ---@field get_all_rollers fun(): Roller[]
 ---@field is_player_softressing fun( player_name: string, item_data: ItemData? ): boolean
 ---@field get_items fun(): ItemData[]
----@field get_item_quality fun( item_id: ItemId ): ItemQuality
 ---@field get_hr_item_ids fun(): ItemId[]
 ---@field is_item_hardressed fun( item_id: ItemId ): boolean
 ---@field import fun( data: RaidResData )
@@ -78,13 +77,11 @@ function M.new( db )
       return nil
     end
 
-    if m.bcc then
-      data = LibStub( "LibDeflate" ):DecompressZlib( data ) ---@diagnostic disable-line: undefined-global
+    data = LibStub( "LibDeflate" ):DecompressZlib( data ) ---@diagnostic disable-line: undefined-global
 
-      if not data then
-        m.pretty_print( "Couldn't decompress softres data!", m.colors.red )
-        return nil
-      end
+    if not data then
+      m.pretty_print( "Couldn't decompress softres data!", m.colors.red )
+      return nil
     end
 
     local json = lib_stub( "Json-0.1.2" )
@@ -182,16 +179,11 @@ function M.new( db )
     return hardres_data[ item_id ] and true or false
   end
 
-  local function get_item_quality( item_id )
-    return softres_data[ item_id ] and softres_data[ item_id ].quality
-  end
-
   return {
     get = get,
     get_all_rollers = get_all_rollers,
     is_player_softressing = is_player_softressing,
     get_items = get_items,
-    get_item_quality = get_item_quality,
     get_hr_item_ids = get_hr_item_ids,
     is_item_hardressed = is_item_hardressed,
     import = import,

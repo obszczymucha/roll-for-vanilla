@@ -1,4 +1,4 @@
-package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/vanilla/LibStub/?.lua"
+package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
 
 local M = {}
 
@@ -906,7 +906,7 @@ function M.load_real_stuff( req )
   local r = req or require
 
   load_libstub()
-  r( "src/bcc/compat" )
+  r( "src/compat" )
   r( "src/modules" )
   M.mock_api()
   r( "src/DebugBuffer" )
@@ -976,7 +976,6 @@ function M.load_real_stuff( req )
   r( "src/RollController" )
   r( "src/RollingPopup" )
   r( "src/RollingPopupContentTransformer" )
-  r( "src/WelcomePopup" )
   r( "src/InstaRaidRollRollingLogic" )
   r( "src/LootList" )
   r( "src/SoftResLootListDecorator" )
@@ -1017,7 +1016,7 @@ function M.load_real_stuff( req )
   r( "src/AutoLootFrameContentTransformer" )
   r( "src/AutoLootFrame" )
   -- r( "Libs/LibDeflate/LibDeflate" )
-  r( "src/bcc/Json" )
+  r( "src/Json" )
   r( "main" )
 end
 

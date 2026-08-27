@@ -231,11 +231,7 @@ function M.new()
         local old_on_show = frame:GetScript( "OnShow" )
 
         frame:SetScript( "OnShow", function()
-          if m.vanilla then
-            m.api.PlaySound( "igMainMenuOpen" )
-          else
-            m.api.PlaySound( m.api.SOUNDKIT.IG_MAINMENU_OPEN )
-          end
+          m.api.PlaySound( m.api.SOUNDKIT.IG_MAINMENU_OPEN )
 
           if old_on_show then old_on_show() end
           if options.on_show then options.on_show() end
@@ -247,11 +243,7 @@ function M.new()
             f:StopMovingOrSizing()
           end
 
-          if m.vanilla then
-            m.api.PlaySound( "igMainMenuClose" )
-          else
-            m.api.PlaySound( m.api.SOUNDKIT.IG_MAINMENU_CLOSE )
-          end
+          m.api.PlaySound( m.api.SOUNDKIT.IG_MAINMENU_CLOSE )
 
           if options.on_hide then options.on_hide() end
         end )
@@ -347,7 +339,6 @@ function M.new()
         end
 
         m.clear_table( lines )
-        if m.vanilla then lines.n = 0 end
       end
 
       frame.backdrop_color = function( _, r, g, b, a )
@@ -529,8 +520,8 @@ function M.new()
   -- Which point of the frame stays pinned to the (self-centered) anchor when the frame resizes.
   -- Defaults to "CENTER" (grows/shrinks symmetrically); "TOP" keeps the top edge fixed and only
   -- moves the bottom, "BOTTOM" the reverse, etc.
-  local function anchor_point( self, point )
-    options.anchor_point = point
+  local function anchor_point( self, p )
+    options.anchor_point = p
     return self
   end
 

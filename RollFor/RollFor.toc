@@ -1,17 +1,17 @@
-## Interface: 11200
+## Interface: 20506
 ## Title: RollFor
 ## Author: Obszczymucha
-## Version: 4.8.15
-## Notes: An automated item roller with soft ressing support via raidres.fly.dev.
+## Version: 4.9.0
+## Notes: An automated item roller with soft ressing support via softres.it.
 ## SavedVariables: RollForDb
 ## SavedVariablesPerCharacter: RollForCharDb
+## IconTexture: Interface\AddOns\RollFor\assets\icon-white
 
-libs\vanilla\LibStub\LibStub.lua
-libs\vanilla\Libs.xml
+libs\LibStub\LibStub.lua
+libs\Libs.xml
 
-src\vanilla\backport.lua
-src\vanilla\compat.lua
-src\vanilla\Json.lua
+src\compat.lua
+src\Json.lua
 
 src\modules.lua
 src\DebugBuffer.lua
@@ -41,6 +41,7 @@ src\SoftResAwardedLootDecorator.lua
 src\SoftResAbsentPlayersDecorator.lua
 src\SoftResNetherVortexDecorator.lua
 src\SoftResPresentPlayersDecorator.lua
+src\SoftResBonusRollDecorator.lua
 src\SoftResMatchedNameDecorator.lua
 src\GroupRoster.lua
 src\NameAutoMatcher.lua
@@ -79,7 +80,6 @@ src\RollingPopup.lua
 src\RollingPopupContentTransformer.lua
 src\GuiElements.lua
 src\ListPopup.lua
-src\WelcomePopup.lua
 src\InstaRaidRollRollingLogic.lua
 src\EventBus.lua
 src\LootList.lua

@@ -77,7 +77,6 @@ function M.new( item_on_roll )
 
   local function lua50_clear_table( t )
     clear_table( t )
-    if m.vanilla then t.n = 0 end
   end
 
   local function add( player_name, player_class, roll_type, roll )

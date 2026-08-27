@@ -35,7 +35,6 @@ function M.new(
 
   local function clear_winners()
     clear_table( m_winners )
-    if m.vanilla then m_winners.n = 0 end
   end
 
   local function start_rolling()

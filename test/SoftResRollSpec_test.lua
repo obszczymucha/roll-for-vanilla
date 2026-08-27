@@ -1,6 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua"
 
-require( "src/bcc/compat" )
+require( "src/compat" )
 local u = require( "test/utils" )
 local lu = u.luaunit()
 local builder = require( "test/IntegrationTestBuilder" )
@@ -1459,8 +1459,7 @@ function ThreeIdenticalItemsOneSrSpec:should_auto_loot_three_items_then_rf_comma
       :soft_res_data( sr( p1.name, 69 ) )
       :config( {
         auto_loot = true,
-        auto_loot_messages = true,
-        tmog_rolling_enabled = false
+        auto_loot_messages = true
       } )
       :build()
 
@@ -1537,8 +1536,7 @@ function ThreeIdenticalItemsTwoSrSpec:should_auto_loot_three_items_then_rf_comma
       :soft_res_data( sr( p1.name, 69 ), sr( p2.name, 69 ) )
       :config( {
         auto_loot = true,
-        auto_loot_messages = true,
-        tmog_rolling_enabled = false
+        auto_loot_messages = true
       } )
       :build()
 
@@ -1673,8 +1671,7 @@ function AwardedLootSpec:should_award_the_sr_item_then_roll_for_the_rest()
       :soft_res_data( sr( p1.name, 69 ) )
       :config( {
         auto_loot = true,
-        auto_loot_messages = true,
-        tmog_rolling_enabled = false
+        auto_loot_messages = true
       } )
       :build()
 
@@ -1744,7 +1741,6 @@ function AwardedLootSpec:should_restore_the_soft_res_after_unawarding()
       :raid_roster( p1, p2, p3 )
       :chat( chat )
       :soft_res_data( sr( p1.name, 69 ) )
-      :config( { tmog_rolling_enabled = false } )
       :build()
 
   -- When (we /award the item to the soft-resser)

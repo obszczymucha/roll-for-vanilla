@@ -897,7 +897,7 @@ function M.new(
     end
   end
 
-  ---@param item Item
+  ---@param item Item|MasterLootDistributableItem
   ---@param item_count number
   local function preview( item, item_count )
     M.debug.add( "preview" )
@@ -920,6 +920,8 @@ function M.new(
 
     local slot = loot_list.get_slot( item.id )
     local candidates = slot and ml_candidates.get( slot ) or {}
+    -- A plain Item carries no quantity; sid() defaults a nil one to 1.
+    ---@diagnostic disable-next-line: undefined-field
     local sr_item = sid( item.id, item.quantity )
     local soft_ressers = softres.get( sr_item )
     local hard_ressed = softres.is_item_hardressed( item.id )

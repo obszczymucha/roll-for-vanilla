@@ -71,7 +71,7 @@ function M.handle_events( main )
     elseif event == "GET_ITEM_INFO_RECEIVED" then
       main.on_item_info_received( arg1 )
     elseif event == "UI_ERROR_MESSAGE" then
-      local message = m.vanilla and arg1 or arg2
+      local message = arg2
 
       if message == "That player's inventory is full" then
         main.master_loot.on_recipient_inventory_full()
@@ -113,17 +113,11 @@ function M.handle_events( main )
   frame:RegisterEvent( "UI_ERROR_MESSAGE" )
   frame:RegisterEvent( "PLAYER_TARGET_CHANGED" )
   frame:RegisterEvent( "PARTY_LOOT_METHOD_CHANGED" )
-  if not m.vanilla then
-    frame:RegisterEvent( "GET_ITEM_INFO_RECEIVED" )
-  end
+  frame:RegisterEvent( "GET_ITEM_INFO_RECEIVED" )
   frame:RegisterEvent( "ZONE_CHANGED" )
   frame:RegisterEvent( "ZONE_CHANGED_NEW_AREA" )
 
-  if m.vanilla then
-    frame:RegisterEvent( "PARTY_MEMBERS_CHANGED" )
-  else
-    frame:RegisterEvent( "GROUP_ROSTER_UPDATE" )
-  end
+  frame:RegisterEvent( "GROUP_ROSTER_UPDATE" )
 
   frame:SetScript( "OnEvent", event_handler )
 end

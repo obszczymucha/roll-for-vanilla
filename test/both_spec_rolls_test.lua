@@ -1,6 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
-require( "src/bcc/compat" )
+require( "src/compat" )
 local u = require( "test/utils" )
 local lu = u.luaunit()
 local player, leader = u.player, u.raid_leader
@@ -21,7 +21,6 @@ local function mock_config()
         rolling_popup_lock = function() return true end,
         ms_roll_threshold = function() return 100 end,
         os_roll_threshold = function() return 99 end,
-        tmog_roll_threshold = function() return 98 end,
         roll_threshold = function()
           return {
             value = 100,
@@ -29,7 +28,6 @@ local function mock_config()
           }
         end,
         auto_loot = function() return true end,
-        tmog_rolling_enabled = function() return true end,
         rolling_popup = function() return true end,
         raid_roll_again = function() return false end,
         default_rolling_time_seconds = function() return 8 end,
@@ -64,7 +62,7 @@ function BothSpecRollsSpec:should_prioritize_mainspec_over_offspec_rolls()
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished()
@@ -85,7 +83,7 @@ function BothSpecRollsSpec:should_override_offspec_roll_with_mainspec_and_finish
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished()
@@ -107,7 +105,7 @@ function BothSpecRollsSpec:should_override_offspec_roll_with_mainspec_and_not_fi
 
   -- Then
   m.chat.assert(
-    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" ),
+    rw( "Roll for [Hearthstone]: /roll (MS) or /roll 99 (OS)" ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     rolling_finished()
@@ -127,7 +125,7 @@ function BothSpecRollsSpec:should_recognize_both_mainspec_and_offspec_rollers_an
 
   -- Then
   m.chat.assert(
-    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." ),
     r( "Stopping rolls in 3", "2" ),
     cr( "Obszczymucha rolled the highest (3) for [Hearthstone]." ),
     cr( "Psikutas rolled the next highest (63) for [Hearthstone] (OS)." ),
@@ -149,7 +147,7 @@ function BothSpecRollsSpec:should_recognize_both_mainspec_and_top_offspec_roller
 
   -- Then
   m.chat.assert(
-    rw( "Roll for 3x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 3 top rolls win." ),
+    rw( "Roll for 3x[Hearthstone]: /roll (MS) or /roll 99 (OS). 3 top rolls win." ),
     r( "Stopping rolls in 3", "2" ),
     cr( "Obszczymucha rolled the highest (3) for [Hearthstone]." ),
     cr( "Chuj rolled the next highest (99) for [Hearthstone] (OS)." ),
@@ -172,7 +170,7 @@ function BothSpecRollsSpec:should_recognize_both_top_mainspec_and_offspec_roller
 
   -- Then
   m.chat.assert(
-    rw( "Roll for 3x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 3 top rolls win." ),
+    rw( "Roll for 3x[Hearthstone]: /roll (MS) or /roll 99 (OS). 3 top rolls win." ),
     r( "Stopping rolls in 3", "2" ),
     cr( "Chuj rolled the highest (99) for [Hearthstone]." ),
     cr( "Obszczymucha rolled the next highest (3) for [Hearthstone]." ),
@@ -196,7 +194,7 @@ function BothSpecRollsSpec:should_recognize_both_mainspec_rollers_and_not_stop_a
 
   -- Then
   m.chat.assert(
-    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (63) for [Hearthstone]." ),
     cr( "Obszczymucha rolled the next highest (3) for [Hearthstone]." ),
@@ -218,7 +216,7 @@ function BothSpecRollsSpec:should_recognize_both_mainspec_rollers_and_not_stop_a
 
   -- Then
   m.chat.assert(
-    rw( "Roll for 3x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 3 top rolls win." ),
+    rw( "Roll for 3x[Hearthstone]: /roll (MS) or /roll 99 (OS). 3 top rolls win." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (63) for [Hearthstone]." ),
     cr( "Obszczymucha rolled the next highest (3) for [Hearthstone]." ),
@@ -241,7 +239,7 @@ function BothSpecRollsSpec:should_recognize_mainspec_and_offspec_rollers_and_not
 
   -- Then
   m.chat.assert(
-    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (63) for [Hearthstone]." ),
     cr( "Chuj rolled the next highest (99) for [Hearthstone] (OS)." ),
@@ -264,7 +262,7 @@ function BothSpecRollsSpec:should_recognize_mainspec_roller_and_top_offspec_roll
 
   -- Then
   m.chat.assert(
-    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Obszczymucha rolled the highest (1) for [Hearthstone]." ),
     cr( "Psikutas rolled the next highest (69) for [Hearthstone] (OS)." ),
@@ -287,7 +285,7 @@ function BothSpecRollsSpec:should_recognize_mainspec_rollers_if_item_count_is_le
 
   -- Then
   m.chat.assert(
-    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG). 2 top rolls win." ),
+    rw( "Roll for 2x[Hearthstone]: /roll (MS) or /roll 99 (OS). 2 top rolls win." ),
     r( "Stopping rolls in 3", "2", "1" ),
     cr( "Psikutas rolled the highest (69) for [Hearthstone]." ),
     cr( "Obszczymucha rolled the next highest (1) for [Hearthstone]." ),

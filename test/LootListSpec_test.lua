@@ -1,6 +1,6 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua"
 
-require( "src/bcc/compat" )
+require( "src/compat" )
 local u = require( "test/utils" )
 local lu = u.luaunit()
 local builder = require( "test/IntegrationTestBuilder" )
@@ -455,7 +455,7 @@ function LootListSpec:should_not_allow_to_select_item_while_rolling_is_in_progre
   rf.rolling_popup.click( "Roll" )
 
   -- Then
-  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS) or /roll 98 (TMOG)" )
+  chat.raid_warning( "Roll for [Bag]: /roll (MS) or /roll 99 (OS)" )
   rf.rolling_popup.should_display(
     item_link( item, 1 ),
     text( "Rolling ends in 8 seconds.", 11 ),

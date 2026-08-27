@@ -48,7 +48,7 @@ local Shadow, Fire = M.ResistanceType.Shadow, M.ResistanceType.Fire
 local FIRE_OVERRIDE_THRESHOLD = 150
 
 -- Values are max rank. UnitBuff doesn't report rank, so max rank is assumed.
-local RESISTANCE_BUFF_VALUE = m.vanilla and 60 or 70
+local RESISTANCE_BUFF_VALUE = 70
 local WILD_VALUE = 25
 local FLASK_VALUE = 35
 

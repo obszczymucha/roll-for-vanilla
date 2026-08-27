@@ -97,7 +97,7 @@ local function get_dummy_items()
 
     local item_info = { m.api.GetItemInfo( item_id ) }
     name, tooltip_link, quality = item_info[ 1 ], item_info[ 2 ], item_info[ 3 ]
-    texture = item_info[ m.vanilla and 9 or 10 ]
+    texture = item_info[ 10 ]
 
     if name then
       name = name_override or name
@@ -197,8 +197,9 @@ local function create_components()
     return popup_builder_factory( m.FrameBuilder, bottom_margin or popup_bottom_margin, popup_bottom_button_margin, side_margin or popup_side_margin )
   end
 
-  ---@type ConfirmationDialog
   local confirmation_margin = m.ConfirmationDialog.bottom_margin
+
+  ---@type ConfirmationDialog
   M.confirmation_dialog = m.ConfirmationDialog.new(
     popup_builder( classic and confirmation_margin.classic or confirmation_margin.modern ), M.config )
 
@@ -428,9 +429,6 @@ local function create_components()
 
   -- TODO: Add type.
   M.auto_master_loot = m.AutoMasterLoot.new( M.config, m.BossList.zones, M.player_info )
-
-  -- TODO: Add type.
-  M.welcome_popup = m.WelcomePopup.new( m.FrameBuilder, M.ace_timer, db( "welcome_popup" ) )
 
   -- TODO: Add type.
   M.roll_for_ad = m.RollForAd.new( M.player_info )
@@ -826,10 +824,6 @@ local function show_how_to_roll()
 
   M.chat.announce( string.format( "For main-spec%s, type: /roll%s", sr_count > 0 and " and soft-res" or "", ms ) )
   M.chat.announce( string.format( "For off-spec, type: /roll %s", M.config.os_roll_threshold() ) )
-
-  if M.config.tmog_rolling_enabled() then
-    M.chat.announce( string.format( "For transmog, type: /roll %s", M.config.tmog_roll_threshold() ) )
-  end
 end
 
 local function reset_usage()
@@ -891,10 +885,6 @@ function M.on_player_login()
   M.raid_lockout.refresh()
   M.import_encoded_softres_data( M.softres_db.data )
   M.softres_gui.load( M.softres_db.data )
-
-  if M.welcome_popup.should_show() then
-    M.welcome_popup.show()
-  end
 
   ---@diagnostic disable-next-line: undefined-global
   LootFrame:UnregisterAllEvents()

@@ -86,11 +86,6 @@ function M.mock_config( configuration )
     rolling_popup = function() return true end,
     ms_roll_threshold = function() return 100 end,
     os_roll_threshold = function() return 99 end,
-    tmog_roll_threshold = function() return 98 end,
-    tmog_rolling_enabled = function()
-      if config and config.tmog_rolling_enabled ~= nil then return config.tmog_rolling_enabled end
-      return true
-    end,
     default_rolling_time_seconds = function() return 8 end,
     master_loot_frame_rows = function() return 5 end,
     sr_roll_spacing = function()

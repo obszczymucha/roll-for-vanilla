@@ -75,25 +75,14 @@ function M.new( event_frame, api )
   ---@param slot number
   ---@return LootSlotInfo?
   local function get_info( slot )
-    if m.vanilla then
-      local texture, name, quantity, quality = api.GetLootSlotInfo( slot )
+    local texture, name, quantity, _, quality = api.GetLootSlotInfo( slot )
 
-      return texture and {
-        texture = texture,
-        name = name,
-        quantity = quantity,
-        quality = quality
-      } or nil
-    else
-      local texture, name, quantity, _, quality = api.GetLootSlotInfo( slot )
-
-      return texture and {
-        texture = texture,
-        name = name,
-        quantity = quantity,
-        quality = quality
-      } or nil
-    end
+    return texture and {
+      texture = texture,
+      name = name,
+      quantity = quantity,
+      quality = quality
+    } or nil
   end
 
   ---@param slot number

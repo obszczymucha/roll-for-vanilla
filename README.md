@@ -1,5 +1,5 @@
 # RollFor
-A World of Warcraft (1.12.1 and 2.5.2) addon that manages rolling for items.  
+A World of Warcraft (2.5.2) addon that manages rolling for items.  
 
 ## Demo
 
@@ -81,8 +81,7 @@ Disable this feature with:
 ---
 
 ### Soft res integration
- * Integrates with https://raidres.fly.dev (1.12.1).
- * Integrates with https://softres.it (2.5.2) via Gargul Export.
+ * Integrates with https://softres.it via Gargul Export.
  * Minimap icon shows soft res status and who did not soft res.
  * Fully automated (shows who soft ressed, only accepts rolls from players who SR).
 
@@ -92,7 +91,6 @@ Disable this feature with:
  * Supports "**two top rolls win**" rolling.
  * Supports **raid rolls**.
  * Supports offspec rolls (`/roll 99`).
- * Supports transmog rolls (`/roll 98`) (1.12.1).
  * Automatically resolves tied rolls.
  * Highly customizable - see `/rf config` and `/rf config help`.
 
@@ -145,9 +143,9 @@ instead of `/rf`. "arf" stands for "All Roll For".
 
 ## Soft-Res setup
 
-1. Create a Soft Res list at https://raidres.fly.dev (1.12.1) or https://softres.it (2.5.2).  
+1. Create a Soft Res list at https://softres.it.  
 2. Ask raiders to add their items.
-3. When ready, lock the raid and click on **RollFor export** (raidres.fly.dev) or **Gargul Export** (softes.it) button.
+3. When ready, lock the raid and click on the **Gargul Export** button.
 
 <img src="docs/raidres-export.jpg" alt="Raidres export" style="width:720px;height:350">
 
@@ -179,7 +177,7 @@ If someone needs to update their items, repeat the process and copy the data aga
 
 ### Soft-Res data format
 
-The SR data from *Raidres* is a **Base64** encoded **JSON**. Decode it to see what's inside.  
+The SR data from *softres.it* is a **zlib-compressed**, **Base64** encoded **JSON**.  
 
 ---
 
@@ -187,7 +185,7 @@ The SR data from *Raidres* is a **Base64** encoded **JSON**. Decode it to see wh
 ### Fixing mistyped player names in SR setup
 
 When using soft-res, the players sometimes mistype their nickname, e.g. 
-`Johnny` in game will be `Jonnhy` in the raidres.fly.dev website.  
+`Johnny` in game will be `Jonnhy` on the softres.it website.  
 The addon is smart enough to fix simple typos like that for you.  
 It will also deal with special characters in player names.  
 However, sometimes there's so many typos and the addon can't match the  
