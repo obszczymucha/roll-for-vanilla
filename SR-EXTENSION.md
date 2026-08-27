@@ -310,12 +310,21 @@ Today `main.lua` adds four backbone links and one tap, *then* calls
 `m.Extensions.enable()`. That order inverts: a source extension has to contribute its
 backbone before core can hang anything off it.
 
+**Prerequisite, done.** `Chain` used to resolve a link's anchors inside `add()`, which made
+this inversion impossible — `RollForNetherVortex` anchors to `awarded_loot` and
+`present_players` the moment its `on_enable` runs, and they would not be in the chain yet.
+`Chain` now resolves anchors at build time, so a link may anchor to a name that has not
+been added yet, and a link whose anchor never arrives is dropped with an `m.err` rather
+than throwing. It does not throw because `build()` runs in the composition root, outside
+the `pcall` that isolates one extension's mistakes from everything else.
+
 New order inside `create_components()`:
 
 1. `m.Extensions.enable( make_extension_context )` — extensions register their source,
    contribute chain links and declare taps.
 2. **Then** core adds its own backbone links, but only in Phase A/B where core still owns
-   them (in Phase C these move out and core adds none of them).
+   them (in Phase C these move out and core adds none of them). See §5.0 — in Phase B
+   these have to become conditional, or they collide with the extension's.
 3. Core adds the `bonus_roll` link, **conditionally**:
 
 ```lua
@@ -518,6 +527,32 @@ soft-ressers; that is a consumer, and consumers stay).
 Core is untouched in this phase except for the TOC/`sync-bcc.sh` notes below. Core still
 has its built-in soft-res, now registering itself as a *fallback* source, so the addon
 works with or without the extension installed. **Phase B is shippable.**
+
+### 5.0 First task: make core's built-in soft-res all-or-nothing
+
+Core and the extension cannot both own `matched_name`, `awarded_loot` and
+`present_players` — whichever adds a name second gets `link 'matched_name' is already in
+the chain`. So before anything else in this phase, core's built-in soft-res becomes a
+single unit that exists only when nothing else claimed the source slot:
+
+```lua
+if not m.SoftResSource.get() then
+  -- register the built-in source, add the three backbone links and the "unfiltered" tap,
+  -- build SoftResCheck and SoftResGui, register the minimap contribution and the click
+  -- subscription, register the /sr family, and subscribe the temporary
+  -- simulation_started handler.
+end
+```
+
+That list is §6.2's deletion list turned into an `if`, which is the point: Phase C then
+deletes the block rather than unpicking it.
+
+**Gating only the chain links is not enough, and it fails immediately.** Core builds
+`M.softres_check` from `softres_tap( "unfiltered" )`, and that tap is declared alongside
+`present_players`. Skip the links but keep the rest and `SoftResCheck` is constructed on
+`nil`; core's minimap contribution then calls `check_softres` during login and the addon
+dies with `attempt to index a nil value (upvalue 'softres')`. This was tried — that is the
+actual error.
 
 ### 5.1 Layout
 
@@ -824,11 +859,23 @@ once already.
 - The extension's suite green.
 - `RollForNetherVortex`'s suite green **and** its in-game behaviour verified: it anchors
   to `awarded_loot` and `present_players`, which are now contributed by RollForSoftResIt.
-  With RollForSoftResIt uninstalled, Nether Vortex's `on_enable` fails loudly at login
-  with the chain's "anchored after 'awarded_loot', which is not in the chain" error, and
-  `Extensions.run`'s `pcall` turns that into an error message rather than a broken login.
-  **Verify that specific path by hand** — it is the one place where this design is allowed
-  to be user-visible ugly, and it must at least be legible.
+  Two cases, and they are different:
+
+  **Both installed.** Addons load alphabetically, so `RollForNetherVortex` registers — and
+  therefore enables — *before* `RollForSoftResIt` contributes the links it anchors to. This
+  works only because `Chain` resolves anchors at build time; it is the reason that change
+  was made. Verify in game that Nether Vortex still lands between `awarded_loot` and
+  `present_players`, because nothing about the load order is under either addon's control.
+
+  **RollForSoftResIt uninstalled.** Nether Vortex's link can never be placed, so the chain
+  leaves it out at build time and prints `link 'nether_vortex' is anchored after
+  'awarded_loot', which is not in the chain. ... It has been left out.` Login is otherwise
+  unaffected. **Verify that specific path by hand** — it is the one place where this design
+  is allowed to be user-visible ugly, and it must at least be legible.
+
+  Nether Vortex's own `ExtensionRegistration_test` encoded the old add-time contract and
+  was updated to the new one when `Chain` changed. That is the only edit to that addon this
+  work is allowed to make, §1.2 notwithstanding, and it is a test-only one.
 - Fresh install with no source: no errors, the one-line notice, white minimap icon, a
   tooltip with no soft-res commands in it, `/rf` opens options, rolling without soft-res
   works.
@@ -1020,9 +1067,16 @@ or is a direct consequence of a decision above.
 9. **Renaming a backbone chain link.** `matched_name`, `awarded_loot`, `present_players`
    are `RollForNetherVortex`'s anchors. They are public API now, even though they are
    registered by a different addon than the one that used to own them.
-10. **Assuming the extension can be tested against a stale core.** `./sync-bcc.sh` must
+10. **Assuming extensions enable in a useful order.** They enable in load order, which is
+    alphabetical, which puts `RollForNetherVortex` before `RollForSoftResIt`. Nothing may
+    depend on a source extension having enabled first. Build-time anchor resolution is what
+    makes that safe; do not undo it.
+11. **Core and a source extension both adding the backbone names.** Symptom: the
+    extension's `on_enable` throws, `Extensions.run`'s `pcall` swallows it, and the
+    extension is quietly disabled with core's soft-res still in the chain. See §5.0.
+12. **Assuming the extension can be tested against a stale core.** `./sync-bcc.sh` must
     have run. A green extension suite against yesterday's `../RollFor` means nothing.
-11. **Doing Phase C before Phase B is green in both repos.** There is no intermediate state
+13. **Doing Phase C before Phase B is green in both repos.** There is no intermediate state
     where half the soft-res lives in each place and the addon works.
 
 ---

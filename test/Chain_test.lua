@@ -87,6 +87,34 @@ function ChainOrderSpec:should_honour_both_anchors_at_once()
   eq( chain.build( "sr" ).final, "present_players(nether_vortex(awarded_loot(sr)))" )
 end
 
+-- The case this whole mechanism exists for. Addons load alphabetically, so
+-- RollForNetherVortex declares its link before RollForSoftResIt contributes the
+-- "awarded_loot" and "present_players" it sits between, and neither addon can do anything
+-- about the other's name. Anchors are therefore resolved once everything has been added,
+-- not as each link arrives.
+function ChainOrderSpec:should_place_a_link_that_anchored_to_one_added_after_it()
+  local chain = Chain.new( "softres" )
+  link( chain, "nether_vortex", { after = "awarded_loot", before = "present_players" } )
+  link( chain, "matched_name" )
+  link( chain, "awarded_loot", { after = "matched_name" } )
+  link( chain, "present_players", { after = "awarded_loot" } )
+
+  eq( chain.build( "sr" ).final, "present_players(nether_vortex(awarded_loot(matched_name(sr))))" )
+end
+
+-- Resolution takes as many passes as the anchors need, and the order they were added in
+-- is not one of them.
+function ChainOrderSpec:should_resolve_a_run_of_links_added_back_to_front()
+  local chain = Chain.new( "softres" )
+  link( chain, "fourth", { after = "third" } )
+  link( chain, "third", { after = "second" } )
+  link( chain, "second", { after = "first" } )
+  link( chain, "first" )
+
+  eq( chain.build( "base" ).final, "fourth(third(second(first(base))))" )
+  eq( chain.names(), { "first", "second", "third", "fourth" } )
+end
+
 function ChainOrderSpec:should_break_ties_between_two_links_wanting_the_same_slot_by_registration_order()
   local chain = Chain.new( "test" )
   link( chain, "core" )
@@ -175,36 +203,93 @@ local function should_fail_with( f, expected )
   end
 end
 
--- A soft-res chain that silently appended a link it could not place would make wrong
--- loot decisions that nobody would trace back to the chain.
-function ChainErrorSpec:should_refuse_an_unknown_after_anchor()
-  local chain = Chain.new( "softres" )
+local complaints = {}
 
-  should_fail_with( function() link( chain, "mine", { after = "nope" } ) end,
+utils.mock_object( "DEFAULT_CHAT_FRAME", {
+  AddMessage = function( _, message ) table.insert( complaints, message ) end
+} )
+
+RollFor.api = _G
+
+---@param f fun()
+---@param expected string
+local function should_complain( f, expected )
+  complaints = {}
+  f()
+
+  for _, complaint in ipairs( complaints ) do
+    if string.find( utils.decolorize( complaint ), expected, 1, true ) then return end
+  end
+
+  lu.fail( string.format( "Expected a complaint mentioning %q, got: %s",
+    expected, table.concat( complaints, " | " ) ) )
+end
+
+-- An anchor that cannot be resolved takes its own link out and says so, rather than
+-- throwing: build() runs in the composition root, outside the pcall that isolates one
+-- extension's mistakes, so throwing here would cost the user the whole addon over one
+-- third-party typo. Silently appending it instead is the other thing we will not do -- a
+-- soft-res chain stacked in the wrong order makes wrong loot decisions that nobody would
+-- trace back to here.
+function ChainErrorSpec:should_drop_a_link_with_an_unknown_after_anchor()
+  local chain = Chain.new( "softres" )
+  link( chain, "mine", { after = "nope" } )
+
+  should_complain( function() eq( chain.build( "sr" ).final, "sr" ) end,
     "anchored after 'nope', which is not in the chain" )
 end
 
-function ChainErrorSpec:should_refuse_an_unknown_before_anchor()
+function ChainErrorSpec:should_drop_a_link_with_an_unknown_before_anchor()
+  local chain = Chain.new( "softres" )
+  link( chain, "mine", { before = "nope" } )
+
+  should_complain( function() eq( chain.build( "sr" ).final, "sr" ) end,
+    "anchored before 'nope', which is not in the chain" )
+end
+
+-- One bad link is not the rest of the chain's problem.
+function ChainErrorSpec:should_keep_the_links_it_can_place_when_one_cannot_be_placed()
+  local chain = Chain.new( "softres" )
+  link( chain, "one" )
+  link( chain, "mine", { after = "nope" } )
+  link( chain, "two", { after = "one" } )
+
+  should_complain( function() eq( chain.build( "sr" ).final, "two(one(sr))" ) end, "link 'mine'" )
+end
+
+-- Two links each waiting for the other. Neither can be placed, and the message must not
+-- claim a name is missing when both of them are right there.
+function ChainErrorSpec:should_report_a_cycle_without_blaming_a_missing_anchor()
+  local chain = Chain.new( "softres" )
+  link( chain, "one", { after = "two" } )
+  link( chain, "two", { after = "one" } )
+
+  should_complain( function() eq( chain.build( "sr" ).final, "sr" ) end, "waiting on each other" )
+end
+
+function ChainErrorSpec:should_refuse_a_link_anchored_before_the_base()
   local chain = Chain.new( "softres" )
 
-  should_fail_with( function() link( chain, "mine", { before = "nope" } ) end,
-    "anchored before 'nope', which is not in the chain" )
+  should_fail_with( function() link( chain, "mine", { before = "base" } ) end,
+    "cannot be anchored before 'base'" )
 end
 
 function ChainErrorSpec:should_name_the_chain_and_list_what_it_could_have_anchored_to()
   local chain = Chain.new( "softres" )
   link( chain, "awarded_loot" )
+  link( chain, "mine", { after = "nope" } )
 
-  should_fail_with( function() link( chain, "mine", { after = "nope" } ) end, "RollFor chain 'softres'" )
-  should_fail_with( function() link( chain, "mine", { after = "nope" } ) end, "Known: base, awarded_loot." )
+  should_complain( function() chain.build( "sr" ) end, "RollFor chain 'softres'" )
+  should_complain( function() chain.build( "sr" ) end, "Known: base, awarded_loot, mine." )
 end
 
-function ChainErrorSpec:should_refuse_contradictory_anchors()
+function ChainErrorSpec:should_drop_a_link_with_contradictory_anchors()
   local chain = Chain.new( "softres" )
   link( chain, "one" )
   link( chain, "two", { after = "one" } )
+  link( chain, "mine", { after = "two", before = "one" } )
 
-  should_fail_with( function() link( chain, "mine", { after = "two", before = "one" } ) end,
+  should_complain( function() eq( chain.build( "sr" ).final, "two(one(sr))" ) end,
     "cannot be both after 'two' and before 'one'" )
 end
 

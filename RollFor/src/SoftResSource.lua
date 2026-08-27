@@ -83,7 +83,9 @@ function M.get_import_string()
   return source.get_import_string()
 end
 
--- Tests only -- the addon never unregisters.
+-- Called at the top of every create_components() run, so a re-composition starts from
+-- nothing rather than inheriting the previous run's source. In game that is once per
+-- login; in tests it is once per addon load.
 function M.clear()
   source = nil
 end

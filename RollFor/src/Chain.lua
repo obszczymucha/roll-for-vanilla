@@ -17,6 +17,18 @@ local getn = m.getn
 -- those names. Anchoring to a name that doesn't exist is an error at build time rather
 -- than a silent append: a mis-ordered soft-res chain produces wrong loot decisions, and
 -- nobody would trace one back to here.
+--
+-- Anchors are resolved at build time, not as each link arrives, so a link may anchor to
+-- one that has not been added yet. It has to work that way: addons load alphabetically,
+-- so RollForNetherVortex declares itself before RollForSoftResIt contributes the very
+-- links it anchors to, and neither addon can do anything about the other's name.
+--
+-- An anchor that is still unresolvable once everything has been added takes that one
+-- link out of the chain and says so. It does not throw: build() runs in the composition
+-- root, outside the pcall that isolates one extension's mistakes from the rest, so
+-- throwing would turn a third-party typo into a failed login for the whole addon. Core's
+-- own mistakes -- a duplicate name, a factory returning nil, a tap nobody declared --
+-- still throw, because those are bugs here rather than out there.
 
 ---@class ChainLink
 ---@field name string
@@ -32,6 +44,7 @@ local getn = m.getn
 ---@class BuiltChain
 ---@field final any
 ---@field tap fun( name: string ): any
+---@field has_tap fun( name: string ): boolean
 
 ---@class Chain
 ---@field add fun( link: ChainLink )
@@ -70,48 +83,54 @@ function M.new( chain_name )
     return name == BASE or index_of( name ) ~= nil
   end
 
-  local function names()
+  -- Registration order. What "could you have anchored to" means, and callable from
+  -- inside resolution -- which the public names() is not, since that resolves first.
+  local function all_names()
     local result = {}
     for _, link in ipairs( links ) do table.insert( result, link.name ) end
     return result
   end
 
   local function known()
-    local n = names()
+    local n = all_names()
     table.insert( n, 1, BASE )
     return table.concat( n, ", " )
   end
 
+  ---@param placed ChainLink[]
+  ---@param name string
+  ---@return number?
+  local function index_among( placed, name )
+    for i, link in ipairs( placed ) do
+      if link.name == name then return i end
+    end
+  end
+
   -- "base" sits at index 0, so `after = "base"` lands at position 1 and everything else
   -- falls out of the same arithmetic.
+  --
+  -- Three answers, not two: a position, or `nil` plus a complaint when the link can never
+  -- be placed, or `nil` and no complaint when its anchor simply has not been placed
+  -- *yet*. Only resolve() knows which of the last two it is, because only resolve() knows
+  -- whether there is another pass coming.
+  ---@param placed ChainLink[]
   ---@param link ChainLink
-  ---@return number
-  local function position_for( link )
+  ---@return number?, string?
+  local function position_for( placed, link )
     local after_index, before_index
 
     if link.after then
       if link.after == BASE then
         after_index = 0
       else
-        after_index = index_of( link.after )
-        if not after_index then
-          fail( string.format( "link '%s' is anchored after '%s', which is not in the chain. Known: %s.",
-            link.name, link.after, known() ), 4 )
-        end
+        after_index = index_among( placed, link.after )
+        if not after_index then return nil end
       end
     end
 
     if link.before then
-      if link.before == BASE then
-        fail( string.format( "link '%s' cannot be anchored before '%s'.", link.name, BASE ), 4 )
-      end
-
-      before_index = index_of( link.before )
-
-      if not before_index then
-        fail( string.format( "link '%s' is anchored before '%s', which is not in the chain. Known: %s.",
-          link.name, link.before, known() ), 4 )
-      end
+      before_index = index_among( placed, link.before )
+      if not before_index then return nil end
     end
 
     -- With both anchors given, `after` decides the position and `before` is the
@@ -121,8 +140,8 @@ function M.new( chain_name )
       local position = after_index + 1
 
       if before_index and position > before_index then
-        fail( string.format( "link '%s' cannot be both after '%s' and before '%s'.",
-          link.name, link.after, link.before ), 4 )
+        return nil, string.format( "link '%s' cannot be both after '%s' and before '%s'.",
+          link.name, link.after, link.before )
       end
 
       return position
@@ -130,7 +149,85 @@ function M.new( chain_name )
 
     if before_index then return before_index end
 
-    return getn( links ) + 1
+    return getn( placed ) + 1
+  end
+
+  ---@param link ChainLink
+  ---@return string
+  local function unplaceable( link )
+    local missing = {}
+
+    if link.after and link.after ~= BASE and not index_among( links, link.after ) then
+      table.insert( missing, string.format( "after '%s'", link.after ) )
+    end
+
+    if link.before and not index_among( links, link.before ) then
+      table.insert( missing, string.format( "before '%s'", link.before ) )
+    end
+
+    -- Every name it asked for exists, so the only way it can still be unplaceable is a
+    -- cycle: two links each waiting for the other. Worth saying out loud, because the
+    -- obvious reading of the message above -- "which is not in the chain" -- would be a
+    -- lie here, and would send whoever reads it looking for a typo that isn't there.
+    if getn( missing ) == 0 then
+      return string.format(
+        "link '%s' could not be placed: its anchors and something anchored to it are waiting on each other. Known: %s.",
+        link.name, known() )
+    end
+
+    return string.format( "link '%s' is anchored %s, which is not in the chain. Known: %s.",
+      link.name, table.concat( missing, " and " ), known() )
+  end
+
+  -- Placement, once every link that could be an anchor has arrived. Repeated passes in
+  -- registration order rather than a topological sort: a pass that places anything makes
+  -- the next one possible, and a pass that places nothing means what is left cannot be
+  -- placed at all. Slower than sorting and small enough not to care -- there are a
+  -- handful of links -- and it keeps the placement arithmetic identical to the order
+  -- links used to be inserted in one at a time.
+  ---@param report boolean -- false when only the order is wanted, e.g. from names()
+  ---@return ChainLink[]
+  local function resolve( report )
+    ---@type ChainLink[]
+    local placed = {}
+    local pending = {}
+
+    for _, link in ipairs( links ) do table.insert( pending, link ) end
+
+    local progress = true
+
+    while progress and getn( pending ) > 0 do
+      progress = false
+      local remaining = {}
+
+      for _, link in ipairs( pending ) do
+        local position, contradiction = position_for( placed, link )
+
+        if position then
+          table.insert( placed, position, link )
+          progress = true
+        elseif contradiction then
+          -- Not waiting on anything: no later pass can make this true.
+          if report then
+            m.err( string.format( "RollFor chain '%s': %s It has been left out.", chain_name, contradiction ) )
+          end
+
+          progress = true
+        else
+          table.insert( remaining, link )
+        end
+      end
+
+      pending = remaining
+    end
+
+    if report then
+      for _, link in ipairs( pending ) do
+        m.err( string.format( "RollFor chain '%s': %s It has been left out.", chain_name, unplaceable( link ) ) )
+      end
+    end
+
+    return placed
   end
 
   ---@param link ChainLink
@@ -141,9 +238,14 @@ function M.new( chain_name )
       fail( string.format( "link '%s' must have a 'factory' function.", link.name ) )
     end
     if link.name == BASE then fail( string.format( "'%s' is a reserved link name.", BASE ) ) end
+    if link.before == BASE then
+      fail( string.format( "link '%s' cannot be anchored before '%s'.", link.name, BASE ) )
+    end
     if index_of( link.name ) then fail( string.format( "link '%s' is already in the chain.", link.name ) ) end
 
-    table.insert( links, position_for( link ), {
+    -- Registration order, not chain order. Where it actually lands is decided in
+    -- resolve(), once every link that could be an anchor has arrived.
+    table.insert( links, {
       name = link.name,
       after = link.after,
       before = link.before,
@@ -166,6 +268,16 @@ function M.new( chain_name )
     table.insert( taps, { name = tap.name, after = tap.after, before = tap.before } )
   end
 
+  -- Chain order, not registration order: what this answers is "where did everything end
+  -- up", so it resolves first. Quietly -- asking is not building, and a link that cannot
+  -- be placed should be complained about once, when the chain is built.
+  ---@return string[]
+  local function names()
+    local result = {}
+    for _, link in ipairs( resolve( false ) ) do table.insert( result, link.name ) end
+    return result
+  end
+
   ---@param base any
   ---@return BuiltChain
   local function build( base )
@@ -177,7 +289,7 @@ function M.new( chain_name )
     local after_link = { [ BASE ] = base }
     local accumulator = base
 
-    for _, link in ipairs( links ) do
+    for _, link in ipairs( resolve( true ) ) do
       before_link[ link.name ] = accumulator
       accumulator = link.factory( accumulator )
 
@@ -220,6 +332,12 @@ function M.new( chain_name )
         if value == nil then fail( string.format( "there is no tap called '%s'.", name or "nil" ) ) end
 
         return value
+      end,
+      -- Asking is not an error, taking a missing one is: whether a tap exists at all
+      -- depends on which extensions are installed, so a consumer that can live without
+      -- one needs a way to find out that isn't pcall around tap().
+      has_tap = function( name )
+        return resolved[ name ] ~= nil
       end
     }
   end

@@ -37,15 +37,24 @@ local ColorSeverity = { White = 0, Green = 1, Orange = 2, Red = 3 }
 -- render time because extensions register during on_ready, which runs after the button
 -- is built, so a button that snapshotted the list at construction would show nothing.
 local function refresh_minimap()
+  -- Handed to extensions as ctx.minimap.refresh, and their on_enable runs well before
+  -- create_components() gets as far as building the button. Nothing to repaint yet is a
+  -- non-event, not a crash -- the colour is recomputed from scratch at every refresh, so
+  -- the one skipped here costs nothing.
+  if not M.minimap_button then return end
+
   local color = m.MinimapButton.ColorType.White
   local best = ColorSeverity[ color ]
 
   for _, contribution in ipairs( M.minimap_contributions ) do
     local status = contribution.status and contribution.status()
+    -- A colour we don't know the severity of comes from a contribution we don't own, so
+    -- it is ignored rather than allowed to take the button over.
+    local severity = status and status.color and ColorSeverity[ status.color ]
 
-    if status and status.color and ColorSeverity[ status.color ] > best then
+    if severity and severity > best then
       color = status.color
-      best = ColorSeverity[ color ]
+      best = severity
     end
   end
 
@@ -197,14 +206,14 @@ end
 -- The full soft-res picture before the group filter drops everyone who isn't here, or nil
 -- before the chain is built or if no such tap exists. Guarded because `Chain.build`'s
 -- `tap()` errors on an unknown name -- once a source extension owns "present_players"
--- (Phase C), whether the "unfiltered" tap exists at all is no longer guaranteed.
+-- (Phase C), whether the "unfiltered" tap exists at all is no longer guaranteed. Asked
+-- via has_tap rather than pcall so a genuine error from inside the chain still surfaces.
 ---@param name string
 ---@return any?
 local function softres_tap( name )
-  if not M.softres_built then return nil end
+  if not M.softres_built or not M.softres_built.has_tap( name ) then return nil end
 
-  local ok, result = pcall( M.softres_built.tap, name )
-  return ok and result or nil
+  return M.softres_built.tap( name )
 end
 
 local function create_components()
@@ -268,6 +277,12 @@ local function create_components()
 
   ---@type MinimapContribution[]
   M.minimap_contributions = {}
+
+  -- Same reason, and it has to happen before Extensions.enable() gets its chance to
+  -- register one: a source left over from a previous composition would make the built-in
+  -- fallback below think the slot was claimed, and core would then skip contributing the
+  -- backbone that goes with it.
+  m.SoftResSource.clear()
 
   m.Extensions.attach( db( "extensions" ), M.event_bus )
 
@@ -376,12 +391,44 @@ local function create_components()
     refresh_minimap
   )
 
+  -- Extensions declare themselves here: chain links, config settings, lifecycle hooks.
+  -- First, so a source extension can contribute the backbone before core decides whether
+  -- to supply its own; before anything is built, so their links are in the chain when it
+  -- is. They can anchor to names that do not exist yet -- see Chain's resolve().
+  m.Extensions.enable( make_extension_context )
+
+  -- The built-in soft-res, registered through the same seam an extension uses. It goes in
+  -- last and only if nothing else claimed the slot, so installing a source extension
+  -- replaces it rather than colliding with it -- registration is first-wins, so being
+  -- below Extensions.enable() is what makes that "rather than" true. Deleted in Phase C.
+  if not m.SoftResSource.get() then
+    m.SoftResSource.register( {
+      id = "builtin",
+      title = "softres.it (built in)",
+      base = function() return M.unfiltered_softres end,
+      -- A saved import string counts as data even when it decoded to nothing: /rfsetup
+      -- refuses to run over real data, and a string that failed to decode is still the
+      -- user's, not the simulator's to overwrite.
+      has_data = function()
+        if getn( M.unfiltered_softres.get_items() ) > 0 then return true end
+        return M.softres_db.data and M.softres_db.data ~= "" and true or false
+      end,
+      get_import_string = function() return M.softres_db.data end
+    } )
+  end
+
   -- The soft-res backbone. These are the names extensions anchor to, so renaming one is
-  -- a breaking change for them, not just a local rename. Added before Extensions.enable()
-  -- runs: core is still the sole owner of these three names in Phase A/B (that changes
-  -- once a source extension exists to contribute them instead), and an extension such as
-  -- RollForNetherVortex anchors to "awarded_loot" and "present_players" the moment its
-  -- on_enable runs -- so they must already be in the chain by then.
+  -- a breaking change for them, not just a local rename.
+  --
+  -- Below Extensions.enable() now, which it could not be while the chain resolved anchors
+  -- as each link arrived. Still unconditional, and that is the one thing standing between
+  -- here and Phase B: a source extension contributes these same three names, and adding
+  -- them here as well collides on "link 'matched_name' is already in the chain". The fix
+  -- is to make core's whole built-in soft-res stack -- store, backbone, SoftResCheck, the
+  -- gui, the minimap contribution, the /sr family -- conditional on nothing else having
+  -- claimed the source slot, which is §6.2's deletion list turned into an `if`. That is
+  -- Phase B's first task, not this commit's: gating only the links leaves core building
+  -- SoftResCheck on an "unfiltered" tap that no longer exists.
   M.softres_chain.add( {
     name = "matched_name",
     after = m.Chain.BASE,
@@ -406,29 +453,10 @@ local function create_components()
   -- `nether_vortex_softres` -- a name that vanishes when the extension is off.
   M.softres_chain.tap( { name = "unfiltered", before = "present_players" } )
 
-  -- The built-in soft-res, registered through the same seam an extension uses. It goes in
-  -- last and only if nothing else claimed the slot, so installing a source extension
-  -- replaces it rather than colliding with it. Deleted in Phase C.
-  if not m.SoftResSource.get() then
-    m.SoftResSource.register( {
-      id = "builtin",
-      title = "softres.it (built in)",
-      base = function() return M.unfiltered_softres end,
-      has_data = function() return getn( M.unfiltered_softres.get_items() ) > 0 end,
-      get_import_string = function() return M.softres_db.data end
-    } )
-  end
-
-  -- Extensions declare themselves here: chain links, config settings, lifecycle hooks.
-  -- After the backbone exists, so they have something to anchor to; before anything is
-  -- built, so their links are actually in the chain when it is.
-  m.Extensions.enable( make_extension_context )
-
-  -- Anchored to a link a source extension contributes, so it is only addable when a
-  -- source is actually installed. With no source there are no soft-ressers to annotate,
-  -- so skipping it changes nothing. In Phase A/B this is always true, since core adds
-  -- "present_players" itself above; it stops being unconditional once that ownership
-  -- moves to a source extension in Phase C.
+  -- Anchored to a link whoever owns the backbone contributes, so it is only addable when
+  -- there is one. With no source there are no soft-ressers to annotate, so skipping it
+  -- changes nothing -- and adding it anyway would cost the user an error message about a
+  -- chain link they have never heard of.
   if M.softres_chain.has( "present_players" ) then
     M.softres_chain.add( {
       name = "bonus_roll",
@@ -914,7 +942,10 @@ function M.import_encoded_softres_data( data, data_loaded_callback )
     info( "Could not load soft-res data!", m.colors.red )
     return
   elseif not softres_data then
-    M.minimap_button.set_icon( M.minimap_button.ColorType.White )
+    -- Recomputed rather than set to White outright: the icon is the highest severity
+    -- across every contribution, and core having nothing to import says nothing about
+    -- what the others have to report.
+    refresh_minimap()
     return
   end
 
@@ -1217,6 +1248,12 @@ function M.on_player_login()
   M.event_bus.notify( "player_login" )
   M.import_encoded_softres_data( M.softres_db.data )
   M.softres_gui.load( M.softres_db.data )
+
+  -- The button constructs White and is corrected here. import_encoded_softres_data
+  -- refreshes on the paths that reach the end of it, but it returns early on a string
+  -- that won't decode, and a contribution that isn't core's may have something to say
+  -- either way.
+  refresh_minimap()
 
   ---@diagnostic disable-next-line: undefined-global
   LootFrame:UnregisterAllEvents()
