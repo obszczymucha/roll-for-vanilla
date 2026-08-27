@@ -80,6 +80,8 @@ end
 ---@field item_link fun( parent: Frame ): Frame
 ---@field item_link_with_icon fun( parent: Frame, text: string, spacing: number? ): Frame
 ---@field text fun( parent: Frame, text: string ): Frame
+---@field paragraph fun( parent: Frame ): Frame
+---@field section_header fun( parent: Frame ): Frame
 ---@field icon fun( parent: Frame, show: boolean, width: number, height: number ): Frame
 ---@field icon_text fun( parent: Frame, text: string ): Frame
 ---@field roll fun( parent: Frame ): Frame
@@ -267,6 +269,40 @@ function M.text( parent, text )
   label:SetNonSpaceWrap( false )
 
   if text then label:SetText( text ) end
+
+  return label
+end
+
+-- Prose, as opposed to M.text's single line. Fixed width so it wraps rather than
+-- stretching whatever it sits in -- the options page sizes itself to its widest line, so
+-- an unwrapped sentence would make the whole page as wide as the sentence.
+--
+-- The height is deliberately *not* set. A font string with a fixed width grows its own
+-- height to fit the wrapped text; pinning that height instead truncates the text with an
+-- ellipsis the moment the measurement is taken before the string has been laid out --
+-- which is a one-line measurement, and why the summary used to end in "only ever lo...".
+local paragraph_width = 380
+
+function M.paragraph( parent )
+  local label = parent:CreateFontString( nil, "ARTWORK", "GameFontHighlight" )
+
+  label:SetWidth( paragraph_width )
+  label:SetJustifyH( "LEFT" )
+  label:SetJustifyV( "TOP" )
+  label:SetNonSpaceWrap( false )
+  label:SetWordWrap( true )
+  label:SetTextColor( 0.8, 0.8, 0.8 )
+
+  return label
+end
+
+-- A heading for a section of the options page. Distinct from M.text, which the rolling
+-- popup and the loot frame also use at their own size.
+function M.section_header( parent )
+  local label = parent:CreateFontString( nil, "ARTWORK", "GameFontNormal" )
+
+  label:SetJustifyH( "LEFT" )
+  label:SetNonSpaceWrap( false )
 
   return label
 end
@@ -594,15 +630,19 @@ function M.checkbox( parent )
   button:SetHeight( 20 )
   button:SetPoint( "LEFT", container, "LEFT", 0, 0 )
 
-  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+  -- The box and its label are two separate widgets, so without this they sit flush
+  -- against each other and the label reads as part of the box.
+  local label_gap = 3
+
+  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormal" )
   label:SetTextColor( 1, 1, 1 )
-  label:SetPoint( "LEFT", button, "RIGHT", 0, 1 )
+  label:SetPoint( "LEFT", button, "RIGHT", label_gap, 1 )
 
   container:SetHeight( button:GetHeight() )
 
   container.SetText = function( _, text )
     label:SetText( text )
-    container:SetWidth( button:GetWidth() + label:GetWidth() )
+    container:SetWidth( button:GetWidth() + label_gap + label:GetWidth() )
   end
 
   container.SetChecked = function( _, checked )
@@ -626,6 +666,10 @@ function M.slider( parent )
 
   local slider_width = 80
   local value_gap = 34
+  -- Extra room for a decimal readout. The value sits to the *left* of the slider and
+  -- grows leftward, so "20.0" reaches back toward the label in a way "8" does not, and
+  -- without this the two end up almost touching.
+  local decimal_value_gap = 10
 
   local container = m.api.CreateFrame( "Frame", nil, parent )
   local slider = m.api.CreateFrame( "Slider", name, container, "OptionsSliderTemplate" )
@@ -641,14 +685,26 @@ function M.slider( parent )
 
   if slider_low then slider_low:SetText( "" ) end
   if slider_high then slider_high:SetText( "" ) end
-  if slider_text then slider_text:SetFontObject( m.api.GameFontHighlightSmall ) end
+  if slider_text then slider_text:SetFontObject( m.api.GameFontHighlight ) end
 
-  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormal" )
   label:SetTextColor( 1, 1, 1 )
   label:SetPoint( "LEFT", container, "LEFT", 0, 0 )
 
-  slider:ClearAllPoints()
-  slider:SetPoint( "LEFT", label, "RIGHT", value_gap, 0 )
+  -- Decimal places the knob snaps to and the readout shows. Declared up here because the
+  -- anchoring below reads it.
+  local m_precision = 0
+
+  -- A pixel below the label's centre line. The knob's artwork sits high in the slider's
+  -- own frame, so anchoring the two centres together makes the knob look like it floats
+  -- above the text it belongs to.
+  local function anchor_slider()
+    slider:ClearAllPoints()
+    slider:SetPoint( "LEFT", label, "RIGHT",
+      value_gap + (m_precision > 0 and decimal_value_gap or 0), -1 )
+  end
+
+  anchor_slider()
 
   if slider_text then
     -- Move the built-in value readout from above the slider to its left, right up against it.
@@ -663,9 +719,8 @@ function M.slider( parent )
   -- screen while dragging; committed_value is what on_change was last called with.
   local pending_value
   local committed_value
-  -- Decimal places the knob snaps to and the readout shows. 0 means whole numbers, which is
-  -- what the SetValueStep above already enforces until SetPrecision says otherwise.
-  local m_precision = 0
+  -- 0 means whole numbers, which is what the SetValueStep above already enforces until
+  -- SetPrecision says otherwise.
 
   local function format_value( value )
     if not value then return "" end
@@ -692,6 +747,7 @@ function M.slider( parent )
   container.SetPrecision = function( _, precision )
     m_precision = precision or 0
     slider:SetValueStep( m_precision > 0 and 1 / (10 ^ m_precision) or 1 )
+    anchor_slider()
   end
 
   container.SetValue = function( _, value )
@@ -735,11 +791,14 @@ function M.dropdown( parent )
   local dropdown = m.api.CreateFrame( "Frame", name, container, "UIDropDownMenuTemplate" )
   m.api.UIDropDownMenu_SetWidth( dropdown, dropdown_width )
 
-  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormal" )
   label:SetTextColor( 1, 1, 1 )
   label:SetPoint( "LEFT", container, "LEFT", 0, 0 )
 
-  dropdown:SetPoint( "LEFT", label, "RIGHT", value_gap, 0 )
+  -- Three pixels below the label's centre line. UIDropDownMenuTemplate's visible box sits
+  -- high in its frame, the same way the slider's knob does, so centre-to-centre leaves the
+  -- box reading as though it floats above the option it belongs to.
+  dropdown:SetPoint( "LEFT", label, "RIGHT", value_gap, -3 )
 
   container:SetHeight( dropdown:GetHeight() )
 
@@ -799,9 +858,9 @@ function M.editbox( parent )
   edit:SetHeight( 16 )
   edit:SetAutoFocus( false )
   edit:SetNumeric( true )
-  edit:SetFontObject( m.api.GameFontHighlightSmall )
+  edit:SetFontObject( m.api.GameFontHighlight )
 
-  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormal" )
   label:SetTextColor( 1, 1, 1 )
   label:SetPoint( "LEFT", container, "LEFT", 0, 0 )
 

@@ -286,8 +286,8 @@ function M.new( main )
     -- SoftResPresentPlayersDecorator captures group_roster.is_player_in_my_group as an
     -- upvalue when it is constructed, so overriding the roster afterwards cannot reach it
     -- and every simulated soft-resser is filtered out as absent. Skip just that layer by
-    -- delegating to the one beneath it, which keeps the awarded-loot and nether-vortex
-    -- decorators in play, and do its class enrichment here.
+    -- delegating to the chain's "unfiltered" tap, which keeps every decorator below it in
+    -- play, and do its class enrichment here.
     local function enrich( rollers )
       for _, roller in ipairs( rollers or {} ) do
         local player = by_name[ roller.name ]
@@ -298,7 +298,7 @@ function M.new( main )
     end
 
     -- Everything *above* the present-players layer still has to run, so it is rebuilt here
-    -- rather than reproduced. Hardcoding the stand-in as "nether_vortex plus class
+    -- rather than reproduced. Hardcoding the stand-in as "one named decorator plus class
     -- enrichment" is what silently dropped bonus rolls from /rfsetup the moment a new
     -- decorator went on top: the simulator was pinning what the outermost layer was.
     -- Anything added above present-players from now on gets wrapped here too.
@@ -306,8 +306,9 @@ function M.new( main )
     -- present-players filtering swapped out, so it has to keep the rest of the interface.
     -- Re-running /rfsetup is idempotent -- .get is overwritten before it is wrapped again.
     local stand_in = m.clone( main.softres )
-    stand_in.get = function( item_data ) return enrich( main.nether_vortex_softres.get( item_data ) ) end
-    stand_in.get_all_rollers = function() return enrich( main.nether_vortex_softres.get_all_rollers() ) end
+    local unfiltered = main.unfiltered_view
+    stand_in.get = function( item_data ) return enrich( unfiltered.get( item_data ) ) end
+    stand_in.get_all_rollers = function() return enrich( unfiltered.get_all_rollers() ) end
 
     local simulated = m.SoftResBonusRollDecorator.new(
       stand_in, main.resistance_bonus_roll_registry, main.config )

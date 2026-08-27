@@ -21,6 +21,7 @@ local getn = m.getn
 ---@field backdrop_color fun( self: PopupBuilder, r: number, g: number, b: number, a: number ): PopupBuilder
 ---@field bg_file fun( self: PopupBuilder, bg_file: string ): PopupBuilder
 ---@field esc fun( self: PopupBuilder ): PopupBuilder
+---@field no_border fun( self: PopupBuilder ): PopupBuilder
 ---@field gui_elements fun( self: PopupBuilder, gui_elements: table ): PopupBuilder
 ---@field frame_style fun( self: PopupBuilder, frame_style: FrameStyle ): PopupBuilder
 ---@field on_drag_stop fun( self: PopupBuilder, callback: function ): PopupBuilder

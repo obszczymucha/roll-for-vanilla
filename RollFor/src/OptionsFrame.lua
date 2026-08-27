@@ -13,62 +13,46 @@ local button_defaults = {
   scale = 0.76
 }
 
+---@alias OptionsSection "general"|"extension"
+
 ---@class OptionsFrame
 ---@field show fun()
 ---@field refresh fun( _, data: OptionsFrameData )
----@field hide fun()
----@field toggle fun()
 ---@field get_frame fun(): Popup?
-
-M.center_point = { point = "CENTER", relative_point = "CENTER", x = 0, y = 0 }
 
 ---@param popup_builder PopupBuilder
 ---@param content_transformer OptionsFrameContentTransformer
 ---@param config Config
----@param db table
-function M.new( popup_builder, content_transformer, config, db )
+---@param parent Frame -- the settings panel canvas this renders into
+---@param section OptionsSection? -- which subcategory's page this is; general by default
+---@param extension_name string? -- which extension, when section is "extension"
+function M.new( popup_builder, content_transformer, config, parent, section, extension_name )
   ---@type Popup?
   local popup
-  local top_padding = config.classic_look() and 14 or 8
+  -- How far the page sits in from the settings panel's own edges, and the only top margin
+  -- there is. It used to be three stacked offsets -- this inset, a popup top padding, and
+  -- an extra gap the transformer gave the first line -- but the latter two were both
+  -- there to clear the window title, and the settings window draws that itself now.
+  local side_inset, top_inset = 16, 16
 
-  local function on_drag_stop()
-    if not popup then return end
-
-    if m.is_frame_out_of_bounds( popup ) then
-      db.point = M.center_point
-      popup:position( M.center_point )
-
-      return
-    end
-
-    local anchor = popup:get_anchor_point()
-    db.point = { point = anchor.point, relative_point = anchor.relative_point, x = anchor.x, y = anchor.y }
-  end
-
-  local function get_point()
-    if popup and m.is_frame_out_of_bounds( popup ) then
-      return M.center_point
-    elseif db.point then
-      return db.point
-    else
-      return M.center_point
-    end
-  end
-
+  -- The options live in the game's own settings window now, so this is no longer a
+  -- popup: no dragging, no remembered position, no Esc handling, no strata of its own.
+  -- What's left of the popup machinery is the part that earns its keep -- `resize`,
+  -- which sizes the frame to whatever content_transformer produced, so the panel doesn't
+  -- have to be laid out by hand every time a setting is added.
+  --
+  -- Anchored top-left inside the canvas, with no border and no backdrop, so it reads as
+  -- part of the settings page rather than a window sitting on top of one.
   local function create_popup()
     local result = popup_builder
         :name( "RollForOptionsFrame" )
-        :point( get_point() )
+        :parent( parent )
+        :point( { point = "TOPLEFT", relative_frame = parent, relative_point = "TOPLEFT",
+          x = side_inset, y = -top_inset } )
         :gui_elements( m.GuiElements )
-        :movable()
-        :on_drag_stop( on_drag_stop )
-        :strata( "DIALOG" )
-        :self_centered_anchor()
-        :esc()
-        :hidden()
+        :backdrop_color( 0, 0, 0, 0 )
+        :no_border()
         :build()
-
-    result:border_color( 0.351, 0.553, 1.0, 0.3 )
 
     return result
   end
@@ -107,21 +91,24 @@ function M.new( popup_builder, content_transformer, config, db )
           frame:SetPrecision( v.precision )
           frame:SetValue( v.value )
           frame.on_change = v.on_change or function() end
-        elseif type == "text" then
+        elseif type == "text" or type == "section_header" or type == "paragraph" then
           frame:SetText( v.value )
         end
 
         if type ~= "button" then
           local count = getn( lines )
 
+          -- Left-aligned, not centred. Every option widget is a container that sizes
+          -- itself to its own content, so centring them lined up their *middles* and left
+          -- the labels ragged down the page. Anchoring on the left edge puts every label
+          -- at the same x, which is what a settings page is expected to look like.
           if count == 0 then
-            local y = -top_padding - (v.padding or 0)
             frame:ClearAllPoints()
-            frame:SetPoint( "TOP", popup, "TOP", 0, y )
+            frame:SetPoint( "TOPLEFT", popup, "TOPLEFT", 0, -(v.padding or 0) )
           else
             local line_anchor = lines[ count ].frame
             frame:ClearAllPoints()
-            frame:SetPoint( "TOP", line_anchor, "BOTTOM", 0, v.padding and -v.padding or 0 )
+            frame:SetPoint( "TOPLEFT", line_anchor, "BOTTOMLEFT", 0, v.padding and -v.padding or 0 )
           end
         end
       end, v.padding )
@@ -216,10 +203,8 @@ function M.new( popup_builder, content_transformer, config, db )
     table.insert( settings, setting )
   end
 
-  ---@return OptionsFrameData
-  local function default_content()
-    local settings = {}
-
+  ---@param settings OptionsSetting[]
+  local function general_settings( settings )
     add_toggle( settings, "auto_loot" )
     add_toggle( settings, "auto_loot_announce" )
     add_toggle( settings, "auto_loot_messages" )
@@ -238,16 +223,59 @@ function M.new( popup_builder, content_transformer, config, db )
     add_slider( settings, "master_loot_frame_rows", "Master loot frame rows", 5, 20, 0 )
     add_slider( settings, "sr_roll_spacing", "SR roll spacing", 16, 28, 1 )
     add_choice( settings, "master_loot_threshold", "Master loot threshold", master_loot_threshold_choices )
+  end
+
+  -- The page core draws for an extension that supplies none of its own: the switch, and
+  -- nothing else. Anything worth saying about what the extension does is the extension's
+  -- to say, on the page it builds itself -- core does not keep a copy.
+  ---@param settings OptionsSetting[]
+  local function extension_settings( settings )
+    local extension = m.Extensions.get( extension_name )
+    if not extension then return end
+
+    if extension.incompatible then
+      table.insert( settings, {
+        type = "paragraph",
+        value = string.format( "This extension was built for a newer version of RollFor (extension API %s, this is %s), so it cannot be enabled.",
+          tostring( extension.api_version ), m.Extensions.API_VERSION )
+      } )
+
+      return
+    end
+
+    ---@type BooleanSetting
+    local enabled = {
+      type = "boolean",
+      label = "Enabled",
+      value = m.Extensions.is_enabled( extension.name ),
+      on_change = function( value ) m.Extensions.set_enabled( extension.name, value ) end
+    }
+
+    table.insert( settings, enabled )
+  end
+
+  -- General and each extension are separate subcategories, so each one is a page of its
+  -- own and this renders whichever it was built for.
+  --
+  -- No title and no Close button: the settings window supplies both. A Close button
+  -- inside a settings page would close nothing anyone expects.
+  ---@return OptionsFrameData
+  local function default_content()
+    local settings = {}
+
+    if section == "extension" then
+      extension_settings( settings )
+    else
+      general_settings( settings )
+    end
 
     return {
-      title = "RollFor Options",
-      settings = settings,
-      buttons = {
-        { type = "Close", callback = function() if popup then popup:Hide() end end }
-      }
+      settings = settings
     }
   end
 
+  -- Called when the settings panel is shown, so what's on screen is read from the
+  -- config at that moment rather than from whenever the page was last built.
   local function show()
     if not popup then popup = create_popup() end
     refresh( nil, default_content() )
@@ -255,26 +283,10 @@ function M.new( popup_builder, content_transformer, config, db )
     popup:Show()
   end
 
-  local function hide()
-    if popup then popup:Hide() end
-  end
-
-  local function toggle()
-    if not popup then popup = create_popup() end
-
-    if popup:IsVisible() then
-      popup:Hide()
-    else
-      show()
-    end
-  end
-
   ---@type OptionsFrame
   return {
     show = show,
     refresh = refresh,
-    hide = hide,
-    toggle = toggle,
     get_frame = function() return popup end
   }
 end

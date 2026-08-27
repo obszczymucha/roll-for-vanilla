@@ -13,6 +13,7 @@ function M.new()
     border_color = function( self ) return self end,
     border_size = function( self ) return self end,
     esc = function( self ) return self end,
+    no_border = function( self ) return self end,
     sound = function( self ) return self end,
     gui_elements = function( self ) return self end,
     frame_style = function( self ) return self end,

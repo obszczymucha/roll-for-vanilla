@@ -6,8 +6,7 @@ reqsrc( "DebugBuffer", "Module", "Types", "SoftResDataTransformer", "RollingLogi
 reqsrc( "TieRollingLogic", "SoftResRollingLogic", "NonSoftResRollingLogic", "RaidRollRollingLogic", "InstaRaidRollRollingLogic" )
 require( "src/AwardedLoot" )
 local SoftResAwardedLootDecorator = require( "src/SoftResAwardedLootDecorator" )
-local SoftResNetherVortexDecorator = require( "src/SoftResNetherVortexDecorator" )
-local NetherVortexAwardedLootDecorator = require( "src/NetherVortexAwardedLootDecorator" )
+local Chain = require( "src/Chain" )
 local SoftResDecorator = require( "src/SoftResPresentPlayersDecorator" )
 local SoftResBonusRollDecorator = require( "src/SoftResBonusRollDecorator" )
 require( "src/AutoLootDb" )
@@ -106,27 +105,57 @@ function M.mock_config( configuration )
   }
 end
 
--- The same chain main.lua builds, bonus-roll decorator outermost.
+-- The same chain main.lua builds, bonus-roll decorator outermost -- and built the same
+-- way, through Chain, so that a test can insert an extension's links exactly where the
+-- real addon would.
 ---@param group_roster GroupRoster
 ---@param awarded_loot AwardedLoot
 ---@param bonus_roll_registry ResistanceBonusRollRegistry
 ---@param config Config
 ---@param data table?
+---@param extend fun( softres_chain: Chain, awarded_loot_chain: Chain )? -- stands in for Extensions.enable
 ---@return GroupAwareSoftRes
 ---@return AwardedLoot
-local function group_aware_softres( group_roster, awarded_loot, bonus_roll_registry, config, data )
+local function group_aware_softres( group_roster, awarded_loot, bonus_roll_registry, config, data, extend )
   local raw_softres = SoftRes.new()
-  local vortex_awarded_loot = NetherVortexAwardedLootDecorator.new( awarded_loot )
-  local awarded_loot_softres = SoftResAwardedLootDecorator.new( vortex_awarded_loot, raw_softres )
-  local nether_vortex_softres = SoftResNetherVortexDecorator.new( awarded_loot_softres )
-  local present_softres = SoftResDecorator.new( group_roster, nether_vortex_softres )
-  local result = SoftResBonusRollDecorator.new( present_softres, bonus_roll_registry, config )
+
+  local awarded_loot_chain = Chain.new( "awarded_loot" )
+  local softres_chain = Chain.new( "softres" )
+
+  -- Resolved when the soft-res chain is built, which happens after the awarded-loot one.
+  local decorated_awarded_loot
+
+  softres_chain.add( {
+    name = "awarded_loot",
+    after = Chain.BASE,
+    factory = function( inner ) return SoftResAwardedLootDecorator.new( decorated_awarded_loot, inner ) end
+  } )
+
+  softres_chain.add( {
+    name = "present_players",
+    after = "awarded_loot",
+    factory = function( inner ) return SoftResDecorator.new( group_roster, inner ) end
+  } )
+
+  softres_chain.add( {
+    name = "bonus_roll",
+    after = "present_players",
+    factory = function( inner ) return SoftResBonusRollDecorator.new( inner, bonus_roll_registry, config ) end
+  } )
+
+  softres_chain.tap( { name = "unfiltered", before = "present_players" } )
+
+  if extend then extend( softres_chain, awarded_loot_chain ) end
+
+  decorated_awarded_loot = awarded_loot_chain.build( awarded_loot ).final
+
+  local result = softres_chain.build( raw_softres ).final
 
   if data then
     result.import( data )
   end
 
-  return result, vortex_awarded_loot
+  return result, decorated_awarded_loot
 end
 
 function M.mock_loot_facade()
@@ -309,7 +338,7 @@ function M.new_roll_for()
     end
 
     local softres, awarded_loot = group_aware_softres(
-      group_roster, raw_awarded_loot, bonus_roll_registry, config, deps[ "SoftResData" ] )
+      group_roster, raw_awarded_loot, bonus_roll_registry, config, deps[ "SoftResData" ], deps[ "ExtendChains" ] )
     deps[ "SoftRes" ] = softres
 
     local raw_loot_list = require( "mocks/LootList" ).new( loot_facade )

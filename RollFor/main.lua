@@ -14,6 +14,13 @@ local RollSlashCommand = m.Types.RollSlashCommand
 local slash_cmd = m.slash_cmd
 local alid = m.AwardedLoot.awarded_loot_item_data
 
+-- Assigned by create_components(); declared here so describe_lockout_loss(), which runs
+-- above it, can see them.
+---@type table<string, function[]>
+local extension_hooks = { group_changed = {}, lockout_reset = {}, lockout_loss = {} }
+---@type fun( extension_name: string ): ExtensionContext
+local make_extension_context
+
 local function clear_data()
   M.softres_gui.clear()
   M.name_matcher.clear( true )
@@ -135,6 +142,15 @@ local function describe_lockout_loss()
     { count = M.resistance_bonus_roll_eligibility.count_eligible(), noun = "eligible player" }
   }
 
+  -- Extensions that keep lockout-scoped records add their own entries, so the sentence
+  -- you agree to in the reset dialog and the one you're told afterwards stay the same
+  -- sentence no matter what's loaded.
+  for _, describe in ipairs( extension_hooks.lockout_loss ) do
+    for _, entry in ipairs( describe() or {} ) do
+      table.insert( counted, entry )
+    end
+  end
+
   local lost = {}
 
   for _, entry in ipairs( counted ) do
@@ -222,6 +238,54 @@ local function create_components()
   ---@type GroupAwareSoftResFn
   M.absent_softres = function( softres ) return m.SoftResAbsentPlayersDecorator.new( M.group_roster, softres ) end
 
+  ---@type Chain
+  M.softres_chain = m.Chain.new( "softres" )
+
+  ---@type Chain
+  M.awarded_loot_chain = m.Chain.new( "awarded_loot" )
+
+  -- Fan-outs that used to be a hardcoded list of callees in this file. Rebuilt on every
+  -- create_components() so a reload doesn't accumulate the previous run's subscribers.
+  extension_hooks = { group_changed = {}, lockout_reset = {}, lockout_loss = {} }
+
+  m.Extensions.attach( db( "extensions" ), M.config_event_bus )
+
+  -- What an extension is allowed to see. Deliberately narrow: this is the surface we're
+  -- committing to, and the composition root is not part of it.
+  ---@param extension_name string
+  ---@return ExtensionContext
+  make_extension_context = function( extension_name )
+    local extension = m.Extensions.get( extension_name ) or {}
+
+    return {
+      -- Scoped, so an extension can't collide with core's db keys or another
+      -- extension's, and so its data is recognisable when it needs cleaning up.
+      db = function( key )
+        return db( string.format( "extension_%s_%s", extension_name, key ) )
+      end,
+      config = M.config,
+      chat = M.chat,
+      group_roster = M.group_roster,
+      player_info = M.player_info,
+      ace_timer = M.ace_timer,
+      event_bus = M.config_event_bus,
+      popup_builder = popup_builder,
+      frame_builder = m.FrameBuilder,
+      gui_elements = m.GuiElements,
+      softres_chain = M.softres_chain,
+      awarded_loot_chain = M.awarded_loot_chain,
+      is_enabled = function() return m.Extensions.is_enabled( extension_name ) end,
+      set_enabled = function( value ) m.Extensions.set_enabled( extension_name, value ) end,
+      title = extension.title,
+      on_group_changed = function( callback ) table.insert( extension_hooks.group_changed, callback ) end,
+      on_lockout_reset = function( callback ) table.insert( extension_hooks.lockout_reset, callback ) end,
+      lockout_loss = function( describe ) table.insert( extension_hooks.lockout_loss, describe ) end,
+      -- on_ready only: everything core builds exists by then. Named lookup rather than
+      -- handing over M itself, so what extensions depend on stays visible.
+      get = function( name ) return M[ name ] end
+    }
+  end
+
   ---@type ItemUtils
   M.item_utils = m.ItemUtils
 
@@ -270,9 +334,6 @@ local function create_components()
 
   M.raw_awarded_loot = m.AwardedLoot.new( db( "awarded_loot" ), M.chat )
 
-  ---@type AwardedLoot
-  M.awarded_loot = m.NetherVortexAwardedLootDecorator.new( M.raw_awarded_loot )
-
   -- TODO: Add type.
   M.softres_db = db( "softres" )
 
@@ -287,22 +348,59 @@ local function create_components()
     on_softres_status_changed
   )
 
-  ---@type SoftRes
-  M.matched_name_softres = m.SoftResMatchedNameDecorator.new( M.name_matcher, M.unfiltered_softres )
+  -- The soft-res backbone. These are the names extensions anchor to, so renaming one is
+  -- a breaking change for them, not just a local rename.
+  M.softres_chain.add( {
+    name = "matched_name",
+    after = m.Chain.BASE,
+    factory = function( inner ) return m.SoftResMatchedNameDecorator.new( M.name_matcher, inner ) end
+  } )
 
-  ---@type SoftRes
-  M.awarded_loot_softres = m.SoftResAwardedLootDecorator.new( M.awarded_loot, M.matched_name_softres )
+  M.softres_chain.add( {
+    name = "awarded_loot",
+    after = "matched_name",
+    factory = function( inner ) return m.SoftResAwardedLootDecorator.new( M.awarded_loot, inner ) end
+  } )
 
-  ---@type SoftRes
-  M.nether_vortex_softres = m.SoftResNetherVortexDecorator.new( M.awarded_loot_softres )
+  M.softres_chain.add( {
+    name = "present_players",
+    after = "awarded_loot",
+    factory = function( inner ) return M.present_softres( inner ) end
+  } )
 
   -- Outermost, so bonus rolls are only ever annotated onto players who are actually in
   -- the group -- the present-players decorator has already dropped everyone else.
-  ---@type GroupAwareSoftRes
-  M.softres = m.SoftResBonusRollDecorator.new(
-    M.present_softres( M.nether_vortex_softres ), M.resistance_bonus_roll_registry, M.config )
+  M.softres_chain.add( {
+    name = "bonus_roll",
+    after = "present_players",
+    factory = function( inner )
+      return m.SoftResBonusRollDecorator.new( inner, M.resistance_bonus_roll_registry, M.config )
+    end
+  } )
 
-  M.softres_check = m.SoftResCheck.new( M.nether_vortex_softres, M.group_roster, M.name_matcher, M.ace_timer,
+  -- The full soft-res picture before the group filter drops everyone who isn't here.
+  -- SoftResCheck and the roll simulator both want exactly this, and naming it after
+  -- whichever decorator happens to sit at that point is how it used to be called
+  -- `nether_vortex_softres` -- a name that vanishes when the extension is off.
+  M.softres_chain.tap( { name = "unfiltered", before = "present_players" } )
+
+  -- Extensions declare themselves here: chain links, config settings, lifecycle hooks.
+  -- After the backbone exists, so they have something to anchor to; before anything is
+  -- built, so their links are actually in the chain when it is.
+  m.Extensions.enable( make_extension_context )
+
+  ---@type AwardedLoot
+  M.awarded_loot = M.awarded_loot_chain.build( M.raw_awarded_loot ).final
+
+  local softres_chain = M.softres_chain.build( M.unfiltered_softres )
+
+  ---@type GroupAwareSoftRes
+  M.softres = softres_chain.final
+
+  ---@type SoftRes
+  M.unfiltered_view = softres_chain.tap( "unfiltered" )
+
+  M.softres_check = m.SoftResCheck.new( M.unfiltered_view, M.group_roster, M.name_matcher, M.ace_timer,
     M.absent_softres, db( "softres_check" ) )
 
   ---@type WinnerTracker
@@ -498,8 +596,42 @@ local function create_components()
   ---@type OptionsFrameContentTransformer
   local options_frame_content_transformer = m.OptionsFrameContentTransformer.new()
 
-  ---@type OptionsFrame
-  M.options = m.OptionsFrame.new( popup_builder(), options_frame_content_transformer, M.config, db( "options" ) )
+  -- The options render into the game's settings window, so the panel owns the frames and
+  -- hands each one over as it builds that page.
+  ---@type table<string, OptionsFrame>
+  M.extension_options = {}
+
+  ---@type InterfaceOptions
+  M.interface_options = m.InterfaceOptions.new( M.api(), function( parent, section, extension_name )
+    -- An extension owns its page: it keeps its own database, so core has no idea what is
+    -- worth putting on it. Core supplies the canvas and the builders and asks the
+    -- extension to fill it in. Pages may end up looking a little different from each
+    -- other, which is the trade for extensions not having to register their settings with
+    -- core just to be allowed to draw them.
+    if extension_name then
+      local extension = m.Extensions.get( extension_name )
+      local page
+
+      if extension and extension.options_page then
+        page = extension.options_page( make_extension_context( extension_name ), parent )
+      end
+
+      -- No page of its own, so core draws the one thing every extension has: its summary
+      -- and the switch that turns it on.
+      page = page or m.OptionsFrame.new(
+        popup_builder(), options_frame_content_transformer, M.config, parent, "extension", extension_name )
+
+      M.extension_options[ extension_name ] = page
+
+      return page
+    end
+
+    ---@type OptionsFrame
+    M.options = m.OptionsFrame.new(
+      popup_builder(), options_frame_content_transformer, M.config, parent, section )
+
+    return M.options
+  end )
 
   ---@type AutoLootFrameContentTransformer
   local autoloot_frame_content_transformer = m.AutoLootFrameContentTransformer.new()
@@ -532,6 +664,10 @@ local function create_components()
     db( "resistance_bonus_roll_frame" ) )
 
   m.AutoLootTree.init( M.autoloot_db )
+
+  -- Construction phase. Everything above exists now, so extensions that build frames or
+  -- register slash commands do it here rather than in on_enable.
+  m.Extensions.ready( make_extension_context )
 end
 
 local function subscribe_for_component_events()
@@ -560,6 +696,10 @@ local function subscribe_for_component_events()
     M.boss_killed.reset()
     M.resistance_bonus_roll_registry.reset()
     M.resistance_bonus_roll_eligibility.reset()
+
+    for _, callback in ipairs( extension_hooks.lockout_reset ) do
+      callback()
+    end
 
     if not lost then return end
 
@@ -623,7 +763,7 @@ local function on_roll_command( roll_slash_command )
     end
 
     if string.find( args, "^options" ) then
-      M.options.toggle()
+      M.interface_options.open()
       return
     end
 
@@ -637,7 +777,7 @@ local function on_roll_command( roll_slash_command )
     if roll_slash_command == RollSlashCommand.NormalRoll and string.find( args, "^%s*$" ) then
       if M.roll_for_receiver.show() then return end
 
-      M.options.toggle()
+      M.interface_options.open()
       return
     end
 
@@ -919,6 +1059,11 @@ function M.on_group_changed()
   M.resistance_frame.on_group_changed()
   M.resistance_bonus_roll_eligibility_frame.on_group_changed()
   M.resistance_bonus_roll_frame.on_group_changed()
+
+  for _, callback in ipairs( extension_hooks.group_changed ) do
+    callback()
+  end
+
   update_minimap_icon()
 end
 

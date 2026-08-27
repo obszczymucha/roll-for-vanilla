@@ -124,6 +124,7 @@ M.interface = {
 ---@field on_show fun( self: FrameBuilder, on_show: function ): FrameBuilder
 ---@field on_hide fun( self: FrameBuilder, on_hide: function ): FrameBuilder
 ---@field border_color fun( self: FrameBuilder, r: number, g: number, b: number, a: number ): FrameBuilder
+---@field no_border fun( self: FrameBuilder ): FrameBuilder
 ---@field self_centered_anchor fun( self: FrameBuilder ): FrameBuilder
 ---@field anchor_point fun( self: FrameBuilder, point: string ): FrameBuilder
 ---@field scale fun( self: FrameBuilder, scale: number ): FrameBuilder
@@ -194,7 +195,7 @@ function M.new()
       if options.frame_style == "Modern" then
         frame:SetBackdrop( {
           bgFile = options.bg_file or "Interface/Buttons/WHITE8x8",
-          edgeFile = "Interface\\Buttons\\WHITE8X8",
+          edgeFile = not options.no_border and "Interface\\Buttons\\WHITE8X8" or nil,
           tile = false,
           tileSize = 0,
           edgeSize = 0.8,
@@ -203,11 +204,12 @@ function M.new()
       elseif options.frame_style == "Classic" then
         frame:SetBackdrop( {
           bgFile = options.bg_file or "Interface/Buttons/WHITE8x8",
-          edgeFile = options.edge_file or "Interface\\DialogFrame\\UI-DialogBox-Border",
+          edgeFile = not options.no_border and (options.edge_file or "Interface\\DialogFrame\\UI-DialogBox-Border") or nil,
           tile = true,
           tileSize = 22,
           edgeSize = options.border_size or 24,
-          insets = { left = 5, right = 5, top = 5, bottom = 5 }
+          insets = options.no_border and { left = 0, right = 0, top = 0, bottom = 0 }
+              or { left = 5, right = 5, top = 5, bottom = 5 }
         } )
       end
 
@@ -346,6 +348,8 @@ function M.new()
       end
 
       frame.border_color = function( _, r, g, b, a )
+        if options.no_border then return end
+
         frame:SetBackdropBorderColor( r, g, b, options.frame_style == "Classic" and 1 or a )
       end
 
@@ -512,6 +516,17 @@ function M.new()
     return self
   end
 
+  -- Build the frame with no border at all.
+  --
+  -- Not the same as a transparent border_color: the classic frame style forces its
+  -- border's alpha to 1, so colour can never remove it. This drops the edge file, which
+  -- works for either style -- and for classic, drops the insets it was reserving for an
+  -- edge that is no longer drawn.
+  local function no_border( self )
+    options.no_border = true
+    return self
+  end
+
   local function self_centered_anchor( self )
     options.self_centered_anchor = true
     return self
@@ -567,6 +582,7 @@ function M.new()
     on_show = on_show,
     on_hide = on_hide,
     border_color = border_color,
+    no_border = no_border,
     self_centered_anchor = self_centered_anchor,
     anchor_point = anchor_point,
     scale = scale,

@@ -3,15 +3,16 @@ package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../Roll
 require( "src/compat" )
 local u = require( "test/utils" )
 local lu, eq = u.luaunit( "assertEquals" ) ---@diagnostic disable-line: unused-local
-u.multi_require_src( "DebugBuffer", "Module", "Types" )
+u.multi_require_src( "DebugBuffer", "Module", "Types", "Chain", "Extensions" )
 require( "src/modules" )
 local Db = require( "src/Db" )
 local Config = require( "src/Config" )
+local Extensions = require( "src/Extensions" )
+local EventBus = require( "src/EventBus" )
 local popup_builder = require( "mocks/PopupBuilder" )
 local options_frame_mock = require( "mocks/OptionsFrame" )
 local gui = require( "test/gui_helpers" )
 local options_buttons, checkbox, slider, editbox, dropdown, text = gui.options_buttons, gui.checkbox, gui.slider, gui.editbox, gui.dropdown, gui.text
-local title = text( "RollFor Options", 6 )
 local ItemQuality = RollFor.Types.ItemQuality
 
 u.mock_wow_api()
@@ -56,10 +57,11 @@ local function mock_config( toggles, setting_overrides )
   return config, db
 end
 
-local function new_options( config )
-  local db = Db.new( {} )
+-- The settings panel canvas the options render into. A bare frame is enough: what the
+-- options do with it is anchor to it and parent to it.
+local function new_options( config, section )
   local c = config or mock_config()
-  return options_frame_mock.new( popup_builder.new(), c, db( "options" ) )
+  return options_frame_mock.new( popup_builder.new(), c, RollFor.api.CreateFrame( "Frame" ), section )
 end
 
 local master_loot_threshold_options = {
@@ -68,13 +70,18 @@ local master_loot_threshold_options = {
   { value = ItemQuality.Epic, label = RollFor.colorize_item_by_quality( "Epic", ItemQuality.Epic ) },
 }
 
--- Padding OptionsFrameContentTransformer gives a line: the first setting is spaced off the
--- title, the rest are spaced by what kind of control they are.
-local type_paddings = { checkbox = 2, editbox = 7, slider = 7, dropdown = 5 }
+-- Padding OptionsFrameContentTransformer gives a line: the first setting starts flush at
+-- the top of the page, the rest are spaced by what kind of control they are.
+local type_paddings = { checkbox = 5, editbox = 10, slider = 10, dropdown = 8, section_header = 13, paragraph = 9 }
 
--- The full options popup content in the order OptionsFrame declares it: title, checkboxes,
--- editboxes, sliders, dropdown, buttons. `value_overrides` swaps in non-default editbox/slider/
--- dropdown values; trailing varargs are the checkbox lines to show, in declaration order.
+-- Whatever follows a block of prose gets more room than the gap between two controls.
+local after_paragraph_padding = 16
+
+-- The full options page in the order OptionsFrame declares it: checkboxes, editboxes,
+-- sliders, dropdown. No title and no buttons -- the settings window supplies its own
+-- header, and there is nothing to close. `value_overrides` swaps in non-default editbox/
+-- slider/dropdown values; trailing varargs are the checkbox lines to show, in declaration
+-- order.
 ---@param value_overrides table<string, any>?
 local function default_popup( value_overrides, ... )
   local v = default_setting_values()
@@ -91,29 +98,45 @@ local function default_popup( value_overrides, ... )
   table.insert( settings, slider( "SR roll spacing", v.sr_roll_spacing, 16, 28, 1 ) )
   table.insert( settings, dropdown( "Master loot threshold", v.master_loot_threshold, master_loot_threshold_options ) )
 
-  local content = { title }
+  local content = {}
 
   for i, line in ipairs( settings ) do
-    line.padding = i == 1 and 10 or type_paddings[ line.type ]
+    line.padding = i == 1 and 0 or type_paddings[ line.type ]
     table.insert( content, line )
   end
 
-  table.insert( content, options_buttons( "Close" ) )
+  return unpack( content )
+end
+
+---@param extension_name string
+local function new_extension_page( extension_name )
+  local c = mock_config()
+  return options_frame_mock.new( popup_builder.new(), c, RollFor.api.CreateFrame( "Frame" ),
+    "extension", extension_name )
+end
+
+---@param lines table[]
+local function page_of( lines )
+  local content = {}
+
+  for i, line in ipairs( lines ) do
+    local previous = lines[ i - 1 ]
+
+    line.padding = i == 1 and 0
+        or previous and previous.type == "paragraph" and after_paragraph_padding
+        or type_paddings[ line.type ]
+
+    table.insert( content, line )
+  end
 
   return unpack( content )
 end
 
 OptionsFrameSpec = {}
 
-function OptionsFrameSpec:should_be_hidden_by_default()
-  -- Given
-  local options = new_options()
-
-  -- Then
-  options.should_be_hidden()
-end
-
-function OptionsFrameSpec:should_display_close_button_that_hides_the_frame()
+-- Showing is what the settings window asks for when the page is displayed. There is no
+-- hiding, closing or toggling to test any more: the window owns all three.
+function OptionsFrameSpec:should_render_its_settings_when_shown()
   -- Given
   local options = new_options()
 
@@ -122,30 +145,23 @@ function OptionsFrameSpec:should_display_close_button_that_hides_the_frame()
 
   -- Then
   options.should_display( default_popup() )
-
-  -- When
-  options.click( "Close" )
-
-  -- Then
-  options.should_be_hidden()
+  options.should_be_visible()
 end
 
-function OptionsFrameSpec:should_toggle_visibility()
+-- The settings window calls show() on every visit, so a value changed elsewhere since
+-- the page was last built has to be picked up rather than remembered.
+function OptionsFrameSpec:should_reread_the_config_every_time_it_is_shown()
   -- Given
-  local options = new_options()
-  options.should_be_hidden()
+  local config, db = mock_config( { auto_loot = true } )
+  local options = new_options( config )
+  options.show()
 
   -- When
-  options.toggle()
+  db.auto_loot = false
+  options.show()
 
   -- Then
-  options.should_be_visible()
-
-  -- When
-  options.toggle()
-
-  -- Then
-  options.should_be_hidden()
+  options.should_display( default_popup( nil, checkbox( "auto_loot", false ) ) )
 end
 
 function OptionsFrameSpec:should_display_boolean_config_settings_as_checkboxes_in_declaration_order()
@@ -301,6 +317,101 @@ function OptionsFrameSpec:should_change_a_dropdown_config_setting_when_an_option
 
   -- Then
   eq( db.master_loot_threshold, ItemQuality.Epic )
+end
+
+ExtensionPageSpec = {}
+
+function ExtensionPageSpec:tearDown() Extensions.clear() end
+
+-- Extensions get pages of their own; the general page must not grow a list of them.
+function ExtensionPageSpec:should_not_list_extensions_on_the_general_page()
+  Extensions.attach( {}, EventBus.new() )
+  Extensions.register( {
+    name = "nether_vortex",
+    title = "Nether Vortex",
+    api_version = Extensions.API_VERSION,
+    on_enable = function() end
+  } )
+
+  local options = new_options()
+  options.show()
+
+  options.should_display( default_popup() )
+end
+
+---@param overrides table?
+local function register_nether_vortex( overrides )
+  local spec = {
+    name = "nether_vortex",
+    title = "Nether Vortex",
+    api_version = Extensions.API_VERSION,
+    on_enable = function() end
+  }
+
+  for key, value in pairs( overrides or {} ) do spec[ key ] = value end
+
+  Extensions.attach( {}, EventBus.new() )
+  Extensions.register( spec )
+end
+
+-- The page core falls back to when an extension supplies none of its own: the switch,
+-- and nothing else. What the extension does is the extension's to describe, on the page
+-- it builds itself.
+function ExtensionPageSpec:should_show_only_an_enabled_checkbox()
+  register_nether_vortex()
+
+  local options = new_extension_page( "nether_vortex" )
+  options.show()
+
+  options.should_display( page_of( { checkbox( "Enabled", true ) } ) )
+end
+
+function ExtensionPageSpec:should_reflect_a_disabled_extension()
+  local db = {}
+  Extensions.attach( db, EventBus.new() )
+  Extensions.register( {
+    name = "nether_vortex",
+    title = "Nether Vortex",
+    api_version = Extensions.API_VERSION,
+    on_enable = function() end
+  } )
+  db.nether_vortex = false
+
+  local options = new_extension_page( "nether_vortex" )
+  options.show()
+
+  options.should_display( page_of( { checkbox( "Enabled", false ) } ) )
+end
+
+function ExtensionPageSpec:should_toggle_the_extension_from_its_own_page()
+  local db = {}
+  Extensions.attach( db, EventBus.new() )
+  Extensions.register( {
+    name = "nether_vortex",
+    title = "Nether Vortex",
+    api_version = Extensions.API_VERSION,
+    on_enable = function() end
+  } )
+
+  local options = new_extension_page( "nether_vortex" )
+  options.show()
+
+  options.toggle_setting( "Enabled" )
+
+  eq( db.nether_vortex, false )
+end
+
+-- An extension built for a newer RollFor cannot be switched on, so it gets the reason
+-- instead of a checkbox that would refuse to do anything.
+function ExtensionPageSpec:should_explain_itself_instead_of_offering_a_switch_when_incompatible()
+  register_nether_vortex( { api_version = Extensions.API_VERSION + 1 } )
+
+  local options = new_extension_page( "nether_vortex" )
+  options.show()
+
+  local content = options.content()
+  eq( content[ #content ].type, "paragraph" )
+  eq( string.find( content[ #content ].value, "cannot be enabled", 1, true ) ~= nil, true )
 end
 
 os.exit( lu.LuaUnit.run() )

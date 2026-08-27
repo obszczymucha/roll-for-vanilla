@@ -497,7 +497,39 @@ function M.new( db, event_bus )
 
   local function printfn( setting_key ) return function() print_toggle( setting_key ) end end
 
-  local config = {
+  ---@type Config
+  local config
+
+  -- Lets an extension contribute a setting of its own. Called from an extension's
+  -- on_enable, which runs after Config.new has returned, so `config` is already assigned
+  -- by the time this closure fires.
+  --
+  -- The toggle lands in the same `toggles` table core's own settings live in, which is
+  -- what OptionsFrame renders from and what /rf config reads -- so an extension setting
+  -- gets the window row and the slash command without asking for either.
+  ---@param key string
+  ---@param toggle ConfigToggle
+  ---@param default boolean
+  local function register_toggle( key, toggle, default )
+    if type( key ) ~= "string" or key == "" then
+      m.err( "Cannot register a config toggle without a key." )
+      return
+    end
+
+    if toggles[ key ] then
+      m.err( string.format( "Config toggle %s is already registered.", hl( key ) ) )
+      return
+    end
+
+    toggles[ key ] = toggle
+    if db[ key ] == nil then db[ key ] = default and true or false end
+
+    config[ key ] = get( key )
+    config[ "set_" .. key ] = set_toggle( key )
+  end
+
+  config = {
+    register_toggle = register_toggle,
     configure_ms_threshold = configure_ms_threshold,
     configure_os_threshold = configure_os_threshold,
     hide_minimap_button = hide_minimap_button,

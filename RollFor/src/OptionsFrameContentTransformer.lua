@@ -54,7 +54,15 @@ local function add_title( content, title )
   table.insert( content, { type = "text", value = blue( title ), padding = 6 } )
 end
 
----@alias OptionsSetting BooleanSetting|NumberSetting|ConstrainedNumberSetting|StringChoiceSetting
+---@alias OptionsSetting BooleanSetting|NumberSetting|ConstrainedNumberSetting|StringChoiceSetting|HeaderSetting|ParagraphSetting
+
+---@class HeaderSetting
+---@field type "header"
+---@field label string
+
+---@class ParagraphSetting
+---@field type "paragraph"
+---@field value string
 
 ---@class BooleanSetting
 ---@field type "boolean"
@@ -153,16 +161,20 @@ end
 
 ---@param data OptionsFrameData
 local function transform( data )
-  ---@param type "boolean"|"number"|"constrained_number"|"choice"
+  ---@param type "boolean"|"number"|"constrained_number"|"choice"|"header"|"paragraph"
   local function get_padding( type )
-    if type == "boolean" then
-      return 2
-    elseif type == "number" then
-      return 7
-    elseif type == "constrained_number" then
-      return 7
-    else
+    if type == "header" then
+      return 13
+    elseif type == "paragraph" then
+      return 9
+    elseif type == "boolean" then
       return 5
+    elseif type == "number" then
+      return 10
+    elseif type == "constrained_number" then
+      return 10
+    else
+      return 8
     end
   end
 
@@ -170,8 +182,19 @@ local function transform( data )
 
   add_title( content, data.title )
 
+  -- A paragraph is a block of prose, and whatever comes after it is a new thought -- so
+  -- it gets more air than the ordinary gap between two controls, which would otherwise
+  -- leave a checkbox looking like the last line of the paragraph.
+  local after_paragraph_padding = 16
+
   for i, setting in ipairs( data.settings ) do
-    local padding = i == 1 and 10 or get_padding( setting.type )
+    local previous = data.settings[ i - 1 ]
+
+    -- The first line starts at the top of the page. The gap it used to get was clearance
+    -- for the window title, which the settings window supplies itself now.
+    local padding = i == 1 and 0
+        or previous and previous.type == "paragraph" and after_paragraph_padding
+        or get_padding( setting.type )
 
     if setting.type == "boolean" then
       add_checkbox( content, setting, padding )
@@ -181,6 +204,10 @@ local function transform( data )
       add_slider( content, setting, padding )
     elseif setting.type == "choice" then
       add_dropdown( content, setting, padding )
+    elseif setting.type == "header" then
+      table.insert( content, { type = "section_header", value = blue( setting.label ), padding = padding } )
+    elseif setting.type == "paragraph" then
+      table.insert( content, { type = "paragraph", value = setting.value, padding = padding } )
     end
   end
 

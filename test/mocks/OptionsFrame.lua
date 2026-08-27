@@ -19,7 +19,7 @@ end
 
 local function cleanse( t )
   return u.map( strip_functions( t ), function( v )
-    if v.type == "text" and v.value then
+    if (v.type == "text" or v.type == "section_header") and v.value then
       v.value = u.decolorize( v.value ) or v.value
     end
 
@@ -33,7 +33,6 @@ end
 ---@field is_visible fun(): boolean
 ---@field should_be_visible fun()
 ---@field should_be_hidden fun()
----@field click fun( button_type: OptionsFrameButtonType )
 ---@field toggle_setting fun( label: string )
 ---@field change_slider fun( label: string, value: number )
 ---@field change_editbox fun( label: string, value: number )
@@ -41,8 +40,10 @@ end
 
 ---@param popup_builder PopupBuilder
 ---@param config Config
----@param db table
-function M.new( popup_builder, config, db )
+---@param parent table -- the settings panel canvas the options render into
+---@param section OptionsSection?
+---@param extension_name string?
+function M.new( popup_builder, config, parent, section, extension_name )
   local transformed_content
   local model ---@type OptionsFrameData?
 
@@ -57,24 +58,12 @@ function M.new( popup_builder, config, db )
     end
   }
 
-  local options = OptionsFrame.new( popup_builder, spying_transformer, config, db )
+  local options = OptionsFrame.new( popup_builder, spying_transformer, config, parent, section, extension_name )
   options.content = function() return transformed_content and cleanse( transformed_content ) or {} end
 
   options.is_visible = function()
     local frame = options and options.get_frame()
     return frame and frame:IsVisible() or false
-  end
-
-  options.click = function( button_type )
-    if not model then return end
-
-    if not model.buttons then
-      error( "There were no buttons to click." )
-    end
-
-    for _, button in ipairs( model.buttons ) do
-      if button.type == button_type then button.callback() end
-    end
   end
 
   -- Settings are one flat list now, and they carry no key -- the label is what identifies a

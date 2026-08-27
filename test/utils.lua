@@ -127,6 +127,27 @@ function M.mock_wow_api()
     IG_MAIN_MENU_CLOSE = 851
   }
 
+  -- The game's options window. RollFor registers a canvas category with it at login, so
+  -- every test that builds the addon goes through here. The category stands in for the
+  -- one the client would hand back; its id is the name, which is enough for a test to
+  -- tell which category something was opened to.
+  M.modules().api.Settings = {
+    registered = {},
+    opened = {},
+    RegisterCanvasLayoutCategory = function( frame, name )
+      return { GetID = function() return name end, frame = frame, name = name }
+    end,
+    RegisterCanvasLayoutSubcategory = function( parent, frame, name )
+      return { GetID = function() return name end, frame = frame, name = name, parent = parent }
+    end,
+    RegisterAddOnCategory = function( category )
+      table.insert( M.modules().api.Settings.registered, category )
+    end,
+    OpenToCategory = function( category_id )
+      table.insert( M.modules().api.Settings.opened, category_id )
+    end
+  }
+
   M.modules().api.CreateFrame = function( _, frame_name )
     local frame = {
       RegisterEvent = function() end,
@@ -253,8 +274,13 @@ function M.mock_wow_api()
           SetFont = function() end,
           SetWidth = function() end,
           SetNonSpaceWrap = function() end,
+          SetWordWrap = function() end,
           SetHeight = function() end,
           SetJustifyH = function() end,
+          SetJustifyV = function() end,
+          -- Wrapped prose measures itself to set its own height; one line's worth is
+          -- enough for a test that cares about order rather than pixels.
+          GetStringHeight = function() return 12 end,
           SetScale = function() end,
         }
       end,
@@ -912,6 +938,8 @@ function M.load_real_stuff( req )
   r( "src/DebugBuffer" )
   r( "src/Module" )
   r( "src/Db" )
+  r( "src/Chain" )
+  r( "src/Extensions" )
   r( "src/Types" )
   r( "src/Interface" )
   r( "src/ItemUtils" )
@@ -937,9 +965,7 @@ function M.load_real_stuff( req )
   r( "src/DroppedLootAnnounce" )
   r( "src/SoftResGui" )
   r( "src/AwardedLoot" )
-  r( "src/NetherVortexAwardedLootDecorator" )
   r( "src/SoftResAwardedLootDecorator" )
-  r( "src/SoftResNetherVortexDecorator" )
   r( "src/SoftResPresentPlayersDecorator" )
   r( "src/SoftResBonusRollDecorator" )
   r( "src/SoftResAbsentPlayersDecorator" )
@@ -1013,6 +1039,7 @@ function M.load_real_stuff( req )
   r( "src/GargulBridge" )
   r( "src/OptionsFrameContentTransformer" )
   r( "src/OptionsFrame" )
+  r( "src/InterfaceOptions" )
   r( "src/AutoLootFrameContentTransformer" )
   r( "src/AutoLootFrame" )
   -- r( "Libs/LibDeflate/LibDeflate" )
