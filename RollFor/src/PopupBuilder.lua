@@ -9,6 +9,8 @@ local getn = m.getn
 
 ---@class Popup : Frame
 ---@field resize fun( self: Popup, lines: table )
+---@field scroll_width number? -- see resize: the widest this popup has been for the current list
+---@field scroll_width_total number?
 
 ---@class PopupBuilder
 ---@field name fun( self: PopupBuilder, name: string ): PopupBuilder
@@ -34,6 +36,8 @@ local getn = m.getn
 ---@field scale fun( self: PopupBuilder, scale: number ): PopupBuilder
 ---@field strata fun( self: PopupBuilder, strata: FrameStrata ): PopupBuilder
 ---@field hidden fun( self: PopupBuilder ): PopupBuilder
+---@field scrollable fun( self: PopupBuilder, opts: table ): PopupBuilder
+---@field on_scroll fun( self: PopupBuilder, callback: function ): PopupBuilder
 ---@field build fun( self: PopupBuilder ): Popup
 
 ---@param frame_builder FrameBuilderFactory
@@ -118,6 +122,21 @@ local function new( frame_builder, bottom_margin, bottom_button_margin, side_mar
 
     if button_count > 0 then
       height = height + 23
+    end
+
+    -- With a scroll viewport (FrameBuilder's `scrollable`) only the lines inside the window
+    -- exist, so the widest row -- and with it the popup -- would change every time the wheel
+    -- moves. Width is held at the widest it has been for the current list instead, and recomputed
+    -- only when the list changes length, which is what expanding or collapsing something does.
+    local scroll = popup.get_scroll and popup.get_scroll()
+
+    if scroll and scroll.total > 0 then
+      if popup.scroll_width_total == scroll.total and popup.scroll_width and popup.scroll_width > max_width then
+        max_width = popup.scroll_width
+      end
+
+      popup.scroll_width_total = scroll.total
+      popup.scroll_width = max_width
     end
 
     popup:SetWidth( max_width + m_side_margin )

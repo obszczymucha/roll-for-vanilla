@@ -218,6 +218,7 @@ function M.mock_wow_api()
       SetMinResize = function() end,
       SetToplevel = function() end,
       EnableMouse = function() end,
+      EnableMouseWheel = function() end,
       SetAllPoints = function() end,
       SetNormalTexture = function() end,
       SetScrollChild = function() end,

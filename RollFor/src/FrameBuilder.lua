@@ -7,6 +7,14 @@ local M = {}
 
 local getn = m.getn
 
+-- M.new declares a builder method called `type`, which shadows the global from its declaration
+-- on, so anything below it that needs the real one goes through this.
+local type_of = type
+
+local scroll_bar_width = 4
+local scroll_thumb_min_height = 12
+local scroll_default_step = 3
+
 M.interface = {
 }
 
@@ -29,6 +37,10 @@ M.interface = {
 
 ---@class Texture
 ---@field SetTexture fun( self: Texture, texture: string )
+---@field SetVertexColor fun( self: Texture, r: number, g: number, b: number, a: number? )
+---@field ClearAllPoints fun( self: Texture )
+---@field Show fun( self: Texture )
+---@field Hide fun( self: Texture )
 ---@field SetWidth fun( self: Texture, width: number )
 ---@field SetHeight fun( self: Texture, height: number )
 ---@field SetPoint fun( self: Texture, point: string, relative_frame: Frame|Texture, relative_point: string, x: number, y: number )
@@ -37,8 +49,13 @@ M.interface = {
 ---@field SetBlendMode fun( self: Texture, blend_mode: string )
 
 ---@class Frame
----@field add_line fun( line_type: string, modify_fn: function, padding: number ): table
+---@field add_line fun( line_type: string, modify_fn: function, padding: number ): table? -- nil when the line falls outside the scroll window (see `scrollable`)
 ---@field clear fun()
+---@field set_scroll_total fun( self: Frame, total: number )
+---@field get_scroll fun(): table
+---@field scroll_by fun( self: Frame, delta: number )
+---@field update_scrollbar fun( lines: table )
+---@field EnableMouseWheel fun( self: Frame, enabled: boolean )
 ---@field border_color fun( _, r: number, g: number, b: number, a: number )
 ---@field backdrop_color fun( _, r: number, g: number, b: number, a: number )
 ---@field lock fun()
@@ -129,6 +146,8 @@ M.interface = {
 ---@field scale fun( self: FrameBuilder, scale: number ): FrameBuilder
 ---@field strata fun( self: FrameBuilder, strata: FrameStrata ): FrameBuilder
 ---@field hidden fun( self: FrameBuilder ): FrameBuilder
+---@field scrollable fun( self: FrameBuilder, opts: table ): FrameBuilder
+---@field on_scroll fun( self: FrameBuilder, callback: function ): FrameBuilder
 ---@field build fun( self: FrameBuilder ): Frame
 
 ---@class FrameBuilderFactory
@@ -143,6 +162,11 @@ function M.new()
   local frame_cache = {}
   local lines = {}
   local is_dragging
+
+  -- Scroll viewport state (see the `scrollable` builder method below). `offset` is how many
+  -- scrollable lines are hidden above the window, `total` how many the caller last said there
+  -- are, and `index` counts them off again during the current render pass.
+  local scroll = { offset = 0, total = 0, index = 0 }
 
   local function create_frame()
     local function create_anchor()
@@ -287,6 +311,14 @@ function M.new()
 
       frame:EnableMouse( true )
 
+      if options.scroll then
+        frame:EnableMouseWheel( true )
+        frame:SetScript( "OnMouseWheel", function( _, delta )
+          -- Wheel up (delta 1) shows earlier lines, i.e. a smaller offset.
+          frame.scroll_by( frame, -(delta or 0) * options.scroll.step )
+        end )
+      end
+
       if options.esc then
         m.api.tinsert( m.api.UISpecialFrames, frame:GetName() )
       end
@@ -307,7 +339,21 @@ function M.new()
     end
 
     local function add_api_to( frame, anchor )
+      -- Lines outside the scroll window are never created, so a 900-row tree costs the same
+      -- handful of frames a 20-row one does. Skipped lines don't enter `lines` either, which is
+      -- what keeps the caller's chain anchoring (each line anchored under lines[ #lines ]) right
+      -- without it knowing scrolling exists at all.
+      local function is_scrolled_out( line_type )
+        if not options.scroll or not options.scroll.line_types[ line_type ] then return false end
+
+        scroll.index = scroll.index + 1
+
+        return scroll.index <= scroll.offset or scroll.index > scroll.offset + options.scroll.max_lines
+      end
+
       frame.add_line = function( line_type, modify_fn, padding )
+        if is_scrolled_out( line_type ) then return end
+
         local line_frame = get_from_cache( line_type )
 
         if not line_frame then
@@ -327,6 +373,7 @@ function M.new()
         table.insert( lines, line )
 
         if frame.resize then frame:resize( lines ) end
+        if options.scroll then frame.update_scrollbar( lines ) end
 
         return line
       end
@@ -339,6 +386,127 @@ function M.new()
         end
 
         m.clear_table( lines )
+        scroll.index = 0
+      end
+
+      -- How many scrollable lines the caller is about to add, in full -- not just the ones that
+      -- will fit. Told rather than counted because the window has to be picked before the first
+      -- line is added, and because a total that shrank (a collapsed node) has to clamp the offset
+      -- right then: counting during the pass would only notice after rendering an empty window.
+      ---@param total number
+      frame.set_scroll_total = function( _, total )
+        scroll.total = total or 0
+        local max_offset = scroll.total - (options.scroll and options.scroll.max_lines or 0)
+        if max_offset < 0 then max_offset = 0 end
+        if scroll.offset > max_offset then scroll.offset = max_offset end
+      end
+
+      ---@return table -- { offset, total, max_lines }, read-only as far as callers are concerned
+      frame.get_scroll = function()
+        return { offset = scroll.offset, total = scroll.total, max_lines = options.scroll and options.scroll.max_lines or 0 }
+      end
+
+      -- Moves the window by `delta` lines and lets the caller redraw. Nothing is re-anchored here:
+      -- on_scroll runs the caller's own refresh, which clears and re-adds lines against the new
+      -- offset, so scrolling and any other content change take exactly the same path.
+      ---@param delta number
+      frame.scroll_by = function( _, delta )
+        if not options.scroll then return end
+
+        local max_offset = scroll.total - options.scroll.max_lines
+        if max_offset < 0 then max_offset = 0 end
+
+        local offset = scroll.offset + delta
+        if offset < 0 then offset = 0 end
+        if offset > max_offset then offset = max_offset end
+        if offset == scroll.offset then return end
+
+        scroll.offset = offset
+        if options.on_scroll then options.on_scroll() end
+      end
+
+      local scroll_bar, scroll_thumb
+
+      local function create_scroll_bar()
+        if scroll_bar then return end
+
+        scroll_bar = frame:CreateTexture( nil, "ARTWORK" )
+        scroll_bar:SetTexture( "Interface\\Buttons\\WHITE8x8" )
+        scroll_bar:SetVertexColor( 1, 1, 1, 0.08 )
+        scroll_bar:SetWidth( scroll_bar_width )
+
+        scroll_thumb = frame:CreateTexture( nil, "OVERLAY" )
+        scroll_thumb:SetTexture( "Interface\\Buttons\\WHITE8x8" )
+        scroll_thumb:SetVertexColor( 0.351, 0.553, 1.0, 0.55 )
+        scroll_thumb:SetWidth( scroll_bar_width )
+      end
+
+      local function hide_scroll_bar()
+        if not scroll_bar then return end
+
+        scroll_bar:Hide()
+        scroll_thumb:Hide()
+      end
+
+      -- A slim track down the popup's right edge, spanning exactly the scrollable lines currently
+      -- on screen, with a thumb sized and placed by the window. Indicator only -- the wheel does
+      -- the scrolling. The track's own top/height are measured off the lines rather than anchored
+      -- to them: line frames are sized to their content, so anchoring to one would make the bar
+      -- shift sideways row by row.
+      ---@param current_lines table
+      frame.update_scrollbar = function( current_lines )
+        local config = options.scroll
+
+        if not config or scroll.total <= config.max_lines then
+          hide_scroll_bar()
+          return
+        end
+
+        local y = config.top_padding
+        local height = 0
+        local started = false
+
+        for _, line in ipairs( current_lines ) do
+          local line_frame = line.frame
+          local scale = line_frame.GetScale and line_frame:GetScale() or 1
+          local line_height = line_frame:GetHeight() * scale
+
+          if config.line_types[ line.line_type ] then
+            if started then
+              height = height + line.padding
+            else
+              started = true
+              y = y + line.padding
+            end
+
+            height = height + line_height
+          elseif not started then
+            y = y + line_height + line.padding
+          end
+        end
+
+        if not started or height <= 0 then
+          hide_scroll_bar()
+          return
+        end
+
+        create_scroll_bar()
+
+        scroll_bar:ClearAllPoints()
+        scroll_bar:SetPoint( "TOPRIGHT", frame, "TOPRIGHT", -config.right_inset, -y )
+        scroll_bar:SetHeight( height )
+        scroll_bar:Show()
+
+        local thumb_height = height * config.max_lines / scroll.total
+        if thumb_height < scroll_thumb_min_height then thumb_height = scroll_thumb_min_height end
+
+        local travel = height - thumb_height
+        local progress = scroll.offset / (scroll.total - config.max_lines)
+
+        scroll_thumb:ClearAllPoints()
+        scroll_thumb:SetPoint( "TOP", scroll_bar, "TOP", 0, -(travel * progress) )
+        scroll_thumb:SetHeight( thumb_height )
+        scroll_thumb:Show()
       end
 
       frame.backdrop_color = function( _, r, g, b, a )
@@ -545,6 +713,43 @@ function M.new()
     return self
   end
 
+  -- Turns the frame into a viewport: at most `max_lines` lines of the given type(s) are rendered
+  -- at once and the mouse wheel moves the window, so the frame's height stops growing with its
+  -- content. Everything else (a title, buttons) stays put outside the window.
+  --
+  -- The caller keeps rendering its full list exactly as before -- add_line simply drops the lines
+  -- that fall outside the window -- but it owes two things: :on_scroll( fn ) to redraw after the
+  -- wheel moves, and popup:set_scroll_total( n ) before each pass so the window and the scrollbar
+  -- know how long the list really is.
+  --
+  -- `top_padding` is the same offset the caller uses to place its first line under the frame's
+  -- top edge; the scrollbar needs it to line up with the rows.
+  ---@param opts table -- { line_types = string|string[], max_lines = number, top_padding = number?, right_inset = number?, step = number? }
+  local function scrollable( self, opts )
+    local line_types = {}
+
+    if type_of( opts.line_types ) == "table" then
+      for _, line_type in ipairs( opts.line_types ) do line_types[ line_type ] = true end
+    else
+      line_types[ opts.line_types ] = true
+    end
+
+    options.scroll = {
+      line_types = line_types,
+      max_lines = opts.max_lines,
+      top_padding = opts.top_padding or 0,
+      right_inset = opts.right_inset or 6,
+      step = opts.step or scroll_default_step
+    }
+
+    return self
+  end
+
+  local function on_scroll( self, f )
+    options.on_scroll = f
+    return self
+  end
+
   ---@type FrameBuilder
   return {
     name = name,
@@ -573,6 +778,8 @@ function M.new()
     enable_mouse = enable_mouse,
     strata = strata,
     hidden = hidden,
+    scrollable = scrollable,
+    on_scroll = on_scroll,
     build = build
   }
 end

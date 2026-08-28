@@ -33,11 +33,17 @@ function M.new()
     enable_mouse = function( self ) return self end,
     strata = function( self ) return self end,
     hidden = function( self ) return self end,
+    scrollable = function( self ) return self end,
+    on_scroll = function( self ) return self end,
     build = function()
       ---@type Frame
       return {
         add_line = function() return {} end,
         clear = function() end,
+        set_scroll_total = function() end,
+        get_scroll = function() return { offset = 0, total = 0, max_lines = 0 } end,
+        scroll_by = function() end,
+        update_scrollbar = function() end,
         border_color = function() end,
         backdrop_color = function() end,
         lock = function() end,
