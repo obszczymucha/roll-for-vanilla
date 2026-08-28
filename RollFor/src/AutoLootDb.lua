@@ -701,8 +701,29 @@ local ids = {
           [ 31096 ] = { quality = 4, icon = 133126, name = "Helm of the Forgotten Vanquisher" },
         }
       },
-      [ "Trash" ] = {
+      [ "Patterns" ] = {
         order = 6,
+        items = {
+          [ 32738 ] = { quality = 4, icon = 134940, name = "Plans: Dawnsteel Bracers" },
+          [ 32739 ] = { quality = 4, icon = 134940, name = "Plans: Dawnsteel Shoulders" },
+          [ 32736 ] = { quality = 4, icon = 134940, name = "Plans: Swiftsteel Bracers" },
+          [ 32737 ] = { quality = 4, icon = 134940, name = "Plans: Swiftsteel Shoulders" },
+          [ 32748 ] = { quality = 4, icon = 134940, name = "Pattern: Bindings of Lightning Reflexes" },
+          [ 32744 ] = { quality = 4, icon = 134940, name = "Pattern: Bracers of Renewed Life" },
+          [ 32750 ] = { quality = 4, icon = 134940, name = "Pattern: Living Earth Bindings" },
+          [ 32751 ] = { quality = 4, icon = 134940, name = "Pattern: Living Earth Shoulders" },
+          [ 32749 ] = { quality = 4, icon = 134940, name = "Pattern: Shoulders of Lightning Reflexes" },
+          [ 32745 ] = { quality = 4, icon = 134940, name = "Pattern: Shoulderpads of Renewed Life" },
+          [ 32746 ] = { quality = 4, icon = 134940, name = "Pattern: Swiftstrike Bracers" },
+          [ 32747 ] = { quality = 4, icon = 134940, name = "Pattern: Swiftstrike Shoulders" },
+          [ 32754 ] = { quality = 4, icon = 134940, name = "Pattern: Bracers of Nimble Thought" },
+          [ 32755 ] = { quality = 4, icon = 134940, name = "Pattern: Mantle of Nimble Thought" },
+          [ 32753 ] = { quality = 4, icon = 134940, name = "Pattern: Swiftheal Mantle" },
+          [ 32752 ] = { quality = 4, icon = 134940, name = "Pattern: Swiftheal Wraps" },
+        }
+      },
+      [ "Trash" ] = {
+        order = 7,
         items = {
           [ 32590 ] = { quality = 4, icon = 133762, name = "Nethervoid Cloak" },
           [ 34010 ] = { quality = 4, icon = 133768, name = "Pepe's Shroud of Pacification" },
@@ -1302,36 +1323,46 @@ end
 
 -- Seeds db (the persisted autoloot_db SavedVariables table) with a copy of the static `ids`
 -- above, with `enabled = false` added to every dungeon/boss/item -- the user's actual selection
--- state, which AutoLootTree reads and writes from here on so it survives a /reload. A no-op once
--- db.ids already exists (i.e. every load after the first).
+-- state, which AutoLootTree reads and writes from here on so it survives a /reload.
+--
+-- Reconciles instead of bailing out when db.ids already exists: the catalogue grows between
+-- releases (Mount Hyjal's "Patterns" node did), and a db seeded once and never revisited would
+-- hide every later addition from anyone who has already opened the GUI. Anything missing is
+-- added disabled -- new rows are an offer, not a change to what the user picked -- while
+-- `enabled` on rows that already exist is never touched. Everything else (order, name, icon,
+-- quality) is a fact about the game rather than a choice, so the catalogue overwrites it.
+--
+-- Entries no longer in the catalogue are left alone rather than pruned: they cost a row in the
+-- GUI at worst, and dropping them would throw away a selection over what may well be a typo in
+-- an item id.
 ---@param db table
 function M.ensure_seeded( db )
-  if db.ids then return end
-
-  local seeded = {}
+  db.ids = db.ids or {}
 
   for dungeon_name, dungeon_entry in pairs( ids ) do
-    local bosses = {}
+    local dungeon = db.ids[ dungeon_name ] or { enabled = false }
+    dungeon.order = dungeon_entry.order
+    dungeon.bosses = dungeon.bosses or {}
 
     for boss_name, boss_entry in pairs( dungeon_entry.bosses or {} ) do
-      local items = {}
+      local boss = dungeon.bosses[ boss_name ] or { enabled = false }
+      boss.order = boss_entry.order
+      boss.items = boss.items or {}
 
       for item_id, item_entry in pairs( boss_entry.items or {} ) do
-        items[ item_id ] = {
-          enabled = false,
-          quality = item_entry.quality,
-          icon = item_entry.icon,
-          name = item_entry.name,
-        }
+        local item = boss.items[ item_id ] or { enabled = false }
+        item.quality = item_entry.quality
+        item.icon = item_entry.icon
+        item.name = item_entry.name
+
+        boss.items[ item_id ] = item
       end
 
-      bosses[ boss_name ] = { enabled = false, order = boss_entry.order, items = items }
+      dungeon.bosses[ boss_name ] = boss
     end
 
-    seeded[ dungeon_name ] = { enabled = false, order = dungeon_entry.order, bosses = bosses }
+    db.ids[ dungeon_name ] = dungeon
   end
-
-  db.ids = seeded
 end
 
 -- The two queries below are what AutoLoot runs against the player's selection. Both read the
@@ -1386,10 +1417,14 @@ function M.has_enabled_items( db )
   return false
 end
 
--- "Trash" is not a boss. Every raid has a node by that name, and the same trash
--- drops are listed under several of them, so the name on its own doesn't even
--- say which raid an item came from. The lookup below skips them.
-local TRASH = "Trash"
+-- "Trash" and "Patterns" are not bosses. Every raid has a "Trash" node, Black Temple
+-- and Mount Hyjal share a "Patterns" one, and the same items are listed under several
+-- of them, so the name on its own doesn't even say which raid an item came from. The
+-- lookup below skips them, and the GUI greys them out the same way.
+local NON_BOSSES = {
+  [ "Trash" ] = true,
+  [ "Patterns" ] = true
+}
 
 -- A few items belong to more than one boss even after trash is dropped, and only
 -- one of those bosses can actually have dropped it: Karazhan's Opera event picks
@@ -1426,7 +1461,7 @@ function M.find_boss( item_id )
 
   for _, dungeon_entry in pairs( ids ) do
     for boss_name, boss_entry in pairs( dungeon_entry.bosses or {} ) do
-      if boss_name ~= TRASH and boss_entry.items and boss_entry.items[ item_id ] then
+      if not NON_BOSSES[ boss_name ] and boss_entry.items and boss_entry.items[ item_id ] then
         local dungeon_order, boss_order = dungeon_entry.order or 0, boss_entry.order or 0
 
         if sorts_first( dungeon_order, boss_order, boss_name, best ) then
@@ -1628,6 +1663,7 @@ function M.on_item_info_received( item_id )
 end
 
 M.ids = ids
+M.non_bosses = NON_BOSSES
 
 m.AutoLootDb = M
 return M

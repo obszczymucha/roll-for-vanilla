@@ -57,8 +57,8 @@ local function describe( item_id )
   return name and string.format( "%s (%s)", hl( name ), item_id ) or hl( item_id )
 end
 
--- Bosses whose name contains the query, case-insensitively. Trash is skipped for the
--- same reason the lookup skips it: it names no boss.
+-- Bosses whose name contains the query, case-insensitively. Trash and Patterns are
+-- skipped for the same reason the lookup skips them: they name no boss.
 ---@param query string
 ---@return string[] -- boss names, sorted
 local function matching_bosses( query )
@@ -67,7 +67,7 @@ local function matching_bosses( query )
 
   for _, dungeon in pairs( m.AutoLootDb.ids ) do
     for boss_name in pairs( dungeon.bosses or {} ) do
-      if boss_name ~= "Trash" and string.find( string.lower( boss_name ), needle, 1, true ) then
+      if not m.AutoLootDb.non_bosses[ boss_name ] and string.find( string.lower( boss_name ), needle, 1, true ) then
         table.insert( result, boss_name )
       end
     end
@@ -140,7 +140,7 @@ function M.new( boss_killed, raid_lockout, confirm_lockout_reset )
 
     if not boss_name then
       m.info( string.format( "No boss in the catalogue drops %s. %s",
-        describe( item_id ), grey( "Trash and unlisted items name nobody." ) ) )
+        describe( item_id ), grey( "Trash, patterns and unlisted items name nobody." ) ) )
       return
     end
 

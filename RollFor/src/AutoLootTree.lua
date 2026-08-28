@@ -105,7 +105,8 @@ local function build_tree( ids )
         } ) )
       end
 
-      local is_trash = boss_name == "Trash"
+      -- Trash and Patterns aren't bosses, so they don't get the boss colour.
+      local is_trash = m.AutoLootDb.non_bosses[ boss_name ] and true or false
 
       table.insert( bosses, Tree.new_node( {
         name = boss_name,
