@@ -185,6 +185,10 @@ function M.err( message, module_name )
   M.pretty_print( message, M.colors.red, module_name )
 end
 
+function M.warn( message, module_name )
+  M.pretty_print( message, M.colors.orange, module_name )
+end
+
 function M.trace( message, object_to_dump )
   local stacktrace = debugstack or debug.traceback
   if not stacktrace then return end
