@@ -38,12 +38,28 @@ M.button_definitions = {
 ---@class ResistanceFrameRow : ResistanceRow
 ---@field on_clear fun()
 
+---@class ResistanceFrameOption
+---@field label string
+---@field checked boolean
+---@field on_click fun( value: boolean )
+
 ---@class ResistanceFrameData
 ---@field rows ResistanceFrameRow[]
+---@field options ResistanceFrameOption[]
 ---@field buttons ResistanceFrameButtonWithCallback[]
 
 ---@class ResistanceFrameContentTransformer
 ---@field transform fun( data: ResistanceFrameData ): table
+
+-- One line holding all of them, sat between the last player and the buttons,
+-- because they're settings for what the buttons do rather than data.
+---@param content table
+---@param options ResistanceFrameOption[]
+local function add_options( content, options )
+  if not options or m.getn( options ) == 0 then return end
+
+  table.insert( content, { type = "checkbox_row", options = options, padding = 8 } )
+end
 
 ---@param content table
 ---@param buttons ResistanceFrameButtonWithCallback[]
@@ -154,6 +170,7 @@ function M.new( registry )
     local content = {}
     add_header( content )
     add_rows( content, data.rows, schools )
+    add_options( content, data.options )
     add_buttons( content, data.buttons )
 
     return content

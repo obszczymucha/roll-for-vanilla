@@ -87,6 +87,7 @@ end
 ---@field info fun( parent: Frame ): Frame
 ---@field dropped_item fun( parent: Frame, text: string ): Frame
 ---@field checkbox fun( parent: Frame ): Frame
+---@field checkbox_row fun( parent: Frame ): Frame
 ---@field slider fun( parent: Frame ): Frame
 ---@field dropdown fun( parent: Frame ): Frame
 ---@field editbox fun( parent: Frame ): Frame
@@ -614,6 +615,49 @@ function M.checkbox( parent )
       container.on_click( button:GetChecked() and true or false )
     end
   end )
+
+  return container
+end
+
+-- A row of checkboxes sitting side by side on one line, for the handful of
+-- options a list window carries next to its buttons. Same fixed-geometry
+-- reasoning as resistance_row below: the popup sizes itself from the widest
+-- line, so a row that measured its own labels would change the window's width
+-- depending on what the options happen to be called.
+local checkbox_row_width = 310
+local checkbox_row_height = 20
+local checkbox_row_slots = { 14, 160 }
+
+function M.checkbox_row( parent )
+  local container = m.api.CreateFrame( "Frame", nil, parent )
+  container:SetWidth( checkbox_row_width )
+  container:SetHeight( checkbox_row_height )
+
+  local slots = {}
+
+  for _, x in ipairs( checkbox_row_slots ) do
+    local checkbox = M.checkbox( container )
+    checkbox:SetPoint( "LEFT", container, "LEFT", x, 0 )
+    table.insert( slots, checkbox )
+  end
+
+  -- Written in full on every call for the reason FrameBuilder's cache makes
+  -- necessary: line frames are reused across refreshes, so a slot left alone
+  -- would keep the previous option's label, state and callback.
+  container.SetRow = function( _, row )
+    for i, checkbox in ipairs( slots ) do
+      local option = row.options and row.options[ i ]
+
+      if option then
+        checkbox:SetText( option.label or "" )
+        checkbox:SetChecked( option.checked )
+        checkbox.on_click = option.on_click or function() end
+        checkbox:Show()
+      else
+        checkbox:Hide()
+      end
+    end
+  end
 
   return container
 end

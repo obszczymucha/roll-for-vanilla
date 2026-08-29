@@ -73,6 +73,7 @@ function M.new()
         GetLeft = function() return 1 end,
         GetRight = function() return 1 end,
         SetHighlightTexture = function() end,
+        EnableMouseWheel = function() end,
       }
     end
   }

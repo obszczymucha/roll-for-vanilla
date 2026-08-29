@@ -19,8 +19,9 @@ local M = {}
 ---@param popup_builder PopupBuilder
 ---@param content_transformer ResistanceFrameContentTransformer
 ---@param resistance_check ResistanceCheck
+---@param announcer ResistanceAnnouncer
 ---@param db table
-function M.new( popup_builder, content_transformer, resistance_check, db )
+function M.new( popup_builder, content_transformer, resistance_check, announcer, db )
   ---@type ListPopup
   local list
 
@@ -48,14 +49,34 @@ function M.new( popup_builder, content_transformer, resistance_check, db )
     return result
   end
 
+  -- Reads out what's already known, then goes looking for the rest. The
+  -- announcer stays open over the scan it kicks off, so the players still being
+  -- inspected are read out as their results land -- the same trickle that fills
+  -- in the list.
+  local function on_check()
+    announcer.announce()
+    resistance_check.scan()
+  end
+
+  -- The announcer owns both of these; the frame only draws them and hands the
+  -- clicks straight back, so what's on screen is whatever was persisted.
+  ---@return ResistanceFrameOption[]
+  local function options()
+    return {
+      { label = "Announce to raid", checked = announcer.is_enabled(), on_click = announcer.set_enabled },
+      { label = "Include cached", checked = announcer.is_including_cached(), on_click = announcer.set_including_cached }
+    }
+  end
+
   ---@return ResistanceFrameData
   local function content()
     return {
       rows = rows(),
+      options = options(),
       buttons = {
         -- Clicking Check again mid-scan would queue players who are already in
         -- flight, so it stays disabled until the queue drains.
-        { type = "Check", callback = resistance_check.scan, disabled = resistance_check.is_scanning() },
+        { type = "Check", callback = on_check, disabled = resistance_check.is_scanning() },
         { type = "Clear", callback = resistance_check.clear_all },
         { type = "Close", callback = function() list.hide() end }
       }

@@ -510,9 +510,13 @@ local function create_components()
   ---@type ResistanceFrameContentTransformer
   local resistance_frame_content_transformer = m.ResistanceFrameContentTransformer.new( M.resistance_registry )
 
+  ---@type ResistanceAnnouncer
+  local resistance_announcer = m.ResistanceAnnouncer.new( M.chat, M.resistance_check,
+    db( "resistance_announcer" ) )
+
   ---@type ResistanceFrame
   M.resistance_frame = m.ResistanceFrame.new( popup_builder(), resistance_frame_content_transformer,
-    M.resistance_check, db( "resistance_frame" ) )
+    M.resistance_check, resistance_announcer, db( "resistance_frame" ) )
 
   ---@type BonusRollEligibilityFrameContentTransformer
   local resistance_bonus_roll_eligibility_frame_content_transformer =

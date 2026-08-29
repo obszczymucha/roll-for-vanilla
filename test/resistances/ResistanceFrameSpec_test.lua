@@ -10,6 +10,7 @@ local popup_builder = require( "mocks/PopupBuilder" )
 local resistance_frame_mock = require( "mocks/ResistanceFrame" )
 local ResistanceRegistry = require( "src/resistances/ResistanceRegistry" )
 local transformer = require( "src/resistances/ResistanceFrameContentTransformer" )
+local ResistanceAnnouncer = require( "src/resistances/ResistanceAnnouncer" )
 
 u.mock_wow_api()
 
@@ -78,16 +79,37 @@ end
 -- The whole popup in the order the transformer emits it: column titles, one
 -- line per player, buttons. The first player line sits a little further from
 -- the column titles than the rest do.
+-- The settings line that sits between the last player and the buttons.
+-- Announcing is on out of the box; repeating what an earlier check already read
+-- out is not.
+---@param announce boolean?
+---@param include_cached boolean?
+local function option_line( announce, include_cached )
+  if announce == nil then announce = true end
+
+  return {
+    type = "checkbox_row",
+    options = {
+      { label = "Announce to raid", checked = announce },
+      { label = "Include cached", checked = include_cached and true or false }
+    },
+    padding = 8
+  }
+end
+
 ---@param rows table[]
 ---@param scan_disabled boolean?
+---@param options table? -- the settings line, when it isn't showing its defaults
 ---@return table ...
-local function popup( rows, scan_disabled )
+local function popup( rows, scan_disabled, options )
   local content = { header }
 
   for i, row in ipairs( rows ) do
     row.padding = i == 1 and 4 or 2
     table.insert( content, row )
   end
+
+  table.insert( content, options or option_line() )
 
   for _, button in ipairs( button_lines( scan_disabled ) ) do
     table.insert( content, button )
@@ -160,10 +182,24 @@ local function mock_resistance_check( rows )
   return check
 end
 
+-- The real announcer over a chat that records instead of sending, so the tests
+-- check the lines that would go out rather than a stubbed call.
+local function mock_chat()
+  local chat = { announced = {} }
+  chat.announce = function( text ) table.insert( chat.announced, text ) end
+
+  return chat
+end
+
 ---@param resistance_check table
-local function new_frame( resistance_check )
-  local db = Db.new( {} )
-  return resistance_frame_mock.new( popup_builder.new(), resistance_check, db( "resistance_frame" ), ResistanceRegistry.new() )
+---@param chat table?
+---@param saved table? -- the saved variables, so a test can check what was persisted
+local function new_frame( resistance_check, chat, saved )
+  local db = Db.new( saved or {} )
+  local announcer = ResistanceAnnouncer.new( chat or mock_chat(), resistance_check, db( "resistance_announcer" ) )
+
+  return resistance_frame_mock.new( popup_builder.new(), resistance_check, db( "resistance_frame" ),
+    ResistanceRegistry.new(), announcer )
 end
 
 ResistanceFrameSpec = {}
@@ -268,6 +304,252 @@ function ResistanceFrameSpec:should_scan_when_check_is_clicked()
 
   -- Then
   eq( resistance_check.scans, 1 )
+end
+
+function ResistanceFrameSpec:should_announce_each_result_as_it_lands()
+  -- The whole point: Check announces nothing up front, then a line per player as
+  -- their inspect comes back -- the same trickle that fills in the list.
+  -- Given
+  local chat = mock_chat()
+  local resistance_check = mock_resistance_check( {
+    scanning( "Psikutas", "Warrior" ),
+    scanning( "Obszczymucha", "Mage" )
+  } )
+  resistance_check.set_scanning( true )
+  local frame = new_frame( resistance_check, chat )
+  frame.show()
+
+  -- When
+  frame.click( "Check" )
+
+  -- Then
+  eq( chat.announced, {} )
+
+  -- When
+  resistance_check.set_rows( {
+    scanned( "Psikutas", "Warrior", Shadow, 174, 244 ),
+    scanning( "Obszczymucha", "Mage" )
+  } )
+  resistance_check.notify()
+
+  -- Then
+  eq( chat.announced, { "Psikutas 174 SR" } )
+
+  -- When
+  resistance_check.set_rows( {
+    scanned( "Psikutas", "Warrior", Shadow, 174, 244 ),
+    scanned( "Obszczymucha", "Mage", Fire, 302, 327 )
+  } )
+  resistance_check.set_scanning( false )
+  resistance_check.notify()
+
+  -- Then
+  eq( chat.announced, { "Psikutas 174 SR", "Obszczymucha 302 FR" } )
+end
+
+function ResistanceFrameSpec:should_announce_food_and_a_missing_neck_next_to_the_number()
+  -- Given
+  local chat = mock_chat()
+  local resistance_check = mock_resistance_check( {
+    scanning( "Psikutas", "Warrior" ),
+    scanning( "Obszczymucha", "Mage" ),
+    scanning( "Ayertienna", "Priest" )
+  } )
+  resistance_check.set_scanning( true )
+  local frame = new_frame( resistance_check, chat )
+  frame.show()
+  frame.click( "Check" )
+
+  -- When
+  resistance_check.set_rows( {
+    scanned( "Psikutas", "Warrior", Shadow, 174, 244, nil, true ),
+    scanned( "Obszczymucha", "Mage", Fire, 302, 327, 30 ),
+    scanned( "Ayertienna", "Priest", Shadow, 130, 200, 30, true )
+  } )
+  resistance_check.set_scanning( false )
+  resistance_check.notify()
+
+  -- Then
+  eq( chat.announced, {
+    "Psikutas 174 SR (no neck)",
+    "Obszczymucha 302 FR (food)",
+    "Ayertienna 130 SR (no neck, food)"
+  } )
+end
+
+function ResistanceFrameSpec:should_not_announce_players_with_nothing_to_report()
+  -- Nobody gets announced with a zero they didn't earn.
+  -- Given
+  local chat = mock_chat()
+  local resistance_check = mock_resistance_check( {
+    scanning( "Psikutas", "Warrior" ),
+    scanning( "Obszczymucha", "Mage" ),
+    scanning( "Chuj", "Rogue" )
+  } )
+  resistance_check.set_scanning( true )
+  local frame = new_frame( resistance_check, chat )
+  frame.show()
+  frame.click( "Check" )
+
+  -- When
+  resistance_check.set_rows( {
+    scanned( "Psikutas", "Warrior", Shadow, 174, 244 ),
+    unscanned( "Obszczymucha", "Mage" ),
+    failed( "Chuj", "Rogue" )
+  } )
+  resistance_check.set_scanning( false )
+  resistance_check.notify()
+
+  -- Then
+  eq( chat.announced, { "Psikutas 174 SR" } )
+end
+
+function ResistanceFrameSpec:should_not_announce_what_was_already_cached()
+  -- A player whose gear was read on an earlier check has nothing new to say, and
+  -- Check doesn't re-inspect them either.
+  -- Given
+  local chat = mock_chat()
+  local resistance_check = mock_resistance_check( {
+    scanned( "Psikutas", "Warrior", Shadow, 174, 244 ),
+    scanning( "Obszczymucha", "Mage" )
+  } )
+  resistance_check.set_scanning( true )
+  local frame = new_frame( resistance_check, chat )
+  frame.show()
+  frame.click( "Check" )
+
+  -- When
+  resistance_check.set_rows( {
+    scanned( "Psikutas", "Warrior", Shadow, 174, 244 ),
+    scanned( "Obszczymucha", "Mage", Fire, 302, 327 )
+  } )
+  resistance_check.set_scanning( false )
+  resistance_check.notify()
+
+  -- Then
+  eq( chat.announced, { "Obszczymucha 302 FR" } )
+end
+
+function ResistanceFrameSpec:should_announce_cached_players_too_when_include_cached_is_ticked()
+  -- Given
+  local chat = mock_chat()
+  local resistance_check = mock_resistance_check( {
+    scanned( "Psikutas", "Warrior", Shadow, 174, 244 ),
+    scanned( "Obszczymucha", "Mage", Fire, 302, 327 )
+  } )
+  local frame = new_frame( resistance_check, chat )
+  frame.show()
+
+  -- When
+  frame.toggle_option( "Include cached", true )
+  frame.click( "Check" )
+
+  -- Then
+  eq( chat.announced, { "Psikutas 174 SR", "Obszczymucha 302 FR" } )
+end
+
+function ResistanceFrameSpec:should_announce_nothing_when_announce_to_raid_is_unticked()
+  -- Given
+  local chat = mock_chat()
+  local resistance_check = mock_resistance_check( { scanning( "Psikutas", "Warrior" ) } )
+  resistance_check.set_scanning( true )
+  local frame = new_frame( resistance_check, chat )
+  frame.show()
+
+  -- When
+  frame.toggle_option( "Announce to raid", false )
+  frame.click( "Check" )
+  resistance_check.set_rows( { scanned( "Psikutas", "Warrior", Shadow, 174, 244 ) } )
+  resistance_check.set_scanning( false )
+  resistance_check.notify()
+
+  -- Then
+  eq( chat.announced, {} )
+  -- The scan still runs; only the announcing is off.
+  eq( resistance_check.scans, 1 )
+end
+
+function ResistanceFrameSpec:should_show_both_settings_above_the_buttons()
+  -- Given
+  local frame = new_frame( mock_resistance_check( { unscanned( "Psikutas", "Warrior" ) } ) )
+
+  -- When
+  frame.show()
+
+  -- Then
+  frame.should_display( popup( { line( "Psikutas", "Warrior", dash, dash, dash ) } ) )
+end
+
+function ResistanceFrameSpec:should_remember_both_settings()
+  -- Given
+  local saved = {}
+  local resistance_check = mock_resistance_check( { unscanned( "Psikutas", "Warrior" ) } )
+  local frame = new_frame( resistance_check, nil, saved )
+  frame.show()
+
+  -- When
+  frame.toggle_option( "Announce to raid", false )
+  frame.toggle_option( "Include cached", true )
+  frame.show()
+
+  -- Then
+  frame.should_display( popup( { line( "Psikutas", "Warrior", dash, dash, dash ) }, false, option_line( false, true ) ) )
+  eq( saved.resistance_announcer.enabled, false )
+  eq( saved.resistance_announcer.include_cached, true )
+
+  -- A fresh announcer over the same saved table comes back to what was left.
+  -- When
+  local reopened = new_frame( resistance_check, nil, saved )
+  reopened.show()
+
+  -- Then
+  reopened.should_display( popup( { line( "Psikutas", "Warrior", dash, dash, dash ) }, false, option_line( false, true ) ) )
+end
+
+function ResistanceFrameSpec:should_announce_each_player_only_once_per_check()
+  -- The list redraws for reasons that have nothing to do with new data -- a
+  -- player joining, a row being cleared. None of those should repeat a line.
+  -- Given
+  local chat = mock_chat()
+  local resistance_check = mock_resistance_check( { scanning( "Psikutas", "Warrior" ) } )
+  resistance_check.set_scanning( true )
+  local frame = new_frame( resistance_check, chat )
+  frame.show()
+  frame.click( "Check" )
+
+  -- When
+  resistance_check.set_rows( { scanned( "Psikutas", "Warrior", Shadow, 174, 244 ) } )
+  resistance_check.notify()
+  resistance_check.notify()
+
+  -- Then
+  eq( chat.announced, { "Psikutas 174 SR" } )
+end
+
+function ResistanceFrameSpec:should_stop_announcing_once_the_scan_runs_dry()
+  -- A result landing outside a check -- a redraw later on, someone else's scan --
+  -- isn't the raid's business.
+  -- Given
+  local chat = mock_chat()
+  local resistance_check = mock_resistance_check( { scanning( "Psikutas", "Warrior" ) } )
+  resistance_check.set_scanning( true )
+  local frame = new_frame( resistance_check, chat )
+  frame.show()
+  frame.click( "Check" )
+
+  -- When
+  resistance_check.set_rows( { scanned( "Psikutas", "Warrior", Shadow, 174, 244 ) } )
+  resistance_check.set_scanning( false )
+  resistance_check.notify() -- the last inspect lands, closing the session
+
+  resistance_check.set_rows( {
+    scanned( "Psikutas", "Warrior", Shadow, 174, 244 ),
+    scanned( "Obszczymucha", "Mage", Fire, 302, 327 )
+  } )
+  resistance_check.notify()
+
+  -- Then
+  eq( chat.announced, { "Psikutas 174 SR" } )
 end
 
 function ResistanceFrameSpec:should_disable_the_check_button_while_a_scan_is_in_flight()

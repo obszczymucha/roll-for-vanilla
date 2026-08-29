@@ -149,6 +149,8 @@ function M.new( config )
           draw_button( frame, v )
         elseif type == config.row_type then
           draw_row( frame, v )
+        elseif type == "checkbox_row" then
+          frame:SetRow( v )
         elseif type == "text" then
           frame:SetText( v.value )
         end
