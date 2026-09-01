@@ -72,16 +72,30 @@ local function add_empty_notice( content )
 end
 
 -- What the player's place in the rotation is, phrased by how far behind the current cycle they
--- are. Someone served this cycle is done and sits back in grey; someone owed more than one cycle
--- has been missing for a while and is called out, because that's the row that explains why they
--- keep winning when they walk back in.
+-- are. Exported uncolored because AutoRoundRobinSimulator prints the same standings to chat, and
+-- two places describing the same number in two vocabularies is how "Waiting" and "Owed (1 cycle)"
+-- end up meaning the same thing to nobody.
+---@param behind number
+---@return string
+function M.status( behind )
+  if behind == 0 then return "Received" end
+  if behind == 1 then return "Waiting" end
+
+  return string.format( "Owed (%d cycles)", behind )
+end
+
+-- Someone served this cycle is done and sits back in grey; someone owed more than one cycle has
+-- been missing for a while and is called out, because that's the row that explains why they keep
+-- winning when they walk back in.
 ---@param row AutoRoundRobinRow
 ---@return string
 local function status_cell( row )
-  if row.behind == 0 then return m.colors.grey( "Received" ) end
-  if row.behind == 1 then return "Waiting" end
+  local text = M.status( row.behind )
 
-  return m.colors.hl( string.format( "Owed (%d cycles)", row.behind ) )
+  if row.behind == 0 then return m.colors.grey( text ) end
+  if row.behind == 1 then return text end
+
+  return m.colors.hl( text )
 end
 
 -- Being in the group and being able to receive are different things (see AutoRoundRobin): a

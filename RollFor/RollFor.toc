@@ -122,6 +122,7 @@ src\resistances\ResistanceFrame.lua
 src\ConfirmationDialog.lua
 src\RollSimulator.lua
 src\DropSimulator.lua
+src\AutoRoundRobinSimulator.lua
 src\ModernLootFrameSkin.lua
 src\OgLootFrameSkin.lua
 src\GargulBridge.lua

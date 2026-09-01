@@ -293,6 +293,12 @@ New:
   generalized `AutoLootFrame`, plus the `Queue` button wiring.
 - `src/AutoRoundRobinQueueFrame.lua` + `src/AutoRoundRobinQueueFrameContentTransformer.lua`
   -- the `ListPopup` window from 8.2.
+- `src/AutoRoundRobinSimulator.lua` -- not in this spec; added afterwards. A `/rfrotate` dev
+  harness in the `/rfdrop` mould: it runs the shipped `seed` / `select` / `commit` over an
+  invented roster and traces each drop, so the rotation, a turnover and what an absence costs
+  can be watched solo. It never touches the live rotation -- `/rfrotate raid` with no arguments
+  copies the live cycle and pool in, and even that is a copy. `/rfrotate example` replays the
+  worked example in section 3, which keeps that table honest.
 
 Modified:
 

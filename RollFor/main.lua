@@ -530,6 +530,8 @@ local function create_components()
 
   M.drop_simulator = m.DropSimulator.new( M.boss_killed, M.raid_lockout, confirm_lockout_reset )
 
+  M.round_robin_simulator = m.AutoRoundRobinSimulator.new( M.autorobin_db, M.group_roster )
+
   M.gargul_bridge = m.GargulBridge.new( M.player_info, M.roll_controller, M.config, function() return M.softres_db.data end, M.softres )
 
   M.roll_for_broadcast = m.RollForBroadcast.new( M.roll_controller, M.config )
