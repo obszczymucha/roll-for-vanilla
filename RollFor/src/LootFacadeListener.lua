@@ -9,6 +9,7 @@ local M = {}
 
 ---@param loot_facade LootFacade
 ---@param auto_loot AutoLoot
+---@param auto_round_robin AutoRoundRobin
 ---@param dropped_loot DroppedLoot
 ---@param dropped_loot_announce DroppedLootAnnounce
 ---@param master_loot MasterLoot
@@ -18,6 +19,7 @@ local M = {}
 function M.new(
     loot_facade,
     auto_loot,
+    auto_round_robin,
     dropped_loot,
     dropped_loot_announce,
     master_loot,
@@ -29,6 +31,9 @@ function M.new(
     dropped_loot.on_loot_opened()
     dropped_loot_announce.on_loot_opened()
     auto_loot.on_loot_opened()
+    -- After auto-loot, and reading its is_auto_looted, so an item enabled in both trees is taken
+    -- by auto-loot and the rotation doesn't move for it.
+    auto_round_robin.on_loot_opened()
     master_loot.on_loot_opened()
     auto_group_loot.on_loot_opened()
     roll_controller.loot_opened()

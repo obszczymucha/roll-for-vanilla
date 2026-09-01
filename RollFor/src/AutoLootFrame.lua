@@ -14,10 +14,15 @@ local button_defaults = {
   scale = 0.76
 }
 
--- Experiment: a 3-level tree (Dungeon -> Boss -> Item drops) GUI built on top of AutoLootTree's
+-- A 3-level tree (Dungeon -> Boss -> Item drops) selection GUI built on top of AutoLootTree's
 -- pure data (tree contents, checked/desaturated/visibility already decided there). This file is
 -- dumb rendering only -- it wires click/check callbacks that mutate a row's node and calls
 -- refresh(), and translates rows into widget calls; it makes no decisions about the tree itself.
+--
+-- Auto-loot and auto round robin are the same window over two different catalogues, so what
+-- differs between them -- the frame name, the title, which tree roots to render, how to build an
+-- item link, and any buttons beyond Close -- is supplied by the caller. If the two are ever meant
+-- to diverge visually, that's the moment to split them; not before.
 
 ---@class AutoLootFrame
 ---@field show fun()
@@ -25,12 +30,24 @@ local button_defaults = {
 ---@field toggle fun()
 ---@field get_frame fun(): Popup?
 
+---@class AutoLootFrameConfig
+---@field popup_builder PopupBuilder
+---@field content_transformer AutoLootFrameContentTransformer
+---@field db table -- where the window position is remembered
+---@field name string -- the global frame name
+---@field title string -- plain text; this file decides how it's colored
+---@field roots TreeNode[] -- the tree to render, as returned by AutoLootTree.build
+---@field make_link fun( item_id: number, quality: number, name: string ): string
+---@field extra_buttons AutoLootFrameButtonWithCallback[]? -- rendered before Close
+
 M.center_point = { point = "CENTER", relative_point = "CENTER", x = 0, y = 0 }
 
----@param popup_builder PopupBuilder
----@param content_transformer AutoLootFrameContentTransformer
----@param db table
-function M.new( popup_builder, content_transformer, db )
+---@param config AutoLootFrameConfig
+function M.new( config )
+  local popup_builder = config.popup_builder
+  local content_transformer = config.content_transformer
+  local db = config.db
+
   ---@type Popup?
   local popup
   local top_padding = 16
@@ -69,7 +86,7 @@ function M.new( popup_builder, content_transformer, db )
 
   local function create_popup()
     local result = popup_builder
-        :name( "RollForAutoLootFrame" )
+        :name( config.name )
         :point( get_point() )
         :gui_elements( m.GuiElements )
         :movable()
@@ -95,7 +112,7 @@ function M.new( popup_builder, content_transformer, db )
   local function tree_rows()
     local rows = {}
 
-    for _, row in ipairs( m.AutoLootTree.visible_rows( m.AutoLootTree.dungeons ) ) do
+    for _, row in ipairs( m.AutoLootTree.visible_rows( config.roots ) ) do
       local node = row.node
 
       -- Raw data (with its `type`) passed straight through -- the content transformer is where
@@ -123,12 +140,18 @@ function M.new( popup_builder, content_transformer, db )
 
   ---@return AutoLootFrameData
   local function content()
+    local buttons = {}
+
+    for _, button in ipairs( config.extra_buttons or {} ) do
+      table.insert( buttons, button )
+    end
+
+    table.insert( buttons, { type = "Close", callback = function() if popup then popup:Hide() end end } )
+
     return {
-      title = m.colorize_item_by_quality( "RollFor Auto Loot", ItemQuality.Legendary ),
+      title = m.colorize_item_by_quality( config.title, ItemQuality.Legendary ),
       rows = tree_rows(),
-      buttons = {
-        { type = "Close", callback = function() if popup then popup:Hide() end end }
-      }
+      buttons = buttons
     }
   end
 
@@ -173,7 +196,7 @@ function M.new( popup_builder, content_transformer, db )
           frame.on_check = v.on_check or function() end
 
           if v.item then
-            local link = m.AutoLootDb.make_link( v.item_id, v.item.quality, v.item.name )
+            local link = config.make_link( v.item_id, v.item.quality, v.item.name )
             frame:SetItem( { link = link, texture = v.item.icon, hover_background_color = v.hover_background_color, tooltip_position = v.tooltip_position }, IU.get_tooltip_link( link ) )
           else
             frame:SetText( v.label or "" )

@@ -6,6 +6,7 @@ local lu, eq = u.luaunit( "assertEquals" )
 u.multi_require_src( "DebugBuffer", "Module", "Types" )
 require( "src/modules" )
 local Db = require( "src/Db" )
+require( "src/ItemCatalogue" ) -- the catalogue helpers AutoLootDb delegates its seeding and queries to
 require( "src/AutoLootDb" ) -- use() resolves the item's boss through the catalogue
 local popup_builder = require( "mocks/PopupBuilder" )
 local frame_mock = require( "mocks/ResistanceBonusRollFrame" )

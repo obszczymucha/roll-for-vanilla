@@ -1284,137 +1284,47 @@ local ids = {
 ---@class ResolvedAutoLootDbItem: AutoLootDbItem
 ---@field link string
 
--- Quality -> |cffXXXXXX prefix. 1 (Common), 2 (Uncommon), 3 (Rare) and 4 (Epic) were verified live
--- via /rf autolootdb against real items (Refreshing Spring Water, Glyph of Frost Warding, Manual
--- Crowd Pummeler, Hydross' drops). 0 (Poor) and 5 (Legendary) are the standard, unchanged-since-
--- vanilla Blizzard client constants.
-local QUALITY_COLOR_HEX = {
-  [ 0 ] = "|cff9d9d9d",
-  [ 1 ] = "|cffffffff",
-  [ 2 ] = "|cff1eff00",
-  [ 3 ] = "|cff0070dd",
-  [ 4 ] = "|cffa335ee",
-  [ 5 ] = "|cffff8000",
-}
+-- The catalogue-shaped half of this module -- seeding the persisted selection db and the two
+-- queries the auto-loot pass runs against it -- is shared with AutoRoundRobinDb and lives in
+-- ItemCatalogue. These stay here as the names the rest of the addon already calls, and because
+-- only this module knows which static catalogue is its own.
+--
+-- Quality -> |cffXXXXXX prefix was verified live via /rf autolootdb against real items
+-- (Refreshing Spring Water, Glyph of Frost Warding, Manual Crowd Pummeler, Hydross' drops); see
+-- ItemCatalogue for the table itself.
+local catalogue = m.ItemCatalogue
 
----@param quality number
----@return string
-local function quality_color_hex( quality )
-  return QUALITY_COLOR_HEX[ quality or 0 ] or QUALITY_COLOR_HEX[ 0 ]
-end
-
--- Every entry uses the same item link shape, so it isn't stored per item -- callers (e.g.
--- AutoLootFrame) build it on demand from the id/quality/name they already have.
 ---@param item_id number
 ---@param quality number
 ---@param name string
 ---@return string
 function M.make_link( item_id, quality, name )
-  return string.format( "%s|Hitem:%d::::::::70::::::::::|h[%s]|h|r", quality_color_hex( quality ), item_id, name )
+  return catalogue.make_link( item_id, quality, name )
 end
 
--- The verified fact itself (see QUALITY_COLOR_HEX above), for callers that need the raw
--- |cffXXXXXX prefix rather than a fully-built item link.
+-- The raw |cffXXXXXX prefix, for callers that need it rather than a fully-built item link.
 ---@param quality number
 ---@return string
 function M.quality_color_hex( quality )
-  return quality_color_hex( quality )
+  return catalogue.quality_color_hex( quality )
 end
 
--- Seeds db (the persisted autoloot_db SavedVariables table) with a copy of the static `ids`
--- above, with `enabled = false` added to every dungeon/boss/item -- the user's actual selection
--- state, which AutoLootTree reads and writes from here on so it survives a /reload.
---
--- Reconciles instead of bailing out when db.ids already exists: the catalogue grows between
--- releases (Mount Hyjal's "Patterns" node did), and a db seeded once and never revisited would
--- hide every later addition from anyone who has already opened the GUI. Anything missing is
--- added disabled -- new rows are an offer, not a change to what the user picked -- while
--- `enabled` on rows that already exist is never touched. Everything else (order, name, icon,
--- quality) is a fact about the game rather than a choice, so the catalogue overwrites it.
---
--- Entries no longer in the catalogue are left alone rather than pruned: they cost a row in the
--- GUI at worst, and dropping them would throw away a selection over what may well be a typo in
--- an item id.
 ---@param db table
 function M.ensure_seeded( db )
-  db.ids = db.ids or {}
-
-  for dungeon_name, dungeon_entry in pairs( ids ) do
-    local dungeon = db.ids[ dungeon_name ] or { enabled = false }
-    dungeon.order = dungeon_entry.order
-    dungeon.bosses = dungeon.bosses or {}
-
-    for boss_name, boss_entry in pairs( dungeon_entry.bosses or {} ) do
-      local boss = dungeon.bosses[ boss_name ] or { enabled = false }
-      boss.order = boss_entry.order
-      boss.items = boss.items or {}
-
-      for item_id, item_entry in pairs( boss_entry.items or {} ) do
-        local item = boss.items[ item_id ] or { enabled = false }
-        item.quality = item_entry.quality
-        item.icon = item_entry.icon
-        item.name = item_entry.name
-
-        boss.items[ item_id ] = item
-      end
-
-      dungeon.bosses[ boss_name ] = boss
-    end
-
-    db.ids[ dungeon_name ] = dungeon
-  end
+  catalogue.ensure_seeded( db, ids )
 end
 
--- The two queries below are what AutoLoot runs against the player's selection. Both read the
--- persisted db.ids (see ensure_seeded), never the static `ids` above -- that one is just the
--- catalogue and carries no selection state at all. An item only counts if it and both nodes above
--- it are enabled, the same rule AutoLootTree.is_leaf_enabled applies to the GUI's own rows.
---
--- Skipping disabled dungeons/bosses wholesale keeps these proportional to what's actually selected
--- rather than to the size of the catalogue, so no lookup index is maintained here.
-
--- Items that appear under more than one boss (shared trash drops) count as soon as any one of
--- those occurrences is enabled.
 ---@param db table the persisted autoloot_db
 ---@param item_id number
 ---@return boolean
 function M.is_enabled( db, item_id )
-  if not db or not db.ids then return false end
-
-  for _, dungeon_entry in pairs( db.ids ) do
-    if dungeon_entry.enabled then
-      for _, boss_entry in pairs( dungeon_entry.bosses or {} ) do
-        if boss_entry.enabled then
-          local item = boss_entry.items and boss_entry.items[ item_id ]
-          if item and item.enabled then return true end
-        end
-      end
-    end
-  end
-
-  return false
+  return catalogue.is_enabled( db, item_id )
 end
 
--- Whether the player has anything at all selected -- i.e. whether M.is_enabled could ever return
--- true for this db. Stops at the first hit instead of counting.
 ---@param db table the persisted autoloot_db
 ---@return boolean
 function M.has_enabled_items( db )
-  if not db or not db.ids then return false end
-
-  for _, dungeon_entry in pairs( db.ids ) do
-    if dungeon_entry.enabled then
-      for _, boss_entry in pairs( dungeon_entry.bosses or {} ) do
-        if boss_entry.enabled then
-          for _, item in pairs( boss_entry.items or {} ) do
-            if item.enabled then return true end
-          end
-        end
-      end
-    end
-  end
-
-  return false
+  return catalogue.has_enabled_items( db )
 end
 
 -- "Trash" and "Patterns" are not bosses. Every raid has a "Trash" node, Black Temple

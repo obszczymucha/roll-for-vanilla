@@ -16,6 +16,7 @@ local function mock_config()
     new = function()
       return {
         auto_raid_roll = function() return false end,
+        auto_round_robin = function() return false end,
         minimap_button_hidden = function() return false end,
         minimap_button_locked = function() return false end,
         subscribe = function() end,

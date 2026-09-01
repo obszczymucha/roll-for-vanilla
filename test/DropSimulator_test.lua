@@ -9,6 +9,7 @@ require( "src/DebugBuffer" )
 require( "src/Module" )
 local Db = require( "src/Db" )
 require( "src/ItemUtils" )
+require( "src/ItemCatalogue" ) -- the catalogue helpers AutoLootDb delegates its seeding and queries to
 require( "src/AutoLootDb" )
 local BossKilled = require( "src/BossKilled" )
 local RaidLockout = require( "src/RaidLockout" )

@@ -12,11 +12,14 @@ local function button_definition( label, width )
 end
 
 M.button_definitions = {
-  [ "Close" ] = button_definition( "Close", 70 )
+  [ "Close" ] = button_definition( "Close", 70 ),
+  -- Only the round-robin window shows this one; auto-loot has no second window to open.
+  [ "Queue" ] = button_definition( "Queue", 70 )
 }
 
 ---@alias AutoLootFrameButtonType
 ---| "Close"
+---| "Queue"
 
 ---@class AutoLootFrameButtonWithCallback
 ---@field type AutoLootFrameButtonType

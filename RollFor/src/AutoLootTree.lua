@@ -80,8 +80,9 @@ end
 -- (see set_checked below). No enabled-based filtering here: unlike the old AutoLootDb.ids gate,
 -- a seeded entry always exists once seeded, it's just off (enabled = false) by default.
 ---@param ids table
+---@param non_bosses table<string, boolean> -- which node names under a dungeon aren't encounters
 ---@return TreeNode[]
-local function build_tree( ids )
+local function build_tree( ids, non_bosses )
   local dungeons = {}
 
   for _, dungeon_name in ipairs( ordered_keys( ids ) ) do
@@ -105,8 +106,9 @@ local function build_tree( ids )
         } ) )
       end
 
-      -- Trash and Patterns aren't bosses, so they don't get the boss colour.
-      local is_trash = m.AutoLootDb.non_bosses[ boss_name ] and true or false
+      -- Trash and Patterns (and the round-robin catalogue's Gems) aren't bosses, so they don't
+      -- get the boss colour. Which names those are is the catalogue's answer, not this tree's.
+      local is_trash = non_bosses[ boss_name ] and true or false
 
       table.insert( bosses, Tree.new_node( {
         name = boss_name,
@@ -134,13 +136,25 @@ end
 ---@type TreeNode[]
 M.dungeons = {}
 
--- Seeds the persisted db (if needed) and builds the tree from it. Called once from main.lua once
--- the SavedVariables-backed db is actually available -- can't happen at module load time like the
--- old AutoLootDb.ids-only version did, since db doesn't exist yet then.
+-- Builds a tree out of an already-seeded selection db. Takes the db and its catalogue's own
+-- non-boss set rather than reaching for AutoLootDb's, so the round-robin catalogue gets the same
+-- tree without either of them having to know about the other. Returns the roots instead of
+-- assigning them anywhere: more than one window is built from this now, so a module-level
+-- singleton can only belong to one of them.
+---@param db table -- a persisted selection db, already seeded
+---@param non_bosses table<string, boolean>
+---@return TreeNode[]
+function M.build( db, non_bosses )
+  return build_tree( db.ids, non_bosses )
+end
+
+-- Seeds the auto-loot db (if needed) and builds its tree into M.dungeons. Called once from
+-- main.lua once the SavedVariables-backed db is actually available -- can't happen at module load
+-- time like the old AutoLootDb.ids-only version did, since db doesn't exist yet then.
 ---@param db table
 function M.init( db )
   m.AutoLootDb.ensure_seeded( db )
-  M.dungeons = build_tree( db.ids )
+  M.dungeons = M.build( db, m.AutoLootDb.non_bosses )
 end
 
 -- Each node's own `data.checked` is independent and never touched by its parent/ancestors --

@@ -2,6 +2,7 @@ RollFor = RollFor or {}
 local m = RollFor
 
 require( "src/Interface" )
+require( "src/ItemCatalogue" ) -- the catalogue helpers AutoLootDb delegates its seeding and queries to
 require( "src/AutoLootDb" ) -- AutoLoot reads the predefined list through it, so it must load first.
 local RealAutoLoot = require( "src/AutoLoot" )
 

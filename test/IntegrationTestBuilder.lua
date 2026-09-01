@@ -10,6 +10,7 @@ local SoftResNetherVortexDecorator = require( "src/SoftResNetherVortexDecorator"
 local NetherVortexAwardedLootDecorator = require( "src/NetherVortexAwardedLootDecorator" )
 local SoftResDecorator = require( "src/SoftResPresentPlayersDecorator" )
 local SoftResBonusRollDecorator = require( "src/SoftResBonusRollDecorator" )
+require( "src/ItemCatalogue" ) -- the catalogue helpers AutoLootDb delegates its seeding and queries to
 require( "src/AutoLootDb" )
 local ResistanceBonusRollRegistry = require( "src/resistances/ResistanceBonusRollRegistry" )
 local SoftRes, Db = require( "src/SoftRes" ), require( "src/Db" )
@@ -80,6 +81,7 @@ function M.mock_config( configuration )
     end,
     auto_loot_messages = function() return config and config.auto_loot_messages end,
     auto_raid_roll = function() return config and config.auto_raid_roll end,
+    auto_round_robin = function() return config and config.auto_round_robin end,
     raid_roll_again = function() return config and config.raid_roll_again end,
     rolling_popup_lock = function() return config and config.rolling_popup_lock end,
     subscribe = function() end,
@@ -133,12 +135,13 @@ function M.mock_loot_facade()
   return require( "mocks/LootFacade" ).new()
 end
 
--- Test seam for the auto-loot GUI's predefined list. Test items aren't in AutoLootDb's real
--- catalogue, so instead of ticking rows in the tree this writes the exact db shape ticking them
--- would produce (see AutoLootDb.ensure_seeded and AutoLootTree.set_checked): the item enabled
--- under an enabled boss under an enabled dungeon. AutoLootTree's own write-through is covered in
--- AutoLootTree_test; what these specs care about is AutoLoot honouring the resulting selection.
----@param db table the autoloot_db the AutoLoot under test was built with
+-- Test seam for a selection GUI's predefined list -- auto-loot's or auto round robin's, they are
+-- the same db shape. Test items aren't in either real catalogue, so instead of ticking rows in the
+-- tree this writes the exact db shape ticking them would produce (see ItemCatalogue.ensure_seeded
+-- and AutoLootTree.set_checked): the item enabled under an enabled boss under an enabled dungeon.
+-- AutoLootTree's own write-through is covered in AutoLootTree_test; what these specs care about is
+-- the feature honouring the resulting selection.
+---@param db table the autoloot_db / autorobin_db the module under test was built with
 function M.auto_loot_list( db )
   local DUNGEON, BOSS = "Test Dungeon", "Test Boss"
 
@@ -397,6 +400,26 @@ function M.new_roll_for()
     local auto_loot = require( "mocks/AutoLoot" ).new( loot_list, u.modules().api, autoloot_db, config, player_info, chat )
     deps[ "AutoLoot" ] = auto_loot
 
+    -- The real thing, not a mock: the award pass is most of what these specs are about, and its
+    -- own randomness is the only part that has to be pinned down -- the draw always takes the
+    -- first of the tied candidates so a spec can name its expected winner.
+    local autorobin_db = db( "autorobin_db" )
+    require( "src/AutoRoundRobinDb" ) -- the round-robin catalogue the pass reads its selection from
+    local auto_round_robin = require( "src/AutoRoundRobin" ).new(
+      loot_list,
+      function() return u.modules().api end,
+      autorobin_db,
+      config,
+      player_info,
+      chat,
+      group_roster,
+      ml_candidates,
+      auto_loot,
+      loot_award_callback,
+      function() return 1 end
+    )
+    deps[ "AutoRoundRobin" ] = auto_round_robin
+
     require( "src/RollResultAnnouncer" ).new( chat, roll_controller, config )
     local boss_killed = deps[ "BossKilled" ] or require( "src/BossKilled" ).new( db( "boss_killed" ) )
     deps[ "BossKilled" ] = boss_killed
@@ -416,6 +439,7 @@ function M.new_roll_for()
     local loot_facade_listener = require( "src/LootFacadeListener" ).new(
       loot_facade,
       auto_loot,
+      auto_round_robin,
       dropped_loot,
       dropped_loot_announce,
       master_loot,
@@ -437,6 +461,9 @@ function M.new_roll_for()
       auto_loot = auto_loot, ---@type AutoLoot
       auto_loot_list = M.auto_loot_list( autoloot_db ),
       autoloot_db = autoloot_db,
+      auto_round_robin = auto_round_robin, ---@type AutoRoundRobin
+      round_robin_list = M.auto_loot_list( autorobin_db ),
+      autorobin_db = autorobin_db,
       dropped_loot = dropped_loot, ---@type DroppedLoot
       ace_timer = ace_timer,
       roll = rolling_logic.on_roll,

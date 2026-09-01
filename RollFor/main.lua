@@ -173,6 +173,25 @@ local function confirm_lockout_reset( on_confirmed )
   } )
 end
 
+-- Asks before throwing the rotation away, and only when there's something to lose -- an
+-- untouched rotation is nothing, and being made to confirm losing nothing is friction for its
+-- own sake. Same shape, and the same reason for living here, as confirm_lockout_reset above:
+-- the queue window's Reset button and /rf autorobin reset are the same answer to the same
+-- question, so neither of them gets to own it.
+local function confirm_round_robin_reset()
+  if M.auto_round_robin.is_pristine() then
+    M.auto_round_robin.reset()
+    return
+  end
+
+  M.confirmation_dialog.show( {
+    title = "Reset the round robin rotation?",
+    lines = { "This will forget who has already received an item." },
+    question = "Everybody starts over from cycle 1. Continue?",
+    on_yes = M.auto_round_robin.reset
+  } )
+end
+
 local function create_components()
   ---@type AceTimer
   M.ace_timer = lib_stub( "AceTimer-3.0" )
@@ -394,6 +413,26 @@ local function create_components()
   ---@type AutoLoot
   M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, M.autoloot_db, M.config, M.player_info, M.chat )
 
+  -- Seeded here rather than at the bottom with the rest of the GUI: both the round-robin pass and
+  -- its selection window read db.ids, and the pass runs on the first loot window whether or not
+  -- the window has ever been opened.
+  M.autorobin_db = db( "autorobin_db" )
+  m.AutoRoundRobinDb.ensure_seeded( M.autorobin_db )
+
+  ---@type AutoRoundRobin
+  M.auto_round_robin = m.AutoRoundRobin.new(
+    M.loot_list,
+    M.api,
+    M.autorobin_db,
+    M.config,
+    M.player_info,
+    M.chat,
+    M.group_roster,
+    M.master_loot_candidates,
+    M.auto_loot,
+    M.loot_award_callback
+  )
+
   ---@type DroppedLootAnnounce
   M.dropped_loot_announce = m.DroppedLootAnnounce.new(
     M.loot_list,
@@ -478,6 +517,7 @@ local function create_components()
   M.loot_facade_listener = m.LootFacadeListener.new(
     M.loot_facade,
     M.auto_loot,
+    M.auto_round_robin,
     M.dropped_loot,
     M.dropped_loot_announce,
     M.master_loot,
@@ -504,8 +544,32 @@ local function create_components()
   ---@type AutoLootFrameContentTransformer
   local autoloot_frame_content_transformer = m.AutoLootFrameContentTransformer.new()
 
+  -- Before the frame, not after: the frame renders the roots it is handed, and init() replaces
+  -- the table AutoLootTree.dungeons points at.
+  m.AutoLootTree.init( M.autoloot_db )
+
   ---@type AutoLootFrame
-  M.autoloot_frame = m.AutoLootFrame.new( popup_builder(), autoloot_frame_content_transformer, db( "autoloot_frame" ) )
+  M.autoloot_frame = m.AutoLootFrame.new( {
+    popup_builder = popup_builder(),
+    content_transformer = autoloot_frame_content_transformer,
+    db = db( "autoloot_frame" ),
+    name = "RollForAutoLootFrame",
+    title = "RollFor Auto Loot",
+    roots = m.AutoLootTree.dungeons,
+    make_link = m.AutoLootDb.make_link
+  } )
+
+  ---@type RoundRobinQueueFrameContentTransformer
+  local autorobin_queue_frame_content_transformer = m.AutoRoundRobinQueueFrameContentTransformer.new()
+
+  ---@type AutoRoundRobinQueueFrame
+  M.autorobin_queue_frame = m.AutoRoundRobinQueueFrame.new( popup_builder(),
+    autorobin_queue_frame_content_transformer, M.auto_round_robin, confirm_round_robin_reset,
+    db( "autorobin_queue_frame" ) )
+
+  ---@type AutoRoundRobinFrame
+  M.autorobin_frame = m.AutoRoundRobinFrame.new( popup_builder(), autoloot_frame_content_transformer,
+    M.autorobin_db, db( "autorobin_frame" ), function() M.autorobin_queue_frame.toggle() end )
 
   ---@type ResistanceFrameContentTransformer
   local resistance_frame_content_transformer = m.ResistanceFrameContentTransformer.new( M.resistance_registry )
@@ -534,8 +598,6 @@ local function create_components()
   M.resistance_bonus_roll_frame = m.ResistanceBonusRollFrame.new( popup_builder(),
     resistance_bonus_roll_frame_content_transformer, M.resistance_bonus_roll_registry, M.group_roster,
     db( "resistance_bonus_roll_frame" ) )
-
-  m.AutoLootTree.init( M.autoloot_db )
 end
 
 local function subscribe_for_component_events()
@@ -633,6 +695,24 @@ local function on_roll_command( roll_slash_command )
 
     if string.find( args, "^autoloot" ) then
       M.autoloot_frame.toggle()
+      return
+    end
+
+    -- Both of these have to be matched before the bare ^autorobin below, which would otherwise
+    -- swallow them. All three are window and state commands, so they sit above the IsInGroup
+    -- guard further down.
+    if string.find( args, "^autorobin queue" ) then
+      M.autorobin_queue_frame.toggle()
+      return
+    end
+
+    if string.find( args, "^autorobin reset" ) then
+      confirm_round_robin_reset()
+      return
+    end
+
+    if string.find( args, "^autorobin" ) then
+      M.autorobin_frame.toggle()
       return
     end
 
@@ -920,6 +1000,8 @@ end
 
 function M.on_group_changed()
   M.name_matcher.auto_match()
+  M.auto_round_robin.on_group_changed()
+  M.autorobin_queue_frame.on_group_changed()
   M.resistance_frame.on_group_changed()
   M.resistance_bonus_roll_eligibility_frame.on_group_changed()
   M.resistance_bonus_roll_frame.on_group_changed()

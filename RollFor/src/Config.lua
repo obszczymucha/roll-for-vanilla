@@ -33,6 +33,9 @@ function M.new( db, event_bus )
     [ "auto_loot_announce" ] = { cmd = "auto-loot-announce", display = "Announce auto-looted items", help = "toggle announcements of auto-loot items" },
     [ "show_ml_warning" ] = { cmd = "ml", display = "Master loot warning", help = "toggle master loot warning" },
     [ "auto_raid_roll" ] = { cmd = "auto-rr", display = "Auto raid-roll", help = "toggle auto raid-roll" },
+    -- Not to be confused with auto_raid_roll above, which auto-starts a raid roll when a normal
+    -- roll produces no winner. This one is the round-robin rotation (/rf autorobin).
+    [ "auto_round_robin" ] = { cmd = "auto-round-robin", display = "Auto round-robin", help = "toggle auto round-robin" },
     [ "auto_group_loot" ] = { cmd = "auto-group-loot", display = "Auto group loot", help = "toggle auto group loot" },
     [ "auto_master_loot" ] = { cmd = "auto-master-loot", display = "Auto master loot", help = "toggle auto master loot" },
     [ "rolling_popup_lock" ] = { cmd = "rolling-popup-lock", display = "Rolling popup lock", help = "toggle rolling popup lock" },
@@ -63,6 +66,8 @@ function M.new( db, event_bus )
     if db.resistance_check_throttle == nil then db.resistance_check_throttle = 1.0 end
     if db.sr_roll_spacing == nil then db.sr_roll_spacing = 20 end
     if db.resistance_bonus_rolls_enabled == nil then db.resistance_bonus_rolls_enabled = true end
+    -- Off unless asked for: this one awards loot on its own, so it has to be opted into.
+    if db.auto_round_robin == nil then db.auto_round_robin = false end
   end
 
   local function print_toggle( toggle_key )

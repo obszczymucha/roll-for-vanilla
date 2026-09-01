@@ -7,6 +7,7 @@ u.multi_require_src( "DebugBuffer", "Module", "Types" )
 require( "src/modules" )
 u.mock_wow_api()
 require( "src/ItemUtils" )
+require( "src/ItemCatalogue" ) -- the catalogue helpers AutoLootDb delegates its seeding and queries to
 require( "src/AutoLootDb" )
 require( "src/Tree" )
 local AutoLootTree = require( "src/AutoLootTree" )
@@ -18,6 +19,71 @@ end
 
 local function branch( checked, children )
   return Tree.new_node( { checked = checked, entry = { enabled = checked }, expanded = false, name = "Node" }, children or {} )
+end
+
+-- build() is what lets a second catalogue (the round-robin one) reuse this tree: it takes the
+-- non-boss set from whoever owns the catalogue instead of reaching for AutoLootDb's, and hands
+-- back the roots rather than assigning them to the module-level M.dungeons that auto-loot owns.
+AutoLootTreeBuildSpec = {}
+
+local function catalogue_db()
+  return {
+    ids = {
+      [ "Black Temple" ] = {
+        enabled = true,
+        order = 1,
+        bosses = {
+          [ "Gems" ] = {
+            enabled = false,
+            order = 1,
+            items = { [ 32227 ] = { enabled = false, quality = 4, icon = 1, name = "Crimson Spinel" } }
+          },
+          [ "Illidan Stormrage" ] = {
+            enabled = false,
+            order = 2,
+            items = { [ 32235 ] = { enabled = true, quality = 4, icon = 2, name = "Cursed Vision of Sargeras" } }
+          }
+        }
+      }
+    }
+  }
+end
+
+---@param roots table
+---@param boss_name string
+local function boss_node( roots, boss_name )
+  for _, boss in ipairs( roots[ 1 ].children ) do
+    if boss.data.name == boss_name then return boss end
+  end
+end
+
+function AutoLootTreeBuildSpec:should_build_the_roots_from_the_dbs_own_selection_state()
+  local roots = AutoLootTree.build( catalogue_db(), {} )
+
+  eq( #roots, 1 )
+  eq( roots[ 1 ].data.name, "Black Temple" )
+  eq( roots[ 1 ].data.checked, true )
+  eq( boss_node( roots, "Illidan Stormrage" ).children[ 1 ].data.checked, true )
+end
+
+function AutoLootTreeBuildSpec:should_grey_out_the_nodes_the_supplied_non_boss_set_names()
+  local roots = AutoLootTree.build( catalogue_db(), { [ "Gems" ] = true } )
+
+  local gems = boss_node( roots, "Gems" )
+  local illidan = boss_node( roots, "Illidan Stormrage" )
+
+  lu.assertNotEquals( gems.data.color, illidan.data.color )
+  lu.assertNotEquals( gems.data.hover_text_color, illidan.data.hover_text_color )
+end
+
+-- The same name is only a non-boss for the catalogue that says so: "Gems" is one in the
+-- round-robin catalogue and nothing at all in the auto-loot one.
+function AutoLootTreeBuildSpec:should_treat_a_node_as_a_boss_when_the_non_boss_set_does_not_name_it()
+  local as_boss = boss_node( AutoLootTree.build( catalogue_db(), {} ), "Gems" )
+  local as_non_boss = boss_node( AutoLootTree.build( catalogue_db(), { [ "Gems" ] = true } ), "Gems" )
+
+  eq( as_boss.data.color, boss_node( AutoLootTree.build( catalogue_db(), {} ), "Illidan Stormrage" ).data.color )
+  lu.assertNotEquals( as_non_boss.data.color, as_boss.data.color )
 end
 
 AutoLootTreeIsLeafEnabledSpec = {}

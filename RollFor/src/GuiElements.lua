@@ -95,6 +95,7 @@ end
 ---@field resistance_row fun( parent: Frame ): Frame
 ---@field eligibility_row fun( parent: Frame ): Frame
 ---@field bonus_roll_row fun( parent: Frame ): Frame
+---@field round_robin_row fun( parent: Frame ): Frame
 
 local M = {}
 
@@ -1540,6 +1541,103 @@ function M.bonus_roll_row( parent )
 
   -- A mouse-enabled row swallows the click the popup needs to start dragging, so the
   -- row hands it back rather than making most of the frame undraggable.
+  container:RegisterForDrag( "LeftButton" )
+
+  local function forward_to_popup( script )
+    return function()
+      local handler = parent:GetScript( script )
+      if handler then handler( parent ) end
+    end
+  end
+
+  container:SetScript( "OnDragStart", forward_to_popup( "OnDragStart" ) )
+  container:SetScript( "OnDragStop", forward_to_popup( "OnDragStop" ) )
+
+  return container
+end
+
+-- Same fixed-geometry reasoning as the rows above: the popup sizes itself from the widest
+-- line, so a self-measuring row would be a different width per player and the columns would
+-- drift between windows. No checkbox -- the rotation is decided by who was served when, not
+-- by a click.
+local round_robin_row_height = 14
+local round_robin_row_width = 260
+
+local round_robin_row_columns = {
+  { field = "player", x = 8, width = 110, justify = "LEFT" },
+  -- Wide enough for "Owed (12 cycles)", the longest thing the status column ever says.
+  { field = "status", x = 122, width = 96, justify = "LEFT" },
+  { field = "eligible", x = 218, width = 34, justify = "RIGHT" }
+}
+
+-- A row in the auto round robin queue: Player / Status / Eligible at fixed offsets. The
+-- column-title row is the same widget (SetHeader) so the titles line up with the values
+-- underneath them.
+function M.round_robin_row( parent )
+  local container = m.api.CreateFrame( "Frame", nil, parent )
+  container:SetHeight( round_robin_row_height )
+  container:SetWidth( round_robin_row_width )
+
+  -- Reaches a little past the row on both sides so it reads as a band rather than a box
+  -- around the text, exactly as the resistance list's rows do.
+  local hover_highlight = container:CreateTexture( nil, "BACKGROUND" )
+  hover_highlight:SetTexture( "Interface\\Buttons\\WHITE8x8" )
+  hover_highlight:SetVertexColor( unpack( resistance_row_hover_color ) )
+  hover_highlight:SetPoint( "TOPLEFT", container, "TOPLEFT", -resistance_row_hover_overhang, 1 )
+  hover_highlight:SetPoint( "BOTTOMRIGHT", container, "BOTTOMRIGHT", resistance_row_hover_overhang, -1 )
+  hover_highlight:Hide()
+
+  local is_header = false
+
+  local columns = {}
+
+  for _, column in ipairs( round_robin_row_columns ) do
+    local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+    label:SetWidth( column.width )
+    label:SetHeight( round_robin_row_height )
+    label:SetJustifyH( column.justify )
+    label:SetTextColor( unpack( resistance_row_text_color ) )
+    label:SetPoint( "LEFT", container, "LEFT", column.x, 0 )
+    columns[ column.field ] = label
+  end
+
+  -- FrameBuilder caches line frames per line type and reuses them across refreshes, so every
+  -- column is written on every call -- a frame left holding the previous occupant's text would
+  -- report the wrong player's place in the rotation.
+  container.SetRow = function( _, row )
+    for _, column in ipairs( round_robin_row_columns ) do
+      columns[ column.field ]:SetText( row[ column.field ] or "" )
+    end
+
+    -- Rows are recycled between refreshes and a hidden frame never gets its OnLeave, so a stale
+    -- highlight would follow the frame to its next row.
+    hover_highlight:Hide()
+  end
+
+  container.SetHeader = function( _, header )
+    is_header = header and true or false
+    local color = is_header and resistance_row_header_color or resistance_row_text_color
+
+    if is_header then hover_highlight:Hide() end
+
+    for _, column in ipairs( round_robin_row_columns ) do
+      columns[ column.field ]:SetTextColor( unpack( color ) )
+    end
+  end
+
+  container:EnableMouse( true )
+
+  container:SetScript( "OnEnter", function()
+    if is_header then return end
+    hover_highlight:Show()
+  end )
+
+  container:SetScript( "OnLeave", function()
+    hover_highlight:Hide()
+  end )
+
+  -- A mouse-enabled row swallows the click the popup needs to start dragging, so the row hands
+  -- it back rather than making most of the frame undraggable.
   container:RegisterForDrag( "LeftButton" )
 
   local function forward_to_popup( script )
