@@ -10,210 +10,247 @@ require( "src/ItemCatalogue" )
 require( "src/AutoRoundRobinDb" )
 local AutoRoundRobin = require( "src/AutoRoundRobin" )
 
--- The selection algorithm on its own: a state table, a list of eligible candidate names, and a
--- draw. No loot window, no roster, no WoW API -- everything the award pass adds on top of this
--- (who is a candidate, paying them, announcing it) is covered in AutoRoundRobinSpec_test.
+-- The queue operations on their own: a plain ordered list in, a plain ordered list out. No loot
+-- window, no roster, no WoW API. Everything the award pass adds on top of these (which category's
+-- queue, paying the winner, announcing it) is covered in AutoRoundRobinSpec_test.
 
----@param cycle number
----@param pool table<string, number>?
-local function state( cycle, pool )
-  return { cycle = cycle, pool = pool or {} }
+---@param ... string
+---@return RoundRobinQueue
+local function queue( ... )
+  local result = {}
+
+  for _, name in ipairs( { ... } ) do table.insert( result, { name = name } ) end
+
+  return result
 end
 
--- Deterministic stand-in for the random draw: takes the nth of the tied candidates, which are
--- sorted by name before the draw so the spec can name who that is.
-local function picks( n )
-  return function() return n end
+---@param q RoundRobinQueue
+---@return string[]
+local function names( q )
+  local result = {}
+
+  for _, player in ipairs( q ) do table.insert( result, player.name ) end
+
+  return result
 end
 
-local first = picks( 1 )
+---@param ... string
+---@return table<string, boolean>
+local function only( ... )
+  local result = {}
 
--- The draw is only reached when more than one player sits at the minimum, so a random_fn that
--- refuses to be called proves a selection was forced rather than rolled for.
-local function never()
-  return function() error( "The draw should not have been reached.", 2 ) end
+  for _, name in ipairs( { ... } ) do result[ name ] = true end
+
+  return result
 end
 
----@param s table
----@param names string[]
----@param random_fn function?
----@return string? -- the winner, already committed
-local function award( s, names, random_fn )
-  local winner, cycle = AutoRoundRobin.select( s, names, random_fn or first )
-  if winner then AutoRoundRobin.commit( s, winner, cycle ) end
+AutoRoundRobinSyncSpec = {}
 
-  return winner
-end
-
-AutoRoundRobinSeedingSpec = {}
-
-function AutoRoundRobinSeedingSpec:should_insert_unknown_players_at_the_current_cycle()
+function AutoRoundRobinSyncSpec:should_seed_an_empty_queue_from_the_roster_in_order()
   -- Given
-  local s = state( 3 )
+  local q = {}
 
   -- When
-  AutoRoundRobin.seed( s, { "Psikutas", "Obszczymucha" } )
+  AutoRoundRobin.sync( q, { { name = "Ann" }, { name = "Bob" } } )
 
   -- Then
-  eq( s.pool, { Psikutas = 3, Obszczymucha = 3 } )
+  eq( names( q ), { "Ann", "Bob" } )
 end
 
--- Leaving and rejoining keeps your place: the pool is never pruned, so a rejoiner is not an
--- unknown player and nothing about them is rewritten.
-function AutoRoundRobinSeedingSpec:should_not_reseed_a_player_who_is_already_in_the_pool()
+function AutoRoundRobinSyncSpec:should_append_a_joiner_at_the_back()
   -- Given
-  local s = state( 4, { Obszczymucha = 1 } )
+  local q = queue( "Ann", "Bob" )
 
   -- When
-  AutoRoundRobin.seed( s, { "Obszczymucha", "Psikutas" } )
+  AutoRoundRobin.sync( q, { { name = "Bob" }, { name = "Dee" } } )
 
   -- Then
-  eq( s.pool, { Obszczymucha = 1, Psikutas = 4 } )
+  eq( names( q ), { "Ann", "Bob", "Dee" } )
 end
 
--- Marked as already served for the current cycle, a joiner can't receive until it turns over.
-function AutoRoundRobinSeedingSpec:should_put_a_player_who_joins_mid_cycle_at_the_bottom()
+-- Leaving must not cost your place: dropping out for a wipe or a disconnect is not a reason to
+-- go to the back, and taking somebody out is a deliberate act.
+function AutoRoundRobinSyncSpec:should_not_remove_somebody_who_is_no_longer_in_the_group()
   -- Given
-  local s = state( 2, { Psikutas = 2, Obszczymucha = 1 } )
+  local q = queue( "Ann", "Bob", "Cid" )
 
   -- When
-  AutoRoundRobin.seed( s, { "Jogobobek" } )
-  local winner = award( s, { "Psikutas", "Obszczymucha", "Jogobobek" } )
+  AutoRoundRobin.sync( q, { { name = "Bob" } } )
 
   -- Then
-  eq( winner, "Obszczymucha" )
+  eq( names( q ), { "Ann", "Bob", "Cid" } )
 end
 
-AutoRoundRobinSelectionSpec = {}
-
-function AutoRoundRobinSelectionSpec:should_draw_from_the_lowest_served_cycle_among_the_candidates()
+function AutoRoundRobinSyncSpec:should_not_move_somebody_who_is_already_in_the_queue()
   -- Given
-  local s = state( 3, { Psikutas = 3, Obszczymucha = 1, Jogobobek = 2 } )
+  local q = queue( "Cid", "Ann", "Bob" )
 
   -- When
-  local winner = award( s, { "Psikutas", "Obszczymucha", "Jogobobek" }, never() )
+  AutoRoundRobin.sync( q, { { name = "Ann" }, { name = "Bob" }, { name = "Cid" } } )
 
   -- Then
-  eq( winner, "Obszczymucha" )
-  eq( s.pool.Obszczymucha, 3 )
-  eq( s.cycle, 3 )
+  eq( names( q ), { "Cid", "Ann", "Bob" } )
 end
 
-function AutoRoundRobinSelectionSpec:should_not_draw_when_only_one_candidate_is_at_the_minimum()
+function AutoRoundRobinSyncSpec:should_keep_the_class_a_joiner_arrived_with()
   -- Given
-  local s = state( 2, { Psikutas = 2, Obszczymucha = 1 } )
-
-  -- When / Then -- never() errors if the draw is reached at all
-  eq( award( s, { "Psikutas", "Obszczymucha" }, never() ), "Obszczymucha" )
-end
-
-function AutoRoundRobinSelectionSpec:should_draw_among_everyone_tied_at_the_minimum()
-  -- Given
-  local s = state( 2, { Jogobobek = 1, Obszczymucha = 1, Psikutas = 2 } )
-
-  -- When / Then -- tied candidates are sorted by name before the draw
-  eq( award( s, { "Psikutas", "Obszczymucha", "Jogobobek" }, picks( 2 ) ), "Obszczymucha" )
-end
-
-function AutoRoundRobinSelectionSpec:should_advance_the_cycle_exactly_once_when_every_candidate_was_served()
-  -- Given
-  local s = state( 2, { Psikutas = 2, Obszczymucha = 2, Jogobobek = 2 } )
+  local q = {}
 
   -- When
-  local winner = award( s, { "Psikutas", "Obszczymucha", "Jogobobek" } )
+  AutoRoundRobin.sync( q, { { name = "Ann", class = "Druid" } } )
 
   -- Then
-  eq( s.cycle, 3 )
-  eq( winner, "Jogobobek" )
-  eq( s.pool, { Psikutas = 2, Obszczymucha = 2, Jogobobek = 3 } )
+  eq( q[ 1 ].class, "Druid" )
 end
 
-function AutoRoundRobinSelectionSpec:should_serve_everybody_once_before_starting_over()
-  -- Given
-  local s = state( 1 )
-  local candidates = { "Psikutas", "Obszczymucha", "Jogobobek" }
-  AutoRoundRobin.seed( s, candidates )
+AutoRoundRobinServeSpec = {}
 
-  -- When -- the draw always takes the first name still at the minimum
+function AutoRoundRobinServeSpec:should_serve_the_head_and_send_them_to_the_back()
+  -- Given
+  local q = queue( "Ann", "Bob", "Cid" )
+
+  -- When
+  local served = AutoRoundRobin.serve( q, AutoRoundRobin.next_position( q ) )
+
+  -- Then
+  eq( served.name, "Ann" )
+  eq( names( q ), { "Bob", "Cid", "Ann" } )
+end
+
+function AutoRoundRobinServeSpec:should_go_round_in_order()
+  -- Given
+  local q = queue( "Ann", "Bob", "Cid" )
   local winners = {}
-  for _ = 1, 4 do table.insert( winners, award( s, candidates ) ) end
-
-  -- Then -- the fourth award is the start of the next cycle, not a second helping in this one
-  eq( winners, { "Jogobobek", "Obszczymucha", "Psikutas", "Jogobobek" } )
-  eq( s.cycle, 3 )
-end
-
-function AutoRoundRobinSelectionSpec:should_pick_nobody_when_there_are_no_candidates()
-  -- Given
-  local s = state( 2, { Psikutas = 1 } )
 
   -- When
-  local winner, cycle = AutoRoundRobin.select( s, {}, never() )
+  for _ = 1, 4 do
+    table.insert( winners, AutoRoundRobin.serve( q, AutoRoundRobin.next_position( q ) ).name )
+  end
 
-  -- Then -- the state is left alone for the next loot window to retry
-  eq( winner, nil )
-  eq( cycle, 2 )
-  eq( s.cycle, 2 )
-  eq( s.pool, { Psikutas = 1 } )
+  -- Then -- the fourth is the start of the next lap, not a second helping in this one
+  eq( winners, { "Ann", "Bob", "Cid", "Ann" } )
 end
 
--- Nothing is written back until the caller has actually paid the winner, so a select() whose
--- GiveMasterLoot never happens leaves the rotation exactly where it was.
-function AutoRoundRobinSelectionSpec:should_not_touch_the_state_until_the_award_is_committed()
+function AutoRoundRobinServeSpec:should_serve_nobody_from_an_empty_queue()
+  eq( AutoRoundRobin.next_position( {} ), nil )
+  eq( AutoRoundRobin.serve( {}, 1 ), nil )
+end
+
+AutoRoundRobinEligibilitySpec = {}
+
+-- The design's whole point: the drop goes to the first player who can actually receive it, and
+-- whoever it walks past keeps their place at the front.
+function AutoRoundRobinEligibilitySpec:should_walk_past_a_head_who_cannot_receive()
   -- Given
-  local s = state( 2, { Psikutas = 2, Obszczymucha = 2 } )
+  local q = queue( "Ann", "Bob", "Cid" )
 
   -- When
-  local winner, cycle = AutoRoundRobin.select( s, { "Psikutas", "Obszczymucha" } , first )
+  local served = AutoRoundRobin.serve( q, AutoRoundRobin.next_position( q, only( "Bob", "Cid" ) ) )
 
   -- Then
-  eq( winner, "Obszczymucha" )
-  eq( cycle, 3 )
-  eq( s.cycle, 2 )
-  eq( s.pool, { Psikutas = 2, Obszczymucha = 2 } )
+  eq( served.name, "Bob" )
+  eq( names( q ), { "Ann", "Cid", "Bob" } )
 end
 
-AutoRoundRobinAbsenceSpec = {}
-
--- The whole point of judging a cycle against the candidates rather than the pool: an absent
--- player's number stops climbing while everybody else's does, so they come back owed.
-function AutoRoundRobinAbsenceSpec:should_skip_an_absent_player_and_let_them_win_outright_on_return()
+function AutoRoundRobinEligibilitySpec:should_let_a_passed_over_player_take_the_very_next_drop()
   -- Given
-  local s = state( 1 )
-  AutoRoundRobin.seed( s, { "Psikutas", "Obszczymucha", "Jogobobek" } )
-  local present = { "Psikutas", "Obszczymucha" }
+  local q = queue( "Ann", "Bob", "Cid" )
+  AutoRoundRobin.serve( q, AutoRoundRobin.next_position( q, only( "Bob", "Cid" ) ) )
 
-  -- When -- Jogobobek is outside the instance for two full cycles
-  for _ = 1, 4 do award( s, present ) end
+  -- When -- Ann walks back in
+  local served = AutoRoundRobin.serve( q, AutoRoundRobin.next_position( q, only( "Ann", "Bob", "Cid" ) ) )
 
   -- Then
-  eq( s.cycle, 3 )
-  eq( s.pool, { Psikutas = 3, Obszczymucha = 3, Jogobobek = 1 } )
-
-  -- When -- and then walks in
-  local winner = award( s, { "Psikutas", "Obszczymucha", "Jogobobek" }, never() )
-
-  -- Then -- two cycles behind is two cycles ahead of the queue, so no reset was needed
-  eq( winner, "Jogobobek" )
-  eq( s.cycle, 3 )
+  eq( served.name, "Ann" )
 end
 
--- Judged against the pool, a cycle in which somebody is away would never complete and the
--- rotation would stall on them.
-function AutoRoundRobinAbsenceSpec:should_complete_a_cycle_that_a_pool_member_is_absent_for()
+function AutoRoundRobinEligibilitySpec:should_pick_nobody_when_nobody_in_the_queue_can_receive()
   -- Given
-  local s = state( 1, { Psikutas = 1, Obszczymucha = 1, Ohhaimark = 1 } )
-  local present = { "Psikutas", "Obszczymucha" }
+  local q = queue( "Ann", "Bob" )
 
-  -- When
-  award( s, present )
-  award( s, present )
-  local winner = award( s, present )
+  -- When / Then
+  eq( AutoRoundRobin.next_position( q, only( "Somebody else" ) ), nil )
+  eq( names( q ), { "Ann", "Bob" } )
+end
 
-  -- Then -- both present players were served in cycle 2, so the third award opens cycle 3
-  eq( s.cycle, 3 )
-  eq( winner, "Obszczymucha" )
-  eq( s.pool.Ohhaimark, 1 )
+-- No loot window means nobody has said who can receive, so the head is the answer -- which is
+-- what the Queues window shows as next up.
+function AutoRoundRobinEligibilitySpec:should_take_the_head_when_nothing_is_known_about_eligibility()
+  eq( AutoRoundRobin.next_position( queue( "Ann", "Bob" ), nil ), 1 )
+end
+
+AutoRoundRobinCycleSpec = {}
+
+function AutoRoundRobinCycleSpec:should_send_the_head_to_the_back_on_a_positive_offset()
+  local q = queue( "Ann", "Bob", "Cid" )
+
+  AutoRoundRobin.cycle( q, 1 )
+
+  eq( names( q ), { "Bob", "Cid", "Ann" } )
+end
+
+function AutoRoundRobinCycleSpec:should_bring_the_last_player_to_the_front_on_a_negative_offset()
+  local q = queue( "Ann", "Bob", "Cid" )
+
+  AutoRoundRobin.cycle( q, -1 )
+
+  eq( names( q ), { "Cid", "Ann", "Bob" } )
+end
+
+function AutoRoundRobinCycleSpec:should_do_nothing_to_a_queue_too_short_to_rotate()
+  local q = queue( "Ann" )
+
+  AutoRoundRobin.cycle( q, 1 )
+  AutoRoundRobin.cycle( q, -1 )
+
+  eq( names( q ), { "Ann" } )
+end
+
+AutoRoundRobinMoveSpec = {}
+
+function AutoRoundRobinMoveSpec:should_swap_a_player_with_the_one_above()
+  local q = queue( "Ann", "Bob", "Cid" )
+
+  AutoRoundRobin.move( q, 3, -1 )
+
+  eq( names( q ), { "Ann", "Cid", "Bob" } )
+end
+
+function AutoRoundRobinMoveSpec:should_swap_a_player_with_the_one_below()
+  local q = queue( "Ann", "Bob", "Cid" )
+
+  AutoRoundRobin.move( q, 1, 1 )
+
+  eq( names( q ), { "Bob", "Ann", "Cid" } )
+end
+
+-- Deliberately does not wrap: an arrow on the last row that sent that player to the top would
+-- read as a bug rather than as a rotation, and rotating is what cycle is for.
+function AutoRoundRobinMoveSpec:should_not_wrap_off_either_end()
+  local q = queue( "Ann", "Bob" )
+
+  AutoRoundRobin.move( q, 1, -1 )
+  AutoRoundRobin.move( q, 2, 1 )
+
+  eq( names( q ), { "Ann", "Bob" } )
+end
+
+function AutoRoundRobinMoveSpec:should_ignore_a_position_that_is_not_in_the_queue()
+  local q = queue( "Ann", "Bob" )
+
+  AutoRoundRobin.move( q, 9, -1 )
+
+  eq( names( q ), { "Ann", "Bob" } )
+end
+
+AutoRoundRobinPositionSpec = {}
+
+function AutoRoundRobinPositionSpec:should_find_a_player_case_insensitively()
+  eq( AutoRoundRobin.position_of( queue( "Ann", "Bob" ), "bOB" ), 2 )
+end
+
+function AutoRoundRobinPositionSpec:should_not_find_somebody_who_is_not_there()
+  eq( AutoRoundRobin.position_of( queue( "Ann" ), "Bob" ), nil )
 end
 
 os.exit( lu.LuaUnit.run() )

@@ -85,6 +85,7 @@ src\RollingPopupContentTransformer.lua
 src\GuiElements.lua
 src\ListPopup.lua
 src\AutoRoundRobinQueueFrameContentTransformer.lua
+src\AutoRoundRobinAddPlayerFrame.lua
 src\AutoRoundRobinQueueFrame.lua
 src\InstaRaidRollRollingLogic.lua
 src\EventBus.lua

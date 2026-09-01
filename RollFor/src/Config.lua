@@ -66,6 +66,7 @@ function M.new( db, event_bus )
     if db.resistance_check_throttle == nil then db.resistance_check_throttle = 1.0 end
     if db.sr_roll_spacing == nil then db.sr_roll_spacing = 20 end
     if db.resistance_bonus_rolls_enabled == nil then db.resistance_bonus_rolls_enabled = true end
+    if db.round_robin_queue_rows == nil then db.round_robin_queue_rows = 6 end
     -- Off unless asked for: this one awards loot on its own, so it has to be opted into.
     if db.auto_round_robin == nil then db.auto_round_robin = false end
   end
@@ -162,6 +163,20 @@ function M.new( db, event_bus )
     db.default_rolling_time_seconds = value
     print_default_rolling_time()
     notify_subscribers( "default_rolling_time_seconds", value )
+
+    return true
+  end
+
+  local function print_round_robin_queue_rows()
+    info( string.format( "Round robin queue rows: %s", hl( db.round_robin_queue_rows ) ) )
+  end
+
+  local function set_round_robin_queue_rows( value )
+    if not value or value < 1 then return false end
+
+    db.round_robin_queue_rows = value
+    print_round_robin_queue_rows()
+    notify_subscribers( "round_robin_queue_rows", value )
 
     return true
   end
@@ -524,6 +539,8 @@ function M.new( db, event_bus )
     unlock_minimap_button = unlock_minimap_button,
     default_rolling_time_seconds = get( "default_rolling_time_seconds" ),
     master_loot_frame_rows = get( "master_loot_frame_rows" ),
+    round_robin_queue_rows = get( "round_robin_queue_rows" ),
+    set_round_robin_queue_rows = set_round_robin_queue_rows,
     configure_master_loot_frame_rows = configure_master_loot_frame_rows,
     master_loot_threshold = get( "master_loot_threshold" ),
     configure_master_loot_threshold = configure_master_loot_threshold,

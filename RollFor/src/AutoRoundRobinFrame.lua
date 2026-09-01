@@ -7,7 +7,10 @@ local M = {}
 
 -- Which items auto round robin is allowed to hand out. The same tree window auto-loot uses, over
 -- the round-robin catalogue instead: AutoLootFrame owns the window, AutoLootTree owns the tree,
--- and all this file does is name the catalogue and wire the Queue button to the other window.
+-- and all this file does is name the catalogue and wire the Queues button to the other window.
+--
+-- Two levels here, not three: the round-robin catalogue is Category -> items (see
+-- AutoRoundRobinDb), and each of those categories owns a queue.
 
 ---@class AutoRoundRobinFrame
 ---@field show fun()
@@ -19,9 +22,9 @@ local M = {}
 ---@param content_transformer AutoLootFrameContentTransformer
 ---@param db table the persisted autorobin_db -- its `ids` is the selection this tree edits
 ---@param frame_db table where the window position is remembered
----@param on_queue fun() -- toggles the queue window
+---@param on_queues fun() -- toggles the queues window
 ---@return AutoRoundRobinFrame
-function M.new( popup_builder, content_transformer, db, frame_db, on_queue )
+function M.new( popup_builder, content_transformer, db, frame_db, on_queues )
   m.AutoRoundRobinDb.ensure_seeded( db )
 
   ---@type AutoLootFrame
@@ -31,10 +34,10 @@ function M.new( popup_builder, content_transformer, db, frame_db, on_queue )
     db = frame_db,
     name = "RollForAutoRoundRobinFrame",
     title = "RollFor Auto Round Robin",
-    roots = m.AutoLootTree.build( db, m.AutoRoundRobinDb.non_bosses ),
+    roots = m.AutoLootTree.build_flat( db ),
     make_link = m.AutoRoundRobinDb.make_link,
     extra_buttons = {
-      { type = "Queue", callback = on_queue }
+      { type = "Queues", callback = on_queues }
     }
   } )
 

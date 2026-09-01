@@ -183,6 +183,53 @@ function M.auto_loot_list( db )
   }
 end
 
+-- The same seam for the round-robin GUI's list, which is a flat Category -> items tree rather
+-- than auto-loot's nested one (see AutoRoundRobinDb). Test items aren't in the real catalogue, so
+-- this writes what ticking a row would produce: the item enabled under an enabled category.
+-- Everything goes under one category, because which queue serves an item is what the category
+-- names, and a spec that wants two queues says so by naming them.
+---@param db table the autorobin_db the AutoRoundRobin under test was built with
+function M.round_robin_list( db )
+  local DEFAULT = "Gems"
+
+  ---@param category string?
+  local function category_entry( category )
+    local name = category or DEFAULT
+    db.ids = db.ids or {}
+    db.ids[ name ] = db.ids[ name ] or { enabled = true, order = 1, items = {} }
+    db.ids[ name ].enabled = true
+
+    return db.ids[ name ]
+  end
+
+  ---@param item DroppedItem
+  ---@param category string?
+  local function enable( item, category )
+    category_entry( category ).items[ item.id ] = {
+      enabled = true, name = item.name, quality = item.quality, icon = 0
+    }
+  end
+
+  ---@param item DroppedItem
+  ---@param category string?
+  local function disable( item, category )
+    local entry = category_entry( category ).items[ item.id ]
+    if entry then entry.enabled = false end
+  end
+
+  ---@param enabled boolean
+  ---@param category string?
+  local function set_category_enabled( enabled, category )
+    category_entry( category ).enabled = enabled
+  end
+
+  return {
+    enable = enable,
+    disable = disable,
+    set_category_enabled = set_category_enabled
+  }
+end
+
 ---@param name string
 ---@param id number?
 ---@param sr_players RollingPlayer[]?
@@ -267,16 +314,18 @@ function M.new_roll_for()
     return self
   end
 
+  -- Remembered rather than applied here: build() sets the threshold too, and used to do it
+  -- afterwards, which made every call to this a silent no-op.
   ---@param threshold number
   function builder.loot_threshold( self, threshold )
-    u.loot_threshold( threshold )
+    dependencies[ "LootThreshold" ] = threshold
     return self
   end
 
   function builder.build()
     u.mock_slashcmdlist() -- Drop the previous build's commands so this one can register its own.
     u.zone_name()
-    u.loot_threshold( 2 )
+    u.loot_threshold( dependencies[ "LootThreshold" ] or 2 )
     u.targetting_enemy( "Princess Kenny" )
 
     local deps = dependencies or {}
@@ -400,11 +449,12 @@ function M.new_roll_for()
     local auto_loot = require( "mocks/AutoLoot" ).new( loot_list, u.modules().api, autoloot_db, config, player_info, chat )
     deps[ "AutoLoot" ] = auto_loot
 
-    -- The real thing, not a mock: the award pass is most of what these specs are about, and its
-    -- own randomness is the only part that has to be pinned down -- the draw always takes the
-    -- first of the tied candidates so a spec can name its expected winner.
-    local autorobin_db = db( "autorobin_db" )
+    -- The real thing, not a mock: the award pass is most of what these specs are about, and
+    -- there is nothing random left in it to pin down -- the queue order decides the winner.
     require( "src/AutoRoundRobinDb" ) -- the round-robin catalogue the pass reads its selection from
+    local autorobin_db = db( "autorobin_db" )
+    require( "src/AutoRoundRobinDb" ).ensure_seeded( autorobin_db )
+
     local auto_round_robin = require( "src/AutoRoundRobin" ).new(
       loot_list,
       function() return u.modules().api end,
@@ -415,8 +465,7 @@ function M.new_roll_for()
       group_roster,
       ml_candidates,
       auto_loot,
-      loot_award_callback,
-      function() return 1 end
+      loot_award_callback
     )
     deps[ "AutoRoundRobin" ] = auto_round_robin
 
@@ -462,7 +511,7 @@ function M.new_roll_for()
       auto_loot_list = M.auto_loot_list( autoloot_db ),
       autoloot_db = autoloot_db,
       auto_round_robin = auto_round_robin, ---@type AutoRoundRobin
-      round_robin_list = M.auto_loot_list( autorobin_db ),
+      round_robin_list = M.round_robin_list( autorobin_db ),
       autorobin_db = autorobin_db,
       dropped_loot = dropped_loot, ---@type DroppedLoot
       ace_timer = ace_timer,

@@ -131,6 +131,58 @@ function FrameBuilderScrollSpec:should_report_the_window_it_is_showing()
   eq( frame.get_scroll(), { offset = 4, total = 10, max_lines = 3 } )
 end
 
+-- The window height is a user setting for the round robin queues, so it has to be changeable
+-- after the frame exists: rebuilding it to change a number would leave a second frame behind
+-- under the same global name.
+FrameBuilderMaxLinesSpec = {}
+
+function FrameBuilderMaxLinesSpec:should_show_more_lines_after_the_window_grows()
+  local frame = scrollable_frame( 3 )
+  eq( render( frame, 10 ), { 1, 2, 3 } )
+
+  frame:set_max_scroll_lines( 6 )
+
+  eq( render( frame, 10 ), { 1, 2, 3, 4, 5, 6 } )
+end
+
+function FrameBuilderMaxLinesSpec:should_show_fewer_lines_after_the_window_shrinks()
+  local frame = scrollable_frame( 6 )
+  eq( render( frame, 10 ), { 1, 2, 3, 4, 5, 6 } )
+
+  frame:set_max_scroll_lines( 2 )
+
+  eq( render( frame, 10 ), { 1, 2 } )
+end
+
+-- A window that just got taller can be scrolled past its own end, the same way a list that just
+-- got shorter can.
+function FrameBuilderMaxLinesSpec:should_pull_the_window_back_when_it_grows_at_the_bottom_of_the_list()
+  local frame = scrollable_frame( 2 )
+  render( frame, 5 )
+  frame:scroll_by( 3 ) -- as far down as a 2-line window goes over 5 rows
+  eq( render( frame, 5 ), { 4, 5 } )
+
+  frame:set_max_scroll_lines( 4 )
+
+  eq( render( frame, 5 ), { 2, 3, 4, 5 } )
+end
+
+function FrameBuilderMaxLinesSpec:should_report_the_new_window_size()
+  local frame = scrollable_frame( 3 )
+
+  frame:set_max_scroll_lines( 6 )
+
+  eq( frame.get_scroll().max_lines, 6 )
+end
+
+function FrameBuilderMaxLinesSpec:should_ignore_a_missing_value()
+  local frame = scrollable_frame( 3 )
+
+  frame:set_max_scroll_lines( nil )
+
+  eq( render( frame, 10 ), { 1, 2, 3 } )
+end
+
 FrameBuilderNoScrollSpec = {}
 
 function FrameBuilderNoScrollSpec:should_render_everything_when_no_viewport_was_asked_for()

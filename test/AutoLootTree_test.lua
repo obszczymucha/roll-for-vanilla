@@ -86,6 +86,80 @@ function AutoLootTreeBuildSpec:should_treat_a_node_as_a_boss_when_the_non_boss_s
   lu.assertNotEquals( as_non_boss.data.color, as_boss.data.color )
 end
 
+-- build_flat is the round-robin catalogue's shape: Category -> items, two levels rather than
+-- three. Everything downstream walks children rather than counting levels, so the only thing
+-- worth proving is that the roots come out right.
+AutoLootTreeBuildFlatSpec = {}
+
+local function flat_db()
+  return {
+    ids = {
+      [ "Hearts" ] = {
+        enabled = false,
+        order = 3,
+        items = { [ 32428 ] = { enabled = true, quality = 3, icon = 1, name = "Heart of Darkness" } }
+      },
+      [ "Gems" ] = {
+        enabled = true,
+        order = 1,
+        items = {
+          [ 32227 ] = { enabled = true, quality = 4, icon = 2, name = "Crimson Spinel" },
+          [ 32228 ] = { enabled = false, quality = 4, icon = 3, name = "Empyrean Sapphire" }
+        }
+      }
+    }
+  }
+end
+
+function AutoLootTreeBuildFlatSpec:should_put_the_items_directly_under_their_category()
+  local roots = AutoLootTree.build_flat( flat_db() )
+
+  eq( #roots, 2 )
+  eq( roots[ 1 ].data.name, "Gems" )
+  eq( #roots[ 1 ].children, 2 )
+  -- Leaves, so no children of their own -- the tree really is two deep.
+  eq( roots[ 1 ].children[ 1 ].children, nil )
+end
+
+function AutoLootTreeBuildFlatSpec:should_order_categories_by_the_catalogues_own_order()
+  local roots = AutoLootTree.build_flat( flat_db() )
+
+  eq( roots[ 1 ].data.name, "Gems" )
+  eq( roots[ 2 ].data.name, "Hearts" )
+end
+
+function AutoLootTreeBuildFlatSpec:should_take_each_rows_checked_state_from_the_persisted_db()
+  local roots = AutoLootTree.build_flat( flat_db() )
+
+  eq( roots[ 1 ].data.checked, true )
+  eq( roots[ 2 ].data.checked, false )
+  eq( roots[ 1 ].children[ 1 ].data.checked, true )
+  eq( roots[ 1 ].children[ 2 ].data.checked, false )
+end
+
+-- Categories are the top level, so they take the top-level colour rather than the boss one.
+function AutoLootTreeBuildFlatSpec:should_colour_categories_as_top_level_rows()
+  local flat = AutoLootTree.build_flat( flat_db() )
+  local nested = AutoLootTree.build( catalogue_db(), {} )
+
+  eq( flat[ 1 ].data.color, nested[ 1 ].data.color )
+end
+
+-- The two-level tree feeds the same visible_rows / set_checked the three-level one does.
+function AutoLootTreeBuildFlatSpec:should_work_with_the_rest_of_the_tree()
+  local db = flat_db()
+  local roots = AutoLootTree.build_flat( db )
+
+  -- Collapsed, so only the two category rows show.
+  eq( #AutoLootTree.visible_rows( roots ), 2 )
+
+  roots[ 1 ].data.expanded = true
+  eq( #AutoLootTree.visible_rows( roots ), 4 )
+
+  AutoLootTree.set_checked( roots[ 2 ], true )
+  eq( db.ids[ "Hearts" ].enabled, true )
+end
+
 AutoLootTreeIsLeafEnabledSpec = {}
 
 function AutoLootTreeIsLeafEnabledSpec:should_be_enabled_when_dungeon_boss_and_item_are_all_checked()

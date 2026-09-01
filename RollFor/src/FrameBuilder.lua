@@ -52,6 +52,7 @@ M.interface = {
 ---@field add_line fun( line_type: string, modify_fn: function, padding: number ): table? -- nil when the line falls outside the scroll window (see `scrollable`)
 ---@field clear fun()
 ---@field set_scroll_total fun( self: Frame, total: number )
+---@field set_max_scroll_lines fun( self: Frame, max_lines: number )
 ---@field get_scroll fun(): table
 ---@field scroll_by fun( self: Frame, delta: number )
 ---@field update_scrollbar fun( lines: table )
@@ -77,6 +78,8 @@ M.interface = {
 ---@field IsVisible fun( self ): boolean
 ---@field GetName fun(): string?
 ---@field SetFrameStrata fun( self: Frame, strata: string )
+---@field GetFrameLevel fun( self: Frame ): number
+---@field SetFrameLevel fun( self: Frame, level: number )
 ---@field CreateTexture fun( self: Frame, name: string?, layer: string ): Texture
 ---@field SetNormalTexture fun( self: Frame, texture: string )
 ---@field SetPushedTexture fun( self: Frame, texture: string )
@@ -397,6 +400,22 @@ function M.new()
       frame.set_scroll_total = function( _, total )
         scroll.total = total or 0
         local max_offset = scroll.total - (options.scroll and options.scroll.max_lines or 0)
+        if max_offset < 0 then max_offset = 0 end
+        if scroll.offset > max_offset then scroll.offset = max_offset end
+      end
+
+      -- How many scrollable lines fit, changed after the fact. :scrollable() fixes it at build
+      -- time, which is right for a window whose height is a layout decision -- but not for one
+      -- whose height is a user setting, and rebuilding the frame to change a number would leak a
+      -- second frame under the same global name. Clamps the offset for the same reason
+      -- set_scroll_total does: a window that just got taller can be scrolled past its own end.
+      ---@param max_lines number
+      frame.set_max_scroll_lines = function( _, max_lines )
+        if not options.scroll or not max_lines then return end
+
+        options.scroll.max_lines = max_lines
+
+        local max_offset = scroll.total - max_lines
         if max_offset < 0 then max_offset = 0 end
         if scroll.offset > max_offset then scroll.offset = max_offset end
       end

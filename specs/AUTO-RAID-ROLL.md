@@ -1,15 +1,48 @@
 # Auto Round Robin (`/rf autorobin`)
 
-Status: **implemented.** Written 2026-09-01, built the same day.
+Status: **implemented, then redesigned.** Written 2026-09-01, built and reworked the same day.
 
-Two things came out differently from what is written below, both noted again in place:
+> ### The redesign supersedes sections 2-5, 7, 8 and 11 below
+>
+> The original design rotated by *cycle*: a persisted pool of `name -> served_cycle`, a cycle
+> counter, and a random draw between everybody tied at the lowest served cycle. It shipped and
+> worked, but the window that showed it had to explain itself with a Status column, because the
+> order alone did not say what was going on.
+>
+> It is now a **queue**, which is what it always was underneath:
+>
+> - **One ordered list of players per category**, persisted as `db.queues[ category ]`. No cycle
+>   counter, no `served_cycle`, no randomness anywhere. The order you see is the order it serves.
+> - **The catalogue is two levels, Category -> items** (`Gems`, `Marks`, `Hearts`), not
+>   Dungeon -> Boss -> items. Which raid a gem fell out of is not a fact this feature uses.
+>   Each category owns an independent queue.
+> - **An award goes to the first player in the queue who is a master loot candidate**, and they
+>   go to the back. Anyone walked past keeps their place and takes the next drop they are around
+>   for. This is the one rule carried over unchanged from the cycle design, and the only reason
+>   the queue and the candidate list are still kept apart.
+> - **Queues are seeded from the group roster and auto-append joiners.** Leaving does not remove
+>   you. From there they are editable by hand: `Add` (name + class), `x` to remove, per-player
+>   up/down arrows, and `Cycle up` / `Cycle down` to rotate the whole queue.
+> - **The Queues window** (`Queues` button, or `/rf autorobin queue`) has a dropdown selecting
+>   which category's queue you are looking at and editing. One column of names, marked `next` on
+>   whoever would really receive, greyed when they cannot receive right now. No status column --
+>   the order is the status.
+>
+> `/rfrotate` simulates the queue rather than the cycle. Everything in sections 1, 6, 9, 10, 12
+> and 13 still holds.
 
-- The shared seeding/query helper section 10 asks for is `src/ItemCatalogue.lua`, a fifth new
-  file. `AutoLootDb` and `AutoRoundRobinDb` both delegate to it and keep their own public names,
-  so nothing that already called `AutoLootDb.is_enabled` had to change.
-- `AutoLootFrame`'s config table takes an `extra_buttons` field in addition to the fields listed
-  in section 8.1 -- section 8.2 wants a `Queue` button on the round-robin window, and there was
-  no field in that list to put one in. Auto-loot passes none, so its window is unchanged.
+## Additions beyond what this document specified
+
+- `src/ItemCatalogue.lua` -- the shared item-link helpers. The nested seeding and queries stayed
+  with `AutoLootDb`; `AutoRoundRobinDb` owns its own flat pair, because after the redesign the two
+  catalogues no longer have the same shape.
+- `src/AutoRoundRobinAddPlayerFrame.lua` -- the `Add` popup: a name field and a class dropdown.
+  The class is guessed from the roster as you type.
+- `src/AutoRoundRobinSimulator.lua` -- a `/rfrotate` dev harness in the `/rfdrop` mould. Runs the
+  shipped queue operations over an invented roster and traces each drop. Never writes to the live
+  queues.
+- `AutoLootFrame`'s config table takes `extra_buttons` (the `Queues` button) and `AutoLootTree`
+  gained `build_flat` for the two-level catalogue.
 
 ## 1. What it is
 

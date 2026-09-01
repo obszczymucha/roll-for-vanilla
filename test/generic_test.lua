@@ -66,6 +66,18 @@ end
 -- otherwise swallow them and just open the selection window instead.
 AutoRoundRobinCommandSpec = {}
 
+---@param rf table
+---@param category string
+local function queue_names( rf, category )
+  local result = {}
+
+  for _, player in ipairs( rf.auto_round_robin.get_queue( category ) ) do
+    table.insert( result, player.name )
+  end
+
+  return result
+end
+
 function AutoRoundRobinCommandSpec:should_toggle_the_selection_window_outside_a_group()
   -- Given
   player( "Psikutas" )
@@ -98,42 +110,42 @@ function AutoRoundRobinCommandSpec:should_toggle_the_queue_window_without_openin
   lu.assertEquals( rf.autorobin_frame.get_frame(), nil )
 end
 
--- An untouched rotation has nothing to lose, so it resets without asking -- and either way the
--- command is about the state, so it opens neither window.
-function AutoRoundRobinCommandSpec:should_reset_a_pristine_rotation_without_opening_either_window()
+-- Queues that are already just the group are what a reset would rebuild, so there is nothing to
+-- lose and nothing to ask about. Either way the command is about the state, so it opens neither
+-- window.
+function AutoRoundRobinCommandSpec:should_reset_untouched_queues_without_opening_either_window()
   -- Given
   player( "Psikutas" )
   local rf = require( "main" )
-  -- Both written out: the char db outlives a single spec here, so what the previous one left
-  -- behind would otherwise decide whether this rotation counts as untouched.
-  rf.autorobin_db.cycle = 1
-  rf.autorobin_db.pool = { Obszczymucha = 1 }
+  -- Written out because the char db outlives a single spec here, so what the previous one left
+  -- behind would otherwise decide whether these queues count as untouched.
+  rf.autorobin_db.queues = {}
+  rf.auto_round_robin.on_group_changed()
 
   -- When
   u.run_command( "RF", "autorobin reset" )
 
   -- Then
-  lu.assertEquals( rf.auto_round_robin.get_cycle(), 1 )
-  lu.assertEquals( rf.autorobin_db.pool, { Psikutas = 1 } )
+  lu.assertEquals( queue_names( rf, "Gems" ), { "Psikutas" } )
   lu.assertEquals( rf.autorobin_frame.get_frame(), nil )
   lu.assertEquals( rf.autorobin_queue_frame.get_frame(), nil )
 end
 
--- A rotation that has actually moved is not thrown away on the command alone: it goes through the
--- confirmation dialog, and nothing changes until that is answered.
-function AutoRoundRobinCommandSpec:should_ask_before_resetting_a_rotation_that_has_moved()
+-- Queues that have actually been edited are not thrown away on the command alone: it goes through
+-- the confirmation dialog, and nothing changes until that is answered.
+function AutoRoundRobinCommandSpec:should_ask_before_resetting_queues_that_have_been_edited()
   -- Given
   player( "Psikutas" )
   local rf = require( "main" )
-  rf.autorobin_db.cycle = 4
-  rf.autorobin_db.pool = { Psikutas = 3 }
+  rf.autorobin_db.queues = {}
+  rf.auto_round_robin.on_group_changed()
+  rf.auto_round_robin.add_player( "Gems", "Ohhaimark", "Warrior" )
 
   -- When
   u.run_command( "RF", "autorobin reset" )
 
   -- Then
-  lu.assertEquals( rf.auto_round_robin.get_cycle(), 4 )
-  lu.assertEquals( rf.autorobin_db.pool, { Psikutas = 3 } )
+  lu.assertEquals( queue_names( rf, "Gems" ), { "Psikutas", "Ohhaimark" } )
 end
 
 function GenericSpec:should_not_roll_if_not_in_group()

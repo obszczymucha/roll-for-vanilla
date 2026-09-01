@@ -41,6 +41,7 @@ function M.new()
         add_line = function() return {} end,
         clear = function() end,
         set_scroll_total = function() end,
+        set_max_scroll_lines = function() end,
         get_scroll = function() return { offset = 0, total = 0, max_lines = 0 } end,
         scroll_by = function() end,
         update_scrollbar = function() end,

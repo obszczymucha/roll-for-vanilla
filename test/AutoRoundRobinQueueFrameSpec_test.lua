@@ -1,3 +1,7 @@
+-- The round-robin module is built here from stubs that implement exactly the methods it calls,
+-- which is itself a statement of what it depends on -- filling them out to whole interfaces would
+-- bury that. The specs also hang their own helpers off the frame the mock returns.
+---@diagnostic disable: missing-fields, inject-field
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
 require( "src/compat" )
@@ -15,118 +19,159 @@ local AutoRoundRobin = require( "src/AutoRoundRobin" )
 u.mock_wow_api()
 
 local colors = RollFor.colors
-local title = { type = "text", value = "Auto Round Robin Queue", padding = 6 }
-local empty_notice = { type = "text", value = "Nobody in the group yet.", padding = 10 }
+local title = { type = "text", value = "Auto Round Robin Queues", padding = 1 }
+local empty_notice = { type = "text", value = "Nobody in this queue yet.", padding = 10 }
 
-local header = {
-  type = "round_robin_row",
-  header = true,
-  player = "Player",
-  status = "Status",
-  eligible = "Eligible",
-  padding = 0
+-- No Close: that is the corner X, which is part of the window rather than a line in it. No Reset
+-- either -- it throws away every queue at once, so it lives on /rf autorobin reset instead of one
+-- click away from the up arrow.
+local buttons = {
+  { type = "button", label = "Add", width = 60 },
+  { type = "button", label = "Up", width = 60 },
+  { type = "button", label = "Down", width = 60 }
 }
 
-local reset_button = { type = "button", label = "Reset", width = 70 }
-local close_button = { type = "button", label = "Close", width = 70 }
+---@param category string
+---@param categories string[]?
+local function picker( category, categories )
+  local options = {}
+
+  for _, name in ipairs( categories or { "Gems", "Marks", "Hearts" } ) do
+    table.insert( options, { value = name, label = name } )
+  end
+
+  -- No label: it sits under a title that already says what these are.
+  return { type = "dropdown", label = "", width = 60, value = category, options = options, padding = 8 }
+end
 
 ---@param name string
----@param status string
----@param eligible string?
-local function line( name, status, eligible )
+---@param opts table? -- { away = boolean, first = boolean, last = boolean }
+local function line( name, opts )
+  local o = opts or {}
+
   return {
     type = "round_robin_row",
-    player = RollFor.colorize_player_by_class( name, "Warrior" ),
-    status = status,
-    eligible = eligible or "Yes"
+    player = o.away and colors.grey( name ) or RollFor.colorize_player_by_class( name, "Warrior" ),
+    can_move_up = not o.first,
+    can_move_down = not o.last
   }
 end
 
--- The whole popup in the order the transformer emits it: title, then either the empty notice or
--- the column titles and one line per player, then the buttons. The first player line sits a
--- little further from the column titles than the rest do.
+-- How many are in the queue, aligned with the list's right edge. Its own line type rather than a
+-- header row, so the viewport does not scroll it away with the first player.
+---@param count number
+local function total( count )
+  return { type = "round_robin_count", count = tostring( count ), padding = 2 }
+end
+
+-- The whole popup in the order the transformer emits it: title, the category picker, then either
+-- the empty notice or the count and one line per player, then the buttons. No column title above
+-- the names -- the queue is ordered, so a header reading "Player" would say nothing the list did
+-- not.
+---@param category string
 ---@param rows table[]?
-local function popup( rows )
-  local content = { title }
+local function popup( category, rows )
+  local content = { title, picker( category ) }
 
   if not rows or #rows == 0 then
     table.insert( content, empty_notice )
   else
-    table.insert( content, header )
+    table.insert( content, total( #rows ) )
 
-    for i, row in ipairs( rows ) do
-      row.padding = i == 1 and 4 or 2
+    -- Every row padded the same, so that scrolling the first one away does not take a wider gap
+    -- with it and shift the rest of the list up.
+    for _, row in ipairs( rows ) do
+      row.padding = 2
       table.insert( content, row )
     end
   end
 
-  table.insert( content, reset_button )
-  table.insert( content, close_button )
+  for _, button in ipairs( buttons ) do table.insert( content, button ) end
 
   return unpack( content )
 end
 
 ---@param names string[]
-local function mock_roster( names )
+---@param opts table? -- { away = string[], rows = number }
+local function new_frame( names, opts )
+  local o = opts or {}
+  local max_rows = o.rows or 6
+
+  -- Only the two things this window asks Config for. The row limit is read on every redraw, so a
+  -- spec can move it and redraw rather than rebuilding the window.
+  local config = {
+    round_robin_queue_rows = function() return max_rows end,
+    subscribe = function() end,
+    set_rows = function( value ) max_rows = value end
+  }
+  local db = Db.new( {} )
+  local round_robin_db = db( "autorobin" )
+  RollFor.AutoRoundRobinDb.ensure_seeded( round_robin_db )
+
   local players = {}
-  for _, name in ipairs( names ) do table.insert( players, { name = name, class = "Warrior" } ) end
+  for _, name in ipairs( names or {} ) do table.insert( players, { name = name, class = "Warrior" } ) end
 
-  return { get_all_players_in_my_group = function() return players end }
-end
+  local away = {}
+  for _, name in ipairs( o.away or {} ) do away[ name ] = true end
 
--- Being in the group and being able to receive are different things. Unless a spec says who the
--- master loot candidates are, nothing is looting, GetMasterLootCandidate has no slot to speak
--- about, and the column has nothing to say -- so every row shows as eligible rather than the
--- window filling up with dimmed rows outside of a loot session.
----@param candidate_names string[]?
-local function mock_loot_list( candidate_names )
-  local looting = candidate_names and true or false
+  -- Nothing is looting unless a spec names who is away, in which case there is a window open and
+  -- GetMasterLootCandidate has something to say. That is the only way the greyed-out row and the
+  -- walked-past "next" marker are reachable at all.
+  local looting = o.away and true or false
 
-  return {
+  local loot_list = {
     is_looting = function() return looting end,
     get_items_by_slot = function() return looting and { [ 1 ] = { id = 32227 } } or {} end
   }
-end
 
----@param candidate_names string[]?
-local function mock_candidates( candidate_names )
-  local candidates = {}
-  for _, name in ipairs( candidate_names or {} ) do table.insert( candidates, { name = name, class = "Warrior" } ) end
+  local candidates = {
+    get = function()
+      local result = {}
 
-  return { get = function() return candidates end, get_index = function() end }
-end
+      for _, player in ipairs( players ) do
+        if not away[ player.name ] then table.insert( result, player ) end
+      end
 
----@param names string[]
----@param pool table<string, number>?
----@param cycle number?
----@param candidate_names string[]? -- who is a master loot candidate right now
-local function new_frame( names, pool, cycle, candidate_names )
-  local db = Db.new( {} )
-  local round_robin_db = db( "autorobin" )
-  round_robin_db.cycle = cycle or 1
-  round_robin_db.pool = pool or {}
-
-  local resets = 0
+      return result
+    end,
+    get_index = function() return 1 end
+  }
 
   local round_robin = AutoRoundRobin.new(
-    mock_loot_list( candidate_names ),
+    loot_list,
     function() return RollFor.api end,
     round_robin_db,
     { auto_round_robin = function() return true end },
     { is_master_looter = function() return true end },
     { announce = function() end },
-    mock_roster( names ),
-    mock_candidates( candidate_names ),
+    { get_all_players_in_my_group = function() return players end },
+    candidates,
     { is_auto_looted = function() return false end },
     { on_loot_awarded = function() end }
   )
 
-  local frame = frame_mock.new( popup_builder.new(), round_robin,
-    function() resets = resets + 1; round_robin.reset() end, db( "frame" ) )
+  round_robin.on_group_changed()
+
+  local added_for
+
+  local add_player_frame = { show = function( category ) added_for = category end }
+
+  local frame = frame_mock.new( popup_builder.new(), round_robin, add_player_frame, config, db( "frame" ) )
 
   frame.round_robin = round_robin
-  frame.db = round_robin_db
-  frame.reset_count = function() return resets end
+  frame.set_rows = config.set_rows
+  frame.add_shown_for = function() return added_for end
+
+  ---@param category string?
+  frame.queue_names = function( category )
+    local result = {}
+
+    for _, player in ipairs( round_robin.get_queue( category or "Gems" ) ) do
+      table.insert( result, player.name )
+    end
+
+    return result
+  end
 
   return frame
 end
@@ -138,141 +183,180 @@ function RoundRobinQueueFrameSpec:should_be_hidden_by_default()
 end
 
 function RoundRobinQueueFrameSpec:should_toggle_visibility()
-  -- Given
   local frame = new_frame( {} )
 
-  -- When
   frame.toggle()
-
-  -- Then
   frame.should_be_visible()
 
-  -- When
   frame.toggle()
-
-  -- Then
   frame.should_be_hidden()
 end
 
--- The window opens out of raid so the rotation can be looked at; there's just nobody to list.
-function RoundRobinQueueFrameSpec:should_show_the_empty_notice_when_the_group_is_empty()
-  -- Given
+function RoundRobinQueueFrameSpec:should_show_the_empty_notice_when_nobody_is_queued()
   local frame = new_frame( {} )
 
-  -- When
   frame.show()
 
-  -- Then
-  frame.should_display( popup() )
+  frame.should_display( popup( "Gems" ) )
 end
 
-function RoundRobinQueueFrameSpec:should_list_everybody_served_this_cycle_as_received()
-  -- Given
-  local frame = new_frame( { "Psikutas", "Obszczymucha" }, { Psikutas = 2, Obszczymucha = 2 }, 2 )
+function RoundRobinQueueFrameSpec:should_count_the_queue_above_the_list()
+  local frame = new_frame( { "Ann", "Bob", "Cid" } )
 
-  -- When
   frame.show()
 
-  -- Then
-  frame.should_display( popup( {
-    line( "Obszczymucha", colors.grey( "Received" ) ),
-    line( "Psikutas", colors.grey( "Received" ) )
+  -- The count is the whole queue, not the part of it the viewport is showing.
+  frame.set_rows( 2 )
+  frame.round_robin.cycle( "Gems", 1 )
+
+  local content = frame.content()
+  eq( content[ 3 ], { type = "round_robin_count", count = "3", padding = 2 } )
+end
+
+function RoundRobinQueueFrameSpec:should_list_the_queue_in_order()
+  local frame = new_frame( { "Ann", "Bob", "Cid" } )
+
+  frame.show()
+
+  frame.should_display( popup( "Gems", {
+    line( "Ann", { first = true } ),
+    line( "Bob" ),
+    line( "Cid", { last = true } )
   } ) )
 end
 
--- Who is owed the most comes first, and only somebody more than one cycle behind is called out --
--- being one behind is just where you stand after somebody else was served.
-function RoundRobinQueueFrameSpec:should_order_by_who_is_owed_the_most_and_name_the_cycles_owed()
-  -- Given
-  local frame = new_frame(
-    { "Psikutas", "Obszczymucha", "Jogobobek" },
-    { Psikutas = 3, Obszczymucha = 2, Jogobobek = 1 }, 3 )
+-- The drop goes to the first player who can actually receive it, and greying is how the window
+-- says so: a greyed name at the front was passed over without losing its place, which is also
+-- the answer to "why did the second row get it".
+function RoundRobinQueueFrameSpec:should_grey_a_player_who_cannot_receive_right_now()
+  local frame = new_frame( { "Ann", "Bob", "Cid" }, { away = { "Ann" } } )
 
-  -- When
   frame.show()
 
-  -- Then
-  frame.should_display( popup( {
-    line( "Jogobobek", colors.hl( "Owed (2 cycles)" ) ),
-    line( "Obszczymucha", "Waiting" ),
-    line( "Psikutas", colors.grey( "Received" ) )
+  frame.should_display( popup( "Gems", {
+    line( "Ann", { away = true, first = true } ),
+    line( "Bob" ),
+    line( "Cid", { last = true } )
   } ) )
 end
 
--- Somebody the roster has but the pool doesn't hasn't been seeded yet, which is where a joiner
--- is: served for the current cycle, waiting for the next one.
-function RoundRobinQueueFrameSpec:should_show_a_player_missing_from_the_pool_as_received()
-  -- Given
-  local frame = new_frame( { "Jogobobek" }, {}, 4 )
+RoundRobinQueueFrameCategorySpec = {}
 
-  -- When
+function RoundRobinQueueFrameCategorySpec:should_start_on_the_first_category()
+  local frame = new_frame( { "Ann" } )
+
   frame.show()
 
-  -- Then
-  frame.should_display( popup( { line( "Jogobobek", colors.grey( "Received" ) ) } ) )
+  frame.should_display( popup( "Gems", { line( "Ann", { first = true, last = true } ) } ) )
 end
 
-function RoundRobinQueueFrameSpec:should_redraw_when_the_rotation_moves()
-  -- Given
-  local frame = new_frame( { "Psikutas" }, { Psikutas = 1 }, 2 )
-  frame.show()
-  frame.should_display( popup( { line( "Psikutas", "Waiting" ) } ) )
-
-  -- When -- anything that changes the rotation notifies the window
-  frame.db.pool.Psikutas = 2
-  frame.round_robin.on_group_changed()
-
-  -- Then
-  frame.should_display( popup( { line( "Psikutas", colors.grey( "Received" ) ) } ) )
-end
-
-function RoundRobinQueueFrameSpec:should_reset_the_rotation_from_the_reset_button()
-  -- Given
-  local frame = new_frame( { "Psikutas", "Obszczymucha" }, { Psikutas = 3, Obszczymucha = 1 }, 3 )
+function RoundRobinQueueFrameCategorySpec:should_switch_to_another_categorys_queue()
+  local frame = new_frame( { "Ann", "Bob" } )
   frame.show()
 
-  -- When
-  frame.click( "Reset" )
+  frame.select_category( "Marks" )
 
-  -- Then -- everybody present starts over at cycle 1
-  eq( frame.reset_count(), 1 )
-  eq( frame.round_robin.get_cycle(), 1 )
-  frame.should_display( popup( {
-    line( "Obszczymucha", colors.grey( "Received" ) ),
-    line( "Psikutas", colors.grey( "Received" ) )
+  frame.should_display( popup( "Marks", {
+    line( "Ann", { first = true } ),
+    line( "Bob", { last = true } )
   } ) )
 end
 
--- Somebody outside the instance or out of range is still in the rotation -- they just can't be
--- paid right now, and the column says so rather than dropping them off the list.
-function RoundRobinQueueFrameSpec:should_dim_a_player_who_is_in_the_group_but_not_a_candidate()
-  -- Given
-  local frame = new_frame(
-    { "Psikutas", "Obszczymucha" },
-    { Psikutas = 2, Obszczymucha = 2 }, 2,
-    { "Psikutas" } )
+-- Editing one queue must not touch another: that is what makes them independent.
+function RoundRobinQueueFrameCategorySpec:should_edit_only_the_category_on_screen()
+  local frame = new_frame( { "Ann", "Bob" } )
+  frame.show()
+  frame.select_category( "Marks" )
 
-  -- When
+  frame.click( "CycleUp" )
+
+  eq( frame.queue_names( "Marks" ), { "Bob", "Ann" } )
+  eq( frame.queue_names( "Gems" ), { "Ann", "Bob" } )
+end
+
+RoundRobinQueueFrameEditingSpec = {}
+
+function RoundRobinQueueFrameEditingSpec:should_move_a_player_up()
+  local frame = new_frame( { "Ann", "Bob", "Cid" } )
   frame.show()
 
-  -- Then
-  frame.should_display( popup( {
-    line( "Obszczymucha", colors.grey( "Received" ), colors.grey( "No" ) ),
-    line( "Psikutas", colors.grey( "Received" ) )
+  frame.click_row( 3, "up" )
+
+  eq( frame.queue_names(), { "Ann", "Cid", "Bob" } )
+  frame.should_display( popup( "Gems", {
+    line( "Ann", { first = true } ),
+    line( "Cid" ),
+    line( "Bob", { last = true } )
   } ) )
 end
 
-function RoundRobinQueueFrameSpec:should_close_from_the_close_button()
-  -- Given
-  local frame = new_frame( { "Psikutas" } )
+function RoundRobinQueueFrameEditingSpec:should_move_a_player_down()
+  local frame = new_frame( { "Ann", "Bob", "Cid" } )
+  frame.show()
+
+  frame.click_row( 1, "down" )
+
+  eq( frame.queue_names(), { "Bob", "Ann", "Cid" } )
+end
+
+function RoundRobinQueueFrameEditingSpec:should_remove_a_player()
+  local frame = new_frame( { "Ann", "Bob" } )
+  frame.show()
+
+  frame.click_row( 1, "remove" )
+
+  eq( frame.queue_names(), { "Bob" } )
+end
+
+-- Up moves the list up: the head goes to the back and everybody else climbs a place.
+function RoundRobinQueueFrameEditingSpec:should_cycle_the_whole_queue_up()
+  local frame = new_frame( { "Ann", "Bob", "Cid" } )
+  frame.show()
+
+  frame.click( "CycleUp" )
+
+  eq( frame.queue_names(), { "Bob", "Cid", "Ann" } )
+end
+
+function RoundRobinQueueFrameEditingSpec:should_cycle_the_whole_queue_down()
+  local frame = new_frame( { "Ann", "Bob", "Cid" } )
+  frame.show()
+
+  frame.click( "CycleDown" )
+
+  eq( frame.queue_names(), { "Cid", "Ann", "Bob" } )
+end
+
+function RoundRobinQueueFrameEditingSpec:should_open_the_add_popup_for_the_category_on_screen()
+  local frame = new_frame( { "Ann" } )
+  frame.show()
+  frame.select_category( "Hearts" )
+
+  frame.click( "Add" )
+
+  eq( frame.add_shown_for(), "Hearts" )
+end
+
+function RoundRobinQueueFrameEditingSpec:should_close_from_the_corner_x()
+  local frame = new_frame( { "Ann" } )
   frame.show()
   frame.should_be_visible()
 
-  -- When
-  frame.click( "Close" )
+  frame.click_close()
 
-  -- Then
   frame.should_be_hidden()
+end
+
+function RoundRobinQueueFrameEditingSpec:should_redraw_when_the_queue_moves()
+  local frame = new_frame( { "Ann", "Bob" } )
+  frame.show()
+
+  frame.round_robin.cycle( "Gems", 1 )
+
+  frame.should_display( popup( "Gems", {
+    line( "Bob", { first = true } ),
+    line( "Ann", { last = true } )
+  } ) )
 end
 
 os.exit( lu.LuaUnit.run() )

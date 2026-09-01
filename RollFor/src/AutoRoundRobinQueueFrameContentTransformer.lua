@@ -12,21 +12,31 @@ local function button_definition( label, width )
 end
 
 M.button_definitions = {
-  [ "Reset" ] = button_definition( "Reset", 70 ),
-  [ "Close" ] = button_definition( "Close", 70 )
+  [ "Add" ] = button_definition( "Add", 60 ),
+  [ "CycleUp" ] = button_definition( "Up", 60 ),
+  [ "CycleDown" ] = button_definition( "Down", 60 )
 }
 
 ---@alias RoundRobinQueueFrameButtonType
----| "Reset"
----| "Close"
+---| "Add"
+---| "CycleUp"
+---| "CycleDown"
 
 ---@class RoundRobinQueueFrameButtonWithCallback
 ---@field type RoundRobinQueueFrameButtonType
 ---@field callback fun()
 
 ---@class RoundRobinQueueFrameData
----@field rows AutoRoundRobinRow[]
+---@field category string -- the category whose queue is shown
+---@field categories string[] -- everything the dropdown offers
+---@field on_category_change fun( category: string )
+---@field rows RoundRobinQueueFrameRow[]
 ---@field buttons RoundRobinQueueFrameButtonWithCallback[]
+
+---@class RoundRobinQueueFrameRow : AutoRoundRobinRow
+---@field on_up fun()
+---@field on_down fun()
+---@field on_remove fun()
 
 ---@class RoundRobinQueueFrameContentTransformer
 ---@field transform fun( data: RoundRobinQueueFrameData ): table
@@ -49,74 +59,100 @@ end
 
 ---@param content table
 local function add_title( content )
-  table.insert( content, { type = "text", value = m.colors.blue( "Auto Round Robin Queue" ), padding = 6 } )
+  -- Tighter to the top of the window than the other list popups' titles, which sit at 6: this one
+  -- shares its line with the corner X, and a title hanging below the X reads as misaligned.
+  table.insert( content, { type = "text", value = m.colors.blue( "Auto Round Robin Queues" ), padding = 1 } )
 end
 
+-- Each category owns an independent queue, so the dropdown is not a filter over one list -- it
+-- picks which list you are looking at and editing.
+--
+-- No label: it sits directly under a title that already says these are the round robin queues,
+-- and a box reading "Gems" under it is not ambiguous enough to need "Queue" written beside it.
+-- Narrower than the default for the same reason -- the widest category name is short.
+local category_dropdown_width = 60
+
+-- Between rows, and above the first one. They add up to what the first row used to carry on its
+-- own (see add_rows).
+local row_gap = 2
+local count_gap = 2
+
 ---@param content table
-local function add_header( content )
+---@param data RoundRobinQueueFrameData
+local function add_category_picker( content, data )
+  local options = {}
+
+  for _, category in ipairs( data.categories or {} ) do
+    table.insert( options, { value = category, label = category } )
+  end
+
   table.insert( content, {
-    type = "round_robin_row",
-    header = true,
-    player = "Player",
-    status = "Status",
-    eligible = "Eligible",
-    padding = 0
+    type = "dropdown",
+    label = "",
+    width = category_dropdown_width,
+    value = data.category,
+    options = options,
+    on_change = data.on_category_change,
+    padding = 8
   } )
 end
 
--- Nobody in the group at all is the only way to get an empty list, and the window is openable out
--- of raid, so it says so rather than showing bare column titles over nothing.
+-- A queue nobody is in yet. Only reachable out of a group with nothing added by hand, since
+-- joining seeds every queue.
+-- How many are in the queue. Above the list rather than in the title because it is a fact about
+-- the list, and it changes as you edit it.
 ---@param content table
-local function add_empty_notice( content )
-  table.insert( content, { type = "text", value = "Nobody in the group yet.", padding = 10 } )
-end
-
--- What the player's place in the rotation is, phrased by how far behind the current cycle they
--- are. Exported uncolored because AutoRoundRobinSimulator prints the same standings to chat, and
--- two places describing the same number in two vocabularies is how "Waiting" and "Owed (1 cycle)"
--- end up meaning the same thing to nobody.
----@param behind number
----@return string
-function M.status( behind )
-  if behind == 0 then return "Received" end
-  if behind == 1 then return "Waiting" end
-
-  return string.format( "Owed (%d cycles)", behind )
-end
-
--- Someone served this cycle is done and sits back in grey; someone owed more than one cycle has
--- been missing for a while and is called out, because that's the row that explains why they keep
--- winning when they walk back in.
----@param row AutoRoundRobinRow
----@return string
-local function status_cell( row )
-  local text = M.status( row.behind )
-
-  if row.behind == 0 then return m.colors.grey( text ) end
-  if row.behind == 1 then return text end
-
-  return m.colors.hl( text )
-end
-
--- Being in the group and being able to receive are different things (see AutoRoundRobin): a
--- player outside the instance or out of range is still in the rotation, they just can't be paid
--- right now. Dimmed rather than red -- it's a fact about where they're standing, not a problem.
----@param row AutoRoundRobinRow
----@return string
-local function eligible_cell( row )
-  return row.eligible and "Yes" or m.colors.grey( "No" )
+---@param rows RoundRobinQueueFrameRow[]
+local function add_count( content, rows )
+  table.insert( content, {
+    type = "round_robin_count",
+    count = tostring( m.getn( rows ) ),
+    -- The widget itself is a sliver that draws its number in the line above (see
+    -- GuiElements.round_robin_count), so this padding is really the gap above the first row. It
+    -- lives here rather than on that row because this line is never scrolled away, and a gap that
+    -- belongs to a row disappears when that row does.
+    padding = count_gap
+  } )
 end
 
 ---@param content table
----@param rows AutoRoundRobinRow[]
+local function add_empty_notice( content )
+  table.insert( content, { type = "text", value = "Nobody in this queue yet.", padding = 10 } )
+end
+
+-- The one thing the order alone cannot say. A player who cannot receive right now is greyed
+-- rather than labelled -- it is a fact about where they are standing, not about their place in
+-- the queue, and it stops being true the moment they walk back in.
+--
+-- It also quietly answers "why did the second row get it": the drop goes to the first player who
+-- can actually receive, so a greyed name at the front was passed over without losing its place.
+---@param row RoundRobinQueueFrameRow
+---@return string
+local function player_cell( row )
+  if not row.eligible then return m.colors.grey( row.name ) end
+
+  return m.colorize_player_by_class( row.name, row.class )
+end
+
+-- Every row is padded the same. A wider gap on the first one would be a gap that exists only
+-- while that row is on screen: padding is decided by a row's place in the whole list, not in the
+-- viewport, so scrolling the first row away would take its extra space with it and the rest of
+-- the list would ride up. Whatever the top of the list wants is the count line's to give.
+---@param content table
+---@param rows RoundRobinQueueFrameRow[]
 local function add_rows( content, rows )
+  local count = m.getn( rows )
+
   for i, row in ipairs( rows ) do
     table.insert( content, {
       type = "round_robin_row",
-      player = m.colorize_player_by_class( row.player_name, row.class ),
-      status = status_cell( row ),
-      eligible = eligible_cell( row ),
-      padding = i == 1 and 4 or 2
+      player = player_cell( row ),
+      can_move_up = i > 1,
+      can_move_down = i < count,
+      on_up = row.on_up,
+      on_down = row.on_down,
+      on_remove = row.on_remove,
+      padding = row_gap
     } )
   end
 end
@@ -127,11 +163,12 @@ local function transform( data )
   local rows = data.rows or {}
 
   add_title( content )
+  add_category_picker( content, data )
 
   if m.getn( rows ) == 0 then
     add_empty_notice( content )
   else
-    add_header( content )
+    add_count( content, rows )
     add_rows( content, rows )
   end
 

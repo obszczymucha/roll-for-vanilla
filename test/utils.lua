@@ -361,6 +361,19 @@ function M.mock_api()
   M.zone_name()
   M.loot_threshold( 2 )
   M.mock_loot_frame()
+  M.mock_dropdown_api()
+end
+
+-- UIDropDownMenuTemplate's helpers, which live on the global namespace rather than on the frame.
+-- Enough of them for GuiElements.dropdown to build and drive one; the menu itself is Blizzard's
+-- and there is nothing of ours inside it to test.
+function M.mock_dropdown_api()
+  M.mock( "UIDropDownMenu_SetWidth", function() end )
+  M.mock( "UIDropDownMenu_Initialize", function( _, initialize ) if initialize then initialize() end end )
+  M.mock( "UIDropDownMenu_SetSelectedValue", function() end )
+  M.mock( "UIDropDownMenu_SetText", function() end )
+  M.mock( "UIDropDownMenu_CreateInfo", function() return {} end )
+  M.mock( "UIDropDownMenu_AddButton", function() end )
 end
 
 function M.modules()
@@ -1023,6 +1036,7 @@ function M.load_real_stuff( req )
   r( "src/AutoLootFrame" )
   r( "src/AutoRoundRobinFrame" )
   r( "src/AutoRoundRobinQueueFrameContentTransformer" )
+  r( "src/AutoRoundRobinAddPlayerFrame" )
   r( "src/AutoRoundRobinQueueFrame" )
   -- r( "Libs/LibDeflate/LibDeflate" )
   r( "src/Json" )

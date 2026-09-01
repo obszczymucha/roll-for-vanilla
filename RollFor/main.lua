@@ -173,11 +173,15 @@ local function confirm_lockout_reset( on_confirmed )
   } )
 end
 
--- Asks before throwing the rotation away, and only when there's something to lose -- an
--- untouched rotation is nothing, and being made to confirm losing nothing is friction for its
--- own sake. Same shape, and the same reason for living here, as confirm_lockout_reset above:
--- the queue window's Reset button and /rf autorobin reset are the same answer to the same
--- question, so neither of them gets to own it.
+-- Asks before throwing the queues away, and only when there's something to lose -- queues that
+-- are already just the group in roster order are what a reset would rebuild, and being made to
+-- confirm losing nothing is friction for its own sake. Same shape, and the same reason for living
+-- here, as confirm_lockout_reset above: the Queues window's Reset button and /rf autorobin reset
+-- are the same answer to the same question, so neither of them gets to own it.
+--
+-- Reset is deliberately all-or-nothing rather than per-category. The queues are edited apart but
+-- built together, and "put it back the way it started" means all of them; a Reset that emptied
+-- only the category you happened to be looking at is the one nobody means to click.
 local function confirm_round_robin_reset()
   if M.auto_round_robin.is_pristine() then
     M.auto_round_robin.reset()
@@ -185,9 +189,9 @@ local function confirm_round_robin_reset()
   end
 
   M.confirmation_dialog.show( {
-    title = "Reset the round robin rotation?",
-    lines = { "This will forget who has already received an item." },
-    question = "Everybody starts over from cycle 1. Continue?",
+    title = "Reset the round robin queues?",
+    lines = { "This will throw away every queue's order and anyone added by hand." },
+    question = "All of them go back to your current group. Continue?",
     on_yes = M.auto_round_robin.reset
   } )
 end
@@ -564,10 +568,14 @@ local function create_components()
   ---@type RoundRobinQueueFrameContentTransformer
   local autorobin_queue_frame_content_transformer = m.AutoRoundRobinQueueFrameContentTransformer.new()
 
+  ---@type AutoRoundRobinAddPlayerFrame
+  M.autorobin_add_player_frame = m.AutoRoundRobinAddPlayerFrame.new( popup_builder(),
+    M.auto_round_robin, M.group_roster, function() end )
+
   ---@type AutoRoundRobinQueueFrame
   M.autorobin_queue_frame = m.AutoRoundRobinQueueFrame.new( popup_builder(),
-    autorobin_queue_frame_content_transformer, M.auto_round_robin, confirm_round_robin_reset,
-    db( "autorobin_queue_frame" ) )
+    autorobin_queue_frame_content_transformer, M.auto_round_robin, M.autorobin_add_player_frame,
+    M.config, db( "autorobin_queue_frame" ) )
 
   ---@type AutoRoundRobinFrame
   M.autorobin_frame = m.AutoRoundRobinFrame.new( popup_builder(), autoloot_frame_content_transformer,

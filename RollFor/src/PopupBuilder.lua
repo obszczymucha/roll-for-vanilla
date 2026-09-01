@@ -10,7 +10,10 @@ local getn = m.getn
 ---@class Popup : Frame
 ---@field resize fun( self: Popup, lines: table )
 ---@field scroll_width number? -- see resize: the widest this popup has been for the current list
----@field scroll_width_total number?
+---@field scroll_height number? -- and the tallest, for the same reason
+---@field scroll_size_total number? -- the list length both of those were measured against
+---@field scroll_size_max_lines number? -- and the window height they were measured against
+---@field close_button Frame? -- the corner X, when the window asked for one (see ListPopup)
 
 ---@class PopupBuilder
 ---@field name fun( self: PopupBuilder, name: string ): PopupBuilder
@@ -125,18 +128,34 @@ local function new( frame_builder, bottom_margin, bottom_button_margin, side_mar
     end
 
     -- With a scroll viewport (FrameBuilder's `scrollable`) only the lines inside the window
-    -- exist, so the widest row -- and with it the popup -- would change every time the wheel
-    -- moves. Width is held at the widest it has been for the current list instead, and recomputed
-    -- only when the list changes length, which is what expanding or collapsing something does.
+    -- exist, so the popup's own size would change every time the wheel moves. Both dimensions are
+    -- held at the largest they have been for the current list instead, and recomputed only when
+    -- the list changes length, which is what expanding or collapsing something does.
+    --
+    -- Width moves because the widest row is not the same row at every offset. Height moves for a
+    -- subtler reason: a row's padding is decided by its position in the whole list, not in the
+    -- window -- transformers give the first row a wider gap to set it off from what is above it --
+    -- so scrolling that row out of view takes its extra padding with it and the popup shrinks by
+    -- the difference.
+    -- Held against both numbers that decide how many rows get rendered -- the length of the list
+    -- and the height of the window -- because either one changing is a real change of size and
+    -- must not be held back. Keyed on the list alone, shrinking the window would leave the popup
+    -- stuck at the height of the taller one it used to be.
     local scroll = popup.get_scroll and popup.get_scroll()
 
     if scroll and scroll.total > 0 then
-      if popup.scroll_width_total == scroll.total and popup.scroll_width and popup.scroll_width > max_width then
-        max_width = popup.scroll_width
+      local same_list = popup.scroll_size_total == scroll.total
+      local same_window = popup.scroll_size_max_lines == scroll.max_lines
+
+      if same_list and same_window then
+        if popup.scroll_width and popup.scroll_width > max_width then max_width = popup.scroll_width end
+        if popup.scroll_height and popup.scroll_height > height then height = popup.scroll_height end
       end
 
-      popup.scroll_width_total = scroll.total
+      popup.scroll_size_total = scroll.total
+      popup.scroll_size_max_lines = scroll.max_lines
       popup.scroll_width = max_width
+      popup.scroll_height = height
     end
 
     popup:SetWidth( max_width + m_side_margin )

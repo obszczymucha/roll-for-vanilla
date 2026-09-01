@@ -37,12 +37,16 @@ end
 ---@field should_be_visible fun()
 ---@field should_be_hidden fun()
 ---@field click fun( button_type: RoundRobinQueueFrameButtonType )
+---@field select_category fun( category: string )
+---@field click_row fun( position: number, action: "up"|"down"|"remove" )
+---@field click_close fun()
 
 ---@param popup_builder PopupBuilder
 ---@param round_robin AutoRoundRobin
----@param on_reset fun()
+---@param add_player_frame AutoRoundRobinAddPlayerFrame
+---@param config Config
 ---@param db table
-function M.new( popup_builder, round_robin, on_reset, db )
+function M.new( popup_builder, round_robin, add_player_frame, config, db )
   local transformed_content
   local model ---@type RoundRobinQueueFrameData?
 
@@ -57,7 +61,8 @@ function M.new( popup_builder, round_robin, on_reset, db )
     end
   }
 
-  local frame = AutoRoundRobinQueueFrame.new( popup_builder, spying_transformer, round_robin, on_reset, db )
+  local frame = AutoRoundRobinQueueFrame.new( popup_builder, spying_transformer, round_robin,
+    add_player_frame, config, db )
 
   frame.content = function() return transformed_content and cleanse( transformed_content ) or {} end
 
@@ -73,6 +78,32 @@ function M.new( popup_builder, round_robin, on_reset, db )
     for _, button in ipairs( model.buttons ) do
       if button.type == button_type then button.callback() end
     end
+  end
+
+  -- The dropdown and the row buttons are the two things this window does that a button list
+  -- can't express, so the mock reaches them the way a click would: through the model the
+  -- transformer was handed, not through the widget.
+  frame.select_category = function( category )
+    if not model then return end
+    model.on_category_change( category )
+  end
+
+  frame.click_row = function( position, action )
+    if not model then return end
+
+    local row = model.rows[ position ]
+    if not row then error( string.format( "There is no row %s to click.", position ), 2 ) end
+
+    row[ "on_" .. action ]()
+  end
+
+  -- The corner X is not a line, so unlike every other control here it is reached through the
+  -- popup rather than through the model the transformer was handed.
+  frame.click_close = function()
+    local popup = frame.get_frame()
+    if not popup or not popup.close_button then error( "There is no close button.", 2 ) end
+
+    popup.close_button.OnClickCallback()
   end
 
   local function should_be_visible( level )

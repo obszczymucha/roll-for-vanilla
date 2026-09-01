@@ -9,17 +9,16 @@ local mock_loot_facade, mock_chat, i, p = builder.mock_loot_facade, builder.mock
 local r, c = u.raid_message, u.console_message
 local alid = RollFor.AwardedLoot.awarded_loot_item_data
 
--- The award pass end to end: a loot window opens, the round-robin selection runs against the
--- master loot candidates for the slot, and the winner is paid, announced and recorded. The
--- selection algorithm itself is covered on its own in AutoRoundRobin_test.
+-- The award pass end to end: a loot window opens, the item's category names a queue, the first
+-- player in that queue who can receive gets it and goes to the back. The queue operations
+-- themselves are covered on their own in AutoRoundRobin_test.
 --
--- The builder pins the draw to the first of the tied candidates (sorted by name), so every
--- expected winner below is nameable rather than a coin flip.
+-- The roster is sorted by class then name (see GroupRoster), so a queue seeded from
+-- Obszczymucha (Druid) and Psikutas (Warrior) starts in that order.
 
----@param rf table
 ---@param loot_facade table
 ---@param ... table -- the items in the window
-local function loot( rf, loot_facade, ... )
+local function loot( loot_facade, ... )
   u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
   u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha" } )
   local master_loot = u.mock_async_master_loot( loot_facade )
@@ -29,119 +28,136 @@ local function loot( rf, loot_facade, ... )
 end
 
 ---@param rf table
----@param player_name string
-local function served_cycle( rf, player_name )
-  return rf.autorobin_db.pool[ player_name ]
+---@param category string?
+---@return string[]
+local function queue( rf, category )
+  local result = {}
+
+  for _, player in ipairs( rf.auto_round_robin.get_queue( category or "Gems" ) ) do
+    table.insert( result, player.name )
+  end
+
+  return result
+end
+
+---@param config table?
+local function raid( config )
+  return new_roll_for()
+      :raid_roster( p( "Psikutas" ), p( "Obszczymucha" ) )
+      :config( config or { auto_round_robin = true } )
 end
 
 AutoRoundRobinSpec = {}
 
-function AutoRoundRobinSpec:should_award_announce_and_record_an_enabled_item()
+function AutoRoundRobinSpec:should_award_announce_and_record_the_head_of_the_queue()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
   local gem = i( "Crimson Spinel", 32227 )
 
-  local rf = new_roll_for()
-      :loot_facade( loot_facade )
-      :raid_roster( p( "Psikutas" ), p( "Obszczymucha" ) )
-      :chat( chat )
-      :config( { auto_round_robin = true } )
-      :build()
-
+  local rf = raid():loot_facade( loot_facade ):chat( chat ):build()
   rf.round_robin_list.enable( gem )
+  rf.auto_round_robin.on_group_changed()
+
+  eq( queue( rf ), { "Obszczymucha", "Psikutas" } )
 
   -- When
-  loot( rf, loot_facade, gem )
+  loot( loot_facade, gem )
 
   -- Then
   chat.assert(
     r( "Princess Kenny dropped 1 item:", "1. [Crimson Spinel]" ),
-    r( "Obszczymucha receives [Crimson Spinel] (round robin)." ),
+    r( "Obszczymucha receives [Crimson Spinel] (Gems round robin)." ),
     c( "RollFor: Obszczymucha received [Crimson Spinel]." )
   )
 
   eq( rf.awarded_loot.has_item_been_awarded( "Obszczymucha", alid( 32227 ) ), true )
+  eq( queue( rf ), { "Psikutas", "Obszczymucha" } )
   rf.rolling_popup.should_be_hidden()
 end
 
--- The very first award finds everybody already seeded at cycle 1, so it turns the cycle over
--- before serving anyone -- exactly the worked example in the spec.
-function AutoRoundRobinSpec:should_turn_the_cycle_over_and_record_the_winner_under_the_new_one()
+-- The queue is seeded on the first loot window even if no roster update has landed yet, so the
+-- feature works the moment it is switched on.
+function AutoRoundRobinSpec:should_seed_the_queue_from_the_roster_without_a_roster_update()
   -- Given
   local loot_facade = mock_loot_facade()
   local gem = i( "Crimson Spinel", 32227 )
 
-  local rf = new_roll_for()
-      :loot_facade( loot_facade )
-      :raid_roster( p( "Psikutas" ), p( "Obszczymucha" ) )
-      :config( { auto_round_robin = true } )
-      :build()
-
+  local rf = raid():loot_facade( loot_facade ):build()
   rf.round_robin_list.enable( gem )
   rf.auto_round_robin.on_group_changed()
 
-  -- When
-  loot( rf, loot_facade, gem )
-
   -- Then
-  eq( rf.auto_round_robin.get_cycle(), 2 )
-  eq( served_cycle( rf, "Obszczymucha" ), 2 )
-  eq( served_cycle( rf, "Psikutas" ), 1 )
+  eq( queue( rf ), { "Obszczymucha", "Psikutas" } )
 end
 
 -- Two copies of one gem in one window are two awards to two different players, which only works
 -- because the pass iterates by slot rather than by item id.
-function AutoRoundRobinSpec:should_award_two_copies_of_the_same_item_to_two_different_players()
+function AutoRoundRobinSpec:should_award_two_copies_to_the_first_two_in_the_queue()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
   local gem = i( "Crimson Spinel", 32227 )
 
-  local rf = new_roll_for()
-      :loot_facade( loot_facade )
-      :raid_roster( p( "Psikutas" ), p( "Obszczymucha" ) )
-      :chat( chat )
-      :config( { auto_round_robin = true } )
-      :build()
-
+  local rf = raid():loot_facade( loot_facade ):chat( chat ):build()
   rf.round_robin_list.enable( gem )
+  rf.auto_round_robin.on_group_changed()
 
   -- When
-  loot( rf, loot_facade, gem, gem )
+  loot( loot_facade, gem, gem )
 
   -- Then
   chat.assert(
     r( "Princess Kenny dropped 2 items:", "1. 2x[Crimson Spinel]" ),
-    r( "Obszczymucha receives [Crimson Spinel] (round robin)." ),
-    -- AwardedLoot's own confirmation that the award went into the loot history, which is the
-    -- second half of "recorded like every other master-loot award".
+    r( "Obszczymucha receives [Crimson Spinel] (Gems round robin)." ),
     c( "RollFor: Obszczymucha received [Crimson Spinel]." ),
-    r( "Psikutas receives [Crimson Spinel] (round robin)." ),
+    r( "Psikutas receives [Crimson Spinel] (Gems round robin)." ),
     c( "RollFor: Psikutas received [Crimson Spinel]." )
   )
 
-  eq( served_cycle( rf, "Obszczymucha" ), 2 )
-  eq( served_cycle( rf, "Psikutas" ), 2 )
+  eq( queue( rf ), { "Obszczymucha", "Psikutas" } )
 end
 
--- Conflicts resolve in auto-loot's favour, and the rotation must not move for an item it never
+-- Each category owns an independent queue: taking a gem does not move you down the Marks queue.
+function AutoRoundRobinSpec:should_keep_each_categorys_queue_independent()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local gem = i( "Crimson Spinel", 32227 )
+  local mark = i( "Mark of the Illidari", 32897 )
+
+  local rf = raid():loot_facade( loot_facade ):chat( chat ):build()
+  rf.round_robin_list.enable( gem, "Gems" )
+  rf.round_robin_list.enable( mark, "Marks" )
+  rf.auto_round_robin.on_group_changed()
+
+  -- When
+  loot( loot_facade, gem )
+
+  -- Then -- the Gems queue moved and the Marks queue did not
+  eq( queue( rf, "Gems" ), { "Psikutas", "Obszczymucha" } )
+  eq( queue( rf, "Marks" ), { "Obszczymucha", "Psikutas" } )
+
+  -- When
+  loot( loot_facade, mark )
+
+  -- Then -- so the Marks drop goes to the head of its own queue, not to whoever is next for gems
+  eq( queue( rf, "Marks" ), { "Psikutas", "Obszczymucha" } )
+end
+
+-- Conflicts resolve in auto-loot's favour, and the queue must not move for an item it never
 -- handed out.
-function AutoRoundRobinSpec:should_leave_an_item_auto_loot_claims_alone_and_not_move_the_cycle()
+function AutoRoundRobinSpec:should_leave_an_item_auto_loot_claims_alone_and_not_move_the_queue()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
   local gem = i( "Crimson Spinel", 32227 )
 
-  local rf = new_roll_for()
-      :loot_facade( loot_facade )
-      :raid_roster( p( "Psikutas" ), p( "Obszczymucha" ) )
-      :chat( chat )
-      :config( { auto_loot = true, auto_round_robin = true, auto_loot_messages = true } )
-      :build()
+  local rf = raid( { auto_loot = true, auto_round_robin = true, auto_loot_messages = true } )
+      :loot_facade( loot_facade ):chat( chat ):build()
 
   rf.auto_loot_list.enable( gem )
   rf.round_robin_list.enable( gem )
+  rf.auto_round_robin.on_group_changed()
 
   -- When
-  loot( rf, loot_facade, gem )
+  loot( loot_facade, gem )
 
   -- Then
   chat.assert(
@@ -149,8 +165,7 @@ function AutoRoundRobinSpec:should_leave_an_item_auto_loot_claims_alone_and_not_
     c( "RollFor: Auto-looting [Crimson Spinel]." )
   )
 
-  eq( rf.auto_round_robin.get_cycle(), 1 )
-  eq( rf.awarded_loot.has_item_been_awarded( "Obszczymucha", alid( 32227 ) ), false )
+  eq( queue( rf ), { "Obszczymucha", "Psikutas" } )
 end
 
 function AutoRoundRobinSpec:should_award_nothing_when_the_feature_is_off()
@@ -158,23 +173,16 @@ function AutoRoundRobinSpec:should_award_nothing_when_the_feature_is_off()
   local loot_facade, chat = mock_loot_facade(), mock_chat()
   local gem = i( "Crimson Spinel", 32227 )
 
-  local rf = new_roll_for()
-      :loot_facade( loot_facade )
-      :raid_roster( p( "Psikutas" ), p( "Obszczymucha" ) )
-      :chat( chat )
-      :config( { auto_round_robin = false } )
-      :build()
-
+  local rf = raid( { auto_round_robin = false } ):loot_facade( loot_facade ):chat( chat ):build()
   rf.round_robin_list.enable( gem )
+  rf.auto_round_robin.on_group_changed()
 
   -- When
-  loot( rf, loot_facade, gem )
+  loot( loot_facade, gem )
 
   -- Then
   chat.assert( r( "Princess Kenny dropped 1 item:", "1. [Crimson Spinel]" ) )
-
-  eq( rf.auto_round_robin.get_cycle(), 1 )
-  eq( rf.autorobin_db.pool, {} )
+  eq( queue( rf ), { "Obszczymucha", "Psikutas" } )
 end
 
 function AutoRoundRobinSpec:should_award_nothing_that_is_not_on_the_list()
@@ -183,97 +191,121 @@ function AutoRoundRobinSpec:should_award_nothing_that_is_not_on_the_list()
   local gem = i( "Crimson Spinel", 32227 )
   local other = i( "Hearthstone", 6948 )
 
-  local rf = new_roll_for()
-      :loot_facade( loot_facade )
-      :raid_roster( p( "Psikutas" ), p( "Obszczymucha" ) )
-      :chat( chat )
-      :config( { auto_round_robin = true } )
-      :build()
-
+  local rf = raid():loot_facade( loot_facade ):chat( chat ):build()
   rf.round_robin_list.enable( gem )
+  rf.auto_round_robin.on_group_changed()
 
   -- When
-  loot( rf, loot_facade, other )
+  loot( loot_facade, other )
 
   -- Then
   chat.assert( r( "Princess Kenny dropped 1 item:", "1. [Hearthstone]" ) )
-
-  eq( rf.auto_round_robin.get_cycle(), 1 )
+  eq( queue( rf ), { "Obszczymucha", "Psikutas" } )
 end
 
 -- Below the master loot threshold an item isn't master-lootable at all, so GiveMasterLoot would
--- quietly do nothing and the rotation would move for an award that never happened.
+-- quietly do nothing and the queue would move for an award that never happened. This is not
+-- hypothetical for the shipping catalogue: Mark of the Illidari is Uncommon.
 function AutoRoundRobinSpec:should_skip_items_below_the_master_loot_threshold()
   -- Given
-  local loot_facade, chat = mock_loot_facade(), mock_chat()
-  local trinket = builder.qi( "Cheap Trinket", 32227, 1 )
+  local loot_facade = mock_loot_facade()
+  local mark = builder.qi( "Mark of the Illidari", 32897, 2 )
 
-  local rf = new_roll_for()
-      :loot_facade( loot_facade )
-      :raid_roster( p( "Psikutas" ), p( "Obszczymucha" ) )
-      :chat( chat )
-      :config( { auto_round_robin = true } )
-      :loot_threshold( 3 )
-      :build()
-
-  rf.round_robin_list.enable( trinket )
+  local rf = raid():loot_facade( loot_facade ):loot_threshold( 3 ):build()
+  rf.round_robin_list.enable( mark )
+  rf.auto_round_robin.on_group_changed()
 
   -- When
-  loot( rf, loot_facade, trinket )
+  loot( loot_facade, mark )
 
   -- Then
-  eq( rf.auto_round_robin.get_cycle(), 1 )
-  eq( rf.autorobin_db.pool, {} )
+  eq( queue( rf ), { "Obszczymucha", "Psikutas" } )
 end
 
-AutoRoundRobinQueueSpec = {}
+AutoRoundRobinEditingSpec = {}
 
-function AutoRoundRobinQueueSpec:should_list_who_is_owed_first()
+function AutoRoundRobinEditingSpec:should_add_a_player_who_is_not_in_the_group()
   -- Given
-  local loot_facade = mock_loot_facade()
-  local gem = i( "Crimson Spinel", 32227 )
-
-  local rf = new_roll_for()
-      :loot_facade( loot_facade )
-      :raid_roster( p( "Psikutas" ), p( "Obszczymucha" ) )
-      :config( { auto_round_robin = true } )
-      :build()
-
-  rf.round_robin_list.enable( gem )
-  loot( rf, loot_facade, gem )
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
 
   -- When
-  local rows = rf.auto_round_robin.get_rows()
+  local added = rf.auto_round_robin.add_player( "Gems", "Ohhaimark", "Warrior" )
 
-  -- Then -- Psikutas is a cycle behind, so he sorts first and is still waiting
-  eq( rows[ 1 ].player_name, "Psikutas" )
-  eq( rows[ 1 ].behind, 1 )
-  eq( rows[ 2 ].player_name, "Obszczymucha" )
-  eq( rows[ 2 ].behind, 0 )
+  -- Then
+  eq( added, true )
+  eq( queue( rf ), { "Obszczymucha", "Psikutas", "Ohhaimark" } )
 end
 
-function AutoRoundRobinQueueSpec:should_empty_the_pool_and_return_to_cycle_one_on_reset()
+function AutoRoundRobinEditingSpec:should_refuse_a_duplicate()
   -- Given
-  local loot_facade = mock_loot_facade()
-  local gem = i( "Crimson Spinel", 32227 )
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
 
-  local rf = new_roll_for()
-      :loot_facade( loot_facade )
-      :raid_roster( p( "Psikutas" ), p( "Obszczymucha" ) )
-      :config( { auto_round_robin = true } )
-      :build()
+  -- When
+  local added, why = rf.auto_round_robin.add_player( "Gems", "psikutas" )
 
-  rf.round_robin_list.enable( gem )
-  loot( rf, loot_facade, gem )
+  -- Then
+  eq( added, false )
+  lu.assertStrContains( why, "already in the Gems queue" )
+  eq( queue( rf ), { "Obszczymucha", "Psikutas" } )
+end
+
+function AutoRoundRobinEditingSpec:should_refuse_a_blank_name()
+  local rf = raid():build()
+
+  eq( rf.auto_round_robin.add_player( "Gems", "   " ), false )
+end
+
+function AutoRoundRobinEditingSpec:should_remove_a_player()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+
+  -- When
+  rf.auto_round_robin.remove_player( "Gems", 1 )
+
+  -- Then
+  eq( queue( rf ), { "Psikutas" } )
+end
+
+-- Somebody taken out on purpose comes straight back on the next roster update, because sync only
+-- knows who is in the group and not why they left the queue. Removing is for people who are not
+-- in your group; the x button on somebody standing next to you is temporary by nature.
+function AutoRoundRobinEditingSpec:should_re_add_a_removed_group_member_on_the_next_roster_update()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+  rf.auto_round_robin.remove_player( "Gems", 1 )
+
+  -- When
+  rf.auto_round_robin.on_group_changed()
+
+  -- Then -- at the back, which is where anybody the queue has not seen before goes
+  eq( queue( rf ), { "Psikutas", "Obszczymucha" } )
+end
+
+function AutoRoundRobinEditingSpec:should_reset_every_queue_back_to_the_group()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+  rf.auto_round_robin.add_player( "Gems", "Ohhaimark" )
+  rf.auto_round_robin.cycle( "Gems", 1 )
+  rf.auto_round_robin.add_player( "Marks", "Ohhaimark" )
+
   eq( rf.auto_round_robin.is_pristine(), false )
 
   -- When
   rf.auto_round_robin.reset()
 
-  -- Then -- everybody present is back in at cycle 1, which is where a fresh rotation starts
-  eq( rf.auto_round_robin.get_cycle(), 1 )
-  eq( rf.autorobin_db.pool, { Psikutas = 1, Obszczymucha = 1 } )
+  -- Then
+  eq( queue( rf, "Gems" ), { "Obszczymucha", "Psikutas" } )
+  eq( queue( rf, "Marks" ), { "Obszczymucha", "Psikutas" } )
   eq( rf.auto_round_robin.is_pristine(), true )
+end
+
+function AutoRoundRobinEditingSpec:should_offer_the_catalogues_categories_in_order()
+  eq( raid():build().auto_round_robin.get_categories(), { "Gems", "Marks", "Hearts" } )
 end
 
 os.exit( lu.LuaUnit.run() )

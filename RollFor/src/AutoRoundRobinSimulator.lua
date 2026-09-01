@@ -10,31 +10,35 @@ local hl = m.colors.hl
 local grey = m.colors.grey
 local blue = m.colors.blue
 
--- Dev harness for the round-robin rotation. It runs the shipped selection algorithm
--- (AutoRoundRobin.seed / select / commit -- the same three functions the award pass calls) over
--- a scratch roster, so who wins, when the cycle turns over and what an absence costs can all be
--- watched solo, without a raid, a loot window or master loot.
+-- Dev harness for the round-robin queues. It runs the shipped queue operations
+-- (AutoRoundRobin.sync / next_position / serve / move / cycle -- the same functions the award
+-- pass and the Queues window call) over a scratch roster, so a rotation can be watched solo,
+-- without a raid, a loot window or master loot.
 --
 --   /rfrotate raid Ann,Bob,Cid  start a simulation with these players
 --   /rfrotate raid 5            ...or five generated ones
---   /rfrotate raid              ...or the live rotation and your current group, copied
---   /rfrotate drop [n]          run n drops (default 1) and trace each one
---   /rfrotate out <name>        in the group, but not a master loot candidate right now
---   /rfrotate in <name>         can receive again
---   /rfrotate join <name>       joins mid-cycle
---   /rfrotate leave <name>      leaves the group (stays in the pool, as the real one does)
---   /rfrotate queue             the standings, in the queue window's own words
---   /rfrotate example           replay the worked example from specs/AUTO-RAID-ROLL.md
+--   /rfrotate raid              ...or your live Gems queue and current group, copied
+--   /rfrotate drop [n]          hand out n items and trace each one
+--   /rfrotate away <name>       in the queue, but not a master loot candidate right now
+--   /rfrotate back <name>       can receive again
+--   /rfrotate add <name>        append to the queue
+--   /rfrotate remove <name>     take them out
+--   /rfrotate up|down <name>    move that one player a place
+--   /rfrotate cycle up|down     rotate the whole queue by one
+--   /rfrotate queue             the queue as it stands
+--   /rfrotate example           replay the away-player case, which is the subtle one
 --   /rfrotate reset             start over
 --
--- This is the /rfdrop end of the scale, not the /rfsetup end: it never touches the live
--- rotation, the real roster or the loot pipeline. `raid` with no arguments copies the live
--- cycle and pool in, which is the one place the two meet, and even that is a copy -- nothing
--- the simulator does is ever written back.
+-- One queue, not one per category: the categories are independent copies of the same mechanism,
+-- so simulating three of them would only ever show you the same thing three times.
 --
--- What it therefore does not exercise: GiveMasterLoot, the announcement, the loot-history
--- record and the auto-loot precedence check. None of those can run solo anyway -- you cannot
--- master loot to yourself alone -- and all of them are covered in AutoRoundRobinSpec_test.
+-- This is the /rfdrop end of the scale, not the /rfsetup end: it never touches the live queues,
+-- the real roster or the loot pipeline. `raid` with no arguments copies the live Gems queue in,
+-- which is the one place the two meet, and even that is a copy.
+--
+-- What it therefore does not exercise: GiveMasterLoot, the announcement, the loot-history record
+-- and the auto-loot precedence check. None of those can run solo anyway -- you cannot master loot
+-- to yourself alone -- and all of them are covered in AutoRoundRobinSpec_test.
 
 ---@class AutoRoundRobinSimulator
 ---@field run fun( args: string? )
@@ -69,21 +73,17 @@ end
 
 ---@param round_robin_db table the live autorobin_db -- read for `raid` with no arguments, never written
 ---@param group_roster GroupRoster
----@param random_fn fun( n: number ): number? -- injectable so the trace is reproducible in tests
 ---@return AutoRoundRobinSimulator
-function M.new( round_robin_db, group_roster, random_fn )
-  local random = random_fn or function( n ) return m.lua.math.random( 1, n ) end
-
-  -- The whole simulation. `state` is a real RoundRobinState and is the only thing the shipped
-  -- algorithm ever sees; the rest is what the game would otherwise be telling it.
+function M.new( round_robin_db, group_roster )
+  -- The whole simulation. `queue` is a real RoundRobinQueue and is the only thing the shipped
+  -- operations ever see; `away` is what the game would otherwise be telling us.
   local sim
 
   local function clear()
     sim = {
-      ---@type RoundRobinState
-      state = { cycle = 1, pool = {} },
-      roster = {}, -- who is in the group
-      absent = {}, -- of those, who is not a master loot candidate right now
+      ---@type RoundRobinQueue
+      queue = {},
+      away = {}, -- who is in the queue but not a master loot candidate right now
       drops = 0
     }
   end
@@ -92,7 +92,7 @@ function M.new( round_robin_db, group_roster, random_fn )
 
   ---@return boolean
   local function started()
-    return getn( sim.roster ) > 0
+    return getn( sim.queue ) > 0
   end
 
   local function require_started()
@@ -102,185 +102,139 @@ function M.new( round_robin_db, group_roster, random_fn )
     return false
   end
 
-  -- Case-insensitively, so a name typed in a hurry still finds its player.
-  ---@param name string
-  ---@return string? -- the roster's own spelling of it
-  local function find( name )
-    local needle = string.lower( name )
+  -- Who could actually receive right now. Nobody away means nobody has anything to say about it,
+  -- which is the same nil the real thing passes when no loot window is open.
+  ---@return table<string, boolean>?
+  local function eligible()
+    local result = {}
+    local any_away = false
 
-    for _, player in ipairs( sim.roster ) do
-      if string.lower( player ) == needle then return player end
+    for _, player in ipairs( sim.queue ) do
+      result[ player.name ] = not sim.away[ player.name ]
+      if sim.away[ player.name ] then any_away = true end
     end
+
+    return any_away and result or nil
   end
 
   ---@param name string
-  local function add( name )
-    if find( name ) then return end
-
-    table.insert( sim.roster, name )
-    table.sort( sim.roster )
+  ---@return number?
+  local function find( name )
+    return m.AutoRoundRobin.position_of( sim.queue, name )
   end
 
-  -- Who could actually receive right now: in the group, and a master loot candidate. This is the
-  -- distinction the whole design turns on, so it's the one thing the simulator has to model.
+  ---@param name string
+  ---@return string?
+  local function spelling( name )
+    local position = find( name )
+
+    return position and sim.queue[ position ].name
+  end
+
   ---@return string[]
-  local function candidates()
+  local function names()
     local result = {}
 
-    for _, player in ipairs( sim.roster ) do
-      if not sim.absent[ player ] then table.insert( result, player ) end
-    end
+    for _, player in ipairs( sim.queue ) do table.insert( result, player.name ) end
 
     return result
   end
 
-  -- Where a player stands, in the queue window's own words. The cycle is a parameter because the
-  -- trace reads a winner against the cycle they are being paid for, which on a turnover is not
-  -- the one that was current when they were picked -- against that one they'd read "Received",
-  -- which is the opposite of why they just won.
   ---@param name string
-  ---@param cycle number?
-  ---@return string
-  local function describe_place( name, cycle )
-    local served = sim.state.pool[ name ]
-    if not served then return grey( "not in the pool" ) end
+  ---@return boolean
+  local function require_player( name )
+    if find( name ) then return true end
 
-    return m.AutoRoundRobinQueueFrameContentTransformer.status( (cycle or sim.state.cycle) - served )
+    m.info( string.format( "%s is not in the simulated queue.", hl( name ) ) )
+    return false
   end
 
-  -- One drop, traced. The three calls below are the shipped algorithm verbatim -- the simulator
+  -- One drop, traced. The two calls below are the shipped algorithm verbatim -- the simulator
   -- decides who is standing where and nothing else.
-  ---@return boolean -- whether the drop went anywhere
   local function drop_once()
-    local eligible = candidates()
+    local position = m.AutoRoundRobin.next_position( sim.queue, eligible() )
 
-    if getn( eligible ) == 0 then
-      m.info( string.format( "  %s. %s", sim.drops + 1, grey( "Nobody eligible -- the drop is skipped and the rotation stays put." ) ) )
-      return false
+    if not position then
+      m.info( string.format( "  %s. %s", sim.drops + 1,
+        grey( "Nobody in the queue can receive -- the drop is skipped and the queue stays put." ) ) )
+      return
     end
 
-    local before = sim.state.cycle
-    local winner, cycle = m.AutoRoundRobin.select( sim.state, eligible, random )
-    if not winner then return false end
+    -- Who the drop had to walk past, which is the whole reason the head is not always the answer.
+    local passed = {}
+    for i = 1, position - 1 do table.insert( passed, sim.queue[ i ].name ) end
 
-    -- How many were tied at the front, recomputed for the trace only -- select() doesn't report
-    -- it, and a one-line "why" is most of what makes a trace worth reading.
-    local min_served
-    for _, name in ipairs( eligible ) do
-      local served = sim.state.pool[ name ]
-      if not min_served or served < min_served then min_served = served end
-    end
-
-    local tied = 0
-    for _, name in ipairs( eligible ) do
-      if sim.state.pool[ name ] == min_served then tied = tied + 1 end
-    end
-
-    local owed = describe_place( winner, cycle )
-    m.AutoRoundRobin.commit( sim.state, winner, cycle )
+    local winner = m.AutoRoundRobin.serve( sim.queue, position )
     sim.drops = sim.drops + 1
 
-    local why = tied == 1 and "only one owed" or string.format( "drawn from %s tied", tied )
-    local turnover = cycle ~= before and string.format( "; cycle %s -> %s", before, hl( cycle ) ) or ""
+    local why = getn( passed ) == 0 and "" or
+        string.format( " -- %s", grey( string.format( "passed over %s, who %s their place",
+          join( passed ), getn( passed ) == 1 and "keeps" or "keep" ) ) )
 
-    m.info( string.format( "  %s. %s -- %s, %s%s", sim.drops, hl( winner ), owed, why, turnover ) )
-
-    return true
+    m.info( string.format( "  %s. %s%s", sim.drops, hl( winner.name ), why ) )
   end
 
   ---@param count number
   local function drop( count )
-    m.info( string.format( "%s %s among %s:", hl( count ), count == 1 and "drop" or "drops",
-      join( candidates() ) ) )
+    m.info( string.format( "%s %s:", hl( count ), count == 1 and "drop" or "drops" ) )
 
     for _ = 1, count do drop_once() end
   end
 
   local function report_queue()
-    m.info( string.format( "Cycle %s, %s %s so far:", hl( sim.state.cycle ), hl( sim.drops ),
+    m.info( string.format( "%s in the queue, %s %s so far:", hl( getn( sim.queue ) ), hl( sim.drops ),
       sim.drops == 1 and "drop" or "drops" ) )
 
-    -- Owed the most first, then by name -- the same order the queue window lists them in.
-    local rows = {}
+    local next_position = m.AutoRoundRobin.next_position( sim.queue, eligible() )
 
-    for _, player in ipairs( sim.roster ) do
-      local served = sim.state.pool[ player ] or sim.state.cycle
-      table.insert( rows, { name = player, served = served, behind = sim.state.cycle - served } )
-    end
+    for i, player in ipairs( sim.queue ) do
+      local marker = i == next_position and hl( "  <- next" ) or ""
+      local away = sim.away[ player.name ] and grey( " (away)" ) or ""
 
-    table.sort( rows, function( lhs, rhs )
-      if lhs.served ~= rhs.served then return lhs.served < rhs.served end
-
-      return lhs.name < rhs.name
-    end )
-
-    for _, row in ipairs( rows ) do
-      local status = m.AutoRoundRobinQueueFrameContentTransformer.status( row.behind )
-      local out = sim.absent[ row.name ] and grey( " (out of range)" ) or ""
-
-      m.info( string.format( "  %s -- %s%s", hl( row.name ), status, out ) )
-    end
-
-    -- Everyone the pool remembers who isn't standing here any more. The real pool keeps them
-    -- forever, which is what lets them walk back in still owed, so the simulator says so rather
-    -- than quietly dropping them.
-    local gone = {}
-
-    for name in pairs( sim.state.pool ) do
-      if not find( name ) then table.insert( gone, name ) end
-    end
-
-    table.sort( gone )
-
-    if getn( gone ) > 0 then
-      m.info( string.format( "  %s", grey( string.format( "Still in the pool, not in the group: %s", join( gone ) ) ) ) )
+      m.info( string.format( "  %s. %s%s%s", i, hl( player.name ), away, marker ) )
     end
   end
 
-  ---@param names string[]
-  local function start_with( names )
+  ---@param list string[]
+  local function start_with( list )
     clear()
 
-    for _, name in ipairs( names ) do add( name ) end
+    local players = {}
+    for _, name in ipairs( list ) do table.insert( players, { name = name } ) end
 
-    -- The roster update the real thing does on GROUP_ROSTER_UPDATE: everybody unknown goes in at
-    -- the current cycle.
-    m.AutoRoundRobin.seed( sim.state, sim.roster )
+    -- The roster sync the real thing does on GROUP_ROSTER_UPDATE: anybody not already in the
+    -- queue is appended, in roster order.
+    m.AutoRoundRobin.sync( sim.queue, players )
 
-    m.info( string.format( "Simulating %s: %s.", hl( string.format( "%s players", getn( sim.roster ) ) ),
-      join( sim.roster ) ) )
-    m.info( string.format( "Everybody seeded at cycle %s. %s", hl( sim.state.cycle ),
-      grey( "The first drop turns it over." ) ) )
+    m.info( string.format( "Simulating %s: %s.", hl( string.format( "%s players", getn( sim.queue ) ) ),
+      join( names() ) ) )
   end
 
-  -- The live rotation, copied. Read-only in both directions: the simulator never writes back, and
-  -- what it copies is a snapshot, so a real award landing mid-simulation doesn't disturb it.
+  -- The live Gems queue, copied. Read-only in both directions: the simulator never writes back,
+  -- and what it copies is a snapshot, so a real award landing mid-simulation doesn't disturb it.
   local function start_from_live()
-    local names = {}
+    clear()
 
-    for _, player in ipairs( group_roster.get_all_players_in_my_group() ) do
-      table.insert( names, player.name )
+    local live = (round_robin_db.queues or {})[ "Gems" ] or {}
+
+    for _, player in ipairs( live ) do
+      table.insert( sim.queue, { name = player.name, class = player.class } )
     end
 
-    if getn( names ) == 0 then
-      m.info( "Nobody in your group to copy." )
+    local players = {}
+
+    for _, player in ipairs( group_roster.get_all_players_in_my_group() ) do
+      table.insert( players, { name = player.name, class = player.class } )
+    end
+
+    m.AutoRoundRobin.sync( sim.queue, players )
+
+    if getn( sim.queue ) == 0 then
+      m.info( "Nothing to copy -- the live Gems queue is empty and you aren't in a group." )
       return
     end
 
-    clear()
-
-    for _, name in ipairs( names ) do add( name ) end
-
-    sim.state.cycle = round_robin_db.cycle or 1
-
-    for name, served in pairs( round_robin_db.pool or {} ) do
-      sim.state.pool[ name ] = served
-    end
-
-    m.AutoRoundRobin.seed( sim.state, sim.roster )
-
-    m.info( string.format( "Copied the live rotation: cycle %s, %s in the pool, %s in the group.",
-      hl( sim.state.cycle ), hl( m.count_elements( sim.state.pool ) ), hl( getn( sim.roster ) ) ) )
+    m.info( string.format( "Copied the live %s queue: %s.", hl( "Gems" ), join( names() ) ) )
     m.info( grey( "Nothing here is written back -- /reload is not needed to undo it." ) )
   end
 
@@ -299,122 +253,125 @@ function M.new( round_robin_db, group_roster, random_fn )
         return
       end
 
-      local names = {}
-      for i = 1, count do table.insert( names, GENERATED_NAMES[ i ] ) end
-      start_with( names )
+      local list = {}
+      for i = 1, count do table.insert( list, GENERATED_NAMES[ i ] ) end
+      start_with( list )
 
       return
     end
 
-    local names = split_names( raw )
+    local list = split_names( raw )
 
-    if getn( names ) == 0 then
+    if getn( list ) == 0 then
       m.info( string.format( "Give me names, a count, or nothing at all. %s", grey( "/rfrotate raid Ann,Bob,Cid" ) ) )
       return
     end
 
-    start_with( names )
+    start_with( list )
   end
 
-  -- The subtle half of the design, played out: an absent player's number stops climbing while
-  -- everybody else's does, so the rotation never stalls on them and they win outright on return.
+  -- The subtle half of the design, played out: the drop walks past somebody who cannot receive
+  -- rather than stalling on them or costing them their place.
   local function worked_example()
-    m.info( blue( "Worked example -- four players, one of them outside the instance." ) )
-    start_with( { "Ann", "Bob", "Cid", "Dee" } )
+    m.info( blue( "Worked example -- the player at the front cannot receive." ) )
+    start_with( { "Ann", "Bob", "Cid" } )
 
-    sim.absent[ "Dee" ] = true
-    m.info( string.format( "%s is outside the instance, so the loot window never lists her.", hl( "Dee" ) ) )
+    sim.away[ "Ann" ] = true
+    m.info( string.format( "%s is out of range, so the loot window never lists her.", hl( "Ann" ) ) )
 
-    drop( 4 )
-
-    m.info( string.format( "Four drops in and %s is still owed from cycle 1 -- the other three have gone round twice.",
-      hl( "Dee" ) ) )
+    drop( 2 )
     report_queue()
 
-    sim.absent[ "Dee" ] = nil
-    m.info( string.format( "%s walks in.", hl( "Dee" ) ) )
+    sim.away[ "Ann" ] = nil
+    m.info( string.format( "%s walks back in.", hl( "Ann" ) ) )
 
     drop( 1 )
-    m.info( grey( "She held the lowest number, so she won without a draw and without a reset." ) )
+    m.info( grey( "She was still at the front, so she took the very next drop." ) )
   end
 
   local function usage()
-    m.info( string.format( "%s -- simulate the round-robin rotation solo.", hl( "/rfrotate" ) ) )
-    m.info( string.format( "  %s -- start with these players, that many, or your live rotation.",
+    m.info( string.format( "%s -- simulate a round-robin queue solo.", hl( "/rfrotate" ) ) )
+    m.info( string.format( "  %s -- start with these players, that many, or your live Gems queue.",
       hl( "raid <names or count>" ) ) )
-    m.info( string.format( "  %s -- run n drops (default 1).", hl( "drop [n]" ) ) )
-    m.info( string.format( "  %s -- in the group, but out of range.", hl( "out <name>" ) ) )
-    m.info( string.format( "  %s -- can receive again.", hl( "in <name>" ) ) )
-    m.info( string.format( "  %s -- joins mid-cycle.", hl( "join <name>" ) ) )
-    m.info( string.format( "  %s -- leaves the group.", hl( "leave <name>" ) ) )
-    m.info( string.format( "  %s -- the standings.", hl( "queue" ) ) )
+    m.info( string.format( "  %s -- hand out n items (default 1).", hl( "drop [n]" ) ) )
+    m.info( string.format( "  %s -- in the queue, but out of range.", hl( "away <name>" ) ) )
+    m.info( string.format( "  %s -- can receive again.", hl( "back <name>" ) ) )
+    m.info( string.format( "  %s -- append / take out.", hl( "add <name>, remove <name>" ) ) )
+    m.info( string.format( "  %s -- move that one player a place.", hl( "up <name>, down <name>" ) ) )
+    m.info( string.format( "  %s -- rotate the whole queue.", hl( "cycle up, cycle down" ) ) )
+    m.info( string.format( "  %s -- the queue as it stands.", hl( "queue" ) ) )
     m.info( string.format( "  %s -- replay the worked example.", hl( "example" ) ) )
     m.info( string.format( "  %s -- start over.", hl( "reset" ) ) )
   end
 
   ---@param name string
-  local function go_out( name )
-    local player = find( name )
+  ---@param value boolean
+  local function set_away( name, value )
+    if not require_player( name ) then return end
 
-    if not player then
-      m.info( string.format( "%s is not in the simulated group.", hl( name ) ) )
-      return
-    end
+    local player = spelling( name )
+    sim.away[ player ] = value or nil
 
-    sim.absent[ player ] = true
-    m.info( string.format( "%s is out of range -- still in the rotation, just not a candidate. %s",
-      hl( player ), grey( describe_place( player ) ) ) )
+    m.info( value
+      and string.format( "%s is out of range. %s", hl( player ),
+        grey( "Still in the queue -- drops walk past them without costing them their place." ) )
+      or string.format( "%s can receive again.", hl( player ) ) )
   end
 
   ---@param name string
-  local function come_in( name )
-    local player = find( name )
-
-    if not player then
-      m.info( string.format( "%s is not in the simulated group.", hl( name ) ) )
-      return
-    end
-
-    sim.absent[ player ] = nil
-    m.info( string.format( "%s can receive again. %s", hl( player ), grey( describe_place( player ) ) ) )
-  end
-
-  ---@param name string
-  local function join_group( name )
+  local function add( name )
     if find( name ) then
-      m.info( string.format( "%s is already in the simulated group.", hl( name ) ) )
+      m.info( string.format( "%s is already in the queue.", hl( name ) ) )
       return
     end
 
-    add( name )
-    -- Exactly what a real roster update does, which is why a joiner lands at the bottom.
-    m.AutoRoundRobin.seed( sim.state, { name } )
-
-    local player = find( name )
-    m.info( string.format( "%s joins during cycle %s. %s", hl( player ), hl( sim.state.cycle ),
-      grey( "Seeded as already served, so they wait for the next one." ) ) )
+    table.insert( sim.queue, { name = name } )
+    m.info( string.format( "%s joins at the back, in place %s.", hl( name ), hl( getn( sim.queue ) ) ) )
   end
 
   ---@param name string
-  local function leave_group( name )
-    local player = find( name )
+  local function remove( name )
+    if not require_player( name ) then return end
 
-    if not player then
-      m.info( string.format( "%s is not in the simulated group.", hl( name ) ) )
+    local player = spelling( name )
+    table.remove( sim.queue, find( name ) )
+    sim.away[ player ] = nil
+
+    m.info( string.format( "%s is out of the queue.", hl( player ) ) )
+  end
+
+  ---@param name string
+  ---@param offset number
+  local function move( name, offset )
+    if not require_player( name ) then return end
+
+    local position = find( name )
+    local player = spelling( name )
+
+    m.AutoRoundRobin.move( sim.queue, position, offset )
+
+    local moved = find( name )
+
+    if moved == position then
+      m.info( string.format( "%s is already %s.", hl( player ), offset < 0 and "at the front" or "at the back" ) )
       return
     end
 
-    for i = 1, getn( sim.roster ) do
-      if sim.roster[ i ] == player then
-        table.remove( sim.roster, i )
-        break
-      end
+    m.info( string.format( "%s moves from place %s to %s.", hl( player ), hl( position ), hl( moved ) ) )
+  end
+
+  ---@param direction string
+  local function cycle( direction )
+    -- Up moves the list up, the same way the Queues window's buttons do.
+    local offset = direction == "up" and 1 or direction == "down" and -1
+
+    if not offset then
+      m.info( string.format( "%s or %s?", hl( "cycle up" ), hl( "cycle down" ) ) )
+      return
     end
 
-    sim.absent[ player ] = nil
-
-    m.info( string.format( "%s leaves. %s", hl( player ),
-      grey( "The pool keeps them, so rejoining keeps their place." ) ) )
+    m.AutoRoundRobin.cycle( sim.queue, offset )
+    m.info( string.format( "Cycled %s: %s.", hl( direction ), join( names() ) ) )
   end
 
   ---@param args string?
@@ -463,28 +420,43 @@ function M.new( round_robin_db, group_roster, random_fn )
       return
     end
 
+    if command == "cycle" then
+      cycle( string.lower( rest ) )
+      return
+    end
+
     if rest == "" then
       m.info( string.format( "%s needs a name.", hl( command ) ) )
       return
     end
 
-    if command == "out" then
-      go_out( rest )
+    if command == "away" then
+      set_away( rest, true )
       return
     end
 
-    if command == "in" then
-      come_in( rest )
+    if command == "back" then
+      set_away( rest, false )
       return
     end
 
-    if command == "join" then
-      join_group( rest )
+    if command == "add" then
+      add( rest )
       return
     end
 
-    if command == "leave" then
-      leave_group( rest )
+    if command == "remove" then
+      remove( rest )
+      return
+    end
+
+    if command == "up" then
+      move( rest, -1 )
+      return
+    end
+
+    if command == "down" then
+      move( rest, 1 )
       return
     end
 

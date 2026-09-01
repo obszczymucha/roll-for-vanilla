@@ -79,6 +79,45 @@ end
 -- `enabled`, which is this tree's initial checked state and the write-back target for toggling
 -- (see set_checked below). No enabled-based filtering here: unlike the old AutoLootDb.ids gate,
 -- a seeded entry always exists once seeded, it's just off (enabled = false) by default.
+-- The leaves are the same in every catalogue: an item is an item.
+---@param items table -- persisted item entries, keyed by item id
+---@return TreeNode[]
+local function build_items( items )
+  local result = {}
+
+  for _, item_id in ipairs( sorted_keys( items or {} ) ) do
+    local item_entry = items[ item_id ]
+
+    table.insert( result, Tree.new_leaf( {
+      id = item_id,
+      item = item_entry,
+      entry = item_entry,
+      hover_background_color = quality_color_rgb( item_entry.quality, ITEM_HOVER_BACKGROUND_ALPHA ),
+      tooltip_position = item_tooltip_position,
+      checked = item_entry.enabled,
+    } ) )
+  end
+
+  return result
+end
+
+---@param name string
+---@param entry table -- the persisted node this row writes its `enabled` back to
+---@param color number[]
+---@param hover_text_color number[]
+---@param children TreeNode[]
+---@return TreeNode
+local function build_group( name, entry, color, hover_text_color, children )
+  return Tree.new_node( {
+    name = name,
+    entry = entry,
+    color = color,
+    hover_text_color = hover_text_color,
+    checked = entry.enabled,
+    expanded = false,
+  }, children )
+end
+
 ---@param ids table
 ---@param non_bosses table<string, boolean> -- which node names under a dungeon aren't encounters
 ---@return TreeNode[]
@@ -91,43 +130,19 @@ local function build_tree( ids, non_bosses )
 
     for _, boss_name in ipairs( ordered_keys( dungeon_entry.bosses or {} ) ) do
       local boss_entry = dungeon_entry.bosses[ boss_name ]
-      local items = {}
 
-      for _, item_id in ipairs( sorted_keys( boss_entry.items or {} ) ) do
-        local item_entry = boss_entry.items[ item_id ]
-
-        table.insert( items, Tree.new_leaf( {
-          id = item_id,
-          item = item_entry,
-          entry = item_entry,
-          hover_background_color = quality_color_rgb( item_entry.quality, ITEM_HOVER_BACKGROUND_ALPHA ),
-          tooltip_position = item_tooltip_position,
-          checked = item_entry.enabled,
-        } ) )
-      end
-
-      -- Trash and Patterns (and the round-robin catalogue's Gems) aren't bosses, so they don't
-      -- get the boss colour. Which names those are is the catalogue's answer, not this tree's.
+      -- Trash and Patterns aren't bosses, so they don't get the boss colour. Which names those
+      -- are is the catalogue's answer, not this tree's.
       local is_trash = non_bosses[ boss_name ] and true or false
 
-      table.insert( bosses, Tree.new_node( {
-        name = boss_name,
-        entry = boss_entry,
-        color = is_trash and TRASH_COLOR or BOSS_COLOR,
-        hover_text_color = is_trash and TRASH_HOVER_TEXT_COLOR or BOSS_HOVER_TEXT_COLOR,
-        checked = boss_entry.enabled,
-        expanded = false,
-      }, items ) )
+      table.insert( bosses, build_group( boss_name, boss_entry,
+        is_trash and TRASH_COLOR or BOSS_COLOR,
+        is_trash and TRASH_HOVER_TEXT_COLOR or BOSS_HOVER_TEXT_COLOR,
+        build_items( boss_entry.items ) ) )
     end
 
-    table.insert( dungeons, Tree.new_node( {
-      name = dungeon_name,
-      entry = dungeon_entry,
-      color = DUNGEON_COLOR,
-      hover_text_color = DUNGEON_HOVER_TEXT_COLOR,
-      checked = dungeon_entry.enabled,
-      expanded = false,
-    }, bosses ) )
+    table.insert( dungeons, build_group( dungeon_name, dungeon_entry,
+      DUNGEON_COLOR, DUNGEON_HOVER_TEXT_COLOR, bosses ) )
   end
 
   return dungeons
@@ -136,16 +151,36 @@ end
 ---@type TreeNode[]
 M.dungeons = {}
 
--- Builds a tree out of an already-seeded selection db. Takes the db and its catalogue's own
--- non-boss set rather than reaching for AutoLootDb's, so the round-robin catalogue gets the same
--- tree without either of them having to know about the other. Returns the roots instead of
--- assigning them anywhere: more than one window is built from this now, so a module-level
--- singleton can only belong to one of them.
+-- Builds a Dungeon -> Boss -> items tree out of an already-seeded selection db. Takes the
+-- catalogue's own non-boss set rather than reaching for AutoLootDb's, and returns the roots
+-- instead of assigning them anywhere: more than one window is built from this module now, so a
+-- module-level singleton can only belong to one of them.
 ---@param db table -- a persisted selection db, already seeded
 ---@param non_bosses table<string, boolean>
 ---@return TreeNode[]
 function M.build( db, non_bosses )
   return build_tree( db.ids, non_bosses )
+end
+
+-- Builds a Category -> items tree, which is the round-robin catalogue's shape. Every layer below
+-- the top is the same as build's, and everything downstream -- visible_rows, set_checked,
+-- is_leaf_enabled, the whole frame -- walks children rather than counting levels, so nothing
+-- else has to know the tree is two deep instead of three.
+--
+-- Categories take the top-level colour for the same reason dungeons do: they are the top level.
+---@param db table -- a persisted selection db, already seeded
+---@return TreeNode[]
+function M.build_flat( db )
+  local categories = {}
+
+  for _, category_name in ipairs( ordered_keys( db.ids or {} ) ) do
+    local entry = db.ids[ category_name ]
+
+    table.insert( categories, build_group( category_name, entry,
+      DUNGEON_COLOR, DUNGEON_HOVER_TEXT_COLOR, build_items( entry.items ) ) )
+  end
+
+  return categories
 end
 
 -- Seeds the auto-loot db (if needed) and builds its tree into M.dungeons. Called once from
