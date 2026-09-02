@@ -47,7 +47,7 @@ local round_robin_db = m.AutoRoundRobinDb
 ---@field cycle fun( category: string, offset: number )
 ---@field is_pristine fun(): boolean
 ---@field reset fun()
----@field subscribe fun( listener: fun() )
+---@field subscribe fun( listener: fun( category: string ) ): fun() -- returns an unsubscribe function
 
 -- Queue operations, as pure functions over a plain array so they can be tested without a loot
 -- window, a roster or any of the WoW API. Every one of them is a no-op on input it can't act on,
@@ -146,10 +146,13 @@ end
 ---@return AutoRoundRobin
 function M.new( loot_list, api, db, config, player_info, chat, group_roster, master_loot_candidates,
                 auto_loot, loot_award_callback )
-  local listeners = {}
-
   db.queues = db.queues or {}
 
+  -- Every write to a queue goes through queues.update, which hands out the array and notifies
+  -- afterwards. That's the only way to get a writable queue, so there is no notify() to forget.
+  local queues = db.watch( "queues" )
+
+  -- Reads. Mutating what this returns is a write nobody is watching -- use queues.update.
   ---@param category string
   ---@return RoundRobinQueue
   local function queue( category )
@@ -158,13 +161,10 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     return db.queues[ category ]
   end
 
-  local function notify()
-    for _, listener in ipairs( listeners ) do listener() end
-  end
-
-  ---@param listener fun()
+  ---@param listener fun( category: string )
+  ---@return fun()
   local function subscribe( listener )
-    table.insert( listeners, listener )
+    return queues.subscribe( listener )
   end
 
   ---@return string[]
@@ -189,10 +189,8 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     local players = roster_players()
 
     for _, category in ipairs( get_categories() ) do
-      M.sync( queue( category ), players )
+      queues.update( category, function( q ) M.sync( q, players ) end )
     end
-
-    notify()
   end
 
   ---@param slot number
@@ -235,13 +233,11 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     api().GiveMasterLoot( slot, index )
 
     -- Only once the award has actually gone through.
-    M.serve( q, position )
+    queues.update( category, function( c ) M.serve( c, position ) end )
 
     chat.announce( string.format( "%s receives %s (%s round robin).", winner.name, item.link, category ) )
     loot_award_callback.on_loot_awarded( item.id, item.link, winner.name,
       winner.class or classes[ winner.name ], 1 )
-
-    notify()
   end
 
   ---@param item DroppedItem
@@ -334,8 +330,7 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
       return false, string.format( "%s is already in the %s queue.", q[ existing ].name, category )
     end
 
-    table.insert( q, { name = trimmed, class = class } )
-    notify()
+    queues.update( category, function( c ) table.insert( c, { name = trimmed, class = class } ) end )
 
     return true
   end
@@ -346,23 +341,20 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     local q = queue( category )
     if not q[ position ] then return end
 
-    table.remove( q, position )
-    notify()
+    queues.update( category, function( c ) table.remove( c, position ) end )
   end
 
   ---@param category string
   ---@param position number
   ---@param offset number
   local function move_player( category, position, offset )
-    M.move( queue( category ), position, offset )
-    notify()
+    queues.update( category, function( q ) M.move( q, position, offset ) end )
   end
 
   ---@param category string
   ---@param offset number
   local function cycle( category, offset )
-    M.cycle( queue( category ), offset )
-    notify()
+    queues.update( category, function( q ) M.cycle( q, offset ) end )
   end
 
   -- Whether there's anything a reset would throw away. A queue that is exactly the group in
@@ -388,12 +380,11 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     local players = roster_players()
 
     for _, category in ipairs( get_categories() ) do
-      local q = {}
-      M.sync( q, players )
-      db.queues[ category ] = q
+      queues.update( category, function( q )
+        for i = getn( q ), 1, -1 do table.remove( q, i ) end
+        M.sync( q, players )
+      end )
     end
-
-    notify()
   end
 
   ---@type AutoRoundRobin

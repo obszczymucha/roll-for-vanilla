@@ -78,6 +78,8 @@ function M.new()
         GetRight = function() return 1 end,
         SetHighlightTexture = function() end,
         EnableMouseWheel = function() end,
+        GetFrameLevel = function() return 1 end,
+        SetFrameLevel = function() end,
       }
     end
   }

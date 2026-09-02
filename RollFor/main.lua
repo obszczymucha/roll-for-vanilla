@@ -437,6 +437,17 @@ local function create_components()
     M.loot_award_callback
   )
 
+  -- Round-robin queues are the one bit of RollFor state that's interesting to a display addon, so
+  -- broadcast changes to WeakAuras if it's loaded. The category is passed along because the queues
+  -- are independent -- an aura watching Gems has no reason to redraw when Marks moves.
+  M.auto_round_robin.subscribe( function( category )
+    local weak_auras = M.api().WeakAuras
+
+    if weak_auras and weak_auras.ScanEvents then
+      weak_auras.ScanEvents( "ROLLFOR_ROUND_ROBIN_QUEUE_UPDATE", category )
+    end
+  end )
+
   ---@type DroppedLootAnnounce
   M.dropped_loot_announce = m.DroppedLootAnnounce.new(
     M.loot_list,
