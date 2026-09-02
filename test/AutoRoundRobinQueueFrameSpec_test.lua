@@ -18,7 +18,6 @@ local AutoRoundRobin = require( "src/AutoRoundRobin" )
 
 u.mock_wow_api()
 
-local colors = RollFor.colors
 local title = { type = "text", value = "Auto Round Robin Queues", padding = 1 }
 local empty_notice = { type = "text", value = "Nobody in this queue yet.", padding = 10 }
 
@@ -36,7 +35,10 @@ local buttons = {
 local function picker( category, categories )
   local options = {}
 
-  for _, name in ipairs( categories or { "Gems", "Marks", "Hearts" } ) do
+  -- Trash last, because it is the fallback category and sorts after every real one. It owns a
+  -- queue like any other category -- that is what being a category means here -- so it is offered
+  -- in this dropdown even though it names qualities rather than item ids.
+  for _, name in ipairs( categories or { "Gems", "Marks", "Hearts", "Trash" } ) do
     table.insert( options, { value = name, label = name } )
   end
 
@@ -45,13 +47,13 @@ local function picker( category, categories )
 end
 
 ---@param name string
----@param opts table? -- { away = boolean, first = boolean, last = boolean }
+---@param opts table? -- { first = boolean, last = boolean }
 local function line( name, opts )
   local o = opts or {}
 
   return {
     type = "round_robin_row",
-    player = o.away and colors.grey( name ) or RollFor.colorize_player_by_class( name, "Warrior" ),
+    player = RollFor.colorize_player_by_class( name, "Warrior" ),
     can_move_up = not o.first,
     can_move_down = not o.last
   }
@@ -92,7 +94,7 @@ local function popup( category, rows )
 end
 
 ---@param names string[]
----@param opts table? -- { away = string[], rows = number }
+---@param opts table? -- { rows = number }
 local function new_frame( names, opts )
   local o = opts or {}
   local max_rows = o.rows or 6
@@ -111,29 +113,15 @@ local function new_frame( names, opts )
   local players = {}
   for _, name in ipairs( names or {} ) do table.insert( players, { name = name, class = "Warrior" } ) end
 
-  local away = {}
-  for _, name in ipairs( o.away or {} ) do away[ name ] = true end
-
-  -- Nothing is looting unless a spec names who is away, in which case there is a window open and
-  -- GetMasterLootCandidate has something to say. That is the only way the greyed-out row and the
-  -- walked-past "next" marker are reachable at all.
-  local looting = o.away and true or false
-
+  -- This window never asks the client anything: the queue is the queue whether or not a corpse
+  -- is open. Both stubs are here only because AutoRoundRobin's award pass takes them.
   local loot_list = {
-    is_looting = function() return looting end,
-    get_items_by_slot = function() return looting and { [ 1 ] = { id = 32227 } } or {} end
+    is_looting = function() return false end,
+    get_items_by_slot = function() return {} end
   }
 
   local candidates = {
-    get = function()
-      local result = {}
-
-      for _, player in ipairs( players ) do
-        if not away[ player.name ] then table.insert( result, player ) end
-      end
-
-      return result
-    end,
+    get = function() return players end,
     get_index = function() return 1 end
   }
 
@@ -220,21 +208,6 @@ function RoundRobinQueueFrameSpec:should_list_the_queue_in_order()
 
   frame.should_display( popup( "Gems", {
     line( "Ann", { first = true } ),
-    line( "Bob" ),
-    line( "Cid", { last = true } )
-  } ) )
-end
-
--- The drop goes to the first player who can actually receive it, and greying is how the window
--- says so: a greyed name at the front was passed over without losing its place, which is also
--- the answer to "why did the second row get it".
-function RoundRobinQueueFrameSpec:should_grey_a_player_who_cannot_receive_right_now()
-  local frame = new_frame( { "Ann", "Bob", "Cid" }, { away = { "Ann" } } )
-
-  frame.show()
-
-  frame.should_display( popup( "Gems", {
-    line( "Ann", { away = true, first = true } ),
     line( "Bob" ),
     line( "Cid", { last = true } )
   } ) )

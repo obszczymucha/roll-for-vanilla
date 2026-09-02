@@ -67,7 +67,7 @@ function M.handle_events( main )
       main.master_loot_warning.on_player_target_changed()
       main.auto_master_loot.on_player_target_changed( arg1 )
     elseif event == "PARTY_LOOT_METHOD_CHANGED" then
-      main.auto_master_loot.on_party_loot_method_changed()
+      main.on_party_loot_method_changed()
     elseif event == "GET_ITEM_INFO_RECEIVED" then
       main.on_item_info_received( arg1 )
     elseif event == "UI_ERROR_MESSAGE" then

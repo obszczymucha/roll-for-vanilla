@@ -120,17 +120,9 @@ local function add_empty_notice( content )
   table.insert( content, { type = "text", value = "Nobody in this queue yet.", padding = 10 } )
 end
 
--- The one thing the order alone cannot say. A player who cannot receive right now is greyed
--- rather than labelled -- it is a fact about where they are standing, not about their place in
--- the queue, and it stops being true the moment they walk back in.
---
--- It also quietly answers "why did the second row get it": the drop goes to the first player who
--- can actually receive, so a greyed name at the front was passed over without losing its place.
 ---@param row RoundRobinQueueFrameRow
 ---@return string
 local function player_cell( row )
-  if not row.eligible then return m.colors.grey( row.name ) end
-
   return m.colorize_player_by_class( row.name, row.class )
 end
 

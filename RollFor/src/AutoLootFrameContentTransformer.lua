@@ -60,6 +60,7 @@ end
 ---@field expanded boolean?
 ---@field checked boolean?
 ---@field desaturated boolean?
+---@field tooltip_text string[]? -- title first, body after; why this row can't act (see decorate_row)
 ---@field on_click fun()?
 ---@field on_check fun( checked: boolean )?
 
@@ -80,6 +81,9 @@ local function add_rows( content, rows )
       item_id = row.data.id,
       item = row.data.item,
       tooltip_position = row.data.tooltip_position,
+      -- On the row, not on row.data: this one is decided per refresh (the loot threshold can
+      -- change while the window is open), so it must not be written back onto the shared node.
+      tooltip_text = row.tooltip_text,
       depth = row.depth,
       expandable = row.expandable,
       expanded = row.expanded,

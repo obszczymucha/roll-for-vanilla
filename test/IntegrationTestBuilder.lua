@@ -223,10 +223,21 @@ function M.round_robin_list( db )
     category_entry( category ).enabled = enabled
   end
 
+  -- The fallback category's rows are qualities, not items, so ticking one is a different write --
+  -- the same one AutoLootTree.set_checked would make on a quality leaf. The category is seeded by
+  -- AutoRoundRobinDb.ensure_seeded and starts off, so this switches on both it and the row.
+  ---@param quality number
+  local function enable_trash( quality )
+    local trash = db.ids[ RollFor.AutoRoundRobinDb.TRASH ]
+    trash.enabled = true
+    trash.qualities[ quality ].enabled = true
+  end
+
   return {
     enable = enable,
     disable = disable,
-    set_category_enabled = set_category_enabled
+    set_category_enabled = set_category_enabled,
+    enable_trash = enable_trash
   }
 end
 

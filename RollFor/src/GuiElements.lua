@@ -1041,12 +1041,18 @@ function M.tree_node( parent )
   local label_hover_text_color
   local label_hover_background_color
 
+  -- Set per row via SetLabelTooltip below. Same nil-means-nothing rule as the colors.
+  local label_tooltip
+
   local label_highlight = container:CreateTexture( nil, "BACKGROUND" )
   label_highlight:SetTexture( "Interface\\Buttons\\WHITE8x8" )
   label_highlight:Hide()
 
   local depth = 0
   local expandable = false
+  -- Whether this row renders as an item link or as a plain label. Decided by which of SetItem /
+  -- SetText the caller reaches for, not by whether the row has children: a leaf that names a
+  -- quality rather than an item (see AutoLootTree.build_qualities) is childless and still a label.
   local is_link = false
 
   local function layout()
@@ -1097,10 +1103,11 @@ function M.tree_node( parent )
       label:Show()
       content_width = label:GetWidth()
 
-      -- Only expandable rows (dungeon/boss) reach this branch, so it's always safe to make the
-      -- label clickable here. Stretched to the popup's right edge (like item rows), so hover/click
-      -- covers the full row, not just the text -- content_width above stays the natural
-      -- (unstretched) measurement used for the popup's own auto-sizing.
+      -- Every label row gets the button, expandable or not: it carries the hover feedback and the
+      -- tooltip as well as the click, and a label leaf wants all three. What the click does
+      -- differs by row kind -- see label_button's OnClick below. Stretched to the popup's right
+      -- edge (like item rows), so hover/click covers the full row, not just the text --
+      -- content_width above stays the natural (unstretched) measurement used for auto-sizing.
       label_button:SetPoint( "LEFT", container, "LEFT", content_start, 0 )
       label_button:SetPoint( "RIGHT", parent, "RIGHT", -tree_node_row_right_margin, 0 )
       label_button:SetHeight( tree_node_toggle_size )
@@ -1131,8 +1138,21 @@ function M.tree_node( parent )
   end
 
   container.SetText = function( _, text )
+    is_link = false
     label:SetText( text )
     layout()
+  end
+
+  -- Why this row can't do what its checkbox says -- e.g. its quality sits below the master loot
+  -- threshold, so the client would refuse the handout however it's ticked. `lines` is the title
+  -- first and the body after; nil means no tooltip, which is every row with nothing to explain.
+  -- A greyed-out row and no way to find out why is the thing this exists to prevent.
+  --
+  -- Plain text, unrelated to the item tooltip item_link_with_icon puts up from a hyperlink: label
+  -- rows have no item to ask the client about, which is the whole reason they're label rows.
+  ---@param lines string[]?
+  container.SetLabelTooltip = function( _, lines )
+    label_tooltip = lines
   end
 
   container.SetDepth = function( _, d )
@@ -1174,6 +1194,11 @@ function M.tree_node( parent )
   -- item: { link, texture, count, quantity, hover_background_color } -- hover_background_color
   -- ({r,g,b}) comes from AutoLootTree, the rest is consumed by item_link_with_icon.SetItem.
   container.SetItem = function( _, item, tooltip_link )
+    -- Rows are recycled between refreshes, so an item row has to drop whatever a label row left
+    -- behind: it renders through item_link_widget, which brings its own tooltip.
+    is_link = true
+    label_tooltip = nil
+
     if item.hover_background_color then
       local c = item.hover_background_color
       item_highlight:SetVertexColor( c[ 1 ], c[ 2 ], c[ 3 ], c[ 4 ] )
@@ -1184,7 +1209,6 @@ function M.tree_node( parent )
 
   container.SetExpandable = function( _, is_expandable, is_expanded )
     expandable = is_expandable and true or false
-    is_link = not expandable
 
     if expandable then
       toggle:SetNormalTexture( is_expanded and "Interface\\Buttons\\UI-MinusButton-Up" or "Interface\\Buttons\\UI-PlusButton-Up" )
@@ -1199,17 +1223,36 @@ function M.tree_node( parent )
   end )
 
   label_button:SetScript( "OnClick", function()
-    if container.on_click then container.on_click() end
+    -- An expandable row expands. A label leaf has nothing to expand, so clicking it toggles its
+    -- own checkbox instead -- the same thing clicking an item leaf's link does, and better than
+    -- leaving a whole row inert.
+    if expandable then
+      if container.on_click then container.on_click() end
+    else
+      checkbox:Click()
+    end
   end )
 
-  label_button:SetScript( "OnEnter", function()
+  label_button:SetScript( "OnEnter", function( self )
     if label_hover_background_color then label_highlight:Show() end
     if label_hover_text_color then label:SetTextColor( unpack( label_hover_text_color ) ) end
+    if not label_tooltip then return end
+
+    m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
+    m.api.GameTooltip:SetText( label_tooltip[ 1 ] )
+
+    -- Wrapped: these are sentences, not the short labels the rest of the window is made of.
+    for i = 2, getn( label_tooltip ) do
+      m.api.GameTooltip:AddLine( label_tooltip[ i ], 1, 1, 1, true )
+    end
+
+    m.api.GameTooltip:Show()
   end )
 
   label_button:SetScript( "OnLeave", function()
     if label_hover_background_color then label_highlight:Hide() end
     if label_hover_text_color then label:SetTextColor( unpack( label_color ) ) end
+    if label_tooltip then m.api.GameTooltip:Hide() end
   end )
 
   checkbox:SetScript( "OnClick", function()

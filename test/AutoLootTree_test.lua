@@ -160,6 +160,71 @@ function AutoLootTreeBuildFlatSpec:should_work_with_the_rest_of_the_tree()
   eq( db.ids[ "Hearts" ].enabled, true )
 end
 
+-- The round-robin catalogue's Trash category names qualities instead of item ids, so its rows are
+-- label leaves: a name and no id/item, which is what makes the window render them as a coloured
+-- word with a checkbox rather than as an item link.
+AutoLootTreeBuildFlatQualitiesSpec = {}
+
+local function trash_db()
+  return {
+    ids = {
+      [ "Trash" ] = {
+        enabled = true,
+        order = 99,
+        items = {},
+        qualities = {
+          [ 3 ] = { enabled = true, name = "Rare" },
+          [ 2 ] = { enabled = false, name = "Uncommon" }
+        }
+      }
+    }
+  }
+end
+
+function AutoLootTreeBuildFlatQualitiesSpec:should_build_quality_rows_as_leaves_with_a_name_and_no_item()
+  local trash = AutoLootTree.build_flat( trash_db() )[ 1 ]
+
+  eq( #trash.children, 2 )
+  eq( trash.children[ 1 ].children, nil )
+  eq( trash.children[ 1 ].data.name, "Uncommon" )
+  eq( trash.children[ 1 ].data.id, nil )
+  eq( trash.children[ 1 ].data.item, nil )
+end
+
+-- Ascending, so the window reads Uncommon then Rare rather than in whatever order pairs() yields.
+function AutoLootTreeBuildFlatQualitiesSpec:should_order_quality_rows_by_quality()
+  local trash = AutoLootTree.build_flat( trash_db() )[ 1 ]
+
+  eq( trash.children[ 1 ].data.quality, 2 )
+  eq( trash.children[ 2 ].data.quality, 3 )
+end
+
+function AutoLootTreeBuildFlatQualitiesSpec:should_take_each_quality_rows_checked_state_from_the_db()
+  local trash = AutoLootTree.build_flat( trash_db() )[ 1 ]
+
+  eq( trash.children[ 1 ].data.checked, false )
+  eq( trash.children[ 2 ].data.checked, true )
+end
+
+-- Colour by quality, the same fact item rows are tinted by -- a green row for Uncommon, blue for
+-- Rare -- so the two rows say which they are without reading them.
+function AutoLootTreeBuildFlatQualitiesSpec:should_colour_each_quality_row_by_its_own_quality()
+  local trash = AutoLootTree.build_flat( trash_db() )[ 1 ]
+
+  lu.assertNotEquals( trash.children[ 1 ].data.color, trash.children[ 2 ].data.color )
+  lu.assertNotEquals( trash.children[ 1 ].data.color, nil )
+end
+
+-- Ticking one writes back to the persisted entry exactly as an item row does.
+function AutoLootTreeBuildFlatQualitiesSpec:should_write_a_toggle_back_to_the_persisted_quality_entry()
+  local db = trash_db()
+  local trash = AutoLootTree.build_flat( db )[ 1 ]
+
+  AutoLootTree.set_checked( trash.children[ 1 ], true )
+
+  eq( db.ids[ "Trash" ].qualities[ 2 ].enabled, true )
+end
+
 AutoLootTreeIsLeafEnabledSpec = {}
 
 function AutoLootTreeIsLeafEnabledSpec:should_be_enabled_when_dungeon_boss_and_item_are_all_checked()

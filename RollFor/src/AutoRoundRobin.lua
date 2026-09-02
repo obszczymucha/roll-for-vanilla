@@ -24,6 +24,10 @@ local round_robin_db = m.AutoRoundRobinDb
 -- of range are simply not listed -- so the award walks down the queue to the first player who is
 -- listed. Whoever it walks past keeps their place and wins the next drop they are around for.
 -- That is the whole reason the queue and the candidate list are kept apart.
+--
+-- Kept apart in the read direction too: nothing this module hands out says whether a player can
+-- receive. That is only answerable while a loot window is open, so a queue carrying it around
+-- would be asserting something it cannot know for all but a few seconds at a time.
 
 ---@class RoundRobinPlayer
 ---@field name string
@@ -32,19 +36,18 @@ local round_robin_db = m.AutoRoundRobinDb
 ---@alias RoundRobinQueue RoundRobinPlayer[]
 
 ---@class AutoRoundRobinRow : RoundRobinPlayer
----@field position number -- 1-based place in the queue
----@field eligible boolean -- currently a master loot candidate
 
 ---@class AutoRoundRobin
 ---@field on_loot_opened fun()
 ---@field on_group_changed fun()
 ---@field get_categories fun(): string[]
----@field get_rows fun( category: string ): AutoRoundRobinRow[]
+---@field get_rows fun( category: string, limit: number? ): AutoRoundRobinRow[]
 ---@field get_queue fun( category: string ): RoundRobinQueue
 ---@field add_player fun( category: string, name: string, class: PlayerClass? ): boolean, string?
 ---@field remove_player fun( category: string, position: number )
 ---@field move_player fun( category: string, position: number, offset: number )
 ---@field cycle fun( category: string, offset: number )
+---@field is_category_active fun( category: string ): boolean
 ---@field is_pristine fun(): boolean
 ---@field reset fun()
 ---@field subscribe fun( listener: fun( category: string ) ): fun() -- returns an unsubscribe function
@@ -77,9 +80,9 @@ function M.sync( queue, players )
   end
 end
 
--- The first player in the queue who can actually receive. `eligible` being nil means nobody has
--- said who can -- there is no loot window open -- in which case the head of the queue is the
--- answer, which is what the Queues window shows as next up.
+-- The first player in the queue who can actually receive. Only the award pass asks this, and only
+-- with a loot window open, which is the only time there is an answer: `eligible` being nil means
+-- nobody has said who can, and the head of the queue is taken as given.
 ---@param queue RoundRobinQueue
 ---@param eligible table<string, boolean>? -- names GetMasterLootCandidate listed for this slot
 ---@return number? -- their position, or nil when nobody in the queue can receive
@@ -235,7 +238,7 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     -- Only once the award has actually gone through.
     queues.update( category, function( c ) M.serve( c, position ) end )
 
-    chat.announce( string.format( "%s receives %s (%s round robin).", winner.name, item.link, category ) )
+    chat.announce( string.format( "%s receives %s (%s round robin).", winner.name, item.link, string.lower( category ) ) )
     loot_award_callback.on_loot_awarded( item.id, item.link, winner.name,
       winner.class or classes[ winner.name ], 1 )
   end
@@ -249,6 +252,10 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     -- would quietly do nothing. This matters to the shipping catalogue: Mark of the Illidari is
     -- Uncommon and Heart of Darkness is Rare, so neither is handed out unless the master loot
     -- threshold is set low enough to cover them.
+    --
+    -- It is also the whole of the Trash category's threshold rule: because this runs first,
+    -- ticking Trash's Uncommon row can only ever take effect while the threshold is Uncommon, and
+    -- its Rare row while the threshold is Uncommon or Rare. Nothing downstream re-checks that.
     if (item.quality or 0) < api().GetLootThreshold() then return false end
 
     -- Conflicts resolve in auto-loot's favour. Asking auto-loot rather than re-deriving its
@@ -267,43 +274,28 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     -- different players, and loot_list.get_slot() would collapse them onto the first match.
     for slot, item in pairs( loot_list.get_items_by_slot() ) do
       if is_awardable( item ) then
-        local category = round_robin_db.find_category( db, item.id )
+        local category = round_robin_db.find_category( db, item.id, item.quality )
         if category then award( slot, item, category ) end
       end
     end
   end
 
-  -- Who is a master loot candidate right now. Only answerable while a loot window is open --
-  -- GetMasterLootCandidate has no slot to speak about otherwise -- so an empty answer is read as
-  -- "nothing to say" and the head of the queue shows as next up.
-  ---@return table<string, boolean>?
-  local function current_candidates()
-    if not loot_list.is_looting() then return nil end
-
-    for slot in pairs( loot_list.get_items_by_slot() ) do
-      return (candidates_for( slot ))
-    end
-
-    return nil
-  end
-
-  -- The queue in order, which is the order it serves. Who is next is not reported: it is the
-  -- first row that can receive, and the window shows that by greying the ones that cannot rather
-  -- than by labelling one that can.
+  -- The queue in order, which is the order it serves. Nothing here depends on the client: who can
+  -- actually receive is only answerable while a loot window is open, so it is the award pass's
+  -- question (see next_position) and not something the queue carries around being wrong about
+  -- the rest of the time.
   ---@param category string
+  ---@param limit number? -- how many from the front; the whole queue when omitted
   ---@return AutoRoundRobinRow[]
-  local function get_rows( category )
-    local eligible = current_candidates()
+  local function get_rows( category, limit )
     local q = queue( category )
     local result = {}
+    local count = getn( q )
 
-    for i = 1, getn( q ) do
-      table.insert( result, {
-        name = q[ i ].name,
-        class = q[ i ].class,
-        position = i,
-        eligible = eligible == nil or (eligible[ q[ i ].name ] and true or false)
-      } )
+    if limit and limit < count then count = limit end
+
+    for i = 1, count do
+      table.insert( result, { name = q[ i ].name, class = q[ i ].class } )
     end
 
     return result
@@ -357,6 +349,36 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     queues.update( category, function( q ) M.cycle( q, offset ) end )
   end
 
+  -- Whether this category would actually hand anything out if an item dropped right now. The same
+  -- question the award pass answers, asked without an item: the feature on, the category ticked,
+  -- something ticked under it, and at least one of those things at or above the master loot
+  -- threshold -- because below it GiveMasterLoot refuses and the queue never moves.
+  --
+  -- Exists for display addons (see RollForApi), so that "is anybody actually queuing for gems"
+  -- is answered by the rule itself rather than re-derived from the saved variables by everyone
+  -- who asks.
+  ---@param category string
+  ---@return boolean
+  local function is_category_active( category )
+    if not config.auto_round_robin() then return false end
+
+    local entry = db.ids and db.ids[ category ]
+    if not entry or not entry.enabled then return false end
+
+    local threshold = api().GetLootThreshold() or 0
+
+    for _, item in pairs( entry.items or {} ) do
+      if item.enabled and (item.quality or 0) >= threshold then return true end
+    end
+
+    -- The Trash category's rows are qualities rather than item ids, and the key is the quality.
+    for quality, row in pairs( entry.qualities or {} ) do
+      if row.enabled and quality >= threshold then return true end
+    end
+
+    return false
+  end
+
   -- Whether there's anything a reset would throw away. A queue that is exactly the group in
   -- roster order is what a reset would rebuild, so there is nothing to lose.
   ---@return boolean
@@ -398,6 +420,7 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     remove_player = remove_player,
     move_player = move_player,
     cycle = cycle,
+    is_category_active = is_category_active,
     is_pristine = is_pristine,
     reset = reset,
     subscribe = subscribe

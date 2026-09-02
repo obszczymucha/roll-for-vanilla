@@ -182,6 +182,28 @@ end
 -- Reset is deliberately all-or-nothing rather than per-category. The queues are edited apart but
 -- built together, and "put it back the way it started" means all of them; a Reset that emptied
 -- only the category you happened to be looking at is the one nobody means to click.
+-- Round-robin state is the one bit of RollFor that's interesting to a display addon, so changes
+-- are broadcast to WeakAuras if it's loaded. The category is passed along because the queues are
+-- independent -- an aura watching Gems has no reason to redraw when Marks moves.
+---@param category string
+local function broadcast_round_robin_update( category )
+  local weak_auras = M.api().WeakAuras
+
+  if weak_auras and weak_auras.ScanEvents then
+    weak_auras.ScanEvents( "ROLLFOR_ROUND_ROBIN_QUEUE_UPDATE", category )
+  end
+end
+
+-- Ticking a row in /rf autorobin changes whether a category hands anything out at all, which is
+-- as much a reason to redraw as the queue moving. Which row was ticked isn't tracked -- a toggle
+-- can cascade over a whole subtree -- so every category is announced and the aura's own filter
+-- decides. There are four of them.
+local function broadcast_round_robin_selection()
+  for _, category in ipairs( M.auto_round_robin.get_categories() ) do
+    broadcast_round_robin_update( category )
+  end
+end
+
 local function confirm_round_robin_reset()
   if M.auto_round_robin.is_pristine() then
     M.auto_round_robin.reset()
@@ -440,13 +462,27 @@ local function create_components()
   -- Round-robin queues are the one bit of RollFor state that's interesting to a display addon, so
   -- broadcast changes to WeakAuras if it's loaded. The category is passed along because the queues
   -- are independent -- an aura watching Gems has no reason to redraw when Marks moves.
-  M.auto_round_robin.subscribe( function( category )
-    local weak_auras = M.api().WeakAuras
+  M.auto_round_robin.subscribe( broadcast_round_robin_update )
 
-    if weak_auras and weak_auras.ScanEvents then
-      weak_auras.ScanEvents( "ROLLFOR_ROUND_ROBIN_QUEUE_UPDATE", category )
-    end
-  end )
+  -- Switching the feature off stops every category handing anything out, which is as much a
+  -- reason to redraw as the queue moving or a row being ticked.
+  M.config.subscribe( "auto_round_robin", broadcast_round_robin_selection )
+
+  -- The external contract, for display addons. Deliberately its own global rather than something
+  -- hung off RollFor, which is this addon's module table and free to change shape: what is here
+  -- is meant to keep working, and reading RollForCharDb directly is not.
+  --
+  -- is_active is the reason this exists at all. "Is anybody actually queuing for gems" is the
+  -- award pass's own rule (the feature, the selection and the loot threshold together), and every
+  -- caller re-deriving it from the saved variables would be four copies to keep in step.
+  ---@diagnostic disable-next-line: lowercase-global
+  RollForApi = {
+    round_robin = {
+      categories = function() return M.auto_round_robin.get_categories() end,
+      is_active = function( category ) return M.auto_round_robin.is_category_active( category ) end,
+      queue = function( category, limit ) return M.auto_round_robin.get_rows( category, limit ) end
+    }
+  }
 
   ---@type DroppedLootAnnounce
   M.dropped_loot_announce = m.DroppedLootAnnounce.new(
@@ -590,7 +626,8 @@ local function create_components()
 
   ---@type AutoRoundRobinFrame
   M.autorobin_frame = m.AutoRoundRobinFrame.new( popup_builder(), autoloot_frame_content_transformer,
-    M.autorobin_db, db( "autorobin_frame" ), function() M.autorobin_queue_frame.toggle() end )
+    M.autorobin_db, db( "autorobin_frame" ), function() M.autorobin_queue_frame.toggle() end,
+    broadcast_round_robin_selection )
 
   ---@type ResistanceFrameContentTransformer
   local resistance_frame_content_transformer = m.ResistanceFrameContentTransformer.new( M.resistance_registry )
@@ -1017,6 +1054,15 @@ function M.on_item_info_received( item_id )
   M.roll_controller.on_item_info_received( item_id )
   M.roll_for_receiver.on_item_info_received( item_id )
   m.AutoLootDb.on_item_info_received( item_id )
+end
+
+-- Fired for the loot method, the master looter and the loot threshold alike, which is why the
+-- round-robin window listens: its Trash rows are drawn greyed below the threshold (see
+-- AutoRoundRobinFrame), so the raid leader lowering it while the window is open would otherwise
+-- leave a row still claiming it can't do anything.
+function M.on_party_loot_method_changed()
+  M.auto_master_loot.on_party_loot_method_changed()
+  M.autorobin_frame.refresh()
 end
 
 function M.on_group_changed()

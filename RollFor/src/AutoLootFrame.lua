@@ -28,6 +28,7 @@ local button_defaults = {
 ---@field show fun()
 ---@field hide fun()
 ---@field toggle fun()
+---@field refresh fun() -- redraw what's on screen, for when something outside the tree changed
 ---@field get_frame fun(): Popup?
 
 ---@class AutoLootFrameConfig
@@ -39,6 +40,8 @@ local button_defaults = {
 ---@field roots TreeNode[] -- the tree to render, as returned by AutoLootTree.build
 ---@field make_link fun( item_id: number, quality: number, name: string ): string
 ---@field extra_buttons AutoLootFrameButtonWithCallback[]? -- rendered before Close
+---@field decorate_row fun( row: AutoLootFrameTreeNode )? -- last word on a row, called per refresh
+---@field on_changed fun()? -- a row was ticked; the selection this window edits is now different
 
 M.center_point = { point = "CENTER", relative_point = "CENTER", x = 0, y = 0 }
 
@@ -117,7 +120,7 @@ function M.new( config )
 
       -- Raw data (with its `type`) passed straight through -- the content transformer is where
       -- type -> presentation (label color, item vs label rendering) gets decided, not here.
-      table.insert( rows, {
+      local result = {
         depth = row.depth,
         data = row.data,
         expandable = row.expandable,
@@ -131,8 +134,20 @@ function M.new( config )
         on_check = function( checked )
           m.AutoLootTree.set_checked( node, checked )
           refresh()
+
+          -- After the write and the redraw, so anyone listening sees the selection it landed on
+          -- rather than the one it was leaving.
+          if config.on_changed then config.on_changed() end
         end
-      } )
+      }
+
+      -- The caller's chance to say something about a row that the tree can't know, because it
+      -- depends on the client rather than on the selection -- see AutoRoundRobinFrame, which greys
+      -- a quality row the loot threshold has made inert. Runs per refresh, on a table built fresh
+      -- each time, so nothing it writes can go stale or leak into the tree.
+      if config.decorate_row then config.decorate_row( result ) end
+
+      table.insert( rows, result )
     end
 
     return rows
@@ -201,6 +216,7 @@ function M.new( config )
           else
             frame:SetText( v.label or "" )
             frame:SetLabelStyle( v.color, v.hover_text_color, v.hover_background_color )
+            frame:SetLabelTooltip( v.tooltip_text )
           end
         elseif type == "text" then
           frame:SetText( v.value )
@@ -240,6 +256,14 @@ function M.new( config )
     if popup then popup:Hide() end
   end
 
+  -- Redraws what's already on screen, and nothing else. A closed window has nothing to correct:
+  -- show() refreshes on the way up, so the next opening is current either way. Callers use this
+  -- when something the rows depend on changed outside the tree -- see AutoRoundRobinFrame, whose
+  -- quality rows are drawn against the master loot threshold.
+  local function refresh_if_visible()
+    if popup and popup:IsVisible() then refresh() end
+  end
+
   local function toggle()
     if not popup then popup = create_popup() end
 
@@ -255,6 +279,7 @@ function M.new( config )
     show = show,
     hide = hide,
     toggle = toggle,
+    refresh = refresh_if_visible,
     get_frame = function() return popup end
   }
 end

@@ -49,14 +49,10 @@ function M.new( popup_builder, content_transformer, round_robin, add_player_fram
     local current = category()
     local result = {}
 
-    for _, row in ipairs( round_robin.get_rows( current ) ) do
-      local position = row.position
-
+    for position, row in ipairs( round_robin.get_rows( current ) ) do
       table.insert( result, {
         name = row.name,
         class = row.class,
-        position = position,
-        eligible = row.eligible,
         -- Bound to the position this row was drawn at, and every one of these refreshes the
         -- window, so the next click is against the order it just produced.
         on_up = function() round_robin.move_player( current, position, -1 ) end,

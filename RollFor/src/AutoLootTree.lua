@@ -101,6 +101,39 @@ local function build_items( items )
   return result
 end
 
+-- The round-robin catalogue's Trash category names qualities instead of item ids (see
+-- AutoRoundRobinDb), so its rows have a name and no item. That makes them label leaves -- a
+-- checkbox and a coloured word, no icon and no item tooltip -- which is why they carry `name`
+-- where an item row would carry `id`/`item`.
+--
+-- The quality is carried along too, unused here: the round-robin window reads it to work out
+-- whether the master loot threshold has made the row inert. This tree has no business asking the
+-- client anything, so it only passes the fact on.
+---@param qualities table -- persisted quality entries, keyed by quality
+---@return TreeNode[]
+local function build_qualities( qualities )
+  local result = {}
+  local keys = {}
+
+  for quality in pairs( qualities or {} ) do table.insert( keys, quality ) end
+  table.sort( keys )
+
+  for _, quality in ipairs( keys ) do
+    local entry = qualities[ quality ]
+
+    table.insert( result, Tree.new_leaf( {
+      name = entry.name,
+      entry = entry,
+      quality = quality,
+      color = quality_color_rgb( quality, 1 ),
+      hover_background_color = quality_color_rgb( quality, ITEM_HOVER_BACKGROUND_ALPHA ),
+      checked = entry.enabled,
+    } ) )
+  end
+
+  return result
+end
+
 ---@param name string
 ---@param entry table -- the persisted node this row writes its `enabled` back to
 ---@param color number[]
@@ -176,8 +209,13 @@ function M.build_flat( db )
   for _, category_name in ipairs( ordered_keys( db.ids or {} ) ) do
     local entry = db.ids[ category_name ]
 
+    -- A category names either item ids or qualities, never both -- the Trash fallback is the only
+    -- one of the second kind, and asking which it is here keeps every layer below this one
+    -- ignorant of the difference: both branches return leaves.
+    local children = entry.qualities and build_qualities( entry.qualities ) or build_items( entry.items )
+
     table.insert( categories, build_group( category_name, entry,
-      DUNGEON_COLOR, DUNGEON_HOVER_TEXT_COLOR, build_items( entry.items ) ) )
+      DUNGEON_COLOR, DUNGEON_HOVER_TEXT_COLOR, children ) )
   end
 
   return categories
