@@ -26,9 +26,13 @@ M.button_definitions = {
 ---@field type RoundRobinQueueFrameButtonType
 ---@field callback fun()
 
+---@class RoundRobinQueueFrameOption
+---@field value string -- the category name, which is what a selection means
+---@field label string -- how it is drawn
+
 ---@class RoundRobinQueueFrameData
 ---@field category string -- the category whose queue is shown
----@field categories string[] -- everything the dropdown offers
+---@field categories RoundRobinQueueFrameOption[] -- everything the dropdown offers
 ---@field on_category_change fun( category: string )
 ---@field rows RoundRobinQueueFrameRow[]
 ---@field buttons RoundRobinQueueFrameButtonWithCallback[]
@@ -37,6 +41,7 @@ M.button_definitions = {
 ---@field on_up fun()
 ---@field on_down fun()
 ---@field on_remove fun()
+---@field on_toggle_core fun( core: boolean )
 
 ---@class RoundRobinQueueFrameContentTransformer
 ---@field transform fun( data: RoundRobinQueueFrameData ): table
@@ -82,8 +87,11 @@ local count_gap = 2
 local function add_category_picker( content, data )
   local options = {}
 
+  -- The label is coloured and the value is not: the value is the category and is what a selection
+  -- means, so the colour has to stay out of it or every lookup downstream would carry the escape
+  -- codes with it.
   for _, category in ipairs( data.categories or {} ) do
-    table.insert( options, { value = category, label = category } )
+    table.insert( options, { value = category.value, label = category.label } )
   end
 
   table.insert( content, {
@@ -139,11 +147,13 @@ local function add_rows( content, rows )
     table.insert( content, {
       type = "round_robin_row",
       player = player_cell( row ),
+      core = row.core,
       can_move_up = i > 1,
       can_move_down = i < count,
       on_up = row.on_up,
       on_down = row.on_down,
       on_remove = row.on_remove,
+      on_toggle_core = row.on_toggle_core,
       padding = row_gap
     } )
   end

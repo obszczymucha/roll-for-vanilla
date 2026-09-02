@@ -35,6 +35,162 @@ function DbSpec:should_keep_no_keys_of_its_own()
   eq( rawget( db, "thing" ), nil )
 end
 
+DbMigrationSpec = {}
+
+-- A store an earlier build wrote. It carries no version, which is what an unmigrated db looks
+-- like: base_version is never written down, only reached.
+local function unversioned( data )
+  return { module = data or { thing = 42 } }
+end
+
+function DbMigrationSpec:should_run_a_migration_against_an_unversioned_store()
+  local saved = unversioned( { queues = { "stale" } } )
+
+  Db.new( saved )( "module", { function( store ) store.queues = nil end } )
+
+  eq( saved.module.queues, nil )
+end
+
+-- The first step lands on 2, which is what makes an absent version mean 1.
+function DbMigrationSpec:should_land_the_first_migration_on_version_two()
+  local saved = unversioned()
+
+  Db.new( saved )( "module", { function() end } )
+
+  eq( saved.module.version, 2 )
+end
+
+function DbMigrationSpec:should_record_the_version_it_reached()
+  local saved = unversioned()
+
+  Db.new( saved )( "module", { function() end, function() end } )
+
+  eq( saved.module.version, 3 )
+end
+
+function DbMigrationSpec:should_run_migrations_in_order()
+  local saved = unversioned()
+  local seen = {}
+
+  Db.new( saved )( "module", {
+    function() table.insert( seen, "first" ) end,
+    function() table.insert( seen, "second" ) end,
+    function() table.insert( seen, "third" ) end
+  } )
+
+  eq( seen, { "first", "second", "third" } )
+end
+
+function DbMigrationSpec:should_run_only_the_migrations_the_store_has_not_seen()
+  local saved = unversioned()
+  saved.module.version = 2
+  local seen = {}
+
+  Db.new( saved )( "module", {
+    function() table.insert( seen, "first" ) end,
+    function() table.insert( seen, "second" ) end
+  } )
+
+  eq( seen, { "second" } )
+end
+
+function DbMigrationSpec:should_run_nothing_the_second_time_round()
+  local saved = unversioned()
+  local count = 0
+  local migrations = { function() count = count + 1 end }
+
+  Db.new( saved )( "module", migrations )
+  Db.new( saved )( "module", migrations )
+
+  eq( count, 1 )
+end
+
+-- The whole point of never writing base_version down: a db nobody has had to migrate is left
+-- exactly as it was found.
+function DbMigrationSpec:should_store_nothing_for_a_module_with_no_migrations()
+  local saved = {}
+
+  Db.new( saved )( "module" )
+
+  eq( saved.module, {} )
+end
+
+function DbMigrationSpec:should_store_no_version_on_a_store_it_just_created()
+  local saved = {}
+
+  Db.new( saved )( "module" )
+
+  eq( saved.module.version, nil )
+end
+
+-- A rolled back addon: the data has been through steps this build has never heard of.
+function DbMigrationSpec:should_run_nothing_when_the_store_is_ahead_of_the_migrations()
+  local saved = unversioned()
+  saved.module.version = 5
+  local count = 0
+
+  Db.new( saved )( "module", { function() count = count + 1 end } )
+
+  eq( count, 0 )
+end
+
+function DbMigrationSpec:should_leave_a_version_it_is_behind_where_it_is()
+  local saved = unversioned()
+  saved.module.version = 5
+
+  Db.new( saved )( "module", { function() end } )
+
+  eq( saved.module.version, 5 )
+end
+
+function DbMigrationSpec:should_keep_a_migration_that_succeeded_when_a_later_one_throws()
+  local saved = unversioned()
+
+  pcall( function()
+    Db.new( saved )( "module", {
+      function( store ) store.migrated = true end,
+      function() error( "boom" ) end
+    } )
+  end )
+
+  eq( saved.module.migrated, true )
+  eq( saved.module.version, 2 )
+end
+
+function DbMigrationSpec:should_keep_the_modules_versions_apart()
+  local saved = { mine = { thing = 1 }, theirs = { thing = 2 } }
+  local factory = Db.new( saved )
+  local seen = {}
+
+  factory( "mine", { function() table.insert( seen, "mine" ) end } )
+  factory( "theirs", { function() table.insert( seen, "theirs" ) end, function() end } )
+
+  eq( seen, { "mine", "theirs" } )
+  eq( saved.mine.version, 2 )
+  eq( saved.theirs.version, 3 )
+end
+
+-- The version sits in the module's own store, so it is a field the proxy reads back like any other.
+function DbMigrationSpec:should_read_the_version_back_through_the_proxy()
+  local db = Db.new( unversioned() )( "module", { function() end } )
+
+  eq( db.version, 2 )
+end
+
+function DbMigrationSpec:should_hand_the_module_a_working_proxy_over_the_migrated_store()
+  local saved = unversioned( { old = "gone" } )
+
+  local db = Db.new( saved )( "module", {
+    function( store )
+      store.new_name = store.old
+      store.old = nil
+    end
+  } )
+
+  eq( db.new_name, "gone" )
+  eq( db.old, nil )
+end
+
 DbWatchSpec = {}
 
 local function watched()

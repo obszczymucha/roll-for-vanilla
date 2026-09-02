@@ -227,6 +227,18 @@ function M.parse_items( item_links )
   return result
 end
 
+-- Every entry uses the same item link shape, so it isn't stored per item -- callers (e.g.
+-- AutoLootFrame) build it on demand from the id/quality/name they already have.
+---@param item_id number
+---@param quality number
+---@param name string
+---@return string
+function M.make_link( item_id, quality, name )
+  local color = m.api.ITEM_QUALITY_COLORS[ quality or 0 ] or m.api.ITEM_QUALITY_COLORS[ 0 ]
+
+  return string.format( "%s|Hitem:%d::::::::70::::::::::|h[%s]|h|r", color.hex, item_id, name )
+end
+
 ---@param item_link ItemLink
 ---@return TooltipItemLink
 function M.get_tooltip_link( item_link )

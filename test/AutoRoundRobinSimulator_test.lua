@@ -6,12 +6,14 @@ local u = require( "test/utils" )
 local lu, eq = u.luaunit( "assertEquals" )
 u.multi_require_src( "DebugBuffer", "Module", "Types" )
 require( "src/modules" )
-require( "src/ItemCatalogue" )
+
+-- Before the catalogues are required: they read the client's quality colours at load time,
+-- which in the real client are set during UIParent load, well before any addon file runs.
+u.mock_wow_api()
 require( "src/AutoRoundRobinDb" )
 require( "src/AutoRoundRobin" )
 local AutoRoundRobinSimulator = require( "src/AutoRoundRobinSimulator" )
 
-u.mock_wow_api()
 
 -- The simulator runs the shipped queue operations over a roster it invents, so these specs read
 -- its chat output. There is nothing random in it, so every trace line below is exact.
@@ -181,7 +183,7 @@ function RoundRobinSimulatorEditingSpec:should_add_a_player_at_the_back()
   local sut = simulator()
   sut.run( "raid Ann,Bob" )
 
-  assert_says( sut.run_and_capture( "add Dee" ), "Dee joins at the back, in place 3." )
+  assert_says( sut.run_and_capture( "add Dee" ), "Dee joins at the back, in place 3, core." )
   assert_says( sut.run_and_capture( "queue" ), "3. Dee" )
 end
 

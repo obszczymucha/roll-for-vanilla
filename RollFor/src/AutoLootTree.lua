@@ -47,16 +47,26 @@ local BOSS_COLOR = { 1, 1, 1 }
 local TRASH_COLOR = { 0.45, 0.45, 0.45 }
 local TRASH_HOVER_TEXT_COLOR = { 0.65, 0.65, 0.65 }
 
--- AutoLootDb only owns the verified |cffXXXXXX fact per quality (see quality_color_hex) -- turning
--- that into an { r, g, b, a } highlight is this tree's own display decision, so the parsing lives
--- here.
----@param quality number
+-- A category names its colour as RRGGBB (see AutoRoundRobinDb); turning that into an
+-- { r, g, b, a } highlight is this tree's own display decision, so the parsing lives here.
+---@param hex string -- RRGGBB
+---@param a number
+---@return number[]
+local function hex_color_rgb( hex, a )
+  local rr, gg, bb = hex:match( "(%x%x)(%x%x)(%x%x)$" )
+  return { tonumber( rr, 16 ) / 255, tonumber( gg, 16 ) / 255, tonumber( bb, 16 ) / 255, a }
+end
+
+-- The client already keeps a colour per quality, as floats, so there is nothing to look up here
+-- and nothing to parse. Unknown qualities fall back to Poor.
+---@param quality number?
 ---@param a number
 ---@return number[]
 local function quality_color_rgb( quality, a )
-  local hex = m.AutoLootDb.quality_color_hex( quality )
-  local rr, gg, bb = hex:match( "(%x%x)(%x%x)(%x%x)$" )
-  return { tonumber( rr, 16 ) / 255, tonumber( gg, 16 ) / 255, tonumber( bb, 16 ) / 255, a }
+  local colors = m.api.ITEM_QUALITY_COLORS
+  local color = colors[ quality or 0 ] or colors[ 0 ]
+
+  return { color.r, color.g, color.b, a }
 end
 
 local ITEM_HOVER_BACKGROUND_ALPHA = 0.25
@@ -214,8 +224,13 @@ function M.build_flat( db )
     -- ignorant of the difference: both branches return leaves.
     local children = entry.qualities and build_qualities( entry.qualities ) or build_items( entry.items )
 
+    -- A category names the colour it is drawn in (see AutoRoundRobinDb). Falls back to the
+    -- dungeon blue for a catalogue that names none, which is what the auto-loot tree draws the
+    -- node at this depth in.
+    local color = entry.color and hex_color_rgb( entry.color, 1 ) or DUNGEON_COLOR
+
     table.insert( categories, build_group( category_name, entry,
-      DUNGEON_COLOR, DUNGEON_HOVER_TEXT_COLOR, children ) )
+      color, entry.color and color or DUNGEON_HOVER_TEXT_COLOR, children ) )
   end
 
   return categories

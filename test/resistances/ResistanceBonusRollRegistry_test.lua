@@ -8,7 +8,6 @@ require( "src/modules" )
 require( "src/DebugBuffer" )
 require( "src/Module" )
 local Db = require( "src/Db" )
-require( "src/ItemCatalogue" ) -- the catalogue helpers AutoLootDb delegates its seeding and queries to
 require( "src/AutoLootDb" )
 local ResistanceBonusRollRegistry = require( "src/resistances/ResistanceBonusRollRegistry" )
 

@@ -246,6 +246,7 @@ function M.mock_wow_api()
           SetPoint = function() end,
           SetText = function() end,
           SetTextColor = function() end,
+          SetAlpha = function() end,
           GetStringWidth = function() return 0 end,
           GetWidth = function() return 100 end,
           GetHeight = function() return 20 end,
@@ -285,14 +286,18 @@ function M.mock_wow_api()
     [ "WARRIOR" ] = { colorStr = "ffabd473" }
   }
 
+  -- The client builds this during UIParent load from C_Item.GetItemQualityColor, keyed by
+  -- quality from 0 -- so it is keyed from 0 here too, and carries the colours that client
+  -- actually produces. It used to be a 1-indexed list of placeholder strings, which was enough
+  -- for the code that only passes `hex` through but wrong for anything reading a quality by
+  -- number.
   M.modules().api.ITEM_QUALITY_COLORS = {
-    { r = 1, g = 1, b = 1, a = 1, hex = "asd" },
-    { r = 1, g = 1, b = 1, a = 1, hex = "blue" },
-    { r = 1, g = 1, b = 1, a = 1, hex = "green" },
-    { r = 1, g = 1, b = 1, a = 1, hex = "purple" },
-    { r = 1, g = 1, b = 1, a = 1, hex = "ass" },
-    { r = 1, g = 1, b = 1, a = 1, hex = "princess" },
-    { r = 1, g = 1, b = 1, a = 1, hex = "kenny" }
+    [ 0 ] = { r = 0.62, g = 0.62, b = 0.62, a = 1, hex = "|cff9d9d9d" },
+    [ 1 ] = { r = 1.00, g = 1.00, b = 1.00, a = 1, hex = "|cffffffff" },
+    [ 2 ] = { r = 0.12, g = 1.00, b = 0.00, a = 1, hex = "|cff1eff00" },
+    [ 3 ] = { r = 0.00, g = 0.44, b = 0.87, a = 1, hex = "|cff0070dd" },
+    [ 4 ] = { r = 0.64, g = 0.21, b = 0.93, a = 1, hex = "|cffa335ee" },
+    [ 5 ] = { r = 1.00, g = 0.50, b = 0.00, a = 1, hex = "|cffff8000" }
   }
   M.modules().api.FONT_COLOR_CODE_CLOSE = "|r"
 
@@ -929,7 +934,6 @@ function M.load_real_stuff( req )
   r( "src/Types" )
   r( "src/Interface" )
   r( "src/ItemUtils" )
-  r( "src/ItemCatalogue" )
   r( "src/AutoLootDb" )
   r( "src/AutoRoundRobinDb" )
   r( "src/RaidLockout" )

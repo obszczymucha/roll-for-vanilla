@@ -442,7 +442,14 @@ local function create_components()
   -- Seeded here rather than at the bottom with the rest of the GUI: both the round-robin pass and
   -- its selection window read db.ids, and the pass runs on the first loot window whether or not
   -- the window has ever been opened.
-  M.autorobin_db = db( "autorobin_db" )
+  M.autorobin_db = db( "autorobin_db", {
+    -- 1 -> 2. Queues written before players carried a core flag, so there is no telling which of
+    -- their rows were added by hand and which the roster swept in. Guessing either way is worse
+    -- than starting over: calling them all core makes last month's pugs permanent, calling them
+    -- all transient throws away the hand-added players the flag exists to protect. The order is
+    -- rebuilt from the group on the next roster update.
+    function( store ) store.queues = nil end
+  } )
   m.AutoRoundRobinDb.ensure_seeded( M.autorobin_db )
 
   ---@type AutoRoundRobin
@@ -609,7 +616,7 @@ local function create_components()
     name = "RollForAutoLootFrame",
     title = "RollFor Auto Loot",
     roots = m.AutoLootTree.dungeons,
-    make_link = m.AutoLootDb.make_link
+    make_link = m.ItemUtils.make_link
   } )
 
   ---@type RoundRobinQueueFrameContentTransformer
@@ -670,6 +677,8 @@ local function subscribe_for_component_events()
   M.new_group_event.subscribe( function()
     M.awarded_loot.clear()
     M.dropped_loot.clear()
+    -- Last group's transients have no claim on this one. The core players stay.
+    M.auto_round_robin.on_new_group()
   end )
 
   -- A new lockout is a new set of bosses to kill, so last week's record is not just

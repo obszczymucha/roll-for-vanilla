@@ -9,14 +9,16 @@ local u = require( "test/utils" )
 local lu, eq = u.luaunit( "assertEquals" )
 u.multi_require_src( "DebugBuffer", "Module", "Types" )
 require( "src/modules" )
+
+-- Before the catalogues are required: they read the client's quality colours at load time,
+-- which in the real client are set during UIParent load, well before any addon file runs.
+u.mock_wow_api()
 local Db = require( "src/Db" )
 local popup_builder = require( "mocks/PopupBuilder" )
 local frame_mock = require( "mocks/AutoRoundRobinAddPlayerFrame" )
-require( "src/ItemCatalogue" )
 require( "src/AutoRoundRobinDb" )
 local AutoRoundRobin = require( "src/AutoRoundRobin" )
 
-u.mock_wow_api()
 
 -- The title is three coloured pieces, not one: |r resets to the default colour rather than to the
 -- enclosing one, so a highlighted category nested inside a blue line would leave everything after
@@ -39,6 +41,7 @@ local function new_frame( group )
 
   local group_roster = {
     get_all_players_in_my_group = function() return players end,
+    am_i_in_group = function() return true end,
     find_player = function( name )
       for _, player in ipairs( players ) do
         if string.lower( player.name ) == string.lower( name ) then return player end

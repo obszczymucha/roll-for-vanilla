@@ -6,7 +6,6 @@ local lu, eq = u.luaunit( "assertEquals" )
 u.multi_require_src( "DebugBuffer", "Module", "Types" )
 require( "src/modules" )
 u.mock_wow_api()
-require( "src/ItemCatalogue" )
 require( "src/AutoRoundRobinDb" )
 local AutoRoundRobin = require( "src/AutoRoundRobin" )
 
@@ -14,12 +13,30 @@ local AutoRoundRobin = require( "src/AutoRoundRobin" )
 -- window, no roster, no WoW API. Everything the award pass adds on top of these (which category's
 -- queue, paying the winner, announcing it) is covered in AutoRoundRobinSpec_test.
 
+-- A name with a * is core. The flag is the only thing a player carries besides their name and
+-- class, so spelling it into the name keeps these cases readable as lists.
 ---@param ... string
 ---@return RoundRobinQueue
 local function queue( ... )
   local result = {}
 
-  for _, name in ipairs( { ... } ) do table.insert( result, { name = name } ) end
+  for _, name in ipairs( { ... } ) do
+    local core = string.sub( name, -1 ) == "*"
+
+    table.insert( result, { name = core and string.sub( name, 1, -2 ) or name, core = core } )
+  end
+
+  return result
+end
+
+---@param q RoundRobinQueue
+---@return string[]
+local function marked( q )
+  local result = {}
+
+  for _, player in ipairs( q ) do
+    table.insert( result, player.core and player.name .. "*" or player.name )
+  end
 
   return result
 end
@@ -251,6 +268,80 @@ end
 
 function AutoRoundRobinPositionSpec:should_not_find_somebody_who_is_not_there()
   eq( AutoRoundRobin.position_of( queue( "Ann" ), "Bob" ), nil )
+end
+
+AutoRoundRobinCoreSpec = {}
+
+-- Joiners arrive transient: the roster is what swept them in, and the roster is exactly what the
+-- next group takes away again.
+function AutoRoundRobinCoreSpec:should_append_a_joiner_as_transient()
+  -- Given
+  local q = queue( "Ann*" )
+
+  -- When
+  AutoRoundRobin.sync( q, { { name = "Bob" } } )
+
+  -- Then
+  eq( marked( q ), { "Ann*", "Bob" } )
+end
+
+-- Somebody already in the queue is left exactly as they are. A core player who steps out and
+-- comes back must not be demoted by the roster update that readmits them.
+function AutoRoundRobinCoreSpec:should_not_touch_the_flag_of_somebody_already_in_the_queue()
+  -- Given
+  local q = queue( "Ann*", "Bob" )
+
+  -- When
+  AutoRoundRobin.sync( q, { { name = "Ann" }, { name = "Bob" } } )
+
+  -- Then
+  eq( marked( q ), { "Ann*", "Bob" } )
+end
+
+AutoRoundRobinDropTransientsSpec = {}
+
+function AutoRoundRobinDropTransientsSpec:should_keep_the_core_players_in_the_order_they_were_in()
+  -- Given
+  local q = queue( "Ann", "Bob*", "Cid", "Dee*" )
+
+  -- When
+  AutoRoundRobin.drop_transients( q )
+
+  -- Then
+  eq( names( q ), { "Bob", "Dee" } )
+end
+
+function AutoRoundRobinDropTransientsSpec:should_empty_a_queue_with_nobody_core_in_it()
+  -- Given
+  local q = queue( "Ann", "Bob" )
+
+  -- When
+  AutoRoundRobin.drop_transients( q )
+
+  -- Then
+  eq( names( q ), {} )
+end
+
+function AutoRoundRobinDropTransientsSpec:should_leave_an_all_core_queue_alone()
+  -- Given
+  local q = queue( "Ann*", "Bob*" )
+
+  -- When
+  AutoRoundRobin.drop_transients( q )
+
+  -- Then
+  eq( names( q ), { "Ann", "Bob" } )
+end
+
+function AutoRoundRobinDropTransientsSpec:should_do_nothing_to_an_empty_queue()
+  -- Given
+  local q = {}
+
+  -- When
+  AutoRoundRobin.drop_transients( q )
+
+  -- Then
+  eq( names( q ), {} )
 end
 
 os.exit( lu.LuaUnit.run() )

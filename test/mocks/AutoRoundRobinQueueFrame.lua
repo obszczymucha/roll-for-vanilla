@@ -39,6 +39,7 @@ end
 ---@field click fun( button_type: RoundRobinQueueFrameButtonType )
 ---@field select_category fun( category: string )
 ---@field click_row fun( position: number, action: "up"|"down"|"remove" )
+---@field toggle_core fun( position: number )
 ---@field click_close fun()
 
 ---@param popup_builder PopupBuilder
@@ -95,6 +96,17 @@ function M.new( popup_builder, round_robin, add_player_frame, config, db )
     if not row then error( string.format( "There is no row %s to click.", position ), 2 ) end
 
     row[ "on_" .. action ]()
+  end
+
+  -- The checkbox reports what it is asking for rather than toggling itself, so the mock does what
+  -- the widget does: hands back the opposite of what the row was drawn showing.
+  frame.toggle_core = function( position )
+    if not model then return end
+
+    local row = model.rows[ position ]
+    if not row then error( string.format( "There is no row %s to toggle.", position ), 2 ) end
+
+    row.on_toggle_core( not row.core )
   end
 
   -- The corner X is not a line, so unlike every other control here it is reached through the

@@ -65,7 +65,7 @@ function M.new( popup_builder, content_transformer, db, frame_db, on_queues, on_
     name = "RollForAutoRoundRobinFrame",
     title = "RollFor Auto Round Robin",
     roots = m.AutoLootTree.build_flat( db ),
-    make_link = m.AutoRoundRobinDb.make_link,
+    make_link = m.ItemUtils.make_link,
     extra_buttons = {
       { type = "Queues", callback = on_queues }
     },

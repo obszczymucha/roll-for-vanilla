@@ -10,10 +10,13 @@ local u = require( "test/utils" )
 local lu, eq = u.luaunit( "assertEquals" )
 u.multi_require_src( "DebugBuffer", "Module", "Types" )
 require( "src/modules" )
+
+-- Before the catalogues are required: they read the client's quality colours at load time,
+-- which in the real client are set during UIParent load, well before any addon file runs.
+u.mock_wow_api()
 local Db = require( "src/Db" )
 local popup_builder = require( "mocks/PopupBuilder" )
 require( "src/ItemUtils" )
-require( "src/ItemCatalogue" )
 require( "src/AutoLootDb" )
 require( "src/AutoRoundRobinDb" )
 require( "src/Tree" )
@@ -22,7 +25,6 @@ require( "src/AutoLootFrame" )
 local Transformer = require( "src/AutoLootFrameContentTransformer" )
 local AutoRoundRobinFrame = require( "src/AutoRoundRobinFrame" )
 
-u.mock_wow_api()
 
 local ItemQuality = RollFor.Types.ItemQuality
 

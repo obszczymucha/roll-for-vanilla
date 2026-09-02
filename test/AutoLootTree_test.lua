@@ -7,7 +7,6 @@ u.multi_require_src( "DebugBuffer", "Module", "Types" )
 require( "src/modules" )
 u.mock_wow_api()
 require( "src/ItemUtils" )
-require( "src/ItemCatalogue" ) -- the catalogue helpers AutoLootDb delegates its seeding and queries to
 require( "src/AutoLootDb" )
 require( "src/Tree" )
 local AutoLootTree = require( "src/AutoLootTree" )

@@ -5,7 +5,6 @@ local u = require( "test/utils" )
 local lu, eq = u.luaunit( "assertEquals" )
 u.multi_require_src( "DebugBuffer", "Module", "Types", "SoftResDataTransformer" )
 require( "src/modules" )
-require( "src/ItemCatalogue" ) -- the catalogue helpers AutoLootDb delegates its seeding and queries to
 require( "src/AutoLootDb" )
 local Db = require( "src/Db" )
 local SoftRes = require( "src/SoftRes" )

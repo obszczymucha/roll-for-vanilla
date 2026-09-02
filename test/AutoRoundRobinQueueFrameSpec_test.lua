@@ -9,14 +9,16 @@ local u = require( "test/utils" )
 local lu, eq = u.luaunit( "assertEquals" )
 u.multi_require_src( "DebugBuffer", "Module", "Types" )
 require( "src/modules" )
+
+-- Before the catalogues are required: they read the client's quality colours at load time,
+-- which in the real client are set during UIParent load, well before any addon file runs.
+u.mock_wow_api()
 local Db = require( "src/Db" )
 local popup_builder = require( "mocks/PopupBuilder" )
 local frame_mock = require( "mocks/AutoRoundRobinQueueFrame" )
-require( "src/ItemCatalogue" )
 require( "src/AutoRoundRobinDb" )
 local AutoRoundRobin = require( "src/AutoRoundRobin" )
 
-u.mock_wow_api()
 
 local title = { type = "text", value = "Auto Round Robin Queues", padding = 1 }
 local empty_notice = { type = "text", value = "Nobody in this queue yet.", padding = 10 }
@@ -38,22 +40,27 @@ local function picker( category, categories )
   -- Trash last, because it is the fallback category and sorts after every real one. It owns a
   -- queue like any other category -- that is what being a category means here -- so it is offered
   -- in this dropdown even though it names qualities rather than item ids.
-  for _, name in ipairs( categories or { "Gems", "Marks", "Hearts", "Trash" } ) do
-    table.insert( options, { value = name, label = name } )
+  -- The label carries the category's colour; the value is the plain name, because that is what
+  -- selecting one means.
+  for _, name in ipairs( categories or { "Marks", "Hearts", "Gems", "Trash" } ) do
+    table.insert( options, { value = name, label = RollFor.AutoRoundRobinDb.colorize( name ) } )
   end
 
   -- No label: it sits under a title that already says what these are.
   return { type = "dropdown", label = "", width = 60, value = category, options = options, padding = 8 }
 end
 
+-- Transient unless the spec says otherwise: these frames are seeded from the group, and the
+-- roster only ever brings people in transient.
 ---@param name string
----@param opts table? -- { first = boolean, last = boolean }
+---@param opts table? -- { first = boolean, last = boolean, core = boolean }
 local function line( name, opts )
   local o = opts or {}
 
   return {
     type = "round_robin_row",
     player = RollFor.colorize_player_by_class( name, "Warrior" ),
+    core = o.core or false,
     can_move_up = not o.first,
     can_move_down = not o.last
   }
@@ -113,6 +120,8 @@ local function new_frame( names, opts )
   local players = {}
   for _, name in ipairs( names or {} ) do table.insert( players, { name = name, class = "Warrior" } ) end
 
+  local in_group = true
+
   -- This window never asks the client anything: the queue is the queue whether or not a corpse
   -- is open. Both stubs are here only because AutoRoundRobin's award pass takes them.
   local loot_list = {
@@ -132,7 +141,9 @@ local function new_frame( names, opts )
     { auto_round_robin = function() return true end },
     { is_master_looter = function() return true end },
     { announce = function() end },
-    { get_all_players_in_my_group = function() return players end },
+    -- In a group by default, so the queue hides anybody who isn't in it (see
+    -- AutoRoundRobin.get_rows). Both are mutable so a spec can have somebody join or leave.
+    { get_all_players_in_my_group = function() return players end, am_i_in_group = function() return in_group end },
     candidates,
     { is_auto_looted = function() return false end },
     { on_loot_awarded = function() end }
@@ -150,11 +161,21 @@ local function new_frame( names, opts )
   frame.set_rows = config.set_rows
   frame.add_shown_for = function() return added_for end
 
+  -- Somebody walks in. Not a roster sync -- that is on_group_changed -- just the group they are
+  -- now part of, which is what decides whether the queue draws them.
+  frame.join = function( name )
+    table.insert( players, { name = name, class = "Warrior" } )
+  end
+
+  frame.leave_group = function()
+    in_group = false
+  end
+
   ---@param category string?
   frame.queue_names = function( category )
     local result = {}
 
-    for _, player in ipairs( round_robin.get_queue( category or "Gems" ) ) do
+    for _, player in ipairs( round_robin.get_queue( category or "Marks" ) ) do
       table.insert( result, player.name )
     end
 
@@ -185,7 +206,7 @@ function RoundRobinQueueFrameSpec:should_show_the_empty_notice_when_nobody_is_qu
 
   frame.show()
 
-  frame.should_display( popup( "Gems" ) )
+  frame.should_display( popup( "Marks" ) )
 end
 
 function RoundRobinQueueFrameSpec:should_count_the_queue_above_the_list()
@@ -195,7 +216,7 @@ function RoundRobinQueueFrameSpec:should_count_the_queue_above_the_list()
 
   -- The count is the whole queue, not the part of it the viewport is showing.
   frame.set_rows( 2 )
-  frame.round_robin.cycle( "Gems", 1 )
+  frame.round_robin.cycle( "Marks", 1 )
 
   local content = frame.content()
   eq( content[ 3 ], { type = "round_robin_count", count = "3", padding = 2 } )
@@ -206,7 +227,7 @@ function RoundRobinQueueFrameSpec:should_list_the_queue_in_order()
 
   frame.show()
 
-  frame.should_display( popup( "Gems", {
+  frame.should_display( popup( "Marks", {
     line( "Ann", { first = true } ),
     line( "Bob" ),
     line( "Cid", { last = true } )
@@ -220,16 +241,16 @@ function RoundRobinQueueFrameCategorySpec:should_start_on_the_first_category()
 
   frame.show()
 
-  frame.should_display( popup( "Gems", { line( "Ann", { first = true, last = true } ) } ) )
+  frame.should_display( popup( "Marks", { line( "Ann", { first = true, last = true } ) } ) )
 end
 
 function RoundRobinQueueFrameCategorySpec:should_switch_to_another_categorys_queue()
   local frame = new_frame( { "Ann", "Bob" } )
   frame.show()
 
-  frame.select_category( "Marks" )
+  frame.select_category( "Gems" )
 
-  frame.should_display( popup( "Marks", {
+  frame.should_display( popup( "Gems", {
     line( "Ann", { first = true } ),
     line( "Bob", { last = true } )
   } ) )
@@ -239,12 +260,12 @@ end
 function RoundRobinQueueFrameCategorySpec:should_edit_only_the_category_on_screen()
   local frame = new_frame( { "Ann", "Bob" } )
   frame.show()
-  frame.select_category( "Marks" )
+  frame.select_category( "Gems" )
 
   frame.click( "CycleUp" )
 
-  eq( frame.queue_names( "Marks" ), { "Bob", "Ann" } )
-  eq( frame.queue_names( "Gems" ), { "Ann", "Bob" } )
+  eq( frame.queue_names( "Gems" ), { "Bob", "Ann" } )
+  eq( frame.queue_names( "Marks" ), { "Ann", "Bob" } )
 end
 
 RoundRobinQueueFrameEditingSpec = {}
@@ -256,7 +277,7 @@ function RoundRobinQueueFrameEditingSpec:should_move_a_player_up()
   frame.click_row( 3, "up" )
 
   eq( frame.queue_names(), { "Ann", "Cid", "Bob" } )
-  frame.should_display( popup( "Gems", {
+  frame.should_display( popup( "Marks", {
     line( "Ann", { first = true } ),
     line( "Cid" ),
     line( "Bob", { last = true } )
@@ -324,12 +345,162 @@ function RoundRobinQueueFrameEditingSpec:should_redraw_when_the_queue_moves()
   local frame = new_frame( { "Ann", "Bob" } )
   frame.show()
 
-  frame.round_robin.cycle( "Gems", 1 )
+  frame.round_robin.cycle( "Marks", 1 )
 
-  frame.should_display( popup( "Gems", {
+  frame.should_display( popup( "Marks", {
     line( "Bob", { first = true } ),
     line( "Ann", { last = true } )
   } ) )
+end
+
+RoundRobinQueueFrameCoreSpec = {}
+
+function RoundRobinQueueFrameCoreSpec:should_draw_a_player_added_by_hand_as_core()
+  local frame = new_frame( { "Ann" } )
+
+  frame.round_robin.add_player( "Marks", "Bob", "Warrior" )
+  frame.join( "Bob" )
+  frame.show()
+
+  frame.should_display( popup( "Marks", {
+    line( "Ann", { first = true } ),
+    line( "Bob", { last = true, core = true } )
+  } ) )
+end
+
+function RoundRobinQueueFrameCoreSpec:should_promote_the_player_whose_box_is_ticked()
+  local frame = new_frame( { "Ann", "Bob" } )
+
+  frame.show()
+  frame.toggle_core( 2 )
+
+  frame.should_display( popup( "Marks", {
+    line( "Ann", { first = true } ),
+    line( "Bob", { last = true, core = true } )
+  } ) )
+end
+
+function RoundRobinQueueFrameCoreSpec:should_demote_the_player_whose_box_is_unticked()
+  local frame = new_frame( { "Ann" } )
+
+  frame.round_robin.add_player( "Marks", "Bob", "Warrior" )
+  frame.join( "Bob" )
+  frame.show()
+  frame.toggle_core( 2 )
+
+  frame.should_display( popup( "Marks", {
+    line( "Ann", { first = true } ),
+    line( "Bob", { last = true } )
+  } ) )
+end
+
+-- The box says who survives the next group, not where they stand in this one.
+function RoundRobinQueueFrameCoreSpec:should_leave_the_order_alone_when_a_box_is_ticked()
+  local frame = new_frame( { "Ann", "Bob", "Cid" } )
+
+  frame.show()
+  frame.toggle_core( 2 )
+
+  eq( frame.queue_names(), { "Ann", "Bob", "Cid" } )
+end
+
+-- Each category owns its own queue, so a player is core in the one whose box was ticked and
+-- nowhere else.
+function RoundRobinQueueFrameCoreSpec:should_only_promote_in_the_category_on_screen()
+  local frame = new_frame( { "Ann" } )
+
+  frame.show()
+  frame.toggle_core( 1 )
+  frame.select_category( "Gems" )
+
+  frame.should_display( popup( "Gems", { line( "Ann", { first = true, last = true } ) } ) )
+end
+
+RoundRobinQueueFrameAbsenceSpec = {}
+
+-- Hidden, not dropped: they keep their place in the queue and take the next drop they are
+-- around for.
+function RoundRobinQueueFrameAbsenceSpec:should_hide_a_player_who_is_not_in_the_group()
+  local frame = new_frame( { "Ann", "Cid" } )
+
+  frame.round_robin.add_player( "Marks", "Bob", "Warrior" )
+  frame.show()
+
+  frame.should_display( popup( "Marks", {
+    line( "Ann", { first = true } ),
+    line( "Cid", { last = true } )
+  } ) )
+  eq( frame.queue_names(), { "Ann", "Cid", "Bob" } )
+end
+
+function RoundRobinQueueFrameAbsenceSpec:should_count_only_the_players_it_draws()
+  local frame = new_frame( { "Ann" } )
+
+  frame.round_robin.add_player( "Marks", "Bob", "Warrior" )
+  frame.show()
+
+  eq( frame.content()[ 3 ], { type = "round_robin_count", count = "1", padding = 2 } )
+end
+
+-- Out of a group there is nothing to be absent from, and it is the only time the core players
+-- added between raids can all be seen at once.
+function RoundRobinQueueFrameAbsenceSpec:should_show_everybody_when_not_in_a_group()
+  local frame = new_frame( { "Ann" } )
+
+  frame.round_robin.add_player( "Marks", "Bob", "Warrior" )
+  frame.leave_group()
+  frame.show()
+
+  frame.should_display( popup( "Marks", {
+    line( "Ann", { first = true } ),
+    line( "Bob", { last = true, core = true } )
+  } ) )
+end
+
+function RoundRobinQueueFrameAbsenceSpec:should_draw_a_hidden_player_again_once_they_join()
+  local frame = new_frame( { "Ann" } )
+
+  frame.round_robin.add_player( "Marks", "Bob", "Warrior" )
+  frame.join( "Bob" )
+  frame.show()
+
+  frame.should_display( popup( "Marks", {
+    line( "Ann", { first = true } ),
+    line( "Bob", { last = true, core = true } )
+  } ) )
+end
+
+-- The arrows move a player past the one above them on screen. Stepping one place in the queue
+-- would swap them with the hidden player instead and redraw identically.
+function RoundRobinQueueFrameAbsenceSpec:should_move_a_player_past_the_hidden_one_between_them()
+  local frame = new_frame( { "Ann", "Cid" } )
+
+  -- Ann, Bob (hidden), Cid
+  frame.round_robin.add_player( "Marks", "Bob", "Warrior" )
+  frame.round_robin.move_player( "Marks", 3, -1 )
+  frame.show()
+
+  -- Cid is drawn second, so up means past Ann.
+  frame.click_row( 2, "up" )
+
+  eq( frame.queue_names(), { "Cid", "Bob", "Ann" } )
+  frame.should_display( popup( "Marks", {
+    line( "Cid", { first = true } ),
+    line( "Ann", { last = true } )
+  } ) )
+end
+
+-- The x takes out the player on that row, not whoever happens to sit at that index in the queue.
+function RoundRobinQueueFrameAbsenceSpec:should_remove_the_player_on_the_row_not_the_queue_index()
+  local frame = new_frame( { "Ann", "Cid" } )
+
+  frame.round_robin.add_player( "Marks", "Bob", "Warrior" )
+  frame.round_robin.move_player( "Marks", 3, -1 )
+  frame.show()
+
+  frame.click_row( 2, "remove" )
+
+  eq( frame.queue_names(), { "Ann", "Bob" } )
 end
 
 os.exit( lu.LuaUnit.run() )

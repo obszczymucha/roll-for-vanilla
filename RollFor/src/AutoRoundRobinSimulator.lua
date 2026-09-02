@@ -21,7 +21,9 @@ local blue = m.colors.blue
 --   /rfrotate drop [n]          hand out n items and trace each one
 --   /rfrotate away <name>       in the queue, but not a master loot candidate right now
 --   /rfrotate back <name>       can receive again
---   /rfrotate add <name>        append to the queue
+--   /rfrotate add <name>        append to the queue, core
+--   /rfrotate core <name>       promote / demote -- core players survive a new group
+--   /rfrotate newgroup          walk into a new group: the transients go, the core stays
 --   /rfrotate remove <name>     take them out
 --   /rfrotate up|down <name>    move that one player a place
 --   /rfrotate cycle up|down     rotate the whole queue by one
@@ -190,8 +192,14 @@ function M.new( round_robin_db, group_roster )
     for i, player in ipairs( sim.queue ) do
       local marker = i == next_position and hl( "  <- next" ) or ""
       local away = sim.away[ player.name ] and grey( " (away)" ) or ""
+      -- Marked on the core players, not the transients -- the opposite of what the window does,
+      -- and for the same reason. There a checkbox column makes core visible on every row at no
+      -- cost, so fading the transients is what adds information; here everybody starts transient
+      -- and core is the thing you went and did, so annotating the default would just be noise on
+      -- every line of every trace.
+      local core = player.core and hl( " (core)" ) or ""
 
-      m.info( string.format( "  %s. %s%s%s", i, hl( player.name ), away, marker ) )
+      m.info( string.format( "  %s. %s%s%s%s", i, hl( player.name ), core, away, marker ) )
     end
   end
 
@@ -218,7 +226,7 @@ function M.new( round_robin_db, group_roster )
     local live = (round_robin_db.queues or {})[ "Gems" ] or {}
 
     for _, player in ipairs( live ) do
-      table.insert( sim.queue, { name = player.name, class = player.class } )
+      table.insert( sim.queue, { name = player.name, class = player.class, core = player.core } )
     end
 
     local players = {}
@@ -297,6 +305,8 @@ function M.new( round_robin_db, group_roster )
     m.info( string.format( "  %s -- in the queue, but out of range.", hl( "away <name>" ) ) )
     m.info( string.format( "  %s -- can receive again.", hl( "back <name>" ) ) )
     m.info( string.format( "  %s -- append / take out.", hl( "add <name>, remove <name>" ) ) )
+    m.info( string.format( "  %s -- promote or demote; core survives a new group.", hl( "core <name>" ) ) )
+    m.info( string.format( "  %s -- drop the transients, keep the core.", hl( "newgroup" ) ) )
     m.info( string.format( "  %s -- move that one player a place.", hl( "up <name>, down <name>" ) ) )
     m.info( string.format( "  %s -- rotate the whole queue.", hl( "cycle up, cycle down" ) ) )
     m.info( string.format( "  %s -- the queue as it stands.", hl( "queue" ) ) )
@@ -325,8 +335,39 @@ function M.new( round_robin_db, group_roster )
       return
     end
 
-    table.insert( sim.queue, { name = name } )
-    m.info( string.format( "%s joins at the back, in place %s.", hl( name ), hl( getn( sim.queue ) ) ) )
+    -- Core, exactly as the Add button is: typing a name is the deliberate act the flag is for.
+    table.insert( sim.queue, { name = name, core = true } )
+    m.info( string.format( "%s joins at the back, in place %s, %s.", hl( name ), hl( getn( sim.queue ) ),
+      hl( "core" ) ) )
+  end
+
+  ---@param name string
+  local function set_core( name )
+    if not require_player( name ) then return end
+
+    local player = sim.queue[ find( name ) ]
+    player.core = not player.core
+
+    m.info( player.core
+      and string.format( "%s is %s. %s", hl( player.name ), hl( "core" ),
+        grey( "Stays put when the group turns over." ) )
+      or string.format( "%s is %s. %s", hl( player.name ), grey( "transient" ),
+        grey( "Goes at the next new group -- their place is this group's only." ) ) )
+  end
+
+  -- What walking into a new group does: last group's transients have no claim on this one, and
+  -- the core players keep their place and their order.
+  local function new_group()
+    local before = getn( sim.queue )
+
+    m.AutoRoundRobin.drop_transients( sim.queue )
+
+    local gone = before - getn( sim.queue )
+
+    m.info( string.format( "New group. %s dropped, %s stayed.",
+      hl( string.format( "%s transient%s", gone, gone == 1 and "" or "s" ) ),
+      hl( string.format( "%s core", getn( sim.queue ) ) ) ) )
+    report_queue()
   end
 
   ---@param name string
@@ -420,6 +461,13 @@ function M.new( round_robin_db, group_roster )
       return
     end
 
+    if command == "newgroup" then
+      if not require_started() then return end
+
+      new_group()
+      return
+    end
+
     if command == "cycle" then
       cycle( string.lower( rest ) )
       return
@@ -442,6 +490,11 @@ function M.new( round_robin_db, group_roster )
 
     if command == "add" then
       add( rest )
+      return
+    end
+
+    if command == "core" then
+      set_core( rest )
       return
     end
 

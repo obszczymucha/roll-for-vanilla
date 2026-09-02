@@ -22,7 +22,6 @@ src\Interface.lua
 src\WowApi.lua
 src\Config.lua
 src\ItemUtils.lua
-src\ItemCatalogue.lua
 src\AutoLootDb.lua
 src\AutoRoundRobinDb.lua
 src\RaidLockout.lua

@@ -44,21 +44,53 @@ function M.new( popup_builder, content_transformer, round_robin, add_player_fram
     return categories[ 1 ]
   end
 
+  -- Anybody not in the group is left out (see AutoRoundRobin.get_rows), so a row's place in this
+  -- list is not its place in the queue. Every callback acts on the queue, so all of them are
+  -- bound to `position` -- the index the queue knows it by -- and never to the drawn order.
   ---@return RoundRobinQueueFrameRow[]
   local function rows()
     local current = category()
+    local visible = round_robin.get_rows( current )
     local result = {}
 
-    for position, row in ipairs( round_robin.get_rows( current ) ) do
+    -- The arrows move a player past the one above or below them *on screen*. Stepping one place
+    -- in the queue instead would swap them with a hidden player and redraw identically, which
+    -- reads as a dead button.
+    ---@param i number
+    ---@param offset number
+    ---@return fun()
+    local function swap_with_neighbour( i, offset )
+      return function()
+        local from, to = visible[ i ], visible[ i + offset ]
+        if not to then return end
+
+        round_robin.move_player( current, from.position, to.position - from.position )
+      end
+    end
+
+    for i, row in ipairs( visible ) do
       table.insert( result, {
         name = row.name,
         class = row.class,
-        -- Bound to the position this row was drawn at, and every one of these refreshes the
-        -- window, so the next click is against the order it just produced.
-        on_up = function() round_robin.move_player( current, position, -1 ) end,
-        on_down = function() round_robin.move_player( current, position, 1 ) end,
-        on_remove = function() round_robin.remove_player( current, position ) end
+        core = row.core,
+        -- Every one of these refreshes the window, so the next click is against the list it
+        -- just produced.
+        on_up = swap_with_neighbour( i, -1 ),
+        on_down = swap_with_neighbour( i, 1 ),
+        on_remove = function() round_robin.remove_player( current, row.position ) end,
+        on_toggle_core = function( core ) round_robin.set_core( current, row.position, core ) end
       } )
+    end
+
+    return result
+  end
+
+  ---@return RoundRobinQueueFrameOption[]
+  local function options()
+    local result = {}
+
+    for _, name in ipairs( round_robin.get_categories() ) do
+      table.insert( result, { value = name, label = m.AutoRoundRobinDb.colorize( name ) } )
     end
 
     return result
@@ -70,7 +102,7 @@ function M.new( popup_builder, content_transformer, round_robin, add_player_fram
 
     return {
       category = current,
-      categories = round_robin.get_categories(),
+      categories = options(),
       on_category_change = function( selected )
         db.category = selected
         list.refresh_if_visible()

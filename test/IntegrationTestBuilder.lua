@@ -10,7 +10,6 @@ local SoftResNetherVortexDecorator = require( "src/SoftResNetherVortexDecorator"
 local NetherVortexAwardedLootDecorator = require( "src/NetherVortexAwardedLootDecorator" )
 local SoftResDecorator = require( "src/SoftResPresentPlayersDecorator" )
 local SoftResBonusRollDecorator = require( "src/SoftResBonusRollDecorator" )
-require( "src/ItemCatalogue" ) -- the catalogue helpers AutoLootDb delegates its seeding and queries to
 require( "src/AutoLootDb" )
 local ResistanceBonusRollRegistry = require( "src/resistances/ResistanceBonusRollRegistry" )
 local SoftRes, Db = require( "src/SoftRes" ), require( "src/Db" )

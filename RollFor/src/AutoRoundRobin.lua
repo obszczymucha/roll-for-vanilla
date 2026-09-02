@@ -14,10 +14,16 @@ local round_robin_db = m.AutoRoundRobinDb
 -- One queue per category (Gems, Marks, Hearts -- see AutoRoundRobinDb), each independent: taking
 -- a gem does not move you down the Marks queue.
 --
--- A queue is an ordered list of { name, class } and nothing else. There is no random draw, no
--- cycle counter and no derived standing: the order you see is the order it serves, which is the
--- point of showing it. It is seeded from the group roster, joiners are appended, and from there
--- it is yours to edit -- add, remove, move a player, or rotate the whole thing.
+-- A queue is an ordered list of { name, class, core } and nothing else. There is no random draw,
+-- no cycle counter and no derived standing: the order you see is the order it serves, which is
+-- the point of showing it. It is seeded from the group roster, joiners are appended, and from
+-- there it is yours to edit -- add, remove, move a player, or rotate the whole thing.
+--
+-- `core` is the one flag a player carries, and it answers exactly one question: do they survive
+-- the next group. Somebody added by hand is core, somebody the roster swept in is not, and the
+-- checkbox on their row moves them between the two. Everything else -- their place, their turn,
+-- whether they can be paid -- is blind to it. Written on every insert rather than left absent on
+-- the ones that aren't core, so a queue never has to guess what a missing flag meant.
 --
 -- The one thing the order alone does not decide is who can actually be handed the item.
 -- GetMasterLootCandidate is the authority on that -- players outside the instance, offline or out
@@ -32,19 +38,23 @@ local round_robin_db = m.AutoRoundRobinDb
 ---@class RoundRobinPlayer
 ---@field name string
 ---@field class PlayerClass?
+---@field core boolean -- survives a new group; see the note above
 
 ---@alias RoundRobinQueue RoundRobinPlayer[]
 
 ---@class AutoRoundRobinRow : RoundRobinPlayer
+---@field position number -- where they are in the queue, which is not where they are in this list
 
 ---@class AutoRoundRobin
 ---@field on_loot_opened fun()
 ---@field on_group_changed fun()
+---@field on_new_group fun()
 ---@field get_categories fun(): string[]
 ---@field get_rows fun( category: string, limit: number? ): AutoRoundRobinRow[]
 ---@field get_queue fun( category: string ): RoundRobinQueue
 ---@field add_player fun( category: string, name: string, class: PlayerClass? ): boolean, string?
 ---@field remove_player fun( category: string, position: number )
+---@field set_core fun( category: string, position: number, core: boolean )
 ---@field move_player fun( category: string, position: number, offset: number )
 ---@field cycle fun( category: string, offset: number )
 ---@field is_category_active fun( category: string ): boolean
@@ -70,13 +80,26 @@ end
 -- Everybody in the group who isn't in the queue yet, appended in roster order. Leaving does not
 -- remove you: the queue is a rotation, not a roster, and dropping out for a wipe or a disconnect
 -- must not cost your place. Removing somebody is a deliberate act (see remove_player).
+--
+-- Joiners arrive transient. Somebody already in the queue is left exactly as they are, core or
+-- not -- a core player who steps out and comes back must not be demoted by the roster update
+-- that readmits them.
 ---@param queue RoundRobinQueue
 ---@param players RoundRobinPlayer[]
 function M.sync( queue, players )
   for _, player in ipairs( players ) do
     if not M.position_of( queue, player.name ) then
-      table.insert( queue, { name = player.name, class = player.class } )
+      table.insert( queue, { name = player.name, class = player.class, core = false } )
     end
+  end
+end
+
+-- Everybody a new group would keep, in the order they were in. The transient half of the queue
+-- was the last group and has no claim on this one.
+---@param queue RoundRobinQueue
+function M.drop_transients( queue )
+  for i = getn( queue ), 1, -1 do
+    if not queue[ i ].core then table.remove( queue, i ) end
   end
 end
 
@@ -186,6 +209,19 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     return result
   end
 
+  -- Who is in the group, by lowercased name, built once for a caller that would otherwise ask
+  -- per player and walk the roster every time.
+  ---@return table<string, boolean>
+  local function in_the_group()
+    local result = {}
+
+    for _, player in ipairs( roster_players() ) do
+      result[ string.lower( player.name ) ] = true
+    end
+
+    return result
+  end
+
   -- Every queue gets every group member, which is what makes the queues independent but the
   -- membership shared: you are in all of them or you were taken out of one on purpose.
   local function on_group_changed()
@@ -193,6 +229,22 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
 
     for _, category in ipairs( get_categories() ) do
       queues.update( category, function( q ) M.sync( q, players ) end )
+    end
+  end
+
+  -- Every queue back to its core players, in the order they are in, followed by the group. Both
+  -- halves in one update, deliberately: EventHandler runs on_group_changed first on the very
+  -- roster event a new group arrives on, so dropping without re-syncing would throw away the
+  -- group it had just appended and leave the window empty until the next roster update. Doing
+  -- both here makes the order of the two listeners stop mattering.
+  local function rebuild()
+    local players = roster_players()
+
+    for _, category in ipairs( get_categories() ) do
+      queues.update( category, function( q )
+        M.drop_transients( q )
+        M.sync( q, players )
+      end )
     end
   end
 
@@ -280,22 +332,35 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     end
   end
 
-  -- The queue in order, which is the order it serves. Nothing here depends on the client: who can
-  -- actually receive is only answerable while a loot window is open, so it is the award pass's
-  -- question (see next_position) and not something the queue carries around being wrong about
-  -- the rest of the time.
+  -- The queue in order, which is the order it serves, minus anybody who isn't in the group.
+  --
+  -- Absent players are hidden, not dropped: they keep their place and take the next drop they are
+  -- around for (see next_position), so this is a view and nothing else. `position` is what they
+  -- keep -- their index in the queue, not in this list -- because everything a caller can do to a
+  -- row acts on the queue.
+  --
+  -- Out of a group there is nothing to be absent from, so nothing is hidden. That is also the
+  -- only time the core players you added between raids are all visible at once.
+  --
+  -- Still nothing here about who can receive: that is only answerable while a loot window is
+  -- open, so it stays the award pass's question rather than something the queue carries around
+  -- being wrong about the rest of the time.
   ---@param category string
   ---@param limit number? -- how many from the front; the whole queue when omitted
   ---@return AutoRoundRobinRow[]
   local function get_rows( category, limit )
     local q = queue( category )
     local result = {}
-    local count = getn( q )
+    local present = group_roster.am_i_in_group() and in_the_group() or nil
 
-    if limit and limit < count then count = limit end
+    for i = 1, getn( q ) do
+      if limit and getn( result ) >= limit then break end
 
-    for i = 1, count do
-      table.insert( result, { name = q[ i ].name, class = q[ i ].class } )
+      local player = q[ i ]
+
+      if not present or present[ string.lower( player.name ) ] then
+        table.insert( result, { name = player.name, class = player.class, core = player.core, position = i } )
+      end
     end
 
     return result
@@ -322,7 +387,9 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
       return false, string.format( "%s is already in the %s queue.", q[ existing ].name, category )
     end
 
-    queues.update( category, function( c ) table.insert( c, { name = trimmed, class = class } ) end )
+    queues.update( category, function( c )
+      table.insert( c, { name = trimmed, class = class, core = true } )
+    end )
 
     return true
   end
@@ -334,6 +401,18 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     if not q[ position ] then return end
 
     queues.update( category, function( c ) table.remove( c, position ) end )
+  end
+
+  -- Promotes or demotes one player. Demoting is not removing: they keep their place and their
+  -- turn, and are simply not carried into the next group.
+  ---@param category string
+  ---@param position number
+  ---@param core boolean
+  local function set_core( category, position, core )
+    local q = queue( category )
+    if not q[ position ] then return end
+
+    queues.update( category, function( c ) c[ position ].core = core end )
   end
 
   ---@param category string
@@ -379,45 +458,58 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     return false
   end
 
-  -- Whether there's anything a reset would throw away. A queue that is exactly the group in
-  -- roster order is what a reset would rebuild, so there is nothing to lose.
+  -- What a reset would rebuild: the core players in the order they are in, then the group. A
+  -- queue already equal to that has nothing to lose, which is the only thing this is asked.
+  ---@param q RoundRobinQueue
+  ---@param players RoundRobinPlayer[]
   ---@return boolean
-  local function is_pristine()
-    local players = roster_players()
+  local function matches_reset( q, players )
+    local expected = {}
 
-    for _, category in ipairs( get_categories() ) do
-      local q = queue( category )
-      if getn( q ) ~= getn( players ) then return false end
+    for _, player in ipairs( q ) do
+      if player.core then table.insert( expected, player ) end
+    end
 
-      for i = 1, getn( q ) do
-        if q[ i ].name ~= players[ i ].name then return false end
-      end
+    M.sync( expected, players )
+
+    if getn( q ) ~= getn( expected ) then return false end
+
+    for i = 1, getn( q ) do
+      if q[ i ].name ~= expected[ i ].name then return false end
     end
 
     return true
   end
 
-  -- Back to the group roster, in roster order, for every category.
-  local function reset()
+  -- Whether there's anything a reset would throw away.
+  ---@return boolean
+  local function is_pristine()
     local players = roster_players()
 
     for _, category in ipairs( get_categories() ) do
-      queues.update( category, function( q )
-        for i = getn( q ), 1, -1 do table.remove( q, i ) end
-        M.sync( q, players )
-      end )
+      if not matches_reset( queue( category ), players ) then return false end
     end
+
+    return true
   end
+
+  -- Resetting by hand and walking into a new group are the same operation, which is the point:
+  -- a reset is the group being reapplied, and a new group applies it for you. Core survives both
+  -- -- the flag says a player is not the group's to take away. Which does mean a queue can only
+  -- be emptied a row at a time; taking somebody out for good is what the x is for.
+  local reset = rebuild
 
   ---@type AutoRoundRobin
   return {
     on_loot_opened = on_loot_opened,
     on_group_changed = on_group_changed,
+    on_new_group = rebuild,
     get_categories = get_categories,
     get_rows = get_rows,
     get_queue = queue,
     add_player = add_player,
     remove_player = remove_player,
+    set_core = set_core,
     move_player = move_player,
     cycle = cycle,
     is_category_active = is_category_active,

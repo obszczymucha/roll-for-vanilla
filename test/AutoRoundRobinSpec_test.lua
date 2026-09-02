@@ -40,6 +40,20 @@ local function queue( rf, category )
   return result
 end
 
+-- The queue with the core players marked, for the specs where who survives is the point.
+---@param rf table
+---@param category string?
+---@return string[]
+local function marked( rf, category )
+  local result = {}
+
+  for _, player in ipairs( rf.auto_round_robin.get_queue( category or "Gems" ) ) do
+    table.insert( result, player.core and player.name .. " (core)" or player.name )
+  end
+
+  return result
+end
+
 ---@param config table?
 local function raid( config )
   return new_roll_for()
@@ -539,7 +553,9 @@ function AutoRoundRobinEditingSpec:should_re_add_a_removed_group_member_on_the_n
   eq( queue( rf ), { "Psikutas", "Obszczymucha" } )
 end
 
-function AutoRoundRobinEditingSpec:should_reset_every_queue_back_to_the_group()
+-- A reset is the group being reapplied: it throws away the order and the transients, and the
+-- core players survive it. Which is why it cannot empty a queue -- that is the x button's job.
+function AutoRoundRobinEditingSpec:should_reset_every_queue_to_the_core_players_and_the_group()
   -- Given
   local rf = raid():build()
   rf.auto_round_robin.on_group_changed()
@@ -552,17 +568,243 @@ function AutoRoundRobinEditingSpec:should_reset_every_queue_back_to_the_group()
   -- When
   rf.auto_round_robin.reset()
 
-  -- Then
-  eq( queue( rf, "Gems" ), { "Obszczymucha", "Psikutas" } )
-  eq( queue( rf, "Marks" ), { "Obszczymucha", "Psikutas" } )
+  -- Then -- Ohhaimark was added by hand, so they keep their place at the front of the rebuild
+  eq( queue( rf, "Gems" ), { "Ohhaimark", "Obszczymucha", "Psikutas" } )
+  eq( queue( rf, "Marks" ), { "Ohhaimark", "Obszczymucha", "Psikutas" } )
   eq( rf.auto_round_robin.is_pristine(), true )
+end
+
+-- Nothing to throw away, so the window does not stop to ask. A queue that is exactly what a
+-- reset would rebuild is pristine however it got that way, core players and all.
+function AutoRoundRobinEditingSpec:should_be_pristine_with_core_players_in_the_order_a_reset_would_leave()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+
+  eq( rf.auto_round_robin.is_pristine(), true )
+
+  -- When -- promoting somebody moves nobody
+  rf.auto_round_robin.set_core( "Gems", 1, true )
+
+  -- Then
+  eq( rf.auto_round_robin.is_pristine(), true )
+end
+
+AutoRoundRobinCoreSpec = {}
+
+function AutoRoundRobinCoreSpec:should_add_a_player_by_hand_as_core()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+
+  -- When
+  rf.auto_round_robin.add_player( "Gems", "Ohhaimark" )
+
+  -- Then -- the roster brought the other two in, so only the typed name is core
+  eq( marked( rf ), { "Obszczymucha", "Psikutas", "Ohhaimark (core)" } )
+end
+
+function AutoRoundRobinCoreSpec:should_carry_core_on_the_rows_the_window_draws()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+  rf.auto_round_robin.set_core( "Gems", 2, true )
+
+  -- When
+  local rows = rf.auto_round_robin.get_rows( "Gems" )
+
+  -- Then
+  eq( rows[ 1 ].core, false )
+  eq( rows[ 2 ].core, true )
+end
+
+function AutoRoundRobinCoreSpec:should_promote_a_player_the_roster_brought_in()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+
+  -- When
+  rf.auto_round_robin.set_core( "Gems", 2, true )
+
+  -- Then
+  eq( marked( rf ), { "Obszczymucha", "Psikutas (core)" } )
+end
+
+function AutoRoundRobinCoreSpec:should_demote_a_player_who_was_added_by_hand()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.add_player( "Gems", "Ohhaimark" )
+
+  -- When
+  rf.auto_round_robin.set_core( "Gems", 1, false )
+
+  -- Then
+  eq( marked( rf ), { "Ohhaimark" } )
+end
+
+-- Demoting is not removing: they keep their place and their turn, and are simply not carried
+-- into the next group.
+function AutoRoundRobinCoreSpec:should_leave_a_demoted_player_where_they_are()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+  rf.auto_round_robin.add_player( "Gems", "Ohhaimark" )
+  rf.auto_round_robin.move_player( "Gems", 3, -1 )
+
+  -- When
+  rf.auto_round_robin.set_core( "Gems", 2, false )
+
+  -- Then
+  eq( queue( rf ), { "Obszczymucha", "Ohhaimark", "Psikutas" } )
+end
+
+function AutoRoundRobinCoreSpec:should_do_nothing_for_a_position_that_is_not_there()
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+
+  rf.auto_round_robin.set_core( "Gems", 9, true )
+
+  eq( marked( rf ), { "Obszczymucha", "Psikutas" } )
+end
+
+AutoRoundRobinAbsenceSpec = {}
+
+---@param rows AutoRoundRobinRow[]
+---@return string[]
+local function row_names( rows )
+  local result = {}
+
+  for _, row in ipairs( rows ) do table.insert( result, row.name ) end
+
+  return result
+end
+
+-- Hidden, not dropped. They keep their place and take the next drop they are around for, which
+-- is the whole reason the queue and who can receive are kept apart.
+function AutoRoundRobinAbsenceSpec:should_leave_out_somebody_who_is_not_in_the_group()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+  rf.auto_round_robin.add_player( "Gems", "Ohhaimark" )
+
+  -- Then
+  eq( row_names( rf.auto_round_robin.get_rows( "Gems" ) ), { "Obszczymucha", "Psikutas" } )
+  eq( queue( rf ), { "Obszczymucha", "Psikutas", "Ohhaimark" } )
+end
+
+-- A row acts on the queue, so it carries the index the queue knows it by rather than the one it
+-- was drawn at.
+function AutoRoundRobinAbsenceSpec:should_carry_the_queue_position_past_the_players_it_left_out()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+  rf.auto_round_robin.add_player( "Gems", "Ohhaimark" )
+  rf.auto_round_robin.move_player( "Gems", 3, -1 )
+
+  -- When -- Obszczymucha, Ohhaimark (hidden), Psikutas
+  local rows = rf.auto_round_robin.get_rows( "Gems" )
+
+  -- Then
+  eq( rows[ 1 ].position, 1 )
+  eq( rows[ 2 ].position, 3 )
+end
+
+-- The limit is how many rows to draw, so it counts what is drawn.
+function AutoRoundRobinAbsenceSpec:should_count_the_limit_against_the_rows_it_returns()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+  rf.auto_round_robin.add_player( "Gems", "Ohhaimark" )
+  rf.auto_round_robin.move_player( "Gems", 3, -1 )
+
+  -- Then
+  eq( row_names( rf.auto_round_robin.get_rows( "Gems", 1 ) ), { "Obszczymucha" } )
+  eq( row_names( rf.auto_round_robin.get_rows( "Gems", 2 ) ), { "Obszczymucha", "Psikutas" } )
+end
+
+AutoRoundRobinNewGroupSpec = {}
+
+-- The transients were the last group and have no claim on this one. The core players keep their
+-- place and their order at the front.
+function AutoRoundRobinNewGroupSpec:should_drop_the_transients_and_keep_the_core()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+  rf.auto_round_robin.add_player( "Gems", "Ohhaimark" )
+  rf.auto_round_robin.set_core( "Gems", 2, true )
+
+  -- When
+  rf.auto_round_robin.on_new_group()
+
+  -- Then -- Obszczymucha was transient, so they lost their place and came back off the roster
+  eq( marked( rf ), { "Psikutas (core)", "Ohhaimark (core)", "Obszczymucha" } )
+end
+
+-- A demoted player who is not in the group has nothing left holding them there.
+function AutoRoundRobinNewGroupSpec:should_drop_a_demoted_player_who_is_not_in_the_group()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+  rf.auto_round_robin.add_player( "Gems", "Ohhaimark" )
+  rf.auto_round_robin.set_core( "Gems", 3, false )
+
+  -- When
+  rf.auto_round_robin.on_new_group()
+
+  -- Then
+  eq( queue( rf ), { "Obszczymucha", "Psikutas" } )
+end
+
+function AutoRoundRobinNewGroupSpec:should_do_it_to_every_category()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+  rf.auto_round_robin.add_player( "Marks", "Ohhaimark" )
+
+  -- When
+  rf.auto_round_robin.on_new_group()
+
+  -- Then
+  eq( marked( rf, "Marks" ), { "Ohhaimark (core)", "Obszczymucha", "Psikutas" } )
+  eq( marked( rf, "Hearts" ), { "Obszczymucha", "Psikutas" } )
+end
+
+-- EventHandler runs the roster sync first on the very event a new group arrives on, so this has
+-- to survive the group being appended a moment before the transients are dropped. Dropping
+-- without re-syncing would throw away the group it had just been handed.
+function AutoRoundRobinNewGroupSpec:should_keep_the_group_that_the_roster_sync_appended_first()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.add_player( "Gems", "Ohhaimark" )
+
+  -- When -- the order EventHandler fires them in
+  rf.auto_round_robin.on_group_changed()
+  rf.auto_round_robin.on_new_group()
+
+  -- Then
+  eq( marked( rf ), { "Ohhaimark (core)", "Obszczymucha", "Psikutas" } )
+end
+
+-- A core player stepping out and coming back must not be demoted by the roster update that
+-- readmits them, or leaving the raid for a minute would quietly cost them the flag.
+function AutoRoundRobinNewGroupSpec:should_not_demote_a_core_player_the_roster_sync_sees_again()
+  -- Given
+  local rf = raid():build()
+  rf.auto_round_robin.on_group_changed()
+  rf.auto_round_robin.set_core( "Gems", 1, true )
+
+  -- When
+  rf.auto_round_robin.on_group_changed()
+
+  -- Then
+  eq( marked( rf ), { "Obszczymucha (core)", "Psikutas" } )
 end
 
 -- Trash comes last and is a category like any other from here on: it owns a queue, gets synced
 -- from the roster and can be edited. What makes it the fallback is only where it sorts and the
 -- fact that it names qualities instead of item ids (see AutoRoundRobinDb).
 function AutoRoundRobinEditingSpec:should_offer_the_catalogues_categories_in_order()
-  eq( raid():build().auto_round_robin.get_categories(), { "Gems", "Marks", "Hearts", "Trash" } )
+  eq( raid():build().auto_round_robin.get_categories(), { "Marks", "Hearts", "Gems", "Trash" } )
 end
 
 os.exit( lu.LuaUnit.run() )

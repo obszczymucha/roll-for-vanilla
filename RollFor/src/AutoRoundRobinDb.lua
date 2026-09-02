@@ -4,7 +4,6 @@ local m = RollFor
 if m.AutoRoundRobinDb then return end
 
 local M = {}
-local catalogue = m.ItemCatalogue
 
 -- The round-robin catalogue: which items /rf autorobin is allowed to hand out, grouped into
 -- categories. Deliberately narrow. Round robin awards loot on its own, so what belongs here is
@@ -14,8 +13,8 @@ local catalogue = m.ItemCatalogue
 -- raid a gem fell out of is not a fact this feature has any use for -- one gem is one gem, and
 -- one queue serves all of them -- so the raid level is not modelled at all. That is also why the
 -- seeding and query functions below are here rather than shared with AutoLootDb through
--- ItemCatalogue: the two catalogues no longer have the same shape, and only the item link
--- helpers survive as genuinely common ground.
+-- AutoLootDb: the two catalogues no longer have the same shape. Building an item link is the
+-- only thing they still do the same way, and that is ItemUtils'.
 --
 -- The categories are the unit of rotation: each one owns an independent queue (see
 -- AutoRoundRobin), so adding a category here adds a queue with no other change.
@@ -26,9 +25,21 @@ local catalogue = m.ItemCatalogue
 -- Trash (below) is the one category that names no ids at all -- see the comment on it.
 local TRASH = "Trash"
 
+-- An item quality's colour as plain RRGGBB, off the table the client builds during UIParent load.
+---@param quality number
+---@return string
+local function quality_color( quality )
+  return string.sub( m.api.ITEM_QUALITY_COLORS[ quality ].hex, -6 )
+end
+
+-- The colour each category is drawn in, as plain RRGGBB -- no escape codes, so it is as usable as
+-- an { r, g, b } for the tree as it is as text for the dropdown. A colour rather than a quality,
+-- so a category is free to take one no item quality has; the four below borrow quality colours
+-- because that is what reads well next to the items in them, not because a category has to.
 local ids = {
   [ "Gems" ] = {
-    order = 1,
+    color = quality_color( 4 ), -- epic
+    order = 3,
     items = {
       [ 32227 ] = { quality = 4, icon = 133238, name = "Crimson Spinel" },
       [ 32228 ] = { quality = 4, icon = 133244, name = "Empyrean Sapphire" },
@@ -39,13 +50,15 @@ local ids = {
     }
   },
   [ "Marks" ] = {
-    order = 2,
+    color = quality_color( 2 ), -- uncommon
+    order = 1,
     items = {
       [ 32897 ] = { quality = 2, icon = 136172, name = "Mark of the Illidari" },
     }
   },
   [ "Hearts" ] = {
-    order = 3,
+    color = quality_color( 3 ), -- rare
+    order = 2,
     items = {
       [ 32428 ] = { quality = 3, icon = 136150, name = "Heart of Darkness" },
     }
@@ -65,6 +78,7 @@ local ids = {
   -- the window is what says so -- re-deriving the threshold here would only give the two places
   -- a chance to disagree.
   [ TRASH ] = {
+    color = quality_color( 0 ), -- poor
     order = 99,
     qualities = {
       [ 2 ] = { name = "Uncommon" },
@@ -72,6 +86,21 @@ local ids = {
     }
   },
 }
+
+-- A category's name in its own colour, for the places that draw it as text.
+--
+-- Reads the static catalogue, not the persisted db: a colour is a fact of the catalogue and not
+-- of anybody's selection, and ensure_seeded overwrites the stored one from here anyway. Falls
+-- back to the plain name, so a category with no colour is still drawn rather than blanked.
+---@param category string
+---@return string
+function M.colorize( category )
+  local entry = ids[ category ]
+
+  if not entry or not entry.color then return category end
+
+  return m.colorize( entry.color, category )
+end
 
 -- Only ever used to name a quality in a sentence (see the window's inert-row tooltip), never to
 -- decide anything.
@@ -112,7 +141,7 @@ function M.categories( db )
   return names
 end
 
--- Seeds the persisted db from the static catalogue above. Same contract ItemCatalogue.ensure_seeded
+-- Seeds the persisted db from the static catalogue above. Same contract AutoLootDb.ensure_seeded
 -- documents for the nested shape: additions appear disabled, `enabled` on rows that already exist
 -- is never touched, and entries no longer in the catalogue are left alone rather than pruned.
 ---@param db table the persisted autorobin_db
@@ -122,6 +151,7 @@ function M.ensure_seeded( db )
   for category_name, category_entry in pairs( ids ) do
     local category = db.ids[ category_name ] or { enabled = false }
     category.order = category_entry.order
+    category.color = category_entry.color
     category.items = category.items or {}
 
     for item_id, item_entry in pairs( category_entry.items or {} ) do
@@ -240,14 +270,6 @@ function M.has_enabled_items( db )
   end
 
   return false
-end
-
----@param item_id number
----@param quality number
----@param name string
----@return string
-function M.make_link( item_id, quality, name )
-  return catalogue.make_link( item_id, quality, name )
 end
 
 M.ids = ids

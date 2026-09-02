@@ -1669,9 +1669,19 @@ local round_robin_row_height = 16
 -- Some gap is left on purpose. The column is fixed rather than sized per name so the buttons line
 -- up in a column down the list -- an x that moved left and right as the names changed length
 -- would be much harder to hit than a few pixels of air.
-local round_robin_row_width = 176
-local round_robin_name_x = 8
+-- Widened by exactly the checkbox column below, so the name column keeps the width it was sized
+-- to and the right-anchored buttons ride out with the edge.
+local round_robin_row_width = 194
+local round_robin_checkbox_size = 14
+local round_robin_checkbox_x = 4
+local round_robin_name_x = 26
 local round_robin_name_width = 108
+
+-- A transient is a player this queue will not carry into the next group, which is exactly what
+-- the unticked box says -- but a box is easy to miss in a list of forty, so the name says it too.
+-- Faded rather than recoloured: the name carries its class colour, and overwriting that to say
+-- something about the queue would cost the one thing the colour is there for.
+local transient_row_alpha = 0.5
 
 -- Right to left from the row's right edge, so the buttons line up in a column down the list.
 -- UIPanelCloseButton would hide its parent on click -- the row -- so the NoScripts variant is the
@@ -1686,7 +1696,11 @@ local round_robin_buttons = {
   { field = "up", template = "UIPanelScrollUpButtonTemplate", scale = 0.85, x = -35 }
 }
 
--- A row in the auto round robin queue: the player, then up / down / remove.
+-- A row in the auto round robin queue: core, the player, then up / down / remove.
+--
+-- The checkbox is core (see AutoRoundRobin), not selection and not eligibility: ticked means the
+-- player stays when the group turns over. Same template and size the auto-loot tree uses, so the
+-- two windows tick the same way.
 function M.round_robin_row( parent )
   local container = m.api.CreateFrame( "Frame", nil, parent )
   container:SetHeight( round_robin_row_height )
@@ -1702,6 +1716,19 @@ function M.round_robin_row( parent )
   hover_highlight:Hide()
 
   local is_header = false
+
+  local core = m.api.CreateFrame( "CheckButton", nil, container, "UICheckButtonTemplate" )
+  core:SetWidth( round_robin_checkbox_size )
+  core:SetHeight( round_robin_checkbox_size )
+  core:SetPoint( "LEFT", container, "LEFT", round_robin_checkbox_x, 0 )
+
+  core:SetScript( "OnClick", function()
+    -- The queue is what says whether this player is core; the box only reports it. So the click
+    -- is handed on with what it is asking for and the row is redrawn from the answer, rather than
+    -- the box being left showing a state nothing has agreed to yet.
+    local callback = container.on_toggle_core
+    if callback then callback( core:GetChecked() and true or false ) end
+  end )
 
   local name = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
   name:SetWidth( round_robin_name_width )
@@ -1732,10 +1759,14 @@ function M.round_robin_row( parent )
   -- previous occupant's closure would move or remove the wrong player.
   container.SetRow = function( _, row )
     name:SetText( row.player or "" )
+    name:SetAlpha( row.core and 1 or transient_row_alpha )
+
+    core:SetChecked( row.core and true or false )
 
     container.on_up = row.on_up
     container.on_down = row.on_down
     container.on_remove = row.on_remove
+    container.on_toggle_core = row.on_toggle_core
 
     -- The first row cannot move up and the last cannot move down, and a button that does
     -- nothing when clicked is worse than one that says it will not.
@@ -1755,6 +1786,8 @@ function M.round_robin_row( parent )
     for _, button in pairs( buttons ) do
       if is_header then button:Hide() else button:Show() end
     end
+
+    if is_header then core:Hide() else core:Show() end
 
     if is_header then
       hover_highlight:Hide()
