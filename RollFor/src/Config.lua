@@ -36,6 +36,11 @@ function M.new( db, event_bus )
     -- Not to be confused with auto_raid_roll above, which auto-starts a raid roll when a normal
     -- roll produces no winner. This one is the round-robin rotation (/rf autorobin).
     [ "auto_round_robin" ] = { cmd = "auto-round-robin", display = "Auto round-robin", help = "toggle auto round-robin" },
+    [ "auto_round_robin_announce" ] = { cmd = "auto-round-robin-announce", display = "Announce round-robin awards", help = "toggle announcements of round-robin awards" },
+    -- Independent of the above: this one is about the "N items dropped" list, not the award line.
+    -- Off, because an item the rotation hands out was never up for grabs, and announcing it as a
+    -- drop invites rolls for it.
+    [ "auto_round_robin_announce_drops" ] = { cmd = "auto-round-robin-announce-drops", display = "Announce round-robin items as dropped", help = "toggle listing round-robin items in the drop announcement" },
     [ "auto_group_loot" ] = { cmd = "auto-group-loot", display = "Auto group loot", help = "toggle auto group loot" },
     [ "auto_master_loot" ] = { cmd = "auto-master-loot", display = "Auto master loot", help = "toggle auto master loot" },
     [ "rolling_popup_lock" ] = { cmd = "rolling-popup-lock", display = "Rolling popup lock", help = "toggle rolling popup lock" },
@@ -69,6 +74,8 @@ function M.new( db, event_bus )
     if db.round_robin_queue_rows == nil then db.round_robin_queue_rows = 6 end
     -- Off unless asked for: this one awards loot on its own, so it has to be opted into.
     if db.auto_round_robin == nil then db.auto_round_robin = false end
+    if db.auto_round_robin_announce == nil then db.auto_round_robin_announce = true end
+    if db.auto_round_robin_announce_drops == nil then db.auto_round_robin_announce_drops = false end
   end
 
   local function print_toggle( toggle_key )

@@ -53,6 +53,7 @@ local round_robin_db = m.AutoRoundRobinDb
 
 ---@class AutoRoundRobin
 ---@field on_loot_opened fun()
+---@field is_round_robined fun( item: DroppedItem ): boolean
 ---@field on_group_changed fun()
 ---@field on_new_group fun()
 ---@field get_categories fun(): string[]
@@ -296,7 +297,10 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     -- Only once the award has actually gone through.
     queues.update( category, function( c ) M.serve( c, position ) end )
 
-    chat.announce( string.format( "%s receives %s (%s round robin).", winner.name, item.link, string.lower( category ) ) )
+    if config.auto_round_robin_announce() then
+      chat.announce( string.format( "%s receives %s (%s round robin).", winner.name, item.link, string.lower( category ) ) )
+    end
+
     loot_award_callback.on_loot_awarded( item.id, item.link, winner.name,
       winner.class or classes[ winner.name ], 1 )
   end
@@ -322,19 +326,35 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     return not auto_loot.is_auto_looted( item )
   end
 
-  local function on_loot_opened()
-    if not player_info.is_master_looter() then return end
+  -- The category this item would be handed out under, or nil when the rotation isn't taking it.
+  ---@param item DroppedItem
+  ---@return string?
+  local function claimed_category( item )
     if not config.auto_round_robin() then return end
     -- The same manual-override escape auto-loot has.
     if m.is_shift_key_down() then return end
+    if not is_awardable( item ) then return end
+
+    return round_robin_db.find_category( db, item.id, item.quality )
+  end
+
+  -- Asked by the drop announcement, which runs first on the same loot window: an item the
+  -- rotation is about to hand out is not one the raid is told dropped, because the award
+  -- announces it a moment later and the item was never up for grabs.
+  ---@param item DroppedItem
+  ---@return boolean
+  local function is_round_robined( item )
+    return claimed_category( item ) and true or false
+  end
+
+  local function on_loot_opened()
+    if not player_info.is_master_looter() then return end
 
     -- Iterate by slot, not by item id: two of the same gem in one window are two awards to two
     -- different players, and loot_list.get_slot() would collapse them onto the first match.
     for slot, item in pairs( loot_list.get_items_by_slot() ) do
-      if is_awardable( item ) then
-        local category = round_robin_db.find_category( db, item.id, item.quality )
-        if category then award( slot, item, category ) end
-      end
+      local category = claimed_category( item )
+      if category then award( slot, item, category ) end
     end
   end
 
@@ -508,6 +528,7 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
   ---@type AutoRoundRobin
   return {
     on_loot_opened = on_loot_opened,
+    is_round_robined = is_round_robined,
     on_group_changed = on_group_changed,
     on_new_group = rebuild,
     get_categories = get_categories,

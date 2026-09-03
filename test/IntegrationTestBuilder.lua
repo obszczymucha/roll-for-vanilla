@@ -81,6 +81,11 @@ function M.mock_config( configuration )
     auto_loot_messages = function() return config and config.auto_loot_messages end,
     auto_raid_roll = function() return config and config.auto_raid_roll end,
     auto_round_robin = function() return config and config.auto_round_robin end,
+    auto_round_robin_announce = function()
+      if config and config.auto_round_robin_announce ~= nil then return config.auto_round_robin_announce end
+      return true
+    end,
+    auto_round_robin_announce_drops = function() return config and config.auto_round_robin_announce_drops end,
     raid_roll_again = function() return config and config.raid_roll_again end,
     rolling_popup_lock = function() return config and config.rolling_popup_lock end,
     subscribe = function() end,
@@ -514,6 +519,7 @@ function M.new_roll_for()
       winner_tracker,
       player_info,
       auto_loot,
+      auto_round_robin,
       config
     )
 

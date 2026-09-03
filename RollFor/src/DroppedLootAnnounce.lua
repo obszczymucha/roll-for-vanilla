@@ -192,12 +192,17 @@ end
 ---@param loot_list LootList
 ---@param softres GroupAwareSoftRes
 ---@param auto_loot AutoLoot
+---@param auto_round_robin AutoRoundRobin
 ---@param config Config
-function M.process_dropped_items( loot_list, softres, auto_loot, config )
+function M.process_dropped_items( loot_list, softres, auto_loot, auto_round_robin, config )
   local source_guid = loot_list.get_source_guid()
   local threshold = m.api.GetLootThreshold()
   local items = filter( loot_list.get_items(), function( item )
     if auto_loot.is_auto_looted( item ) and not auto_loot.is_on_predefined_list( item ) and not config.auto_loot_announce() or item.id == 29434 then return false end
+
+    -- The rotation hands this one out itself, so by default there is nothing to tell the raid
+    -- about -- the award announces it a moment later, and the item was never up for grabs.
+    if auto_round_robin.is_round_robined( item ) and not config.auto_round_robin_announce_drops() then return false end
 
     local quality = item.quality or 0
 
@@ -279,8 +284,9 @@ end
 ---@param winner_tracker WinnerTracker
 ---@param player_info PlayerInfo
 ---@param auto_loot AutoLoot
+---@param auto_round_robin AutoRoundRobin
 ---@param config Config
-function M.new( loot_list, chat, softres, winner_tracker, player_info, auto_loot, config )
+function M.new( loot_list, chat, softres, winner_tracker, player_info, auto_loot, auto_round_robin, config )
   local announcing = false
   local announced_source_ids = {}
 
@@ -295,7 +301,7 @@ function M.new( loot_list, chat, softres, winner_tracker, player_info, auto_loot
       return
     end
 
-    local source_guid, items, announcements = M.process_dropped_items( loot_list, softres, auto_loot, config )
+    local source_guid, items, announcements = M.process_dropped_items( loot_list, softres, auto_loot, auto_round_robin, config )
     local was_announced = announced_source_ids[ source_guid ]
     if was_announced then return end
 

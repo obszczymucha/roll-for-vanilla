@@ -502,6 +502,7 @@ local function create_components()
     M.winner_tracker,
     M.player_info,
     M.auto_loot,
+    M.auto_round_robin,
     M.config
   )
 

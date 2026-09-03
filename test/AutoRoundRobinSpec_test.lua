@@ -79,7 +79,6 @@ function AutoRoundRobinSpec:should_award_announce_and_record_the_head_of_the_que
 
   -- Then
   chat.assert(
-    r( "Princess Kenny dropped 1 item:", "1. [Crimson Spinel]" ),
     r( "Obszczymucha receives [Crimson Spinel] (gems round robin)." ),
     c( "RollFor: Obszczymucha received [Crimson Spinel]." )
   )
@@ -87,6 +86,29 @@ function AutoRoundRobinSpec:should_award_announce_and_record_the_head_of_the_que
   eq( rf.awarded_loot.has_item_been_awarded( "Obszczymucha", alid( 32227 ) ), true )
   eq( queue( rf ), { "Psikutas", "Obszczymucha" } )
   rf.rolling_popup.should_be_hidden()
+end
+
+-- The announcement is the only thing the toggle silences: the item is still handed out, still
+-- recorded, and the queue still moves.
+function AutoRoundRobinSpec:should_award_without_announcing_when_announcements_are_off()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local gem = i( "Crimson Spinel", 32227 )
+
+  local rf = raid( { auto_round_robin = true, auto_round_robin_announce = false } )
+      :loot_facade( loot_facade ):chat( chat ):build()
+
+  rf.round_robin_list.enable( gem )
+  rf.auto_round_robin.on_group_changed()
+
+  -- When
+  loot( loot_facade, gem )
+
+  -- Then
+  chat.assert( c( "RollFor: Obszczymucha received [Crimson Spinel]." ) )
+
+  eq( rf.awarded_loot.has_item_been_awarded( "Obszczymucha", alid( 32227 ) ), true )
+  eq( queue( rf ), { "Psikutas", "Obszczymucha" } )
 end
 
 -- The queue is seeded on the first loot window even if no roster update has landed yet, so the
@@ -120,7 +142,6 @@ function AutoRoundRobinSpec:should_award_two_copies_to_the_first_two_in_the_queu
 
   -- Then
   chat.assert(
-    r( "Princess Kenny dropped 2 items:", "1. 2x[Crimson Spinel]" ),
     r( "Obszczymucha receives [Crimson Spinel] (gems round robin)." ),
     c( "RollFor: Obszczymucha received [Crimson Spinel]." ),
     r( "Psikutas receives [Crimson Spinel] (gems round robin)." ),
@@ -217,6 +238,52 @@ function AutoRoundRobinSpec:should_award_nothing_that_is_not_on_the_list()
   eq( queue( rf ), { "Obszczymucha", "Psikutas" } )
 end
 
+-- Only the item the rotation takes drops out of the announcement. The rest of the window is
+-- still what dropped, and the count is the count of what is actually up for grabs.
+function AutoRoundRobinSpec:should_announce_only_the_items_the_rotation_does_not_take()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local gem = i( "Crimson Spinel", 32227 )
+  local other = i( "Hearthstone", 6948 )
+
+  local rf = raid():loot_facade( loot_facade ):chat( chat ):build()
+  rf.round_robin_list.enable( gem )
+  rf.auto_round_robin.on_group_changed()
+
+  -- When
+  loot( loot_facade, gem, other )
+
+  -- Then
+  chat.assert(
+    r( "Princess Kenny dropped 1 item:", "1. [Hearthstone]" ),
+    r( "Obszczymucha receives [Crimson Spinel] (gems round robin)." ),
+    c( "RollFor: Obszczymucha received [Crimson Spinel]." )
+  )
+end
+
+-- Switching the drop announcement back on puts the item in the list as well as handing it out.
+function AutoRoundRobinSpec:should_announce_the_drop_when_drop_announcements_are_on()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local gem = i( "Crimson Spinel", 32227 )
+
+  local rf = raid( { auto_round_robin = true, auto_round_robin_announce_drops = true } )
+      :loot_facade( loot_facade ):chat( chat ):build()
+
+  rf.round_robin_list.enable( gem )
+  rf.auto_round_robin.on_group_changed()
+
+  -- When
+  loot( loot_facade, gem )
+
+  -- Then
+  chat.assert(
+    r( "Princess Kenny dropped 1 item:", "1. [Crimson Spinel]" ),
+    r( "Obszczymucha receives [Crimson Spinel] (gems round robin)." ),
+    c( "RollFor: Obszczymucha received [Crimson Spinel]." )
+  )
+end
+
 -- Below the master loot threshold an item isn't master-lootable at all, so GiveMasterLoot would
 -- quietly do nothing and the queue would move for an award that never happened. This is not
 -- hypothetical for the shipping catalogue: Mark of the Illidari is Uncommon.
@@ -259,7 +326,6 @@ function AutoRoundRobinTrashSpec:should_award_an_uncatalogued_uncommon_item_from
 
   -- Then
   chat.assert(
-    r( "Princess Kenny dropped 1 item:", "1. [Felcloth]" ),
     r( "Obszczymucha receives [Felcloth] (trash round robin)." ),
     c( "RollFor: Obszczymucha received [Felcloth]." )
   )
