@@ -232,11 +232,34 @@ function M.round_robin_list( db )
     trash.qualities[ quality ].enabled = true
   end
 
+  -- The ignore list. Unlike the two seams above this invents nothing: its rows are real catalogue
+  -- ids that ensure_seeded has already put there, disabled, so all there is to do is tick them.
+  ---@param item_id number
+  local function ignore_trash( item_id )
+    local ignored = db.ids[ RollFor.AutoRoundRobinDb.TRASH_IGNORED ]
+    ignored.enabled = true
+    ignored.items[ item_id ].enabled = true
+  end
+
+  -- The whole catalogue ticked: every category, every item row and every quality row. What a spec
+  -- means by "auto round robin fully armed" -- so that whatever it then proves the pass does not
+  -- do, it isn't because something was left switched off.
+  local function enable_everything()
+    for _, category in pairs( db.ids ) do
+      category.enabled = true
+
+      for _, item in pairs( category.items or {} ) do item.enabled = true end
+      for _, quality in pairs( category.qualities or {} ) do quality.enabled = true end
+    end
+  end
+
   return {
     enable = enable,
     disable = disable,
     set_category_enabled = set_category_enabled,
-    enable_trash = enable_trash
+    enable_trash = enable_trash,
+    ignore_trash = ignore_trash,
+    enable_everything = enable_everything
   }
 end
 

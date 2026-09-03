@@ -17,13 +17,16 @@ local M = {}
 -- only thing they still do the same way, and that is ItemUtils'.
 --
 -- The categories are the unit of rotation: each one owns an independent queue (see
--- AutoRoundRobin), so adding a category here adds a queue with no other change.
+-- AutoRoundRobin), so adding a category here adds a queue with no other change. Trash Ignored is
+-- the one exception, and M.categories leaving it out is the whole of how it has no queue.
 --
 -- The ids and icons are the ones already verified in AutoLootDb (Black Temple Trash), not
 -- re-derived, so nothing here needs a live GetItemInfo fetch.
 --
--- Trash (below) is the one category that names no ids at all -- see the comment on it.
+-- Trash and Trash Ignored (below) are the two that aren't ordinary lists of ids to hand out --
+-- see the comments on them.
 local TRASH = "Trash"
+local TRASH_IGNORED = "Trash Ignored"
 
 -- An item quality's colour as plain RRGGBB, off the table the client builds during UIParent load.
 ---@param quality number
@@ -85,6 +88,35 @@ local ids = {
       [ 3 ] = { name = "Rare" },
     }
   },
+  -- The exceptions to the fallback: the items Trash must not claim. Nothing here is ever handed
+  -- out, so this is the one category with no queue -- M.categories leaves it out, and since every
+  -- queue there is comes from that list, no queue is ever made for it.
+  --
+  -- It shadows Trash and nothing else. Unticking Heart of Darkness under Hearts already says
+  -- "don't round robin this", so an ignore list that also overrode the id categories would be a
+  -- second switch for a question that already has one.
+  --
+  -- Its rows are item ids like a real category's, because "leave this particular formula alone"
+  -- is not something a quality can say. Ticked means ignored: the checkboxes are there so an
+  -- entry can be switched off without being taken out of the catalogue.
+  [ TRASH_IGNORED ] = {
+    color = quality_color( 0 ), -- poor, the same as Trash: this is Trash's own list, not a rival
+    order = 100,
+    items = {
+      -- A row only ever matters while the master loot threshold admits its quality: above it the
+      -- award pass drops the item before Trash is asked at all (see AutoRoundRobin.is_awardable),
+      -- so ignoring it and not ignoring it come to the same thing.
+      [ 22545 ] = { quality = 2, icon = 134327, name = "Formula: Enchant Boots - Surefooted" },
+      [ 22559 ] = { quality = 3, icon = 134327, name = "Formula: Enchant Weapon - Mongoose" },
+      [ 22560 ] = { quality = 3, icon = 134327, name = "Formula: Enchant Weapon - Sunfire" },
+      [ 22561 ] = { quality = 3, icon = 134327, name = "Formula: Enchant Weapon - Soulfrost" },
+      -- The same formula under two ids, both of them live. Which one drops is not a question this
+      -- list can answer, so it names both rather than ignoring one and quietly missing the other.
+      [ 28280 ] = { quality = 3, icon = 134327, name = "Formula: Enchant Boots - Boar's Speed" },
+      [ 35297 ] = { quality = 3, icon = 134327, name = "Formula: Enchant Boots - Boar's Speed" },
+      [ 23809 ] = { quality = 3, icon = 134941, name = "Schematic: Stabilized Eternium Scope" },
+    }
+  },
 }
 
 -- A category's name in its own colour, for the places that draw it as text.
@@ -119,15 +151,24 @@ function M.quality_name( quality )
   return quality_names[ quality ] or tostring( quality )
 end
 
--- Categories in catalogue order, which is the order the tree draws them and the order the
--- Queues dropdown offers them.
+-- The categories that own a queue, in catalogue order, which is the order the Queues dropdown
+-- offers them.
+--
+-- Every queue there is comes from this list: db.queues is written lazily, keyed by whatever name
+-- it is handed (see AutoRoundRobin), and every caller that names a queue takes the name from
+-- here. So leaving Trash Ignored out is all it takes for that category never to have one.
+--
+-- The selection tree does not come through here -- AutoLootTree.build_flat walks db.ids itself --
+-- which is why the ignore list still draws in the window that ticks it.
 ---@param db table? -- the persisted autorobin_db; falls back to the static catalogue
 ---@return string[]
 function M.categories( db )
   local source = db and db.ids or ids
   local names = {}
 
-  for name in pairs( source ) do table.insert( names, name ) end
+  for name in pairs( source ) do
+    if name ~= TRASH_IGNORED then table.insert( names, name ) end
+  end
 
   table.sort( names, function( a, b )
     local order_a = (source[ a ].order or math.huge)
@@ -191,11 +232,27 @@ end
 ---@param item_id number
 ---@return boolean
 function M.is_catalogued( item_id )
-  for _, category in pairs( ids ) do
-    if category.items and category.items[ item_id ] then return true end
+  for name, category in pairs( ids ) do
+    -- The ignore list names ids without claiming them: an item on it that isn't ticked has to
+    -- fall through to Trash like any other, which counting it as catalogued would prevent.
+    if name ~= TRASH_IGNORED and category.items and category.items[ item_id ] then return true end
   end
 
   return false
+end
+
+-- Whether Trash has been told to leave this item alone. Ticked is ignored, and the category's own
+-- checkbox switches the whole list off.
+---@param db table the persisted autorobin_db
+---@param item_id number
+---@return boolean
+local function is_trash_ignored( db, item_id )
+  local ignored = db.ids[ TRASH_IGNORED ]
+  if not ignored or not ignored.enabled then return false end
+
+  local item = ignored.items and ignored.items[ item_id ]
+
+  return item and item.enabled and true or false
 end
 
 -- The fallback, asked only after every real category has passed. Quality alone decides, because
@@ -240,6 +297,11 @@ function M.find_category( db, item_id, quality )
   -- here instead of falling through to Trash.
   if M.is_catalogued( item_id ) then return nil end
 
+  -- Asked here rather than inside find_trash_category, which is Trash's own rule and knows only
+  -- the quality: the ignore list is about the item, and it is only ever consulted on the way into
+  -- the fallback -- the categories above have already had their say.
+  if is_trash_ignored( db, item_id ) then return nil end
+
   return find_trash_category( db, quality )
 end
 
@@ -257,8 +319,10 @@ end
 function M.has_enabled_items( db )
   if not db or not db.ids then return false end
 
-  for _, category in pairs( db.ids ) do
-    if category.enabled then
+  for name, category in pairs( db.ids ) do
+    -- Ticking something on the ignore list is not having something selected: nothing under it is
+    -- ever handed out.
+    if name ~= TRASH_IGNORED and category.enabled then
       for _, item in pairs( category.items or {} ) do
         if item.enabled then return true end
       end
@@ -274,6 +338,7 @@ end
 
 M.ids = ids
 M.TRASH = TRASH
+M.TRASH_IGNORED = TRASH_IGNORED
 
 m.AutoRoundRobinDb = M
 return M

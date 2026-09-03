@@ -396,6 +396,67 @@ function AutoRoundRobinTrashSpec:should_keep_the_trash_queue_independent_of_the_
   eq( queue( rf, "Gems" ), { "Obszczymucha", "Psikutas" } )
 end
 
+-- The ignore list: the items Trash is told to leave alone. It is the only thing that can stop the
+-- fallback claiming an uncatalogued item of a ticked quality, and it stops nothing else -- see
+-- should_offer_the_catalogues_categories_in_order for the other half of it, that it owns no queue.
+--
+-- Surefooted is Uncommon, which the builder's default threshold admits, so what these specs turn
+-- on is the ignore list alone.
+function AutoRoundRobinTrashSpec:should_not_claim_an_item_on_the_ignore_list()
+  -- Given
+  local loot_facade = mock_loot_facade()
+  local formula = builder.qi( "Formula: Enchant Boots - Surefooted", 22545, 2 )
+
+  local rf = raid():loot_facade( loot_facade ):build()
+  rf.round_robin_list.enable_trash( 2 )
+  rf.round_robin_list.ignore_trash( formula.id )
+  rf.auto_round_robin.on_group_changed()
+
+  -- When
+  loot( loot_facade, formula )
+
+  -- Then
+  eq( queue( rf, "Trash" ), { "Obszczymucha", "Psikutas" } )
+end
+
+-- Every row is its own opt-in, the same as Trash's qualities: an entry sitting in the catalogue
+-- unticked is not on the ignore list.
+function AutoRoundRobinTrashSpec:should_claim_an_ignore_list_item_whose_row_is_not_ticked()
+  -- Given
+  local loot_facade = mock_loot_facade()
+  local formula = builder.qi( "Formula: Enchant Boots - Surefooted", 22545, 2 )
+
+  local rf = raid():loot_facade( loot_facade ):build()
+  rf.round_robin_list.enable_trash( 2 )
+  rf.round_robin_list.set_category_enabled( true, RollFor.AutoRoundRobinDb.TRASH_IGNORED )
+  rf.auto_round_robin.on_group_changed()
+
+  -- When
+  loot( loot_facade, formula )
+
+  -- Then
+  eq( queue( rf, "Trash" ), { "Psikutas", "Obszczymucha" } )
+end
+
+-- Unticking the category switches the whole list off without losing which rows were ticked.
+function AutoRoundRobinTrashSpec:should_claim_an_ignore_list_item_when_the_whole_list_is_off()
+  -- Given
+  local loot_facade = mock_loot_facade()
+  local formula = builder.qi( "Formula: Enchant Boots - Surefooted", 22545, 2 )
+
+  local rf = raid():loot_facade( loot_facade ):build()
+  rf.round_robin_list.enable_trash( 2 )
+  rf.round_robin_list.ignore_trash( formula.id )
+  rf.round_robin_list.set_category_enabled( false, RollFor.AutoRoundRobinDb.TRASH_IGNORED )
+  rf.auto_round_robin.on_group_changed()
+
+  -- When
+  loot( loot_facade, formula )
+
+  -- Then
+  eq( queue( rf, "Trash" ), { "Psikutas", "Obszczymucha" } )
+end
+
 -- is_category_active is what a display addon asks instead of re-deriving the rule from the saved
 -- variables (see RollForApi). It answers the award pass's own question with no item in hand: the
 -- feature, the selection and the loot threshold, together.
@@ -805,6 +866,21 @@ end
 -- fact that it names qualities instead of item ids (see AutoRoundRobinDb).
 function AutoRoundRobinEditingSpec:should_offer_the_catalogues_categories_in_order()
   eq( raid():build().auto_round_robin.get_categories(), { "Marks", "Hearts", "Gems", "Trash" } )
+end
+
+-- The ignore list hands nothing out, so it has no rotation to keep. Leaving it out of the
+-- categories above is the whole of how that happens: queues are written lazily, keyed by the
+-- names in that list, so a name that never appears in it never gets one -- not from the roster
+-- sync below, and not from anything else.
+function AutoRoundRobinEditingSpec:should_not_create_a_queue_for_the_ignore_list()
+  -- Given
+  local rf = raid():build()
+
+  -- When
+  rf.auto_round_robin.on_group_changed()
+
+  -- Then
+  eq( rf.autorobin_db.queues[ RollFor.AutoRoundRobinDb.TRASH_IGNORED ], nil )
 end
 
 os.exit( lu.LuaUnit.run() )

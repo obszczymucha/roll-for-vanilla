@@ -1090,4 +1090,82 @@ function PreviewHardResWinnersSpec:should_display_award_other_button_that_shows_
   chat.console( "RollFor: Psikutas received [Hearthstone]." )
 end
 
+-- Soft-res and auto round robin both act the moment the loot window opens, and the round-robin
+-- pass knows nothing about soft-res: is_awardable asks the item id, the loot threshold and
+-- auto-loot, and nothing else. So for an item the Trash fallback would otherwise claim, the ignore
+-- list is the only thing keeping the two apart -- without it, Trash master-loots a soft-ressed
+-- recipe to the head of its queue before anybody can roll for it.
+--
+-- The whole catalogue is ticked here and the master loot candidates are mocked, deliberately: an
+-- ignore list that stopped working has to fail this spec by awarding the formula, rather than be
+-- saved by a category left off or by there being nobody to give it to.
+PreviewSoftResRoundRobinSpec = {}
+
+---@param rf table
+---@return string[]
+local function trash_queue( rf )
+  local result = {}
+
+  for _, player in ipairs( rf.auto_round_robin.get_queue( "Trash" ) ) do
+    table.insert( result, player.name )
+  end
+
+  return result
+end
+
+function PreviewSoftResRoundRobinSpec:should_leave_a_soft_ressed_item_on_the_ignore_list_to_the_rollers()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  -- The real ignore list's Mongoose, at its real quality: Rare clears the default Uncommon
+  -- threshold, so the award pass gets as far as asking which category serves it.
+  local formula = builder.qi( "Formula: Enchant Weapon - Mongoose", 22559, 3 )
+  local p1, p2 = p( "Psikutas" ), p( "Obszczymucha" )
+
+  local rf = new_roll_for()
+      :loot_facade( loot_facade )
+      :chat( chat )
+      :raid_roster( p1, p2 )
+      :config( { auto_round_robin = true } )
+      :soft_res_data( sr( p1.name, 22559 ), sr( p2.name, 22559 ) )
+      :build()
+
+  rf.round_robin_list.enable_everything()
+  rf.auto_round_robin.on_group_changed()
+  u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha" } )
+
+  eq( trash_queue( rf ), { "Obszczymucha", "Psikutas" } )
+
+  -- When
+  loot_facade.notify( "LootOpened", formula )
+
+  -- Then
+  rf.loot_frame.should_display(
+    enabled_item( 1, "Formula: Enchant Weapon - Mongoose", "SR", { "Soft-ressed by", "Obszczymucha", "Psikutas" } )
+  )
+  chat.raid( "Princess Kenny dropped 1 item:" )
+  chat.raid( "1. [Formula: Enchant Weapon - Mongoose] (SR by Obszczymucha and Psikutas)" )
+  rf.rolling_popup.should_be_hidden()
+
+  -- Nobody was served, so nobody moved.
+  eq( trash_queue( rf ), { "Obszczymucha", "Psikutas" } )
+
+  -- When
+  rf.loot_frame.click( 1 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( formula, 1 ),
+    sr_row( p2, { false }, 1, 11 ),
+    sr_row( p1, { false } ),
+    buttons( "Roll", "AwardOther", "Close" )
+  )
+
+  -- When
+  rf.rolling_popup.click( "Roll" )
+
+  -- Then
+  chat.raid_warning( "Roll for [Formula: Enchant Weapon - Mongoose]. SR by Obszczymucha and Psikutas" )
+  eq( trash_queue( rf ), { "Obszczymucha", "Psikutas" } )
+end
+
 os.exit( lu.LuaUnit.run() )
