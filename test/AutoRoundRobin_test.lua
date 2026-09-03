@@ -13,6 +13,10 @@ local AutoRoundRobin = require( "src/AutoRoundRobin" )
 -- window, no roster, no WoW API. Everything the award pass adds on top of these (which category's
 -- queue, paying the winner, announcing it) is covered in AutoRoundRobinSpec_test.
 
+-- serve returns nil only for a queue nobody can be served from, which these cases never hand it,
+-- so the assertions read the player straight off it.
+---@diagnostic disable: need-check-nil
+
 -- A name with a * is core. The flag is the only thing a player carries besides their name and
 -- class, so spelling it into the name keeps these cases readable as lists.
 ---@param ... string

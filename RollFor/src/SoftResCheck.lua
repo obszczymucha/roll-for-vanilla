@@ -247,11 +247,16 @@ function M.new( softres, unfiltered_softres, group_roster, name_matcher, ace_tim
     return result
   end
 
+  local function limit_check_messages()
+    return m.SoftResLimitCheck.messages( unfiltered_softres, group_roster )
+  end
+
   m.slash_cmd( "srs", show_softres )
   m.slash_cmd( "src", on_check_command )
 
   return {
     check_softres = check_softres,
+    limit_check_messages = limit_check_messages,
     show_softres = show_softres,
     show_who_is_not_softressing = show_who_is_not_softressing,
     warn_if_no_data = warn_if_no_data,

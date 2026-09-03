@@ -61,7 +61,10 @@ end
 
 ---@param softres SoftRes
 ---@param group_roster GroupRoster
-function M.report( softres, group_roster )
+---@return string[] -- One message per violating player, sorted by name.
+function M.messages( softres, group_roster )
+  local result = {}
+
   for _, violation in ipairs( M.find_violations( softres ) ) do
     local player = group_roster.find_player( violation.name )
     local name = player and m.colorize_player_by_class( player.name, player.class ) or violation.name
@@ -72,6 +75,16 @@ function M.report( softres, group_roster )
         or string.format( "%s soft-ressed %s items (max %s).",
           name, hl( violation.total ), hl( MAX_SOFT_RES_WITH_BONUS ) )
 
+    table.insert( result, message )
+  end
+
+  return result
+end
+
+---@param softres SoftRes
+---@param group_roster GroupRoster
+function M.report( softres, group_roster )
+  for _, message in ipairs( M.messages( softres, group_roster ) ) do
     m.pretty_print( message, m.colors.orange )
   end
 end

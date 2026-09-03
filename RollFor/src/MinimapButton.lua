@@ -10,6 +10,7 @@ local grey = m.colors.grey
 local white = m.colors.white
 local green = m.colors.green
 local red = m.colors.red
+local purple = m.colors.purple
 local pretty_print = m.pretty_print
 local class_color = m.colorize_player_by_class
 
@@ -17,6 +18,7 @@ local ColorType = {
   White = "White",
   Green = "Green",
   Orange = "Orange",
+  Purple = "Purple",
   Red = "Red"
 }
 
@@ -97,6 +99,15 @@ function M.new( api, db, manage_softres_fn, softres_check, config )
           api().GameTooltip:AddLine( string.format( "%s %s", white( "Softres status:" ), green( "OK" ) ) )
         elseif icon_color == ColorType.Orange then
           api().GameTooltip:AddLine( " " )
+          print_players_who_did_not_softres( api().GameTooltip )
+        elseif icon_color == ColorType.Purple then
+          api().GameTooltip:AddLine( " " )
+          api().GameTooltip:AddLine( string.format( "%s %s", white( "Softres status:" ), purple( "Limit check failed!" ) ) )
+
+          for _, message in ipairs( softres_check.limit_check_messages() ) do
+            api().GameTooltip:AddLine( message, 1, 1, 1 )
+          end
+
           print_players_who_did_not_softres( api().GameTooltip )
         elseif icon_color == ColorType.Red then
           api().GameTooltip:AddLine( " " )

@@ -42,6 +42,12 @@ local round_robin_db = m.AutoRoundRobinDb
 
 ---@alias RoundRobinQueue RoundRobinPlayer[]
 
+-- A group member on their way into a queue. They arrive with a name and a class and nothing
+-- else: the core flag belongs to the queue, not to the roster, so sync is what decides it.
+---@class RoundRobinCandidate
+---@field name string
+---@field class PlayerClass?
+
 ---@class AutoRoundRobinRow : RoundRobinPlayer
 ---@field position number -- where they are in the queue, which is not where they are in this list
 
@@ -85,7 +91,7 @@ end
 -- not -- a core player who steps out and comes back must not be demoted by the roster update
 -- that readmits them.
 ---@param queue RoundRobinQueue
----@param players RoundRobinPlayer[]
+---@param players RoundRobinCandidate[]
 function M.sync( queue, players )
   for _, player in ipairs( players ) do
     if not M.position_of( queue, player.name ) then
@@ -118,7 +124,7 @@ end
 -- Served, so they go to the back. The players walked past on the way are untouched and keep
 -- their place at the front.
 ---@param queue RoundRobinQueue
----@param position number
+---@param position number? -- nil when next_position found nobody, which serves nobody
 ---@return RoundRobinPlayer? -- who was served
 function M.serve( queue, position )
   local player = queue[ position ]
@@ -198,7 +204,7 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     return round_robin_db.categories( db )
   end
 
-  ---@return RoundRobinPlayer[]
+  ---@return RoundRobinCandidate[]
   local function roster_players()
     local result = {}
 

@@ -27,10 +27,13 @@ local function update_minimap_icon()
 
   if result == M.softres_check.ResultType.NoItemsFound then
     M.minimap_button.set_icon( M.minimap_button.ColorType.White )
-  elseif result == M.softres_check.ResultType.SomeoneIsNotSoftRessing then
-    M.minimap_button.set_icon( M.minimap_button.ColorType.Orange )
   elseif result == M.softres_check.ResultType.FoundOutdatedData then
     M.minimap_button.set_icon( M.minimap_button.ColorType.Red )
+  elseif getn( M.softres_check.limit_check_messages() ) > 0 then
+    -- A limit violation outranks someone not soft-ressing: the data is there, it's wrong.
+    M.minimap_button.set_icon( M.minimap_button.ColorType.Purple )
+  elseif result == M.softres_check.ResultType.SomeoneIsNotSoftRessing then
+    M.minimap_button.set_icon( M.minimap_button.ColorType.Orange )
   else
     M.minimap_button.set_icon( M.minimap_button.ColorType.Green )
   end

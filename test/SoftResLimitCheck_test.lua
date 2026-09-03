@@ -117,7 +117,7 @@ function SoftResLimitCheckSpec:should_print_a_message_for_each_violating_player(
   local group_roster = { find_player = function() return nil end }
   local messages = {}
   local pretty_print = RollFor.pretty_print
-  RollFor.pretty_print = function( message ) table.insert( messages, message ) end
+  RollFor.pretty_print = function( message, _color_fn, _module_name ) table.insert( messages, message ) end
 
   -- When
   mod.report( data, group_roster )
