@@ -65,6 +65,17 @@ local function only( ... )
   return result
 end
 
+-- The group as serve wants it: lowercased, the way in_the_group builds it. Deliberately not the
+-- same shape as `only` above -- that one is the master loot candidate list, which serve does not
+-- get a say in.
+local function grouped( ... )
+  local result = {}
+
+  for _, name in ipairs( { ... } ) do result[ string.lower( name ) ] = true end
+
+  return result
+end
+
 AutoRoundRobinSyncSpec = {}
 
 function AutoRoundRobinSyncSpec:should_seed_an_empty_queue_from_the_roster_in_order()
@@ -157,6 +168,64 @@ function AutoRoundRobinServeSpec:should_serve_nobody_from_an_empty_queue()
   eq( AutoRoundRobin.serve( {}, 1 ), nil )
 end
 
+-- Only the players in the group shuffle. The winner goes to the last slot one of them occupies,
+-- not to the back of the queue, so the two absent players are exactly where they were.
+function AutoRoundRobinServeSpec:should_send_the_winner_to_the_back_of_the_group()
+  -- Given -- Ghosta and Ghostb are in the queue but not in the group
+  local q = queue( "Ann", "Ghosta", "Bob", "Cid", "Ghostb" )
+
+  -- When
+  local served = AutoRoundRobin.serve( q, 1, grouped( "Ann", "Bob", "Cid" ) )
+
+  -- Then
+  eq( served.name, "Ann" )
+  eq( names( q ), { "Bob", "Ghosta", "Cid", "Ann", "Ghostb" } )
+end
+
+-- Being away neither earns priority nor costs it: a full lap of the group leaves the absent
+-- players on the exact rank they started on, so they take their turn when they come back.
+function AutoRoundRobinServeSpec:should_leave_an_absent_players_rank_alone_across_a_full_lap()
+  -- Given
+  local q = queue( "Ann", "Ghosta", "Bob", "Cid", "Ghostb" )
+  local present = grouped( "Ann", "Bob", "Cid" )
+
+  -- When -- one drop each for the three who are here
+  for _ = 1, 3 do
+    AutoRoundRobin.serve( q, AutoRoundRobin.next_position( q, only( "Ann", "Bob", "Cid" ) ), present )
+  end
+
+  -- Then
+  eq( names( q ), { "Ann", "Ghosta", "Bob", "Cid", "Ghostb" } )
+end
+
+-- Nobody has said who is in the group, so there is nobody to be absent from: the whole queue
+-- shuffles and the winner goes to the very back.
+function AutoRoundRobinServeSpec:should_send_the_winner_to_the_back_of_the_queue_without_a_group()
+  -- Given
+  local q = queue( "Ann", "Bob", "Cid" )
+
+  -- When
+  AutoRoundRobin.serve( q, 1, nil )
+
+  -- Then
+  eq( names( q ), { "Bob", "Cid", "Ann" } )
+end
+
+-- The roster changed between the loot window opening and the award landing, so the winner is no
+-- longer in the group serve was handed. The back of the queue is the answer that was right before
+-- any of this, and it is still an answer.
+function AutoRoundRobinServeSpec:should_fall_back_to_the_back_of_the_queue_for_a_winner_who_left()
+  -- Given
+  local q = queue( "Ann", "Bob", "Cid" )
+
+  -- When
+  local served = AutoRoundRobin.serve( q, 1, grouped( "Bob", "Cid" ) )
+
+  -- Then
+  eq( served.name, "Ann" )
+  eq( names( q ), { "Bob", "Cid", "Ann" } )
+end
+
 AutoRoundRobinEligibilitySpec = {}
 
 -- The design's whole point: the drop goes to the first player who can actually receive it, and
@@ -225,6 +294,41 @@ function AutoRoundRobinCycleSpec:should_do_nothing_to_a_queue_too_short_to_rotat
   AutoRoundRobin.cycle( q, -1 )
 
   eq( names( q ), { "Ann" } )
+end
+
+-- Bounded, it rotates the two ends of the stretch and leaves everybody between them alone. This
+-- is what the Queues window asks for: the players it does not draw keep their place.
+function AutoRoundRobinCycleSpec:should_rotate_only_between_the_bounds_on_a_positive_offset()
+  local q = queue( "Ann", "Bob", "Cid", "Dee" )
+
+  AutoRoundRobin.cycle( q, 1, 1, 3 )
+
+  eq( names( q ), { "Bob", "Cid", "Ann", "Dee" } )
+end
+
+function AutoRoundRobinCycleSpec:should_rotate_only_between_the_bounds_on_a_negative_offset()
+  local q = queue( "Ann", "Bob", "Cid", "Dee" )
+
+  AutoRoundRobin.cycle( q, -1, 2, 4 )
+
+  eq( names( q ), { "Ann", "Dee", "Bob", "Cid" } )
+end
+
+function AutoRoundRobinCycleSpec:should_do_nothing_between_bounds_too_close_to_rotate()
+  local q = queue( "Ann", "Bob", "Cid" )
+
+  AutoRoundRobin.cycle( q, 1, 2, 2 )
+  AutoRoundRobin.cycle( q, -1, 2, 2 )
+
+  eq( names( q ), { "Ann", "Bob", "Cid" } )
+end
+
+function AutoRoundRobinCycleSpec:should_ignore_bounds_that_are_not_in_the_queue()
+  local q = queue( "Ann", "Bob" )
+
+  AutoRoundRobin.cycle( q, 1, 1, 9 )
+
+  eq( names( q ), { "Ann", "Bob" } )
 end
 
 AutoRoundRobinMoveSpec = {}

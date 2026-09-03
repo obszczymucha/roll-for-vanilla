@@ -819,6 +819,29 @@ function AutoRoundRobinAbsenceSpec:should_leave_out_somebody_who_is_not_in_the_g
   eq( queue( rf ), { "Obszczymucha", "Psikutas", "Ohhaimark" } )
 end
 
+-- Winning sends you to the back of the group, not to the back of the queue. Ohhaimark is not in
+-- the raid, so he neither climbs a place when somebody in front of him is served nor gets jumped
+-- by the winner on their way past: he holds the rank he had and takes his turn when he shows up.
+function AutoRoundRobinAbsenceSpec:should_leave_an_absent_players_rank_alone_when_somebody_is_served()
+  -- Given -- Obszczymucha, Ohhaimark (not in the raid), Psikutas
+  local loot_facade = mock_loot_facade()
+  local gem = i( "Crimson Spinel", 32227 )
+
+  local rf = raid():loot_facade( loot_facade ):build()
+  rf.round_robin_list.enable( gem )
+  rf.auto_round_robin.on_group_changed()
+  rf.auto_round_robin.add_player( "Gems", "Ohhaimark" )
+  rf.auto_round_robin.move_player( "Gems", 3, -1 )
+
+  eq( queue( rf ), { "Obszczymucha", "Ohhaimark", "Psikutas" } )
+
+  -- When
+  loot( loot_facade, gem )
+
+  -- Then -- Ohhaimark is still second; Obszczymucha went behind Psikutas, not behind everybody
+  eq( queue( rf ), { "Psikutas", "Ohhaimark", "Obszczymucha" } )
+end
+
 -- A row acts on the queue, so it carries the index the queue knows it by rather than the one it
 -- was drawn at.
 function AutoRoundRobinAbsenceSpec:should_carry_the_queue_position_past_the_players_it_left_out()

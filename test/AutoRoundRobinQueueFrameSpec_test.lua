@@ -490,6 +490,56 @@ function RoundRobinQueueFrameAbsenceSpec:should_move_a_player_past_the_hidden_on
   } ) )
 end
 
+-- Up and Down rotate what is on screen, for the same reason the arrows move a player past their
+-- neighbour on screen: rotating the whole queue would send an absent player to the back and
+-- redraw identically, and a queue carried over from the last raid is normally full of them.
+function RoundRobinQueueFrameAbsenceSpec:should_move_the_list_by_a_row_on_every_cycle_up()
+  local frame = new_frame( { "Ann", "Cid" } )
+
+  -- Ann, Bob (hidden), Cid
+  frame.round_robin.add_player( "Marks", "Bob", "Warrior" )
+  frame.round_robin.move_player( "Marks", 3, -1 )
+  frame.show()
+
+  frame.click( "CycleUp" )
+
+  eq( frame.queue_names(), { "Bob", "Cid", "Ann" } )
+  frame.should_display( popup( "Marks", {
+    line( "Cid", { first = true } ),
+    line( "Ann", { last = true } )
+  } ) )
+
+  frame.click( "CycleUp" )
+
+  frame.should_display( popup( "Marks", {
+    line( "Ann", { first = true } ),
+    line( "Cid", { last = true } )
+  } ) )
+end
+
+function RoundRobinQueueFrameAbsenceSpec:should_move_the_list_by_a_row_on_every_cycle_down()
+  local frame = new_frame( { "Ann", "Cid" } )
+
+  frame.round_robin.add_player( "Marks", "Bob", "Warrior" )
+  frame.round_robin.move_player( "Marks", 3, -1 )
+  frame.show()
+
+  frame.click( "CycleDown" )
+
+  eq( frame.queue_names(), { "Cid", "Ann", "Bob" } )
+  frame.should_display( popup( "Marks", {
+    line( "Cid", { first = true } ),
+    line( "Ann", { last = true } )
+  } ) )
+
+  frame.click( "CycleDown" )
+
+  frame.should_display( popup( "Marks", {
+    line( "Ann", { first = true } ),
+    line( "Cid", { last = true } )
+  } ) )
+end
+
 -- The x takes out the player on that row, not whoever happens to sit at that index in the queue.
 function RoundRobinQueueFrameAbsenceSpec:should_remove_the_player_on_the_row_not_the_queue_index()
   local frame = new_frame( { "Ann", "Cid" } )

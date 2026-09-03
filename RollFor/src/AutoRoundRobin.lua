@@ -122,34 +122,85 @@ function M.next_position( queue, eligible )
   end
 end
 
--- Served, so they go to the back. The players walked past on the way are untouched and keep
--- their place at the front.
+-- Served, so they go to the back -- of the players `present` names, not of the queue. The ones it
+-- does not name never move at all: they keep the exact place they held, so being away neither
+-- earns priority nor costs it, and a player who logs back in is precisely where they left off.
+--
+-- Everybody it does name shuffles up one, which is the whole of "only the people in the group get
+-- a priority increase". `present` is group membership rather than who can be paid: candidacy
+-- flickers with range and zoning, and a queue that reordered itself off it would be answering a
+-- question that is only askable for the few seconds a loot window is open.
+--
+-- The players walked past on the way to the winner are untouched either way and keep their place
+-- at the front (see next_position).
+--
+-- Nil `present` means nobody has said who is in the group, which is the same thing as everybody
+-- being in it: out of a group there is nothing to be absent from, and the winner goes to the back
+-- of the whole queue.
 ---@param queue RoundRobinQueue
 ---@param position number? -- nil when next_position found nobody, which serves nobody
+---@param present table<string, boolean>? -- lowercased names of everybody in the group
 ---@return RoundRobinPlayer? -- who was served
-function M.serve( queue, position )
+function M.serve( queue, position, present )
   local player = queue[ position ]
   if not player then return nil end
 
-  table.remove( queue, position )
-  table.insert( queue, player )
+  -- The slots the shuffle is allowed to touch, and who is standing in them.
+  local slots, standing, index = {}, {}, nil
+
+  for i = 1, getn( queue ) do
+    if not present or present[ string.lower( queue[ i ].name ) ] then
+      table.insert( slots, i )
+      table.insert( standing, queue[ i ] )
+
+      if i == position then index = getn( standing ) end
+    end
+  end
+
+  -- The winner is a master loot candidate, so they are in the group and `index` is found. A
+  -- roster that changed between the loot window opening and the award landing is the one way
+  -- round that, and the back of the queue is the answer that was right before `present` existed.
+  if not index then
+    table.remove( queue, position )
+    table.insert( queue, player )
+
+    return player
+  end
+
+  table.remove( standing, index )
+  table.insert( standing, player )
+
+  for i, slot in ipairs( slots ) do queue[ slot ] = standing[ i ] end
 
   return player
 end
 
--- Rotates the whole queue by one. Which of the two directions is called "up" is a question for
--- the window, not for this: a positive offset sends the head to the back and everybody else
--- climbs a place, a negative one brings the last player to the front.
+-- Rotates by one, over the whole queue or over just the stretch between two positions. Which of
+-- the two directions is called "up" is a question for the window, not for this: a positive offset
+-- sends the first of them to the back and everybody else climbs a place, a negative one brings
+-- the last of them to the front.
+--
+-- The bounds are what the Queues window needs. It draws only the players in the group, so
+-- rotating the whole queue steps past an absent player about as often as not and redraws
+-- identically -- the dead button the row arrows already avoid by moving a player past their
+-- neighbour *on screen* rather than one place in the queue. Bounded by the first and last player
+-- drawn, one click moves the list by exactly one row whoever is hidden between them; the hidden
+-- players keep their place, since only the two ends move.
 ---@param queue RoundRobinQueue
----@param offset number -- 1 sends the head to the back, -1 brings the last player to the front
-function M.cycle( queue, offset )
-  local count = getn( queue )
-  if count < 2 then return end
+---@param offset number -- 1 sends the first to the back, -1 brings the last to the front
+---@param first number? -- the first position to rotate; the head of the queue when omitted
+---@param last number? -- the last position to rotate; the back of the queue when omitted
+function M.cycle( queue, offset, first, last )
+  local from = first or 1
+  local to = last or getn( queue )
+  if to <= from or not queue[ from ] or not queue[ to ] then return end
 
   if offset > 0 then
-    table.insert( queue, table.remove( queue, 1 ) )
+    -- Removing first shifts everything after it down a place, so inserting at `to` lands the
+    -- player behind whoever was there rather than in front of them.
+    table.insert( queue, to, table.remove( queue, from ) )
   else
-    table.insert( queue, 1, table.remove( queue, count ) )
+    table.insert( queue, from, table.remove( queue, to ) )
   end
 end
 
@@ -229,6 +280,14 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     return result
   end
 
+  -- Who the queue is allowed to reorder, and who it draws: everybody in the group, or nobody in
+  -- particular when there is no group. Out of one there is nothing to be absent from, which is
+  -- also the only time the core players added between raids are all visible at once.
+  ---@return table<string, boolean>?
+  local function present_players()
+    return group_roster.am_i_in_group() and in_the_group() or nil
+  end
+
   -- Every queue gets every group member, which is what makes the queues independent but the
   -- membership shared: you are in all of them or you were taken out of one on purpose.
   local function on_group_changed()
@@ -295,7 +354,8 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     api().GiveMasterLoot( slot, index )
 
     -- Only once the award has actually gone through.
-    queues.update( category, function( c ) M.serve( c, position ) end )
+    local present = present_players()
+    queues.update( category, function( c ) M.serve( c, position, present ) end )
 
     if config.auto_round_robin_announce() then
       chat.announce( string.format( "%s receives %s (%s round robin).", winner.name, item.link, string.lower( category ) ) )
@@ -363,10 +423,8 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
   -- Absent players are hidden, not dropped: they keep their place and take the next drop they are
   -- around for (see next_position), so this is a view and nothing else. `position` is what they
   -- keep -- their index in the queue, not in this list -- because everything a caller can do to a
-  -- row acts on the queue.
-  --
-  -- Out of a group there is nothing to be absent from, so nothing is hidden. That is also the
-  -- only time the core players you added between raids are all visible at once.
+  -- row acts on the queue, and because serve reorders these rows in place and leaves the rest of
+  -- the queue standing where it is.
   --
   -- Still nothing here about who can receive: that is only answerable while a loot window is
   -- open, so it stays the award pass's question rather than something the queue carries around
@@ -377,7 +435,7 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
   local function get_rows( category, limit )
     local q = queue( category )
     local result = {}
-    local present = group_roster.am_i_in_group() and in_the_group() or nil
+    local present = present_players()
 
     for i = 1, getn( q ) do
       if limit and getn( result ) >= limit then break end
@@ -448,10 +506,19 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     queues.update( category, function( q ) M.move( q, position, offset ) end )
   end
 
+  -- Bounded by the first and last player on screen rather than by the queue, for the reason
+  -- M.cycle documents: a queue outlives the raid it was built in, so it is normally carrying
+  -- players who aren't in the group, and rotating past one of those would redraw identically.
   ---@param category string
   ---@param offset number
   local function cycle( category, offset )
-    queues.update( category, function( q ) M.cycle( q, offset ) end )
+    local rows = get_rows( category )
+    local count = getn( rows )
+    if count < 2 then return end
+
+    queues.update( category, function( q )
+      M.cycle( q, offset, rows[ 1 ].position, rows[ count ].position )
+    end )
   end
 
   -- Whether this category would actually hand anything out if an item dropped right now. The same
