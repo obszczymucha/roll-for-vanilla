@@ -347,8 +347,8 @@ local function create_components()
   M.softres = m.SoftResBonusRollDecorator.new(
     M.present_softres( M.nether_vortex_softres ), M.resistance_bonus_roll_registry, M.config )
 
-  M.softres_check = m.SoftResCheck.new( M.nether_vortex_softres, M.group_roster, M.name_matcher, M.ace_timer,
-    M.absent_softres, db( "softres_check" ) )
+  M.softres_check = m.SoftResCheck.new( M.nether_vortex_softres, M.unfiltered_softres, M.group_roster, M.name_matcher,
+    M.ace_timer, M.absent_softres, db( "softres_check" ) )
 
   ---@type WinnerTracker
   M.winner_tracker = m.WinnerTracker.new( db( "winner_tracker" ) )
@@ -729,6 +729,8 @@ function M.import_encoded_softres_data( data, data_loaded_callback )
   M.import_softres_data( softres_data )
 
   info( "Soft-res data loaded successfully!" )
+  m.SoftResLimitCheck.report( M.unfiltered_softres, M.group_roster )
+
   if data_loaded_callback then
     data_loaded_callback( softres_data )
     if M.gargul_bridge then M.gargul_bridge.broadcast_softres( data ) end

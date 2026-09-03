@@ -58,6 +58,7 @@ src\OptionsFrameContentTransformer.lua
 src\AutoLootFrame.lua
 src\AutoLootFrameContentTransformer.lua
 src\AutoRoundRobinFrame.lua
+src\SoftResLimitCheck.lua
 src\SoftResCheck.lua
 src\SoftResRollingLogic.lua
 src\NonSoftResRollingLogic.lua

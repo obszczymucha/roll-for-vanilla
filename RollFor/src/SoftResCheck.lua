@@ -18,7 +18,7 @@ local ResultType = {
   Ok = "Ok"
 }
 
-function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, db )
+function M.new( softres, unfiltered_softres, group_roster, name_matcher, ace_timer, absent_softres, db )
   local refetch_retries = 0
   local hr_refetch_retries = 0
 
@@ -237,8 +237,18 @@ function M.new( softres, group_roster, name_matcher, ace_timer, absent_softres, 
     end
   end
 
+  -- The soft-res limits are checked against the unfiltered data on purpose: the rule is
+  -- about what a player reserved on raidres, which awarding them one of those items later
+  -- in the raid doesn't change.
+  local function on_check_command()
+    local result = check_softres()
+    m.SoftResLimitCheck.report( unfiltered_softres, group_roster )
+
+    return result
+  end
+
   m.slash_cmd( "srs", show_softres )
-  m.slash_cmd( "src", check_softres )
+  m.slash_cmd( "src", on_check_command )
 
   return {
     check_softres = check_softres,
