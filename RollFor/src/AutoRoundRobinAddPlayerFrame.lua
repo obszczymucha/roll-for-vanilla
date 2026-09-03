@@ -32,8 +32,8 @@ local button_defaults = {
 -- UIDropDownMenu_SetWidth is given the width of the box's *text area* and makes the frame 50
 -- wider than that. So the dropdown below is 62 + 50 = 112 pixels on screen against the name
 -- field's 95 -- the two numbers are not comparable as written.
-local name_field_width = 85
-local class_dropdown_width = 65
+local name_field_width = 80
+local class_dropdown_width = 67
 
 -- The longest a character name can be, so the longest this field ever needs to hold.
 local max_name_length = 12
