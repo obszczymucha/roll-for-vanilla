@@ -141,7 +141,6 @@ local ids = {
           [ 30301 ] = { quality = 4, icon = 134940, name = "Pattern: Belt of Natural Power" },
           [ 30303 ] = { quality = 4, icon = 134940, name = "Pattern: Belt of the Black Eagle" },
           [ 30302 ] = { quality = 4, icon = 134940, name = "Pattern: Belt of Deep Shadow" },
-          [ 32897 ] = { quality = 2, icon = 136172, name = "Mark of the Illidari" },
         }
       }
     }
@@ -607,7 +606,6 @@ local ids = {
           [ 30301 ] = { quality = 4, icon = 134940, name = "Pattern: Belt of Natural Power" },
           [ 30303 ] = { quality = 4, icon = 134940, name = "Pattern: Belt of the Black Eagle" },
           [ 30302 ] = { quality = 4, icon = 134940, name = "Pattern: Belt of Deep Shadow" },
-          [ 32897 ] = { quality = 2, icon = 136172, name = "Mark of the Illidari" },
         }
       },
     }
@@ -735,7 +733,6 @@ local ids = {
           [ 32946 ] = { quality = 4, icon = 135605, name = "Claw of Molten Fury" },
           [ 32945 ] = { quality = 4, icon = 135605, name = "Fist of Molten Fury" },
           [ 32428 ] = { quality = 3, icon = 136150, name = "Heart of Darkness" },
-          [ 32897 ] = { quality = 2, icon = 136172, name = "Mark of the Illidari" },
           [ 32285 ] = { quality = 4, icon = 134940, name = "Design: Flashing Crimson Spinel" },
           [ 32296 ] = { quality = 4, icon = 134940, name = "Design: Great Lionseye" },
           [ 32303 ] = { quality = 4, icon = 134940, name = "Design: Inscribed Pyrestone" },
@@ -956,7 +953,6 @@ local ids = {
           [ 32230 ] = { quality = 4, icon = 133265, name = "Shadowsong Amethyst" },
           [ 32227 ] = { quality = 4, icon = 133238, name = "Crimson Spinel" },
           [ 32428 ] = { quality = 3, icon = 136150, name = "Heart of Darkness" },
-          [ 32897 ] = { quality = 2, icon = 136172, name = "Mark of the Illidari" },
         }
       },
     }

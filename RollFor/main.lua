@@ -437,7 +437,19 @@ local function create_components()
     M.roll_controller
   )
 
-  M.autoloot_db = db( "autoloot_db" )
+  M.autoloot_db = db( "autoloot_db", {
+    -- 1 -> 2. Mark of the Illidari moved to the round-robin catalogue, and an item enabled in
+    -- both trees is taken by auto-loot (see AutoRoundRobin.is_awardable), so a tick left behind
+    -- here would go on claiming it. ensure_seeded never prunes, deliberately, so the row has to
+    -- be taken out of the saved selection rather than just out of the catalogue.
+    function( store )
+      for _, dungeon in pairs( store.ids or {} ) do
+        for _, boss in pairs( dungeon.bosses or {} ) do
+          if boss.items then boss.items[ 32897 ] = nil end
+        end
+      end
+    end
+  } )
 
   ---@type AutoLoot
   M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, M.autoloot_db, M.config, M.player_info, M.chat )
