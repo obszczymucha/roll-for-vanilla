@@ -375,6 +375,80 @@ function ResistanceCheckSpec:should_scan_a_cleared_player_again()
   eq( sut.gear_scanner.scanned(), { "raid1", "raid2", "raid1" } )
 end
 
+function ResistanceCheckSpec:should_scan_only_the_named_player()
+  -- Given
+  local sut = check( { players = { player( "Psikutas", "raid1" ), player( "Obszczymucha", "raid2" ) } } )
+
+  -- When
+  local found = sut.scan_player( "Obszczymucha" )
+  sut.gear_scanner.complete( "raid2", { [ Shadow ] = 30 } )
+
+  -- Then
+  eq( found, true )
+  eq( sut.gear_scanner.scanned(), { "raid2" } )
+  eq( sut.get_rows(), { data( "Obszczymucha", Shadow, 30, 30 ), no_data( "Psikutas" ) } )
+end
+
+function ResistanceCheckSpec:should_scan_the_named_player_again_even_when_cached()
+  -- Unlike scan(), which leaves cached players alone. Naming someone is asking
+  -- for a fresh look at them, so their cache goes first.
+  -- Given
+  local sut = check( { players = { player( "Psikutas", "raid1" ), player( "Obszczymucha", "raid2" ) } } )
+
+  sut.scan()
+  sut.gear_scanner.complete( "raid1", { [ Shadow ] = 60 } )
+  sut.gear_scanner.complete( "raid2", { [ Shadow ] = 30 } )
+
+  -- When
+  sut.scan_player( "Psikutas" )
+
+  -- Then
+  eq( sut.get_rows(), { data( "Obszczymucha", Shadow, 30, 30 ), scanning( "Psikutas" ) } )
+
+  -- When
+  sut.gear_scanner.complete( "raid1", { [ Shadow ] = 90 } )
+
+  -- Then
+  eq( sut.gear_scanner.scanned(), { "raid1", "raid2", "raid1" } )
+  eq( sut.get_rows(), { data( "Psikutas", Shadow, 90, 90 ), data( "Obszczymucha", Shadow, 30, 30 ) } )
+end
+
+function ResistanceCheckSpec:should_match_the_named_player_regardless_of_case()
+  -- Given
+  local sut = check()
+
+  -- When
+  local found = sut.scan_player( "psiKUTAS" )
+
+  -- Then
+  eq( found, true )
+  eq( sut.gear_scanner.scanned(), { "raid1" } )
+end
+
+function ResistanceCheckSpec:should_not_scan_anyone_who_is_not_in_the_group()
+  -- Given
+  local sut = check()
+
+  -- When
+  local found = sut.scan_player( "Ronnie" )
+
+  -- Then
+  eq( found, false )
+  eq( sut.gear_scanner.scanned(), {} )
+end
+
+function ResistanceCheckSpec:should_not_queue_the_named_player_twice()
+  -- Given
+  local sut = check()
+
+  -- When
+  sut.scan_player( "Psikutas" )
+  sut.scan_player( "Psikutas" )
+
+  -- Then
+  eq( sut.gear_scanner.scanned(), { "raid1" } )
+end
+
 function ResistanceCheckSpec:should_scan_everyone_again_after_clear_all()
   -- Given
   local sut = check( { players = { player( "Psikutas", "raid1" ), player( "Obszczymucha", "raid2" ) } } )

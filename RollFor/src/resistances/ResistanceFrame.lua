@@ -5,6 +5,8 @@ if m.ResistanceFrame then return end
 
 local M = {}
 
+local hl = m.colors.hl
+
 -- The group's resistance list. Rendering only: ResistanceCheck owns the cache
 -- and the scanning, this file turns its rows into widget calls and wires the
 -- buttons back to it. ListPopup owns the window itself.
@@ -58,6 +60,21 @@ function M.new( popup_builder, content_transformer, resistance_check, announcer,
     resistance_check.scan()
   end
 
+  -- /rfres <player> checks that one player instead of the group: what's cached
+  -- for them is dropped and only they are inspected. The window is shown rather
+  -- than toggled, so the result has somewhere to land, and nothing is announced
+  -- -- reading the whole raid's list out because one name was typed isn't what
+  -- was asked for.
+  ---@param player_name string
+  local function on_scan_player( player_name )
+    if not resistance_check.scan_player( player_name ) then
+      m.info( string.format( "%s is not in your group.", hl( player_name ) ) )
+      return
+    end
+
+    list.show()
+  end
+
   -- The announcer owns both of these; the frame only draws them and hands the
   -- clicks straight back, so what's on screen is whatever was persisted.
   ---@return ResistanceFrameOption[]
@@ -86,6 +103,7 @@ function M.new( popup_builder, content_transformer, resistance_check, announcer,
   list = m.ListPopup.new( {
     name = "RollForResistanceFrame",
     slash_command = "rfres",
+    on_args = on_scan_player,
     db = db,
     popup_builder = popup_builder,
     content_transformer = content_transformer,

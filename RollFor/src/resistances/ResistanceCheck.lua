@@ -34,6 +34,7 @@ local NECK_MINIMUM = 40
 ---@class ResistanceCheck
 ---@field get_rows fun(): ResistanceRow[]
 ---@field scan fun()
+---@field scan_player fun( player_name: string ): boolean
 ---@field is_scanning fun(): boolean
 ---@field clear fun( player_name: string )
 ---@field clear_all fun()
@@ -189,6 +190,20 @@ function M.new( db, group_roster, gear_scanner, buff_scanner, parser, registry )
     end
   end
 
+  -- Everything queuing one player has to get right: nobody is inspected twice
+  -- at once, the count is_scanning() reads stays in step with the callbacks,
+  -- and last scan's failure doesn't outlive the retry.
+  ---@param player GroupPlayer
+  local function start_scanning( player )
+    local name = player.name
+    if m_scanning[ name ] then return end
+
+    m_scanning[ name ] = true
+    m_scanning_count = m_scanning_count + 1
+    m_failed[ name ] = nil
+    gear_scanner.scan_unit( player.unit, on_gear( name ) )
+  end
+
   -- Scans everyone without cached gear. Cached players are left alone; clear()
   -- is what forces a re-scan.
   local function scan()
@@ -196,14 +211,8 @@ function M.new( db, group_roster, gear_scanner, buff_scanner, parser, registry )
 
     for i = 1, getn( players ) do
       local player = players[ i ]
-      local name = player.name
 
-      if not db.gear[ name ] and not m_scanning[ name ] then
-        m_scanning[ name ] = true
-        m_scanning_count = m_scanning_count + 1
-        m_failed[ name ] = nil
-        gear_scanner.scan_unit( player.unit, on_gear( name ) )
-      end
+      if not db.gear[ player.name ] then start_scanning( player ) end
     end
 
     notify()
@@ -222,6 +231,30 @@ function M.new( db, group_roster, gear_scanner, buff_scanner, parser, registry )
     notify()
   end
 
+  -- One player instead of the group, cached or not: typing a name is a request
+  -- to look at them again, so what's cached for them is thrown away first --
+  -- otherwise the command would do nothing for everyone who has already been
+  -- scanned, which is everyone worth checking twice.
+  ---@param player_name string
+  ---@return boolean -- false when nobody in the group goes by that name
+  local function scan_player( player_name )
+    local players = group_roster.get_group_players()
+
+    for i = 1, getn( players ) do
+      local player = players[ i ]
+
+      if string.lower( player.name ) == string.lower( player_name ) then
+        clear( player.name )
+        start_scanning( player )
+        notify()
+
+        return true
+      end
+    end
+
+    return false
+  end
+
   local function clear_all()
     db.gear = {}
     db.neck = {}
@@ -238,6 +271,7 @@ function M.new( db, group_roster, gear_scanner, buff_scanner, parser, registry )
   return {
     get_rows = get_rows,
     scan = scan,
+    scan_player = scan_player,
     is_scanning = is_scanning,
     clear = clear,
     clear_all = clear_all,

@@ -56,6 +56,8 @@ local default_border_color = { 0.65, 0.22, 0.22, 0.22 }
 ---@class ListPopupConfig
 ---@field name string -- the global frame name
 ---@field slash_command string -- without the leading slash
+---@field on_args (fun( args: string ))? -- what to do with anything typed after the slash command;
+--- without it the window takes no arguments and any are ignored
 ---@field db table -- where the window position is remembered
 ---@field popup_builder PopupBuilder
 ---@field content_transformer table -- anything with transform( data ): table
@@ -278,7 +280,22 @@ function M.new( config )
     if popup and popup:IsVisible() then refresh() end
   end
 
-  m.slash_cmd( config.slash_command, toggle )
+  -- The bare command toggles the window. What comes after it means something
+  -- only to the windows that say so, and what it means is theirs to decide --
+  -- all this knows is that an argument was typed.
+  ---@param args string?
+  local function on_slash( args )
+    local trimmed = string.match( args or "", "^%s*(.-)%s*$" )
+
+    if config.on_args and trimmed ~= "" then
+      config.on_args( trimmed )
+      return
+    end
+
+    toggle()
+  end
+
+  m.slash_cmd( config.slash_command, on_slash )
 
   ---@type ListPopup
   return {
