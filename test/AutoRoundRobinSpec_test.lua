@@ -151,6 +151,66 @@ function AutoRoundRobinSpec:should_award_two_copies_to_the_first_two_in_the_queu
   eq( queue( rf ), { "Obszczymucha", "Psikutas" } )
 end
 
+-- Two different items in one window are two awards, the same as two copies of one item: the pass
+-- walks every slot rather than stopping at the first one it claims.
+function AutoRoundRobinSpec:should_award_two_different_items_in_one_window()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local spinel = i( "Crimson Spinel", 32227 )
+  local lionseye = i( "Lionseye", 32249 )
+
+  local rf = raid():loot_facade( loot_facade ):chat( chat ):build()
+  rf.round_robin_list.enable( spinel )
+  rf.round_robin_list.enable( lionseye )
+  rf.auto_round_robin.on_group_changed()
+
+  -- When
+  loot( loot_facade, spinel, lionseye )
+
+  -- Then
+  chat.assert(
+    r( "Obszczymucha receives [Crimson Spinel] (gems round robin)." ),
+    c( "RollFor: Obszczymucha received [Crimson Spinel]." ),
+    r( "Psikutas receives [Lionseye] (gems round robin)." ),
+    c( "RollFor: Psikutas received [Lionseye]." )
+  )
+
+  eq( queue( rf ), { "Obszczymucha", "Psikutas" } )
+end
+
+-- One open empties the whole window. Three items naming three queues move all three, each from
+-- its own head -- the pass walks every slot rather than stopping at the first one it awards.
+function AutoRoundRobinSpec:should_empty_a_window_holding_three_claimed_items()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local gem = i( "Crimson Spinel", 32227 )
+  local heart = builder.qi( "Heart of Darkness", 32428, 3 )
+  local junk = builder.qi( "Tuurik Torch of Spirit", 23196, 2 )
+
+  local rf = raid():loot_facade( loot_facade ):chat( chat ):build()
+  rf.round_robin_list.enable( gem, "Gems" )
+  rf.round_robin_list.enable( heart, "Hearts" )
+  rf.round_robin_list.enable_trash( 2 )
+  rf.auto_round_robin.on_group_changed()
+
+  -- When
+  loot( loot_facade, gem, heart, junk )
+
+  -- Then
+  chat.assert(
+    r( "Obszczymucha receives [Crimson Spinel] (gems round robin)." ),
+    c( "RollFor: Obszczymucha received [Crimson Spinel]." ),
+    r( "Obszczymucha receives [Heart of Darkness] (hearts round robin)." ),
+    c( "RollFor: Obszczymucha received [Heart of Darkness]." ),
+    r( "Obszczymucha receives [Tuurik Torch of Spirit] (trash round robin)." ),
+    c( "RollFor: Obszczymucha received [Tuurik Torch of Spirit]." )
+  )
+
+  eq( queue( rf, "Gems" ), { "Psikutas", "Obszczymucha" } )
+  eq( queue( rf, "Hearts" ), { "Psikutas", "Obszczymucha" } )
+  eq( queue( rf, "Trash" ), { "Psikutas", "Obszczymucha" } )
+end
+
 -- Each category owns an independent queue: taking a gem does not move you down the Marks queue.
 function AutoRoundRobinSpec:should_keep_each_categorys_queue_independent()
   -- Given

@@ -3,7 +3,7 @@ local m = RollFor
 
 if m.AutoRoundRobin then return end
 
-local M = m.Module.new( "AutoRoundRobin" )
+local M = m.Module.new( "AutoRoundRobin", 50 )
 local getn = m.getn
 local round_robin_db = m.AutoRoundRobinDb
 
@@ -338,17 +338,27 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
 
     -- GetMasterLootCandidate returns nothing for a slot transiently. Leave the queue alone and
     -- let the next loot window retry rather than serving somebody who can't be paid.
-    if not eligible then return end
+    if not eligible then
+      M.debug.add( string.format( "award( %s, %s ): no master loot candidates", slot, item.link ) )
+      return
+    end
 
     local q = queue( category )
     local position = M.next_position( q, eligible )
 
     -- Nobody in the queue is a candidate right now. Everybody keeps their place.
-    if not position then return end
+    if not position then
+      M.debug.add( string.format( "award( %s, %s ): nobody in the %s queue can receive", slot, item.link, category ) )
+      return
+    end
 
     local winner = q[ position ]
     local index = master_loot_candidates.get_index( slot, winner.name )
-    if not index then return end
+
+    if not index then
+      M.debug.add( string.format( "award( %s, %s ): %s is not a candidate", slot, item.link, winner.name ) )
+      return
+    end
 
     M.debug.add( string.format( "award( %s, %s, %s, %s )", slot, item.link, category, winner.name ) )
     api().GiveMasterLoot( slot, index )
@@ -414,6 +424,8 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     -- different players, and loot_list.get_slot() would collapse them onto the first match.
     for slot, item in pairs( loot_list.get_items_by_slot() ) do
       local category = claimed_category( item )
+      M.debug.add( string.format( "loot_opened( %s, %s ): %s", slot, item.link or item.type, category or "not claimed" ) )
+
       if category then award( slot, item, category ) end
     end
   end
