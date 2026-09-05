@@ -46,6 +46,9 @@ function M.new(
   loot_facade.subscribe( "LootSlotCleared", function( slot )
     master_loot.on_loot_slot_cleared( slot )
     auto_group_loot.on_loot_slot_cleared()
+    -- The rotation hands out one item per loot window state and uses this as its cue for the next
+    -- one. See AutoRoundRobin.award_next.
+    auto_round_robin.on_loot_slot_cleared()
   end )
 
   -- This covers the scenario where the master looter assigns the loot and then moves immediately,

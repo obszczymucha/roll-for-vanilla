@@ -53,6 +53,7 @@ local round_robin_db = m.AutoRoundRobinDb
 
 ---@class AutoRoundRobin
 ---@field on_loot_opened fun()
+---@field on_loot_slot_cleared fun()
 ---@field is_round_robined fun( item: DroppedItem ): boolean
 ---@field on_group_changed fun()
 ---@field on_new_group fun()
@@ -314,6 +315,11 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     end
   end
 
+  -- The slots this loot window has already been given a GiveMasterLoot for. LOOT_SLOT_CLEARED
+  -- arrives for somebody else's award too -- auto-loot's, or one made by hand -- and can beat our
+  -- own confirmation back, so without this the retry would hand the same item out twice.
+  local sent = {}
+
   ---@param slot number
   ---@return table<string, boolean>?, table<string, PlayerClass>
   local function candidates_for( slot )
@@ -333,6 +339,7 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
   ---@param slot number
   ---@param item DroppedItem
   ---@param category string
+  ---@return boolean -- whether GiveMasterLoot was sent, which is what a pass stops on
   local function award( slot, item, category )
     local eligible, classes = candidates_for( slot )
 
@@ -340,7 +347,7 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     -- let the next loot window retry rather than serving somebody who can't be paid.
     if not eligible then
       M.debug.add( string.format( "award( %s, %s ): no master loot candidates", slot, item.link ) )
-      return
+      return false
     end
 
     local q = queue( category )
@@ -349,7 +356,7 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     -- Nobody in the queue is a candidate right now. Everybody keeps their place.
     if not position then
       M.debug.add( string.format( "award( %s, %s ): nobody in the %s queue can receive", slot, item.link, category ) )
-      return
+      return false
     end
 
     local winner = q[ position ]
@@ -357,7 +364,7 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
 
     if not index then
       M.debug.add( string.format( "award( %s, %s ): %s is not a candidate", slot, item.link, winner.name ) )
-      return
+      return false
     end
 
     M.debug.add( string.format( "award( %s, %s, %s, %s )", slot, item.link, category, winner.name ) )
@@ -373,6 +380,8 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
 
     loot_award_callback.on_loot_awarded( item.id, item.link, winner.name,
       winner.class or classes[ winner.name ], 1 )
+
+    return true
   end
 
   ---@param item DroppedItem
@@ -417,17 +426,38 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
     return claimed_category( item ) and true or false
   end
 
-  local function on_loot_opened()
+  -- Hands out one item and stops. Handing out two in a single pass does not work: the first lands
+  -- and the rest are refused without a word -- no Lua error, the window just sits there with the
+  -- other items still in it, which is why emptying a three-item window took three opens. Reopening
+  -- is what made the next one go through, so what the pass needs between awards is the loot window
+  -- moving on, not a fresh frame -- and LOOT_SLOT_CLEARED, the server confirming the last award
+  -- landed, is exactly that signal with nobody having to click anything. LootList drops the cleared
+  -- slot before this runs (it subscribes to the facade first), so every pass sees one fewer item
+  -- and the chain ends when nothing claimed is left.
+  --
+  -- Only an award that was actually sent ends a pass. A slot nobody can receive is skipped and the
+  -- pass carries on to the next item, because nothing is going to clear to bring it back.
+  local function award_next()
     if not player_info.is_master_looter() then return end
 
     -- Iterate by slot, not by item id: two of the same gem in one window are two awards to two
     -- different players, and loot_list.get_slot() would collapse them onto the first match.
     for slot, item in pairs( loot_list.get_items_by_slot() ) do
-      local category = claimed_category( item )
-      M.debug.add( string.format( "loot_opened( %s, %s ): %s", slot, item.link or item.type, category or "not claimed" ) )
+      if not sent[ slot ] then
+        local category = claimed_category( item )
+        M.debug.add( string.format( "award_next( %s, %s ): %s", slot, item.link or item.type, category or "not claimed" ) )
 
-      if category then award( slot, item, category ) end
+        if category and award( slot, item, category ) then
+          sent[ slot ] = true
+          return
+        end
+      end
     end
+  end
+
+  local function on_loot_opened()
+    sent = {}
+    award_next()
   end
 
   -- The queue in order, which is the order it serves, minus anybody who isn't in the group.
@@ -607,6 +637,7 @@ function M.new( loot_list, api, db, config, player_info, chat, group_roster, mas
   ---@type AutoRoundRobin
   return {
     on_loot_opened = on_loot_opened,
+    on_loot_slot_cleared = award_next,
     is_round_robined = is_round_robined,
     on_group_changed = on_group_changed,
     on_new_group = rebuild,

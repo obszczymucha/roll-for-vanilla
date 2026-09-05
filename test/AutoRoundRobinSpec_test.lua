@@ -178,8 +178,9 @@ function AutoRoundRobinSpec:should_award_two_different_items_in_one_window()
   eq( queue( rf ), { "Obszczymucha", "Psikutas" } )
 end
 
--- One open empties the whole window. Three items naming three queues move all three, each from
--- its own head -- the pass walks every slot rather than stopping at the first one it awards.
+-- One open empties the whole window, an item at a time: each award waits for the LOOT_SLOT_CLEARED
+-- saying the last one landed before sending the next. Three items naming three queues move all
+-- three, each from its own head.
 function AutoRoundRobinSpec:should_empty_a_window_holding_three_claimed_items()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
@@ -209,6 +210,36 @@ function AutoRoundRobinSpec:should_empty_a_window_holding_three_claimed_items()
   eq( queue( rf, "Gems" ), { "Psikutas", "Obszczymucha" } )
   eq( queue( rf, "Hearts" ), { "Psikutas", "Obszczymucha" } )
   eq( queue( rf, "Trash" ), { "Psikutas", "Obszczymucha" } )
+end
+
+-- LOOT_SLOT_CLEARED is not proof that our own award landed -- auto-loot clears slots too, and its
+-- gives go out first -- so the retry it wakes must not hand out an item we have already sent.
+function AutoRoundRobinSpec:should_not_award_the_same_slot_twice_when_another_slot_clears_first()
+  -- Given
+  local loot_facade, chat = mock_loot_facade(), mock_chat()
+  local gem = i( "Crimson Spinel", 32227 )
+  local junk = builder.qi( "Grey Thing", 14258, 0 )
+
+  local rf = raid():loot_facade( loot_facade ):chat( chat ):build()
+  rf.round_robin_list.enable( gem )
+  rf.auto_round_robin.on_group_changed()
+
+  u.mock_table_function( "UnitName", { player = "Psikutas", target = "Princess Kenny" } )
+  u.mock_master_loot_candidates( { "Psikutas", "Obszczymucha" } )
+  u.mock( "GiveMasterLoot", u.noop )
+
+  loot_facade.notify( "LootOpened", gem, junk )
+
+  -- When -- auto-loot's slot clears while our own award is still pending
+  loot_facade.notify( "LootSlotCleared", 2 )
+
+  -- Then
+  chat.assert(
+    r( "Obszczymucha receives [Crimson Spinel] (gems round robin)." ),
+    c( "RollFor: Obszczymucha received [Crimson Spinel]." )
+  )
+
+  eq( queue( rf ), { "Psikutas", "Obszczymucha" } )
 end
 
 -- Each category owns an independent queue: taking a gem does not move you down the Marks queue.
