@@ -463,6 +463,8 @@ behind `ctx.gui_elements`, move the config settings behind `register_toggle` /
 | Nether Vortex item id | Stays hardcoded (30183) — parity move, not a redesign |
 | Extension entry filename | `RollForNetherVortex.lua`, so `require( "main" )` stays unambiguous |
 | Extension namespace | Its own `RollForNetherVortex` global; core helpers read off `RollFor` |
+| Soft-res | Extracted to `RollForSoftResIt` (`SR-EXTENSION.md`). Core keeps the consumers and the `SoftResSource` seam; the import, the store, name matching, `SoftResCheck`, the window and the `/sr` family are the extension's. Exactly one source may register |
+| Soft-res with no source installed | Supported. Core falls back to `SoftRes.null()`, prints one line at login, and every non-soft-res feature works |
 
 ## 8. Known risks
 

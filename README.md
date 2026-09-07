@@ -81,6 +81,8 @@ Disable this feature with:
 ---
 
 ### Soft res integration
+ * Requires a soft-res source addon - **RollForSoftResIt** is the one for https://softres.it,
+   and it ships separately.
  * Integrates with https://softres.it via Gargul Export.
  * Minimap icon shows soft res status and who did not soft res.
  * Fully automated (shows who soft ressed, only accepts rolls from players who SR).
@@ -143,19 +145,26 @@ instead of `/rf`. "arf" stands for "All Roll For".
 
 ## Soft-Res setup
 
-1. Create a Soft Res list at https://softres.it.  
-2. Ask raiders to add their items.
-3. When ready, lock the raid and click on the **Gargul Export** button.
+The import itself lives in a separate addon, **RollForSoftResIt**, which registers itself
+with RollFor as the soft-res source. RollFor keeps the rolling, the loot frame and the
+announcements; what a softres.it string is, the `/sr` window and the `/sr`, `/src`, `/srs`
+and `/sro` commands are all in there. Without a soft-res source installed RollFor still
+works -- it just has no soft-res, and says so once at login.
+
+1. Install **RollForSoftResIt** next to RollFor in `Interface/AddOns`.
+2. Create a Soft Res list at https://softres.it.  
+3. Ask raiders to add their items.
+4. When ready, lock the raid and click on the **Gargul Export** button.
 
 <img src="docs/raidres-export.jpg" alt="Raidres export" style="width:720px;height:350">
 
-4. Click on **Copy RollFor data to clipboard** buton.
+5. Click on **Copy RollFor data to clipboard** buton.
 
 <img src="docs/raidres-copy-to-clipboard.jpg" alt="Raidres copy to clipboard" style="width:720px;height:350">
 
-5. Click on the minimap icon or type `/sr`.  
-6. Paste the data into the window.  
-7. Click **Import!**.  
+6. Click on the minimap icon or type `/sr`.  
+7. Paste the data into the window.  
+8. Click **Import!**.  
 
 <img src="docs/softres-import.jpg" alt="softres-import" style="width:720px;height:350">
 
@@ -178,6 +187,7 @@ If someone needs to update their items, repeat the process and copy the data aga
 ### Soft-Res data format
 
 The SR data from *softres.it* is a **zlib-compressed**, **Base64** encoded **JSON**.  
+Decoding it is **RollForSoftResIt**'s job -- RollFor never sees the string.  
 
 ---
 

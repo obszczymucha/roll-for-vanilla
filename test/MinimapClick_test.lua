@@ -45,33 +45,30 @@ function FallbackMechanismSpec:should_not_open_options_when_something_already_cl
   eq( opened, {} )
 end
 
--- On the real, fully wired addon, core claims the click for softres (it subscribes
--- softres_gui.toggle before deciding whether to install the fallback), so the fallback
--- never actually installs in Phase A. This is what "the subscriber runs, not the default"
--- looks like end to end.
+-- On the real, fully wired addon with no source extension installed, nothing claims the
+-- click, so the fallback is what runs. Core used to claim it for its own soft-res window;
+-- there is no such window in core any more, and this is what the button does for a user
+-- who has not installed a source.
 RealAddonClickSpec = {}
 
 function RealAddonClickSpec:should_have_a_claimed_click_after_a_real_login()
   u.player( "Psikutas" )
   local rf = u.load_roll_for()
 
+  -- The fallback is itself a subscriber, so the click is always answered by something.
   eq( rf.event_bus.has_subscribers( "minimap_icon_left_click" ), true )
 end
 
-function RealAddonClickSpec:should_toggle_softres_rather_than_open_options()
+function RealAddonClickSpec:should_open_options_with_no_source_installed()
   u.player( "Psikutas" )
   local rf = u.load_roll_for()
 
   local opened = {}
   rf.interface_options.open = function() table.insert( opened, true ) end
 
-  local frame = _G[ "RollForSoftResLootFrame" ]
-  local was_visible = frame and frame:IsVisible() or false
-
   rf.event_bus.notify( "minimap_icon_left_click" )
 
-  eq( opened, {} )
-  eq( _G[ "RollForSoftResLootFrame" ]:IsVisible(), not was_visible )
+  eq( opened, { true } )
 end
 
 os.exit( lu.LuaUnit.run() )

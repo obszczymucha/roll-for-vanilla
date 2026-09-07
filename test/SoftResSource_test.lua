@@ -6,7 +6,6 @@ local utils = require( "test/utils" )
 local lu, eq = utils.luaunit( "assertEquals" )
 require( "src/modules" )
 require( "src/Types" )
-require( "src/SoftResDataTransformer" )
 require( "src/SoftRes" )
 local SoftResSource = require( "src/SoftResSource" )
 

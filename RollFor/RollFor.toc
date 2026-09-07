@@ -2,7 +2,7 @@
 ## Title: RollFor
 ## Author: Obszczymucha
 ## Version: 4.91
-## Notes: An automated item roller with soft ressing support via softres.it.
+## Notes: An automated item roller with soft-res support (requires a soft-res source addon).
 ## SavedVariables: RollForDb
 ## SavedVariablesPerCharacter: RollForCharDb
 ## IconTexture: Interface\AddOns\RollFor\assets\icon-white
@@ -34,22 +34,13 @@ src\LootFacade.lua
 src\RollingLogicUtils.lua
 src\DroppedLoot.lua
 src\TradeTracker.lua
-src\SoftResDataTransformer.lua
 src\SoftRes.lua
 src\SoftResSource.lua
 src\DroppedLootAnnounce.lua
 src\AwardedLoot.lua
-src\SoftResAwardedLootDecorator.lua
-src\SoftResAbsentPlayersDecorator.lua
-src\SoftResPresentPlayersDecorator.lua
 src\SoftResBonusRollDecorator.lua
-src\SoftResMatchedNameDecorator.lua
 src\GroupRoster.lua
-src\NameAutoMatcher.lua
-src\NameManualMatcher.lua
-src\NameMatchReport.lua
 src\EventHandler.lua
-src\SoftResGui.lua
 src\VersionBroadcast.lua
 src\MasterLoot.lua
 src\MasterLootCandidateSelectionFrame.lua
@@ -58,7 +49,6 @@ src\InterfaceOptions.lua
 src\OptionsFrameContentTransformer.lua
 src\AutoLootFrame.lua
 src\AutoLootFrameContentTransformer.lua
-src\SoftResCheck.lua
 src\SoftResRollingLogic.lua
 src\NonSoftResRollingLogic.lua
 src\TieRollingLogic.lua

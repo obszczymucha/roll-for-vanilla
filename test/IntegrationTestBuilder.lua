@@ -2,18 +2,17 @@ local u = require( "test/utils" )
 local reqsrc = u.multi_require_src
 local lu, eq = u.luaunit( "assertEquals" ) ---@diagnostic disable-line: unused-local
 local m, T, IU = require( "src/modules" ), require( "src/Types" ), require( "src/ItemUtils" )
-reqsrc( "DebugBuffer", "Module", "Types", "SoftResDataTransformer", "RollingLogicUtils", "RollTracker" )
+reqsrc( "DebugBuffer", "Module", "Types", "RollingLogicUtils", "RollTracker" )
 reqsrc( "TieRollingLogic", "SoftResRollingLogic", "NonSoftResRollingLogic", "RaidRollRollingLogic", "InstaRaidRollRollingLogic" )
 require( "src/AwardedLoot" )
-local SoftResAwardedLootDecorator = require( "src/SoftResAwardedLootDecorator" )
+local SoftResSourceMock = require( "mocks/SoftResSource" )
 local Chain = require( "src/Chain" )
-local SoftResDecorator = require( "src/SoftResPresentPlayersDecorator" )
 local SoftResBonusRollDecorator = require( "src/SoftResBonusRollDecorator" )
 require( "src/AutoLootDb" )
 local ResistanceBonusRollRegistry = require( "src/resistances/ResistanceBonusRollRegistry" )
 local SoftRes, Db = require( "src/SoftRes" ), require( "src/Db" )
 local RollingLogic = require( "src/RollingLogic" )
-local sr, hr, make_data = u.soft_res_item, u.hard_res_item, u.create_softres_data ---@diagnostic disable-line: unused-local
+local sr, hr = u.soft_res_item, u.hard_res_item ---@diagnostic disable-line: unused-local
 local c, r, pm = u.console_message, u.raid_message, u.party_message ---@diagnostic disable-line: unused-local
 local cr, rw = u.console_and_raid_message, u.raid_warning ---@diagnostic disable-line: unused-local
 local C, RT, RS = T.PlayerClass, T.RollType, T.RollingStrategy ---@diagnostic disable-line: unused-local
@@ -117,43 +116,29 @@ end
 ---@return GroupAwareSoftRes
 ---@return AwardedLoot
 local function group_aware_softres( group_roster, awarded_loot, bonus_roll_registry, config, data, extend )
-  local raw_softres = SoftRes.new()
-
+  -- No backbone. matched_name, awarded_loot and present_players belong to whichever source
+  -- extension is installed, and with none installed this is exactly what core's chain looks
+  -- like: the source's data, and whatever core itself contributes on top.
   local awarded_loot_chain = Chain.new( "awarded_loot" )
   local softres_chain = Chain.new( "softres" )
 
-  -- Resolved when the soft-res chain is built, which happens after the awarded-loot one.
-  local decorated_awarded_loot
-
   softres_chain.add( {
-    name = "awarded_loot",
-    after = Chain.BASE,
-    factory = function( inner ) return SoftResAwardedLootDecorator.new( decorated_awarded_loot, inner ) end
-  } )
-
-  softres_chain.add( {
-    name = "present_players",
-    after = "awarded_loot",
-    factory = function( inner ) return SoftResDecorator.new( group_roster, inner ) end
-  } )
-
-  softres_chain.add( {
+    -- Bonus rolls are still core's, so this link is core's too. It anchors after
+    -- present_players when a source contributed one and is appended last when nothing did,
+    -- which is the same choice main.lua makes.
     name = "bonus_roll",
-    after = "present_players",
+    after = softres_chain.has( "present_players" ) and "present_players" or nil,
     factory = function( inner ) return SoftResBonusRollDecorator.new( inner, bonus_roll_registry, config ) end
   } )
 
-  softres_chain.tap( { name = "unfiltered", before = "present_players" } )
-
   if extend then extend( softres_chain, awarded_loot_chain ) end
 
-  decorated_awarded_loot = awarded_loot_chain.build( awarded_loot ).final
+  local decorated_awarded_loot = awarded_loot_chain.build( awarded_loot ).final
 
-  local result = softres_chain.build( raw_softres ).final
-
-  if data then
-    result.import( data )
-  end
+  local result = softres_chain.build( SoftResSourceMock.new( data, function( name )
+    local player = group_roster.find_player( name )
+    return player and player.class
+  end ) ).final
 
   return result, decorated_awarded_loot
 end
@@ -280,7 +265,7 @@ function M.new_roll_for()
   end
 
   function builder.soft_res_data( self, ... )
-    dependencies[ "SoftResData" ] = make_data( ... )
+    dependencies[ "SoftResData" ] = { ... }
     return self
   end
 

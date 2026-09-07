@@ -15,7 +15,6 @@ local ItemUtils = require( "src/ItemUtils" )
 local LT = ItemUtils.LootType
 require( "src/LootList" )
 require( "src/RfTestLootFacade" )
-require( "src/SoftResDataTransformer" )
 require( "src/SoftRes" )
 require( "src/SoftResLootListDecorator" )
 

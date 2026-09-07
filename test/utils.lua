@@ -575,7 +575,6 @@ end
 function M.init()
   M.mock_api()
   M.fire_login_events()
-  M.import_soft_res( nil )
   m_is_master_looter = false
 end
 
@@ -960,26 +959,16 @@ function M.load_real_stuff( req )
   r( "src/RollingLogicUtils" )
   r( "src/DroppedLoot" )
   r( "src/TradeTracker" )
-  r( "src/SoftResDataTransformer" )
   r( "src/SoftRes" )
   r( "src/SoftResSource" )
   r( "src/DroppedLootAnnounce" )
-  r( "src/SoftResGui" )
   r( "src/AwardedLoot" )
-  r( "src/SoftResAwardedLootDecorator" )
-  r( "src/SoftResPresentPlayersDecorator" )
   r( "src/SoftResBonusRollDecorator" )
-  r( "src/SoftResAbsentPlayersDecorator" )
-  r( "src/SoftResMatchedNameDecorator" )
   r( "src/GroupRoster" )
-  r( "src/NameAutoMatcher" )
-  r( "src/NameManualMatcher" )
-  r( "src/NameMatchReport" )
   r( "src/EventHandler" )
   r( "src/VersionBroadcast" )
   r( "src/LootAwardCallback" )
   r( "src/MasterLoot" )
-  r( "src/SoftResCheck" )
   r( "src/NonSoftResRollingLogic" )
   r( "src/SoftResRollingLogic" )
   r( "src/TieRollingLogic" )
@@ -1066,68 +1055,6 @@ function M.targetting_player( name )
   m_target = name
   M.mock_unit_name()
   M.mock( "UnitIsFriend", true )
-end
-
-function M.import_soft_res( data )
-  local rf = M.load_roll_for()
-
-  -- Core's built-in import path, which only exists while core owns the soft-res source.
-  -- A test that registers a source extension gets a core with no store to import into --
-  -- the extension owns the import then. See `builtin_softres` in main.lua.
-  local source = RollFor.SoftResSource.get()
-  if source and source.id ~= "builtin" then return rf end
-
-  rf.import_softres_data( data )
-
-  return rf
-end
-
-local function find_soft_res_entry( softreserves, player )
-  for i = 1, #softreserves do
-    if softreserves[ i ].name == player then
-      return softreserves[ i ]
-    end
-  end
-
-  return nil
-end
-
-function M.create_softres_data( ... )
-  local items = { ... }
-  local hardreserves = {}
-  local softreserves = {}
-
-  for i = 1, #items do
-    local item = items[ i ]
-
-    if item.soft_res then
-      local entry = find_soft_res_entry( softreserves, item.player ) or {}
-
-      if not entry.name then
-        table.insert( softreserves, entry )
-      end
-
-      entry.name = item.player
-      entry.items = entry.items or {}
-      table.insert( entry.items, { id = item.item_id, quality = item.quality } )
-    else
-      table.insert( hardreserves, { id = item.item_id, quality = item.quality } )
-    end
-  end
-
-  local data = {
-    metadata = {
-      id = 123
-    },
-    hardreserves = hardreserves,
-    softreserves = softreserves
-  }
-
-  return data
-end
-
-function M.soft_res( ... )
-  return M.import_soft_res( M.create_softres_data( ... ) )
 end
 
 function M.soft_res_item( player, item_id, quality )
@@ -1248,9 +1175,6 @@ function M.master_loot( item_link )
   -- player_frame:Click()
 end
 
-function M.mock_softres_gui()
-end
-
 function M.confirm_master_looting( loot_event_facade, player, item_link )
   M.mock( "GiveMasterLoot", function() end )
   if m_loot_confirm_callback then m_loot_confirm_callback( player, item_link ) end
@@ -1276,13 +1200,6 @@ function M.read_file( file_name )
   file:close()
 
   return content
-end
-
-function M.import_softres_via_gui( fixture_name )
-  local sr_data = M.read_file( fixture_name )
-  local sr_frame = _G[ "RollForSoftResLootFrame" ]
-  sr_frame.editbox:SetText( sr_data )
-  sr_frame.import_button.OnClickCallback()
 end
 
 function M.register_loot_confirm_callback( callback )
