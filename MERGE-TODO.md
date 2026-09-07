@@ -1,6 +1,6 @@
 # Bringing master's work onto this branch
 
-Status: **not started.** This document is the plan. Read it before touching a file.
+Status: **task 1 done.** This document is the plan. Read it before touching a file.
 
 ## What this is
 
@@ -38,7 +38,7 @@ this branch wins, because it is the one that knows soft-res is an extension.
 
 ---
 
-## Task 1 -- Rip out resistances
+## Task 1 -- Rip out resistances *(done)*
 
 **Decision: gone completely.** Not just master's new resistance work -- everything already
 on this branch goes too. This is the largest deletion in the plan and it unblocks the rest.
@@ -324,7 +324,7 @@ keep in step. One vocabulary, one set of ordering bugs, one error message users 
 already seen from the soft-res chain.
 
 7a and 7b are independent of the port and leave the branch green on their own; they can
-land before anything else here. Record the decision in `EXTENSIONS_POC.md` §7 when 7d
+land before anything else here. Record the decision in `EXTENSIONS_POC.md` §6 when 7d
 lands.
 
 ### What the extension needs from the context
@@ -404,9 +404,7 @@ resolve toward this branch's version of the chain.
 - `release.sh` still ships core only. `SR-EXTENSION.md` §12 records the decision not to
   bundle the source extension; a second extension makes that question louder, not
   different.
-- `README.md`'s feature list still promises resistance bonus rolls and will need the same
-  pass Task 1 gives the code.
-- Update `EXTENSIONS_POC.md` §7 with the loot-hook decision and the API version bump.
+- Update `EXTENSIONS_POC.md` §6 with the loot-hook decision and the API version bump.
 
 ## Open questions
 

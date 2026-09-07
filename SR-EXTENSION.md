@@ -67,7 +67,6 @@ These were decided by the addon author. Do not relitigate them in code.
 
 - Any change to `RollForNetherVortex`. If you find yourself editing it, you have taken a
   wrong turn — go back to §5.3.
-- The resistance bonus rolls migration (section 6 of `EXTENSIONS_POC.md`).
 - Raidres. Nothing in this work is allowed to be justified by "raidres will need it".
 - Renaming core's soft-res vocabulary.
 - Merging data from two sources.
@@ -129,13 +128,11 @@ store hides behind a metatable is lost the moment it is decorated.
 
 ### 3.1 Stays in core, unchanged
 
-`SoftResBonusRollDecorator.lua`, `SoftResLootListDecorator.lua`,
-`SoftResRollingLogic.lua`, `NonSoftResRollingLogic.lua`, `TieRollingLogic.lua`,
+`SoftResLootListDecorator.lua`, `SoftResRollingLogic.lua`, `NonSoftResRollingLogic.lua`, `TieRollingLogic.lua`,
 `RollingStrategyFactory.lua`, `RollController.lua`, `LootController.lua`,
 `DroppedLootAnnounce.lua`, `Chain.lua`, `Extensions.lua`, `Types.lua`, `GuiElements.lua`.
 
-They consume soft-res data; they are not soft-res *sources*. `SoftResBonusRollDecorator`
-belongs to the future resistance-bonus-rolls extension, not to this one — leave it alone.
+They consume soft-res data; they are not soft-res *sources*.
 
 ### 3.2 Stays in core, rewritten
 
@@ -326,24 +323,7 @@ New order inside `create_components()`:
 2. **Then** core adds its own backbone links, but only in Phase A/B where core still owns
    them (in Phase C these move out and core adds none of them). See §5.0 — in Phase B
    these have to become conditional, or they collide with the extension's.
-3. Core adds the `bonus_roll` link, **conditionally**:
-
-```lua
--- Anchored to a link a source extension contributes, so it is only addable when a source
--- is actually installed. With no source there are no soft-ressers to annotate, so
--- skipping it changes nothing.
-if M.softres_chain.has( "present_players" ) then
-  M.softres_chain.add( {
-    name = "bonus_roll",
-    after = "present_players",
-    factory = function( inner )
-      return m.SoftResBonusRollDecorator.new( inner, M.resistance_bonus_roll_registry, M.config )
-    end
-  } )
-end
-```
-
-4. Build:
+3. Build:
 
 ```lua
 M.awarded_loot = M.awarded_loot_chain.build( M.raw_awarded_loot ).final
@@ -725,7 +705,7 @@ Registration happens at file scope at the bottom of the file, same as Nether Vor
 | `SoftResGui` | api, import fn, softres_check, softres, clear fn, announce reset, is-simulating | `ctx.api`, own, own, `ctx.get( "softres" )`, own, `ctx.get( "dropped_loot_announce" ).reset`, `ctx.get( "roll_simulator" ).is_simulating` |
 | `SoftResCheck` | unfiltered view, roster, name matcher, timer, absent fn, db | `ctx.softres_tap( "unfiltered" )`, `ctx.group_roster`, own, `ctx.ace_timer`, own, `ctx.db( "softres_check" )` |
 | `NameManualMatcher` | db, api, absent unfiltered store, auto matcher, status changed cb | `ctx.db( "name_matcher" )`, `ctx.api`, own, own, `ctx.minimap.refresh` |
-| `Simulation` | softres, unfiltered tap, bonus roll registry, config, gui | `ctx.get( "softres" )`, `ctx.softres_tap( "unfiltered" )`, `ctx.get( "resistance_bonus_roll_registry" )`, `ctx.config`, own |
+| `Simulation` | softres, unfiltered tap, config, gui | `ctx.get( "softres" )`, `ctx.softres_tap( "unfiltered" )`, `ctx.config`, own |
 | minimap contribution | softres_check | own |
 | slash commands | — | `RollFor.slash_cmd` |
 
@@ -820,8 +800,7 @@ Drop all of them from `RollFor.toc` and from `test/utils.lua`'s module load list
 `GroupAwareSoftResFn` and its two aliases go with them.
 
 What is left in `main.lua`: `M.softres = M.softres_chain.build( m.SoftResSource.base()
-).final`, the conditional `bonus_roll` link, the event emissions, and the consumers —
-which do not change at all.
+).final`, the event emissions, and the consumers — which do not change at all.
 
 ### 6.3 The no-source experience
 
@@ -869,14 +848,8 @@ core's lines 290–320 and 371–376 do today:
    `softres.get` / `softres.get_all_rollers` in place.
 3. `softres_gui.refresh()`.
 
-**Known wart, do not try to fix it here:** step 2 re-wraps the stand-in in
-`RollFor.SoftResBonusRollDecorator`, so this addon reaches for a core module belonging to
-a feature that is itself destined to become an extension. Guard it
-(`if RollFor.SoftResBonusRollDecorator then ... end`) and leave a comment pointing at
-section 6 of `EXTENSIONS_POC.md`, where bonus rolls will grow their own simulation
-contribution. Carry over the existing comment about why the stand-in rebuilds the layers
-above the tap rather than hardcoding them — that comment records a real bug that was fixed
-once already.
+Carry over the existing comment about why the stand-in rebuilds the layers above the tap
+rather than hardcoding them — that comment records a real bug that was fixed once already.
 
 ### 6.7 Phase C acceptance
 
@@ -914,8 +887,7 @@ Listed so that a diff touching them is a red flag. Each takes `M.softres` or
 `M.unfiltered_view` and needs no edit beyond what §4 already describes:
 
 `RollController`, `RollingStrategyFactory`, `LootController`, `DroppedLootAnnounce`,
-`SoftResLootListDecorator`, `SoftResRollingLogic`, `SoftResBonusRollDecorator`,
-`GargulBridge` (except the getter), `show_how_to_roll`, and `main.lua`'s hard-res check in
+`SoftResLootListDecorator`, `SoftResRollingLogic`, `GargulBridge` (except the getter), `show_how_to_roll`, and `main.lua`'s hard-res check in
 `on_roll_command`.
 
 ---
@@ -959,15 +931,12 @@ different outcome tells you something went wrong.
 | `SoftResDataTransformer_test` | move | the JSON shape |
 | `SoftResGui_test` | move | the import window |
 | `SoftResAwardedLootDecorator_test` | move | a moved decorator |
-| `SoftResBonusRollDecorator_test` | move | needs the chain under it |
 | `NameAutoMatcher_test` | move | moved module |
 | `SoftResRollSpec_test` | move | absent players, awarded loot |
 | `softres_rolls_test` | move | same, via the full addon load |
 | `RollSimulator_test` | move | asserts the stand-in bypassing the group filter |
 | `DroppedLootAnnounce_test`, `..._integration_test` | move | soft-res announcements depend on filtering |
 | `SrRowContract_test` | probably stays | needs data, not filtering |
-| `BonusRowContract_test` | probably stays | bonus rolls are core for now |
-| `BonusRollSpec_test` | probably stays | same |
 | `PreviewSpec_test` | probably stays | needs data, not filtering |
 | `LootList_test`, `LootListSpec_test` | probably stays | `SoftResLootListDecorator` stays in core |
 | `AutoLootSpec_test` | probably stays | only needs an item to be soft-ressed |
@@ -991,8 +960,7 @@ core's copy (they live in the extension's vendored copy).
 
 `IntegrationTestBuilder`'s `soft_res_data(...)` registers the double and builds the chain
 with **no backbone links** — which is exactly what core looks like with no source
-installed. Its `bonus_roll` link then has nothing to anchor to, so add it without an anchor
-(appended last) when `present_players` is absent, mirroring §4.3.
+installed.
 
 Put a comment at the top of the double saying, in as many words: *this is deliberately
 dumb; if your test needs filtering, your test belongs in RollForSoftResIt.*
@@ -1035,8 +1003,8 @@ dumb; if your test needs filtering, your test belongs in RollForSoftResIt.*
 2. `src/SoftRes.lua` slimmed to types + `softres_item_data` + `null()`; store and decode
    stay where they are for now but the *interface annotation* is the six read methods.
 3. `src/SoftResSource.lua` + core's built-in fallback registration.
-4. Chain order in `create_components`: `Extensions.enable` first, conditional
-   `bonus_roll`, build from `SoftResSource.base()`, guarded tap.
+4. Chain order in `create_components`: `Extensions.enable` first, build from
+   `SoftResSource.base()`, guarded tap.
 5. `MinimapButton`: contribution registry, click event, core's own contribution, `White`
    initial colour.
 6. `ctx` v2 (`api`, `softres_source`, `softres_tap`, `minimap`), `API_VERSION = 2`.
@@ -1116,7 +1084,6 @@ or is a direct consequence of a decision above.
 - Whether a shared "SR core" extension is worth extracting. That question is answerable
   only after RollForRaidres exists, which is the entire reason it is not answered here.
 - Whether the normalized model needs to grow for raidres' capabilities.
-- Bonus rolls contributing their own simulation wrap, which would remove the wart in §6.6.
 - Bundling the source extension into RollFor's release zip. Decided against for now; if
   the "install a second addon" step proves too much friction in the wild, `release.sh` is
   where it would change.

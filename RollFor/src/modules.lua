@@ -46,11 +46,6 @@ M.colors = {
   pink = function( text )
     return string.format( "|cffdf8eed%s|r", text ) ---@type ColorFn
   end,
-  -- Blizzard's own gold, so a bonus roll reads as a reward rather than as a fifth
-  -- arbitrary hue next to the blue soft-res rolls.
-  gold = function( text )
-    return string.format( "|cffffd100%s|r", text ) ---@type ColorFn
-  end,
   -- ModUi's purple, deliberately: an addon-name tag in the login banner reads the same
   -- across both addons.
   purple = function( text )

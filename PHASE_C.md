@@ -14,8 +14,8 @@ recorded in that commit rather than here.
 - **§6.2** — out of `main.lua`: the six `builtin_softres` blocks and the flag itself,
   `clear_data`, `GroupAwareSoftResFn` and its two aliases, `import_softres_data`,
   `import_encoded_softres_data`, `on_softres_command` and the `/sr` registration. What is
-  left is §6.2's own list: the chain built on `SoftResSource.base()`, the conditional
-  `bonus_roll` link, the event emissions, and the consumers, which did not change.
+  left is §6.2's own list: the chain built on `SoftResSource.base()`, the event
+  emissions, and the consumers, which did not change.
 - **§6.3** — the no-source notice, printed once at the end of `on_player_login`.
 - **§6.4** — `RollFor.toc` notes, `README.md`, `EXTENSIONS_POC.md`'s decisions table.
   `RollForSoftResIt/README.md` was already written in Phase B.

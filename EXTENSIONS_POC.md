@@ -1,36 +1,30 @@
 # RollFor Extensions — Design & Proof of Concept
 
 Status: **POC landed.** The extension API is implemented in RollFor core, Nether Vortex
-has moved out into `RollForNetherVortex`, and both suites are green. The resistance
-bonus rolls migration (section 6) has not started.
-Audience: whoever implements the rest of this after the Nether Vortex slice lands.
+has moved out into `RollForNetherVortex`, and both suites are green.
+Audience: whoever implements the rest of this.
 
 ## 1. Goal
 
-Nether Vortex rolling rules and resistance bonus rolls are both niche: they matter to
-people running Tempest Keep and Mount Hyjal / Black Temple respectively, and to nobody
-else. Today they are welded into RollFor's core and everybody carries the code and the
-UI whether they want it or not.
+Nether Vortex rolling rules are niche: they matter to people running Tempest Keep and to
+nobody else. Today they are welded into RollFor's core and everybody carries the code and
+the UI whether they want it or not.
 
 The goal is to make RollFor **extendible**: a host addon with published seams, and
 separate extension addons that register into it and can be enabled/disabled from
 RollFor's own options window.
 
-Two extensions are in scope:
+One extension is in scope:
 
 | Extension | Addon folder | Difficulty |
 |---|---|---|
 | Nether Vortex | `RollForNetherVortex` | shallow — two decorators |
-| Resistance bonus rolls | `RollForResistanceBonusRolls` | deep — touches the rolling engine |
 
 **Nether Vortex goes first, deliberately.** It is ~150 lines of pure decorator, so it
 exercises the extension API without also stressing it. If the API is wrong, we find out
-cheaply. Resistance bonus rolls is the one that will actually bend the design, and it
-should not be the thing we learn on.
+cheaply.
 
 ## 2. What is actually coupled
-
-### 2.1 Nether Vortex — shallow
 
 | Location | Coupling |
 |---|---|
@@ -45,30 +39,6 @@ should not be the thing we learn on.
 
 That is the whole surface. (`AutoLootDb.lua`'s "Nether*" hits are unrelated loot-table
 names; `LootList_test.lua` uses 30183 only as a convenient stackable item.)
-
-### 2.2 Resistance bonus rolls — deep
-
-`src/resistances/` (14 files, 2191 lines) is pleasantly self-contained. The *bonus roll*
-concept is not — it is threaded through the rolling engine:
-
-| Location | Coupling |
-|---|---|
-| `src/Types.lua:44,57` | `RollType.BonusRoll` in a closed enum |
-| `src/Types.lua:185,202` | `bonus_rolls` field on `RollingPlayer`, param on `make_rolling_player` |
-| `src/modules.lua` | `roll_type_color` / `abbrev` / `abbrev_chat` / `rank` / `tier` all branch on `BonusRoll`; `colors.gold` exists for it |
-| `src/RollingLogicUtils.lua:23` | `{ field = "bonus_rolls", roll_type = RT.BonusRoll }` |
-| `src/RollingLogicUtils.lua:328` | `spend_bonus_roll` |
-| `src/RollTracker.lua:119,158,199,250` | four hardcoded `for _ = 1, player.bonus_rolls` placeholder loops |
-| `src/SoftResRollingLogic.lua` | registry as ctor arg, token spend, refund on cancel |
-| `src/TieRollingLogic.lua` | same |
-| `src/RollResultAnnouncer.lua:180-199` | `" +N bonus"` aggregation |
-| `src/RollingPopupContentTransformer.lua:45,80` | placeholder + sort ordering |
-| `src/RollingLogic.lua:51-54` | roll-allowance sentence |
-| `src/SoftResBonusRollDecorator.lua` | softres chain decorator |
-| `src/Config.lua:41,63,65,215-225,530` | `resistance_bonus_rolls_enabled`, `resistance_check_throttle` + accessors |
-| `src/OptionsFrame.lua:233,236` | two `add_*` calls |
-| `src/GuiElements.lua:1140-1450` | `resistance_row`, `eligibility_row`, `bonus_roll_row` (~330 lines) |
-| `main.lua` | construction, `describe_lockout_loss()`, lockout-reset subscriber, `on_group_changed` fan-out |
 
 ## 3. The extension API
 
@@ -155,8 +125,7 @@ create_components()
 ```
 
 `on_enable` must be side-effect-free beyond declaration; anything that needs a built
-component belongs in `on_ready`. Nether Vortex only uses `on_enable`. Resistance bonus
-rolls will use both.
+component belongs in `on_ready`. Nether Vortex only uses `on_enable`.
 
 ### 3.4 Ordered decorator chains
 
@@ -188,7 +157,6 @@ The softres chain, current order preserved:
 | 3 | *slot* | `nether_vortex` (extension) |
 | — | **tap: `unfiltered`** | |
 | 4 | `present_players` | core |
-| 5 | *slot* | `bonus_roll` (extension) |
 | — | **tap: `final`** | |
 
 ### 3.5 Taps, not intermediate names
@@ -234,9 +202,6 @@ Mostly already in place, which is a pleasant surprise:
 - `FrameBuilder` already resolves row widgets by name via
   `options.gui_elements[ line_type ]`, so extensions adding row types is just letting
   them write keys into that table (`ctx.gui_elements`).
-- Shared row styling (`resistance_row_hover_color`, header colors, overhang) is borrowed
-  by all three resistance rows and must be promoted to a public helper before those rows
-  move out.
 - `popup_builder` must be handed over on the context, not recomputed — the
   `classic_look` margin arithmetic in `main.lua:186-192` is not something an extension
   should be duplicating.
@@ -245,12 +210,11 @@ Mostly already in place, which is a pleasant surprise:
 
 Three fan-outs are hardcoded in `main.lua` and need contributor hooks:
 
-- **`on_group_changed`** — currently calls three resistance frames by name
-  (`main.lua:919-921`).
-- **`on_lockout_reset`** — the `raid_lockout.subscribe` handler resets the bonus-roll
-  registry and eligibility.
-- **`lockout_loss`** — `describe_lockout_loss()` counts "bonus rolls" and "eligible
-  players". `DropSimulator`'s confirmation dialog reuses the same sentence, so this must
+- **`on_group_changed`** — frames that redraw when the roster changes.
+- **`on_lockout_reset`** — extra records the `raid_lockout.subscribe` handler must wipe
+  alongside core's own.
+- **`lockout_loss`** — `describe_lockout_loss()` names what a lockout turnover would
+  forget. `DropSimulator`'s confirmation dialog reuses the same sentence, so this must
   remain a single list that extensions contribute `{ count, noun }` entries to. Two
   divergent sentences here would mean agreeing to lose one thing and losing another.
 
@@ -420,38 +384,7 @@ The one that matters most for the API is `ExtensionRegistration_test`: it drives
 addon's real `on_enable` against a stand-in of core's backbone and asserts both the
 resulting order and the failure when an anchor is renamed away.
 
-## 6. Phasing the resistance bonus rolls migration
-
-Do not attempt this until the Nether Vortex slice is merged and the API has sat for a
-bit. Order that keeps `master` shippable at every step:
-
-**Phase 1 — open the roll-type registry.**
-`Types.register_roll_type{ id, abbrev, color, rank, tier, player_field }`. The five
-if-chains in `modules.lua`, the field table in `RollingLogicUtils.lua:23`, and the four
-`RollTracker` loops all read from the registry. `RollingPlayer.bonus_rolls` becomes a
-generic slot.
-
-*Alternative worth weighing first:* keep `RollType` closed and give it a single generic
-"extra rolls" slot that one extension may claim. Far less churn, supports exactly one
-such extension ever. Bonus rolls is the only client today.
-
-**Phase 2 — roll-spend hooks.** Generalize `spend_bonus_roll` / `spent_tokens` / refund
-into a roll-type contract: `on_roll_used(...) -> token?` and
-`on_round_cancelled( tokens )`, so `SoftResRollingLogic` and `TieRollingLogic` stop
-naming the registry.
-
-**Phase 3 — announcement hooks.** The allowance sentence in `RollingLogic.lua:51-54`,
-`" +N bonus"` in `SoftResRollingLogic.lua:212` and `RollResultAnnouncer.lua:196-199`,
-and the sort in `RollingPopupContentTransformer.lua:80`.
-
-**Phase 4 — GUI seams.** Promote the shared row styling, move the three row widgets out
-behind `ctx.gui_elements`, move the config settings behind `register_toggle` /
-`register_number`.
-
-**Phase 5 — move the folder.** `src/resistances/` and `test/resistances/` become
-`RollForResistanceBonusRolls`. `SoftResBonusRollDecorator.lua` goes with them.
-
-## 7. Decisions taken
+## 6. Decisions taken
 
 | Question | Decision |
 |---|---|
@@ -465,8 +398,9 @@ behind `ctx.gui_elements`, move the config settings behind `register_toggle` /
 | Extension namespace | Its own `RollForNetherVortex` global; core helpers read off `RollFor` |
 | Soft-res | Extracted to `RollForSoftResIt` (`SR-EXTENSION.md`). Core keeps the consumers and the `SoftResSource` seam; the import, the store, name matching, `SoftResCheck`, the window and the `/sr` family are the extension's. Exactly one source may register |
 | Soft-res with no source installed | Supported. Core falls back to `SoftRes.null()`, prints one line at login, and every non-soft-res feature works |
+| Resistance bonus rolls | Deleted outright, not extracted. `src/resistances/`, `SoftResBonusRollDecorator`, the `BonusRoll` roll type and `RollingPlayer.bonus_rolls` are gone; core now contributes no link to the soft-res chain at all |
 
-## 8. Known risks
+## 7. Known risks
 
 - **The context object is the real commitment.** Everything else is refactorable; a
   published surface that extensions bind to is not. Keep it small.

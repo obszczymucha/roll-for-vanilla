@@ -321,8 +321,8 @@ function SplitMessageSpec:should_break_between_elements_and_never_inside_one()
 end
 
 function SplitMessageSpec:should_keep_the_soft_res_roll_call_within_the_chat_limit()
-  -- The regression that motivated all of this: bonus roll annotations roughly halved how
-  -- many soft-ressers fit on one line.
+  -- The regression that motivated all of this: per-player roll annotations roughly halved
+  -- how many soft-ressers fit on one line.
   for player_count = 1, 40 do
     local players = {}
     for i = 1, player_count do players[ i ] = string.format( "Thundershock%s [2 rolls +2 bonus]", i ) end

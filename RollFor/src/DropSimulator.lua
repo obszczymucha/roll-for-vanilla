@@ -17,9 +17,8 @@ local grey = m.colors.grey
 --   /rfdrop vashj           drop something only Lady Vashj drops
 --   /rfdrop                 usage
 --   /rfdrop list            what's been killed so far
---   /rfdrop lockout         roll the raid lockout over, forgetting kills, bonus rolls
---                           and eligible players -- asks first when there's something
---                           to lose
+--   /rfdrop lockout         roll the raid lockout over, forgetting what was killed --
+--                           asks first when there's something to lose
 --
 -- This is the /rft end of the scale, not the /rfsetup end: it calls on_item_dropped
 -- directly, so it bypasses the loot window, the quality/bind filter and the
@@ -107,7 +106,7 @@ function M.new( boss_killed, raid_lockout, confirm_lockout_reset )
   local function usage()
     m.info( string.format( "%s -- simulate a drop by item id, item link or boss name.", hl( "/rfdrop <what>" ) ) )
     m.info( string.format( "%s -- what's been killed so far.", hl( "/rfdrop list" ) ) )
-    m.info( string.format( "%s -- roll the raid lockout over (kills, bonus rolls and eligibility with it).",
+    m.info( string.format( "%s -- roll the raid lockout over (boss kills with it).",
       hl( "/rfdrop lockout" ) ) )
   end
 

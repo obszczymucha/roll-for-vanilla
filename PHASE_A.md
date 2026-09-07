@@ -8,8 +8,8 @@ out yet):
 - **A2** — New `src/SoftResSource.lua` registry (register/get/base/has_data/get_import_string/clear);
   `src/SoftRes.lua` slimmed to the 6-method interface + `null()`; core registers its own
   store as the `"builtin"` fallback source.
-- **A3** — Chain building now reads from `SoftResSource.base()`; `bonus_roll` link is
-  conditional and added after `Extensions.enable()`.
+- **A3** — Chain building now reads from `SoftResSource.base()`, with core's links added
+  after `Extensions.enable()`.
 - **A4** — `MinimapButton` rewritten around a contribution registry read at render time;
   click now just emits an event; initial color is White instead of Red; core registers its
   own soft-res contribution reproducing today's tooltip/colors verbatim.
