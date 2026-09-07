@@ -14,6 +14,7 @@ local ColorType = {
   White = "White",
   Green = "Green",
   Orange = "Orange",
+  Purple = "Purple",
   Red = "Red"
 }
 
