@@ -280,8 +280,18 @@ function M.new( chain_name )
 
   ---@param base any
   ---@return BuiltChain
-  local function build( base )
+  -- `report` says whether an unplaceable link is worth complaining about. It is, normally:
+  -- a link that cannot be placed is a typo in somebody's anchor and the addon quietly does
+  -- less than it should. It is not when the caller already knows the anchors are missing
+  -- for a reason the user cannot fix -- see main.lua's soft-res chain with no source
+  -- installed, where every contributed link is unplaceable and saying so four times over
+  -- reads like four bugs.
+  ---@param base any
+  ---@param options { report: boolean }?
+  local function build( base, options )
     if base == nil then fail( "cannot build on a nil base." ) end
+
+    local report = not options or options.report ~= false
 
     -- The accumulator as it looked on either side of every link, so taps can be resolved
     -- afterwards without running any factory twice.
@@ -289,7 +299,7 @@ function M.new( chain_name )
     local after_link = { [ BASE ] = base }
     local accumulator = base
 
-    for _, link in ipairs( resolve( true ) ) do
+    for _, link in ipairs( resolve( report ) ) do
       before_link[ link.name ] = accumulator
       accumulator = link.factory( accumulator )
 

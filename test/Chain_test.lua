@@ -247,6 +247,19 @@ function ChainErrorSpec:should_drop_a_link_with_an_unknown_before_anchor()
     "anchored before 'nope', which is not in the chain" )
 end
 
+-- With report = false the link is still left out -- the ordering guarantee does not bend
+-- -- but nothing is printed. main.lua asks for this when no soft-res source is installed,
+-- where every contributed link is unplaceable for one reason the user was already told
+-- about, and four errors would read like four bugs in a working configuration.
+function ChainErrorSpec:should_drop_a_link_quietly_when_asked_not_to_report()
+  local chain = Chain.new( "softres" )
+  link( chain, "mine", { after = "nope" } )
+
+  complaints = {}
+  eq( chain.build( "sr", { report = false } ).final, "sr" )
+  eq( complaints, {} )
+end
+
 -- One bad link is not the rest of the chain's problem.
 function ChainErrorSpec:should_keep_the_links_it_can_place_when_one_cannot_be_placed()
   local chain = Chain.new( "softres" )

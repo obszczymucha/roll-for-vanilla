@@ -384,7 +384,12 @@ local function create_components()
   ---@type AwardedLoot
   M.awarded_loot = M.awarded_loot_chain.build( M.raw_awarded_loot ).final
 
-  M.softres_built = M.softres_chain.build( m.SoftResSource.base() )
+  -- Quiet when nothing is installed to contribute the backbone: every soft-res link an
+  -- extension added is then unplaceable for one reason the user already got told about at
+  -- login, and reporting each one as its own error blames a working configuration. With a
+  -- source present an unplaceable link is a real mistake and still says so.
+  M.softres_built = M.softres_chain.build( m.SoftResSource.base(),
+    { report = m.SoftResSource.get() ~= nil } )
 
   ---@type GroupAwareSoftRes
   M.softres = M.softres_built.final
