@@ -35,7 +35,6 @@ local sid = m.SoftRes.softres_item_data
 ---@param config Config
 ---@param softres GroupAwareSoftRes
 ---@param player_info PlayerInfo
----@param bonus_roll_registry ResistanceBonusRollRegistry
 function M.new(
     group_roster,
     loot_list,
@@ -45,8 +44,7 @@ function M.new(
     winner_tracker,
     config,
     softres,
-    player_info,
-    bonus_roll_registry
+    player_info
 )
   ---@param item Item
   ---@param item_count number
@@ -106,8 +104,6 @@ function M.new(
       on_softres_rolls_available,
       roll_controller_facade
   )
-    -- Already annotated with each player's bonus allowance by SoftResBonusRollDecorator,
-    -- so nothing here has to ask about bonus rolls. The registry below is the write path.
     local sr_item = sid( item.id, item_quantity )
     ---@type RollingPlayer[]
     local softressing_players = softres.get( sr_item )
@@ -150,8 +146,7 @@ function M.new(
       config,
       winner_tracker,
       master_loot_candidates,
-      roll_controller_facade,
-      bonus_roll_registry
+      roll_controller_facade
     ), needs_rolling and softressing_players or nil, leftover_softressers
   end
 
@@ -176,14 +171,11 @@ function M.new(
 
   local function tie_roll( players, item, item_count, item_quantity, on_rolling_finished, roll_type, roll_controller_facade )
     -- A tie roll is a roll like any other, so the allowance rule is the same one: one roll
-    -- each, plus whatever bonus rolls the player still holds. Spending them in the round
-    -- that produced the tie is not what earns the tie -- a player who reached it on his
-    -- first roll would otherwise be down every roll he never needed, and the player who
-    -- spent his to get there would have had the more rolls at the item.
+    -- each, regardless of what the round that produced the tie cost each player.
     local rollers = m.map( players,
       ---@param player RollingPlayer
       function( player )
-        return make_rolling_player( player.name, player.class, player.online, 1, player.bonus_rolls )
+        return make_rolling_player( player.name, player.class, player.online, 1 )
       end
     )
 
@@ -196,8 +188,7 @@ function M.new(
       on_rolling_finished,
       roll_type,
       config,
-      roll_controller_facade,
-      bonus_roll_registry
+      roll_controller_facade
     )
   end
 

@@ -166,10 +166,8 @@ function M.new( chat, roll_controller, config )
     local prefix = count > 1 and string.format( "%sx", count ) or ""
     local suffix = count > 1 and string.format( " %s top rolls win.", count ) or ""
 
-    -- One entry per player, not per placeholder: a player who brought bonus rolls into the
-    -- tie has several, and naming him once per roll would read as several players. The
-    -- allowance rides along instead, split the way the soft-res roll call splits it --
-    -- "Ayla [1 roll +3 bonus]" -- because "4 rolls" would read as four tie rolls.
+    -- One entry per player, not per placeholder: naming him once per roll would read as
+    -- several players. The allowance rides along instead -- "Ayla [2 rolls]".
     local names, allowance = {}, {}
 
     for _, roll_data in ipairs( iteration.rolls ) do
@@ -177,26 +175,21 @@ function M.new( chat, roll_controller, config )
       local entry = allowance[ name ]
 
       if not entry then
-        entry = { rolls = 0, bonus_rolls = 0 }
+        entry = { rolls = 0 }
         allowance[ name ] = entry
         table.insert( names, name )
       end
 
-      if roll_data.roll_type == RT.BonusRoll then
-        entry.bonus_rolls = entry.bonus_rolls + 1
-      else
-        entry.rolls = entry.rolls + 1
-      end
+      entry.rolls = entry.rolls + 1
     end
 
     local player_names = m.map( names,
       ---@param name string
       function( name )
         local entry = allowance[ name ]
-        if entry.bonus_rolls == 0 and entry.rolls <= 1 then return name end
+        if entry.rolls <= 1 then return name end
 
-        return string.format( "%s [%s roll%s%s]", name, entry.rolls, entry.rolls == 1 and "" or "s",
-          entry.bonus_rolls > 0 and string.format( " +%s bonus", entry.bonus_rolls ) or "" )
+        return string.format( "%s [%s roll%s]", name, entry.rolls, entry.rolls == 1 and "" or "s" )
       end )
 
     local roll_threshold_str = config.roll_threshold( roll_type ).str

@@ -6,7 +6,7 @@ if m.ListPopup then return end
 local M = {}
 local getn = m.getn
 
--- The shell the resistance-style list windows are all built out of: a draggable popup
+-- The shell the list windows are all built out of: a draggable popup
 -- that remembers where it was left, a refresh that rebuilds itself from a content
 -- transformer, and show/hide/toggle on a slash command.
 --
@@ -43,7 +43,7 @@ local top_padding = 16
 ---@field popup_builder PopupBuilder
 ---@field content_transformer table -- anything with transform( data ): table
 ---@field content fun(): table -- the model handed to the transformer, read fresh per refresh
----@field row_type string -- the line type its rows use, e.g. "resistance_row"
+---@field row_type string -- the name of the GuiElements line type its rows use
 ---@field row_callback string? -- the field a row carries that its widget calls back on
 
 M.center_point = { point = "CENTER", relative_point = "CENTER", x = 0, y = 0 }

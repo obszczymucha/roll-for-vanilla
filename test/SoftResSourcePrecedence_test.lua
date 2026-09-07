@@ -152,7 +152,7 @@ ChainOrderingSpec = {}
 
 function ChainOrderingSpec:should_place_an_extension_link_anchored_to_a_backbone_added_later()
   eq( rf.softres_chain.names(),
-    { "matched_name", "awarded_loot", "probe_link", "present_players", "bonus_roll" } )
+    { "matched_name", "awarded_loot", "probe_link", "present_players" } )
 end
 
 os.exit( lu.LuaUnit.run() )

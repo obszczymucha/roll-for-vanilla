@@ -7,9 +7,7 @@ reqsrc( "TieRollingLogic", "SoftResRollingLogic", "NonSoftResRollingLogic", "Rai
 require( "src/AwardedLoot" )
 local SoftResSourceMock = require( "mocks/SoftResSource" )
 local Chain = require( "src/Chain" )
-local SoftResBonusRollDecorator = require( "src/SoftResBonusRollDecorator" )
 require( "src/AutoLootDb" )
-local ResistanceBonusRollRegistry = require( "src/resistances/ResistanceBonusRollRegistry" )
 local SoftRes, Db = require( "src/SoftRes" ), require( "src/Db" )
 local RollingLogic = require( "src/RollingLogic" )
 local sr, hr = u.soft_res_item, u.hard_res_item ---@diagnostic disable-line: unused-local
@@ -22,21 +20,6 @@ local BindType = IU.BindType
 u.mock_wow_api()
 
 local M = {}
-
--- The bonus roll registry's two collaborators, inert. Specs seed grants directly through
--- builder.bonus_rolls rather than playing out a kill, so the registry only needs to be able
--- to subscribe to the kill feed and read eligibility's rows -- neither of which fires here.
----@return BossKilled
-local function inert_boss_killed()
-  ---@diagnostic disable-next-line: missing-fields
-  return { subscribe = function() end }
-end
-
----@return ResistanceBonusRollEligibility
-local function inert_eligibility()
-  ---@diagnostic disable-next-line: missing-fields
-  return { get_rows = function() return {} end }
-end
 
 ---@param name string
 ---@param class PlayerClass?
@@ -96,40 +79,24 @@ function M.mock_config( configuration )
         str = "/roll"
       }
     end,
-    classic_look = function() return false end,
-    resistance_bonus_rolls_enabled = function()
-      if config and config.resistance_bonus_rolls_enabled ~= nil then return config.resistance_bonus_rolls_enabled end
-      return true
-    end
+    classic_look = function() return false end
   }
 end
 
--- The same chain main.lua builds, bonus-roll decorator outermost -- and built the same
--- way, through Chain, so that a test can insert an extension's links exactly where the
--- real addon would.
+-- The same chain main.lua builds, and built the same way, through Chain, so that a test
+-- can insert an extension's links exactly where the real addon would.
 ---@param group_roster GroupRoster
 ---@param awarded_loot AwardedLoot
----@param bonus_roll_registry ResistanceBonusRollRegistry
----@param config Config
 ---@param data table?
 ---@param extend fun( softres_chain: Chain, awarded_loot_chain: Chain )? -- stands in for Extensions.enable
 ---@return GroupAwareSoftRes
 ---@return AwardedLoot
-local function group_aware_softres( group_roster, awarded_loot, bonus_roll_registry, config, data, extend )
+local function group_aware_softres( group_roster, awarded_loot, data, extend )
   -- No backbone. matched_name, awarded_loot and present_players belong to whichever source
   -- extension is installed, and with none installed this is exactly what core's chain looks
   -- like: the source's data, and whatever core itself contributes on top.
   local awarded_loot_chain = Chain.new( "awarded_loot" )
   local softres_chain = Chain.new( "softres" )
-
-  softres_chain.add( {
-    -- Bonus rolls are still core's, so this link is core's too. It anchors after
-    -- present_players when a source contributed one and is appended last when nothing did,
-    -- which is the same choice main.lua makes.
-    name = "bonus_roll",
-    after = softres_chain.has( "present_players" ) and "present_players" or nil,
-    factory = function( inner ) return SoftResBonusRollDecorator.new( inner, bonus_roll_registry, config ) end
-  } )
 
   if extend then extend( softres_chain, awarded_loot_chain ) end
 
@@ -269,15 +236,6 @@ function M.new_roll_for()
     return self
   end
 
-  -- Bonus rolls seeded straight into the registry -- { Drutree = { "Mother Shahraz" } } --
-  -- rather than played out through eligibility and a kill, which is a different module's
-  -- test.
-  ---@param grants table<string, string[]>
-  function builder.bonus_rolls( self, grants )
-    dependencies[ "BonusRollGrants" ] = grants
-    return self
-  end
-
   ---@param threshold number
   function builder.loot_threshold( self, threshold )
     u.loot_threshold( threshold )
@@ -312,18 +270,8 @@ function M.new_roll_for()
 
     local raw_awarded_loot = require( "src/AwardedLoot" ).new( db( "awarded_loot" ), chat )
 
-    local bonus_roll_registry = ResistanceBonusRollRegistry.new(
-      db( "resistance_bonus_roll_registry" ), inert_boss_killed(), inert_eligibility() )
-    deps[ "ResistanceBonusRollRegistry" ] = bonus_roll_registry
-
-    for player_name, bosses in pairs( deps[ "BonusRollGrants" ] or {} ) do
-      for _, boss_name in ipairs( bosses ) do
-        bonus_roll_registry.grant( player_name, boss_name, C.Warrior )
-      end
-    end
-
     local softres, awarded_loot = group_aware_softres(
-      group_roster, raw_awarded_loot, bonus_roll_registry, config, deps[ "SoftResData" ], deps[ "ExtendChains" ] )
+      group_roster, raw_awarded_loot, deps[ "SoftResData" ], deps[ "ExtendChains" ] )
     deps[ "SoftRes" ] = softres
 
     local raw_loot_list = require( "mocks/LootList" ).new( loot_facade )
@@ -376,8 +324,7 @@ function M.new_roll_for()
       winner_tracker,
       config,
       softres,
-      player_info,
-      bonus_roll_registry
+      player_info
     )
     deps[ "RollingStrategyFactory" ] = strategy_factory
 
@@ -456,7 +403,6 @@ function M.new_roll_for()
       roll = rolling_logic.on_roll,
       roll_controller = roll_controller,
       awarded_loot = awarded_loot, ---@type AwardedLoot
-      bonus_roll_registry = bonus_roll_registry, ---@type ResistanceBonusRollRegistry
       softres = softres, ---@type GroupAwareSoftRes
       reset_announcements = dropped_loot_announce.reset,
       enable_debug = enable_debug

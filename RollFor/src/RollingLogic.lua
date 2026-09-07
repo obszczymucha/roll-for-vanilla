@@ -39,29 +39,14 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
   local function on_softres_rolls_available( rollers )
     local remaining_rollers = m.reindex_table( rollers )
 
-    -- Both pools, separately: a player owing one soft-res roll and one bonus roll owes two
-    -- rolls, but "2 rolls" would have them roll twice off an allowance they don't have.
     local transform = function( player )
-      local parts = {}
-
-      if player.rolls > 0 then
-        table.insert( parts, string.format( "%s roll%s", player.rolls, player.rolls == 1 and "" or "s" ) )
-      end
-
-      local bonus_rolls = player.bonus_rolls or 0
-
-      if bonus_rolls > 0 then
-        table.insert( parts, string.format( "%s bonus roll%s", bonus_rolls, bonus_rolls == 1 and "" or "s" ) )
-      end
-
-      return string.format( "%s (%s)", player.name, table.concat( parts, ", " ) )
+      return string.format( "%s (%s roll%s)", player.name, player.rolls, player.rolls == 1 and "" or "s" )
     end
 
     roll_controller.waiting_for_rolls()
 
-    -- Split rather than formatted whole: the per-player string grew a bonus roll count,
-    -- and a raid where everyone owes one runs out of chat message well before it runs out
-    -- of rollers.
+    -- Split rather than formatted whole: a raid where everyone owes a roll runs out of
+    -- chat message well before it runs out of rollers.
     for _, message in ipairs( m.split_message( "SR rolls remaining: ", remaining_rollers, transform ) ) do
       chat.announce( message )
     end
@@ -106,12 +91,10 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     local last_roll = rolls[ roll_count ]
     local winning_rolls, tied_rolls = {}, {}
 
-    -- Compared by tier, not by type: an SR 87 and a bonus 87 are the same contest and
-    -- have to tie against each other.
-    local last_tier = m.roll_type_tier( last_roll.roll_type )
+    local last_roll_type = last_roll.roll_type
 
     for _, r in ipairs( rolls ) do
-      if r.roll == last_roll.roll and m.roll_type_tier( r.roll_type ) == last_tier then
+      if r.roll == last_roll.roll and r.roll_type == last_roll_type then
         table.insert( tied_rolls, r )
       else
         table.insert( winning_rolls, r )
@@ -152,9 +135,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
       roll_controller.winners_found( item, item_count, winners, RS.TieRoll )
     end
 
-    -- Normalised to the tier, or a mixed tie whose first roll happened to be the bonus one
-    -- would label the whole re-roll "BR".
-    local roll_type = m.roll_type_tier( tied_rolls[ 1 ].roll_type )
+    local roll_type = tied_rolls[ 1 ].roll_type
     local roll_value = tied_rolls[ 1 ].roll
 
     ---@type RollingPlayer[]

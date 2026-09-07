@@ -13,14 +13,13 @@ local RT = m.Types.RollType ---@type RT
 local make_rolling_player = m.Types.make_rolling_player
 
 -- The pools a player's rolls come out of, in the order they are spent. SR rolls are what
--- the player signed up for, so they go first; a bonus roll is only ever the overflow.
+-- the player signed up for, so they go first.
 --
--- This is the whole extension seam. A third pool -- a wipe-recovery roll, a penalty roll
+-- This is the whole extension seam. A second pool -- a wipe-recovery roll, a penalty roll
 -- -- is one entry here plus whatever persistence it needs, and nothing that decides
 -- winners has to know it exists.
 local roll_pools = {
-  { field = "rolls", roll_type = RT.SoftRes },
-  { field = "bonus_rolls", roll_type = RT.BonusRoll }
+  { field = "rolls", roll_type = RT.SoftRes }
 }
 
 -- How many rolls this player still has, across every pool. Absent reads as zero.
@@ -61,7 +60,7 @@ end
 
 ---@param roller RollingPlayer
 function M.copy_roller( roller )
-  return make_rolling_player( roller.name, roller.class, roller.online, roller.rolls, roller.bonus_rolls )
+  return make_rolling_player( roller.name, roller.class, roller.online, roller.rolls )
 end
 
 ---@param rollers RollingPlayer[]
@@ -146,9 +145,8 @@ end
 
 -- Fills one of the player's pending placeholders with the roll they just cast.
 --
--- Prefers a placeholder of the same type, because a player can hold both SR and bonus
--- placeholders and dropping an SR roll into the bonus cell would relabel it. The fallback
--- to any pending placeholder is what keeps the tie path working: RollTracker.start seeds
+-- Prefers a placeholder of the same type, so a roll never relabels the cell it lands in.
+-- The fallback to any pending placeholder is what keeps the tie path working: RollTracker.start seeds
 -- tie placeholders with RS.TieRoll as their roll type while add() passes a real RollType,
 -- so nothing there ever matches.
 ---@param rolls RollData[]
@@ -202,9 +200,7 @@ function M.has_rolls_left( rollers, player_name )
   return false
 end
 
--- Whether the rolling can stop before every roll has been cast. Shared by both rounds: a
--- tie round carries bonus rolls too, so it can reach the same "nothing left can change
--- this" state the soft-res round can.
+-- Whether the rolling can stop before every roll has been cast. Shared by both rounds.
 
 function M.has_everyone_rolled( rollers, rolls )
   local rolled_player_names = {}
@@ -228,8 +224,8 @@ end
 -- rolling higher breaks it -- so it is not a stopping point. The exception is a tie on the
 -- highest roll there is: nobody can beat it, and nobody outside it can join it, which is
 -- what the loop below rules out. The rolls the tied players still hold can then only be
--- spent, never used -- and a bonus roll is deducted the moment it is cast, so waiting for
--- them costs those players rolls in a contest that is already over.
+-- spent, never used -- and a roll is deducted the moment it is cast, so waiting for them
+-- costs those players rolls in a contest that is already over.
 ---@param max_roll number -- the highest a /roll can come back with
 function M.are_remaining_rollers_already_winners( rollers, rolls, item_count, max_roll )
   local candidates = M.best_roll_per_player( rolls )
@@ -265,8 +261,7 @@ end
 -- best roll can win. `rolls` must be sorted descending, so the first roll seen for a
 -- player is their best one.
 --
--- Shared by both rolling logics: a tie round now carries bonus rolls too, so it has the
--- same "a player may hold several rolls" problem the soft-res round has.
+-- Shared by both rolling logics: either round may have a player holding several rolls.
 ---@param rolls Roll[]
 ---@return Roll[]
 function M.best_roll_per_player( rolls )
@@ -314,27 +309,6 @@ function M.count_top_roll_winners( candidates, item_count )
   end
 
   return result
-end
-
--- Casting a bonus roll is what spends it, in the tie round exactly as in the soft-res one.
--- Announced with the count left, because a bonus roll is a thing the player earned and is
--- now out of, and that number is what stops the next argument.
----@param registry ResistanceBonusRollRegistry
----@param chat Chat
----@param item Item
----@param player RollingPlayer
----@param roll number
----@return BonusRollToken?
-function M.spend_bonus_roll( registry, chat, item, player, roll )
-  local token = registry.use( player.name, item.id, item.link, roll )
-  if not token then return nil end
-
-  local left = registry.count_for_item( player.name, item.id )
-  chat.info( string.format( "%s used a %s on %s (%s). %s left.",
-    m.colorize_player_by_class( player.name, player.class ), m.colors.hl( "Bonus Roll" ), item.link,
-    m.colors.hl( roll ), m.colors.hl( left ) ) )
-
-  return token
 end
 
 m.RollingLogicUtils = M

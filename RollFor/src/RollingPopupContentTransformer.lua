@@ -38,11 +38,9 @@ local top_padding = 11
 
 -- Roll types that collapse into a single row per player, one cell per roll. Everything
 -- else keeps the one-line-per-roll shape, because its per-row roll-type label is what
--- distinguishes the lines. A bonus roll is an extra roll in a soft-resser's allowance, so
--- it lands in the same row as the rest of them.
+-- distinguishes the lines.
 local groupable_roll_types = {
-  [ RT.SoftRes ] = true,
-  [ RT.BonusRoll ] = true
+  [ RT.SoftRes ] = true
 }
 
 -- The number of cells the widest grouped row needs. It has to be uniform across the
@@ -74,13 +72,7 @@ local function by_cast_order( a, b )
   if a.ordinal then return true end
   if b.ordinal then return false end
 
-  -- Both cells are pending. table.sort is not stable, so without a tiebreak here their
-  -- order is undefined. Bonus pips lead: set_cells renders pending cells leftmost in list
-  -- order, which is what puts the gold pips to the left of the white ones.
-  local a_bonus = a.roll_type == RT.BonusRoll
-  local b_bonus = b.roll_type == RT.BonusRoll
-  if a_bonus ~= b_bonus then return a_bonus end
-
+  -- Both cells are pending, and they are interchangeable, so neither leads.
   return false
 end
 

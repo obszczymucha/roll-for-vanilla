@@ -38,7 +38,6 @@ function M.new( db, event_bus )
     [ "rolling_popup_lock" ] = { cmd = "rolling-popup-lock", display = "Rolling popup lock", help = "toggle rolling popup lock" },
     [ "raid_roll_again" ] = { cmd = "raid-roll-again", display = string.format( "%s button", hl( "Raid roll again" ) ), help = string.format( "toggle %s button", hl( "Raid roll again" ) ) },
     [ "classic_look" ] = { cmd = "classic-look", display = "Classic look", help = "toggle classic look", requires_reload = true },
-    [ "resistance_bonus_rolls_enabled" ] = { cmd = "bonus-rolls", display = "Resistance Bonus Rolls", help = "toggle resistance bonus rolls" },
   }
 
   local function notify_subscribers( event, value )
@@ -60,9 +59,7 @@ function M.new( db, event_bus )
     if db.master_loot_threshold == nil then db.master_loot_threshold = ItemQuality.Rare end
     if db.auto_loot == nil then db.auto_loot = true end
     if db.auto_loot_announce == nil then db.auto_loot_announce = true end
-    if db.resistance_check_throttle == nil then db.resistance_check_throttle = 1.0 end
     if db.sr_roll_spacing == nil then db.sr_roll_spacing = 20 end
-    if db.resistance_bonus_rolls_enabled == nil then db.resistance_bonus_rolls_enabled = true end
   end
 
   local function print_toggle( toggle_key )
@@ -212,21 +209,6 @@ function M.new( db, event_bus )
     return true
   end
 
-  local function print_resistance_check_throttle()
-    info( string.format( "Resistance check throttle: %s seconds", hl( db.resistance_check_throttle ) ) )
-  end
-
-  local function set_resistance_check_throttle( value )
-    value = tonumber( value )
-    if not value or value < 0.1 or value > 10 then return false end
-
-    db.resistance_check_throttle = value
-    print_resistance_check_throttle()
-    notify_subscribers( "resistance_check_throttle", value )
-
-    return true
-  end
-
   -- Soft-res rolls for one player render as a row of flush cells, so the cell width is
   -- what separates two rolls (or two pending placeholders) on screen.
   local function print_sr_roll_spacing()
@@ -370,7 +352,6 @@ function M.new( db, event_bus )
 
     m.print( string.format( "%s - reset rolling popup position", rfc( "reset-rolling-popup" ) ) )
     m.print( string.format( "%s - reset loot frame position", rfc( "reset-loot-frame" ) ) )
-    m.print( string.format( "%s - set resistance check throttle", rfc( "resistance-check-throttle" ) ) )
   end
 
   local function lock_minimap_button()
@@ -559,8 +540,6 @@ function M.new( db, event_bus )
     set_ms_roll_threshold = set_ms_roll_threshold,
     set_os_roll_threshold = set_os_roll_threshold,
     set_master_loot_threshold = set_master_loot_threshold,
-    resistance_check_throttle = get( "resistance_check_throttle" ),
-    set_resistance_check_throttle = set_resistance_check_throttle,
     sr_roll_spacing = get( "sr_roll_spacing" ),
     set_sr_roll_spacing = set_sr_roll_spacing
   }

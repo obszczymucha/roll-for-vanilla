@@ -132,8 +132,8 @@ local function join_and( items )
   return string.format( "%s and %s", table.concat( items, ", ", 1, count - 1 ), items[ count ] )
 end
 
--- What a lockout turning over would forget: "9 boss kills, 14 bonus rolls and 12
--- eligible players", or nil when there is nothing to lose.
+-- What a lockout turning over would forget: "9 boss kills", or nil when there is
+-- nothing to lose.
 --
 -- Read by the subscriber that does the wiping, just before it wipes, and by the drop
 -- simulator before it asks whether you meant it -- so the sentence you agree to and the
@@ -141,9 +141,7 @@ end
 ---@return string?
 local function describe_lockout_loss()
   local counted = {
-    { count = getn( M.boss_killed.get_killed_bosses() ), noun = "boss kill" },
-    { count = M.resistance_bonus_roll_registry.count_all(), noun = "bonus roll" },
-    { count = M.resistance_bonus_roll_eligibility.count_eligible(), noun = "eligible player" }
+    { count = getn( M.boss_killed.get_killed_bosses() ), noun = "boss kill" }
   }
 
   -- Extensions that keep lockout-scoped records add their own entries, so the sentence
@@ -319,42 +317,12 @@ local function create_components()
   ---@type TooltipReader
   M.tooltip_reader = m.TooltipReader.new( M.api() )
 
-  ---@type Inspector
-  M.inspector = m.Inspector.new( M.api(), M.ace_timer, m.EventFrame.new( m.api ) )
-
-  ---@type GearScanner
-  M.gear_scanner = m.GearScanner.new( M.api(), M.tooltip_reader, M.inspector )
-
-  ---@type BuffScanner
-  M.buff_scanner = m.BuffScanner.new( M.api(), M.tooltip_reader )
-
-  ---@type ResistanceRegistry
-  M.resistance_registry = m.ResistanceRegistry.new()
-
-  ---@type ResistanceParser
-  M.resistance_parser = m.ResistanceParser.new( M.api(), M.resistance_registry )
-
-  ---@type ResistanceCheck
-  M.resistance_check = m.ResistanceCheck.new( db( "resistance_check" ), M.group_roster,
-    M.gear_scanner, M.buff_scanner, M.resistance_parser, M.resistance_registry )
-
-  ---@type ResistanceBonusRollEligibility
-  M.resistance_bonus_roll_eligibility = m.ResistanceBonusRollEligibility.new(
-    db( "resistance_bonus_roll_eligibility" ), M.group_roster, M.resistance_check, M.resistance_registry )
-
   ---@type BossKilled
   M.boss_killed = m.BossKilled.new( db( "boss_killed" ) )
 
-  -- Subscribed here, before the registry, so this fires first: listeners run in
-  -- subscription order, and "X was killed" reads better above "Bonus Roll granted"
-  -- than below it.
   M.boss_killed.subscribe( function( boss_name )
     info( string.format( "%s was killed.", hl( boss_name ) ) )
   end )
-
-  ---@type ResistanceBonusRollRegistry
-  M.resistance_bonus_roll_registry = m.ResistanceBonusRollRegistry.new(
-    db( "resistance_bonus_roll_registry" ), M.boss_killed, M.resistance_bonus_roll_eligibility )
 
   -- TODO: Add type.
   M.version_broadcast = m.VersionBroadcast.new( db( "version_broadcast" ), M.player_info, version.str )
@@ -366,20 +334,6 @@ local function create_components()
   -- to supply its own; before anything is built, so their links are in the chain when it
   -- is. They can anchor to names that do not exist yet -- see Chain's resolve().
   m.Extensions.enable( make_extension_context )
-
-  -- Anchored to a link whoever owns the backbone contributes, so it is only addable when
-  -- there is one. With no source there are no soft-ressers to annotate, so skipping it
-  -- changes nothing -- and adding it anyway would cost the user an error message about a
-  -- chain link they have never heard of.
-  if M.softres_chain.has( "present_players" ) then
-    M.softres_chain.add( {
-      name = "bonus_roll",
-      after = "present_players",
-      factory = function( inner )
-        return m.SoftResBonusRollDecorator.new( inner, M.resistance_bonus_roll_registry, M.config )
-      end
-    } )
-  end
 
   ---@type AwardedLoot
   M.awarded_loot = M.awarded_loot_chain.build( M.raw_awarded_loot ).final
@@ -531,8 +485,7 @@ local function create_components()
     M.winner_tracker,
     M.config,
     M.softres,
-    M.player_info,
-    M.resistance_bonus_roll_registry
+    M.player_info
   )
 
   ---@type RollingLogic
@@ -629,30 +582,6 @@ local function create_components()
   ---@type AutoLootFrame
   M.autoloot_frame = m.AutoLootFrame.new( popup_builder(), autoloot_frame_content_transformer, db( "autoloot_frame" ) )
 
-  ---@type ResistanceFrameContentTransformer
-  local resistance_frame_content_transformer = m.ResistanceFrameContentTransformer.new( M.resistance_registry )
-
-  ---@type ResistanceFrame
-  M.resistance_frame = m.ResistanceFrame.new( popup_builder(), resistance_frame_content_transformer,
-    M.resistance_check, db( "resistance_frame" ) )
-
-  ---@type BonusRollEligibilityFrameContentTransformer
-  local resistance_bonus_roll_eligibility_frame_content_transformer =
-      m.ResistanceBonusRollEligibilityFrameContentTransformer.new()
-
-  ---@type ResistanceBonusRollEligibilityFrame
-  M.resistance_bonus_roll_eligibility_frame = m.ResistanceBonusRollEligibilityFrame.new( popup_builder(),
-    resistance_bonus_roll_eligibility_frame_content_transformer, M.resistance_bonus_roll_eligibility,
-    M.resistance_check, db( "resistance_bonus_roll_eligibility_frame" ) )
-
-  ---@type BonusRollFrameContentTransformer
-  local resistance_bonus_roll_frame_content_transformer = m.ResistanceBonusRollFrameContentTransformer.new()
-
-  ---@type ResistanceBonusRollFrame
-  M.resistance_bonus_roll_frame = m.ResistanceBonusRollFrame.new( popup_builder(),
-    resistance_bonus_roll_frame_content_transformer, M.resistance_bonus_roll_registry, M.group_roster,
-    db( "resistance_bonus_roll_frame" ) )
-
   m.AutoLootTree.init( M.autoloot_db )
 
   -- Construction phase. Everything above exists now, so extensions that build frames or
@@ -684,17 +613,14 @@ local function subscribe_for_component_events()
   end )
 
   -- A new lockout is a new set of bosses to kill, so last week's record is not just
-  -- stale, it's wrong -- the rolls those kills paid for expire with them, and so does
-  -- who was eligible to earn them. Said out loud rather than wiped quietly, but only
-  -- when there was something to lose.
+  -- stale, it's wrong. Said out loud rather than wiped quietly, but only when there was
+  -- something to lose.
   M.raid_lockout.subscribe( function( changed )
     -- Counted before the wipe, obviously, but also before it for a second reason: this
     -- is the same sentence the simulator showed when it asked.
     local lost = describe_lockout_loss()
 
     M.boss_killed.reset()
-    M.resistance_bonus_roll_registry.reset()
-    M.resistance_bonus_roll_eligibility.reset()
 
     for _, callback in ipairs( extension_hooks.lockout_reset ) do
       callback()
@@ -1064,10 +990,6 @@ function M.on_item_info_received( item_id )
 end
 
 function M.on_group_changed()
-  M.resistance_frame.on_group_changed()
-  M.resistance_bonus_roll_eligibility_frame.on_group_changed()
-  M.resistance_bonus_roll_frame.on_group_changed()
-
   for _, callback in ipairs( extension_hooks.group_changed ) do
     callback()
   end

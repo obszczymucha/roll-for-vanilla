@@ -26,7 +26,6 @@ local function default_setting_values()
     master_loot_frame_rows = 5,
     ms_roll_threshold = 100,
     os_roll_threshold = 99,
-    resistance_check_throttle = 1.0,
     sr_roll_spacing = 24,
     master_loot_threshold = ItemQuality.Rare,
   }
@@ -92,7 +91,6 @@ local function default_popup( value_overrides, ... )
 
   table.insert( settings, editbox( "MS roll threshold", v.ms_roll_threshold, 0 ) )
   table.insert( settings, editbox( "OS roll threshold", v.os_roll_threshold, 0 ) )
-  table.insert( settings, editbox( "Resistance check throttle", v.resistance_check_throttle, 1 ) )
   table.insert( settings, slider( "Default rolling time (seconds)", v.default_rolling_time_seconds, 4, 15, 0 ) )
   table.insert( settings, slider( "Master loot frame rows", v.master_loot_frame_rows, 5, 20, 0 ) )
   table.insert( settings, slider( "SR roll spacing", v.sr_roll_spacing, 16, 28, 1 ) )
@@ -178,30 +176,6 @@ function OptionsFrameSpec:should_display_boolean_config_settings_as_checkboxes_i
     checkbox( "auto_loot", false ),
     checkbox( "classic_look", true )
   ) )
-end
-
--- Against the real Config rather than the mock: the label and the default are Config's,
--- and a mock that is told both proves neither.
-function OptionsFrameSpec:should_display_the_resistance_bonus_rolls_checkbox_enabled_by_default()
-  -- Given
-  local db = Db.new( {} )
-  -- Config only ever notifies the bus (on a reload-requiring toggle), and nothing here
-  -- flips one.
-  ---@diagnostic disable-next-line: missing-fields
-  local config = Config.new( db( "config" ), { notify = function() end } )
-  local options = options_frame_mock.new( popup_builder.new(), config, db( "options" ) )
-
-  -- When
-  options.show()
-
-  -- Then
-  local found
-
-  for _, line in ipairs( options.content() ) do
-    if line.type == "checkbox" and line.label == "Resistance Bonus Rolls" then found = line end
-  end
-
-  eq( found and found.value, true )
 end
 
 function OptionsFrameSpec:should_not_display_a_boolean_setting_the_config_does_not_define()

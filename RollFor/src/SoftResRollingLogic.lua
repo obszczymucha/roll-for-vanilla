@@ -37,7 +37,6 @@ local State = { AfterRoll = 1, TimerStopped = 2, ManualStop = 3 }
 ---@param winner_tracker WinnerTracker
 ---@param master_loot_candidates MasterLootCandidates
 ---@param controller RollControllerFacade
----@param bonus_roll_registry ResistanceBonusRollRegistry
 function M.new(
     chat,
     ace_timer,
@@ -51,19 +50,13 @@ function M.new(
     config,
     winner_tracker,
     master_loot_candidates,
-    controller,
-    bonus_roll_registry
+    controller
 )
   local rolls = {}
   local rolling = false
   local seconds_left = seconds
   local timer
   local player_count = getn( players )
-
-  -- What this rolling has spent, so a cancel can hand it all back. Only a cancel refunds:
-  -- a rolling that merely finishes without an award keeps its spends.
-  ---@type BonusRollToken[]
-  local spent_tokens = {}
 
   local function sort_rolls()
     table.sort( rolls, function( a, b )
@@ -87,13 +80,6 @@ function M.new(
     for _, player in ipairs( players ) do
       if player.name == player_name then return player end
     end
-  end
-
-  ---@param player RollingPlayer
-  ---@param roll number
-  local function spend_bonus_roll( player, roll )
-    local token = m.RollingLogicUtils.spend_bonus_roll( bonus_roll_registry, chat, item, player, roll )
-    if token then table.insert( spent_tokens, token ) end
   end
 
   local function stop_timer()
@@ -162,8 +148,6 @@ function M.new(
       return
     end
 
-    -- Which pool this roll comes out of is the only thing bonus rolls change here. The
-    -- soft-res allowance is spent first; everything past it is a bonus roll.
     local roll_type_used = consume_roll( player )
 
     if not roll_type_used then
@@ -171,8 +155,6 @@ function M.new(
       controller.roll_was_ignored( player.name, player.class, roll_type, roll, "Rolled too many times." )
       return
     end
-
-    if roll_type_used == RT.BonusRoll then spend_bonus_roll( player, roll ) end
 
     table.insert( rolls, make_roll( player, roll_type_used, roll ) )
     controller.roll_was_accepted( player.name, player.class, roll_type_used, roll )
@@ -201,22 +183,15 @@ function M.new(
     timer = ace_timer.ScheduleRepeatingTimer( M, on_timer, 1.7 )
   end
 
-  -- The raid announcement has to say what a player's allowance actually is, and the two
-  -- pools don't add up into one number: "Drutree [3 rolls]" would read as three soft-res
-  -- rolls. So they're reported split -- "Drutree [1 roll +1 bonus]" -- and a player with
-  -- one plain soft-res roll and nothing else stays the bare name it has always been.
+  -- The raid announcement has to say what a player's allowance actually is, so a player
+  -- holding more than one soft-res roll is annotated with the count. A player with one
+  -- plain soft-res roll and nothing else stays the bare name it has always been.
   ---@param player RollingPlayer
   local function format_name_with_rolls( player )
     if player_count == item_count then return player.name end
+    if player.rolls <= 1 then return player.name end
 
-    local bonus_rolls = player.bonus_rolls or 0
-    local bonus = bonus_rolls > 0 and string.format( " +%s bonus", bonus_rolls ) or ""
-
-    if player.rolls <= 1 and bonus == "" then return player.name end
-
-    local rolls_str = string.format( "%s roll%s", player.rolls, player.rolls == 1 and "" or "s" )
-
-    return string.format( "%s [%s%s]", player.name, rolls_str, bonus )
+    return string.format( "%s [%s roll%s]", player.name, player.rolls, player.rolls == 1 and "" or "s" )
   end
 
   local function start_rolling()
@@ -231,9 +206,9 @@ function M.new(
     if player_count > item_count then
       local roll_call = map( players, format_name_with_rolls )
 
-      -- The item link alone is a third of the chat limit, and every bonus roll annotation
-      -- is another ~18 bytes on top of a name, so the roll call is built against what the
-      -- fixed parts leave over instead of being formatted and hoped for.
+      -- The item link alone is a third of the chat limit, and every roll annotation is
+      -- more bytes on top of a name, so the roll call is built against what the fixed
+      -- parts leave over instead of being formatted and hoped for.
       local prefix = string.format( "Roll for %s%s.%s SR by ", count_str, item.link, x_rolls_win )
       local messages = m.split_message( prefix, roll_call )
 
@@ -285,10 +260,6 @@ function M.new(
 
   local function cancel_rolling()
     stop_listening()
-
-    -- A rolling the ML canceled never happened, so the bonus rolls it spent go back.
-    bonus_roll_registry.refund( spent_tokens )
-    spent_tokens = {}
 
     print_rolling_complete( true )
     chat.announce( string.format( "Rolling for %s was canceled.", item.link ) )

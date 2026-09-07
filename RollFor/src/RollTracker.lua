@@ -114,13 +114,6 @@ function M.new( item_on_roll )
         table.insert( result, data )
       end
 
-      -- A bonus roll is another roll in the player's allowance, so it gets a placeholder
-      -- of its own rather than a row of its own.
-      for _ = 1, player.bonus_rolls or 0 do
-        ---@type RollData
-        local data = { player_name = player.name, player_class = player.class, roll_type = RT.BonusRoll }
-        table.insert( result, data )
-      end
     end
 
     return result
@@ -153,10 +146,6 @@ function M.new( item_on_roll )
       for _, player in ipairs( soft_ressers or {} ) do
         for _ = 1, player.rolls or 1 do
           add( player.name, player.class, RT.SoftRes )
-        end
-
-        for _ = 1, player.bonus_rolls or 0 do
-          add( player.name, player.class, RT.BonusRoll )
         end
       end
     end
@@ -194,10 +183,6 @@ function M.new( item_on_roll )
     for _, player in ipairs( required_rolling_players or {} ) do
       for _ = 1, player.rolls or 1 do
         add( player.name, player.class, rolling_strategy == RS.SoftResRoll and RT.SoftRes or RS.TieRoll )
-      end
-
-      for _ = 1, player.bonus_rolls or 0 do
-        add( player.name, player.class, RT.BonusRoll )
       end
     end
   end
@@ -244,12 +229,6 @@ function M.new( item_on_roll )
 
     for _, player in ipairs( players or {} ) do
       add( player.name, player.class, roll_type )
-
-      -- A bonus roll the player never needed is still his, and it carries into the tie the
-      -- same way it sat in the round before it: an extra cell on his own row.
-      for _ = 1, player.bonus_rolls or 0 do
-        add( player.name, player.class, RT.BonusRoll )
-      end
     end
   end
 
