@@ -261,6 +261,23 @@ function M.enabled()
   return active
 end
 
+---An extension's own version, read from the addon folder that declares it. Found through
+---the `X-RollFor-Extension` field its TOC already carries, so the extension neither has to
+---pass its version nor can get it wrong -- and an extension that ships without the field
+---simply has no version to report rather than reporting core's.
+---@param name string
+---@return string?
+function M.version( name )
+  local addons = m.api.C_AddOns
+  if not addons or not addons.GetNumAddOns or not addons.GetAddOnMetadata then return nil end
+
+  for i = 1, addons.GetNumAddOns() do
+    if addons.GetAddOnMetadata( i, "X-RollFor-Extension" ) == name then
+      return addons.GetAddOnMetadata( i, "Version" )
+    end
+  end
+end
+
 ---Drops every registration. Tests only -- the addon never unregisters.
 function M.clear()
   registered = {}

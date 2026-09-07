@@ -1263,6 +1263,21 @@ function M.on_player_login()
 
   info( string.format( "Loaded (%s).", hl( string.format( "v%s", version.str ) ) ) )
 
+  -- Which extensions are actually live this session, in ModUi's banner format: the addon
+  -- name, then the extension's name, then the extension's own version -- which is not
+  -- core's and can differ from it. Asked here rather than printed by each extension so a
+  -- third-party one can't decide not to say, and so "it's installed" and "it enabled
+  -- without throwing" stay distinguishable -- a failed extension has already said so via
+  -- m.err and is not announced as loaded.
+  for _, extension in ipairs( m.Extensions.enabled() ) do
+    if not extension.failed then
+      local extension_version = m.Extensions.version( extension.name )
+      local version_str = extension_version and string.format( " (%s)", hl( string.format( "v%s", extension_version ) ) ) or ""
+
+      m.print( string.format( "%s %s: Loaded%s.", m.colors.blue( "RollFor" ), m.colors.purple( extension.title ), version_str ) )
+    end
+  end
+
   M.version_broadcast.broadcast()
   -- Answers as UPDATE_INSTANCE_INFO, which is where a lockout that turned over while
   -- we were logged out gets noticed.

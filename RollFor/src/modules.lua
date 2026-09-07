@@ -50,6 +50,11 @@ M.colors = {
   -- arbitrary hue next to the blue soft-res rolls.
   gold = function( text )
     return string.format( "|cffffd100%s|r", text ) ---@type ColorFn
+  end,
+  -- ModUi's purple, deliberately: an addon-name tag in the login banner reads the same
+  -- across both addons.
+  purple = function( text )
+    return string.format( "|cff9d6cff%s|r", text ) ---@type ColorFn
   end
 }
 
@@ -168,7 +173,11 @@ end
 
 function M.print( message )
   if not message then return end
-  M.api.DEFAULT_CHAT_FRAME:AddMessage( message )
+
+  -- Same tolerance pretty_print has always had: no chat frame, nothing to say. Tests
+  -- build api mocks without one.
+  local frame = M.api.DEFAULT_CHAT_FRAME
+  if frame then frame:AddMessage( message ) end
 end
 
 function M.pretty_print( message, color_fn, module_name )
