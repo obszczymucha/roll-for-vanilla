@@ -36,6 +36,13 @@ function M.new( popup_builder, content_transformer, db )
   local top_padding = 16
   local side_padding = 20
 
+  -- Tall enough to be worth opening, short enough to fit a 768px-tall screen at UI scale 1 --
+  -- everything past it is reachable with the wheel (see the popup's `scrollable` below).
+  local max_visible_rows = 20
+
+  -- Forward declared: create_popup wires the scroll wheel to it.
+  local refresh
+
   local function on_drag_stop()
     if not popup then return end
 
@@ -71,14 +78,16 @@ function M.new( popup_builder, content_transformer, db )
         :self_centered_anchor()
         :anchor_point( "TOPLEFT" )
         :hidden()
+        -- Only tree rows scroll; the title and the Close button stay where they are. Scrolling is
+        -- just another reason to redraw, so it goes through the same refresh() everything else does.
+        :scrollable( { line_types = "tree_node", max_lines = max_visible_rows, top_padding = top_padding } )
+        :on_scroll( function() refresh() end )
         :build()
 
     result:border_color( 0.351, 0.553, 1.0, 0.3 )
 
     return result
   end
-
-  local refresh
 
   -- Just relabels/wires callbacks onto AutoLootTree's already-decided rows -- no tree walking,
   -- no checked/desaturated computation here.
@@ -123,11 +132,30 @@ function M.new( popup_builder, content_transformer, db )
     }
   end
 
+  ---@param transformed table
+  ---@return number -- how many of them are scrollable tree rows
+  local function count_tree_nodes( transformed )
+    local result = 0
+
+    for _, v in ipairs( transformed ) do
+      if v.type == "tree_node" then result = result + 1 end
+    end
+
+    return result
+  end
+
   refresh = function()
     if not popup then popup = create_popup() end
     popup:clear()
 
-    for _, v in ipairs( content_transformer.transform( content() ) ) do
+    local transformed = content_transformer.transform( content() )
+
+    -- The whole row list, not just the part that fits: the popup needs the real length to place
+    -- the window and size the scrollbar, and to pull the window back up when a collapsed node
+    -- leaves fewer rows than the offset it was scrolled to.
+    popup:set_scroll_total( count_tree_nodes( transformed ) )
+
+    for _, v in ipairs( transformed ) do
       popup.add_line( v.type, function( type, frame, lines )
         if type == "button" then
           frame:SetWidth( v.width or button_defaults.width )
