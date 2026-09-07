@@ -1,7 +1,8 @@
 # Soft-res as an extension — implementation plan
 
-Status: **not started.** This document is the specification. Follow it literally.
-Audience: whoever implements this. Read the whole thing before touching a file.
+Status: **done.** All three phases have landed. This document is the specification it was
+built to; `PHASE_A.md` and `PHASE_C.md` record where the result differs from it and why.
+Read those two alongside this one -- this file was not rewritten to match what shipped.
 
 Companion document: `EXTENSIONS_POC.md` describes the extension system this builds on.
 Read section 3 of it (the extension API) first. This document assumes it.
