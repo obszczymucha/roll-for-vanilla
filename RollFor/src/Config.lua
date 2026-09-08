@@ -38,6 +38,7 @@ function M.new( db, event_bus )
     [ "rolling_popup_lock" ] = { cmd = "rolling-popup-lock", display = "Rolling popup lock", help = "toggle rolling popup lock" },
     [ "raid_roll_again" ] = { cmd = "raid-roll-again", display = string.format( "%s button", hl( "Raid roll again" ) ), help = string.format( "toggle %s button", hl( "Raid roll again" ) ) },
     [ "classic_look" ] = { cmd = "classic-look", display = "Classic look", help = "toggle classic look", requires_reload = true },
+    [ "minimap_tooltip_commands" ] = { cmd = "minimap-commands", display = "Display slash commands in minimap tooltip", help = "toggle slash commands in the minimap tooltip" },
   }
 
   local function notify_subscribers( event, value )
@@ -60,6 +61,10 @@ function M.new( db, event_bus )
     if db.auto_loot == nil then db.auto_loot = true end
     if db.auto_loot_announce == nil then db.auto_loot_announce = true end
     if db.sr_roll_spacing == nil then db.sr_roll_spacing = 20 end
+    -- Off deliberately: the command list is a dozen lines a user reads once and then scrolls
+    -- past every time they hover the button. Written down rather than left absent so it reads
+    -- as a decision instead of a setting nobody got round to.
+    if db.minimap_tooltip_commands == nil then db.minimap_tooltip_commands = false end
   end
 
   local function print_toggle( toggle_key )

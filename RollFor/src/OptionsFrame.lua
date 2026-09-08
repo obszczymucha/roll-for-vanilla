@@ -215,6 +215,7 @@ function M.new( popup_builder, content_transformer, config, parent, section, ext
     add_toggle( settings, "rolling_popup_lock" )
     add_toggle( settings, "raid_roll_again" )
     add_toggle( settings, "classic_look" )
+    add_toggle( settings, "minimap_tooltip_commands" )
     add_number( settings, "ms_roll_threshold", "MS roll threshold", 0 )
     add_number( settings, "os_roll_threshold", "OS roll threshold", 0 )
     add_slider( settings, "default_rolling_time_seconds", "Default rolling time (seconds)", 4, 15, 0 )

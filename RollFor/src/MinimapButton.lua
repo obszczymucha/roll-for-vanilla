@@ -63,27 +63,38 @@ function M.new( api, db, config, event_bus, contributions )
 
   local function build_tooltip( tooltip )
     tooltip:SetText( blue( "RollFor" ) )
-    tooltip:AddLine( " " )
 
-    tooltip:AddLine( string.format( "%s - %s", hl( "/htr" ), white( "show how to roll" ) ) )
-    tooltip:AddLine( string.format( "%s %s - %s", hl( "/rf" ), grey( "<item>" ), white( "roll for" ) ) )
-    tooltip:AddLine( string.format( "%s %s - %s", hl( "/rr" ), grey( "<item>" ), white( "raid-roll" ) ) )
-    tooltip:AddLine( string.format( "%s %s - %s", hl( "/irr" ), grey( "<item>" ), white( "insta raid-roll" ) ) )
-    tooltip:AddLine( string.format( "%s %s - %s", hl( "/arf" ), grey( "<item>" ), white( "roll for (ignore SR)" ) ) )
-    tooltip:AddLine( string.format( "%s %s %s - %s", hl( "/rf" ), grey( "<item>" ), grey( "<seconds>" ), white( "roll with custom time" ) ) )
-    tooltip:AddLine( string.format( "%s %s - %s", hl( "/rfreset" ), grey( "announce" ), white( "reset loot announce" ) ) )
-    tooltip:AddLine( string.format( "%s - %s", hl( "/cr" ), white( "cancel rolling in progress" ) ) )
-    tooltip:AddLine( string.format( "%s - %s", hl( "/fr" ), white( "finish rolling early" ) ) )
-    tooltip:AddLine( string.format( "%s - %s", hl( "/rf config" ), white( "show configuration" ) ) )
-    tooltip:AddLine( string.format( "%s - %s", hl( "/rf config help" ), white( "show configuration help" ) ) )
+    -- Off by default: a dozen command lines is something you read once and then scroll past
+    -- every time you hover the button. What is left is the hint and whatever the
+    -- contributions have to report, which is the part that changes.
+    if config.minimap_tooltip_commands() then
+      tooltip:AddLine( " " )
 
+      tooltip:AddLine( string.format( "%s - %s", hl( "/htr" ), white( "show how to roll" ) ) )
+      tooltip:AddLine( string.format( "%s %s - %s", hl( "/rf" ), grey( "<item>" ), white( "roll for" ) ) )
+      tooltip:AddLine( string.format( "%s %s - %s", hl( "/rr" ), grey( "<item>" ), white( "raid-roll" ) ) )
+      tooltip:AddLine( string.format( "%s %s - %s", hl( "/irr" ), grey( "<item>" ), white( "insta raid-roll" ) ) )
+      tooltip:AddLine( string.format( "%s %s - %s", hl( "/arf" ), grey( "<item>" ), white( "roll for (ignore SR)" ) ) )
+      tooltip:AddLine( string.format( "%s %s %s - %s", hl( "/rf" ), grey( "<item>" ), grey( "<seconds>" ), white( "roll with custom time" ) ) )
+      tooltip:AddLine( string.format( "%s %s - %s", hl( "/rfreset" ), grey( "announce" ), white( "reset loot announce" ) ) )
+      tooltip:AddLine( string.format( "%s - %s", hl( "/cr" ), white( "cancel rolling in progress" ) ) )
+      tooltip:AddLine( string.format( "%s - %s", hl( "/fr" ), white( "finish rolling early" ) ) )
+      tooltip:AddLine( string.format( "%s - %s", hl( "/rf config" ), white( "show configuration" ) ) )
+      tooltip:AddLine( string.format( "%s - %s", hl( "/rf config help" ), white( "show configuration help" ) ) )
+
+      -- An extension's commands are commands too, so they go with the rest of them.
+      for _, contribution in ipairs( contributions ) do
+        for _, entry in ipairs( contribution.commands or {} ) do
+          tooltip:AddLine( format_command( entry ) )
+        end
+      end
+    end
+
+    -- Collected whether or not the commands were drawn: the hint says what clicking does,
+    -- which is the one thing the tooltip must never stop saying.
     local hint
 
     for _, contribution in ipairs( contributions ) do
-      for _, entry in ipairs( contribution.commands or {} ) do
-        tooltip:AddLine( format_command( entry ) )
-      end
-
       hint = hint or contribution.hint
     end
 

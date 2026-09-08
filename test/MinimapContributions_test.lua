@@ -11,10 +11,13 @@ local MinimapButton = require( "src/MinimapButton" )
 
 local function api() return RollFor.api end
 
-local function mock_config()
+---@param show_commands boolean? -- defaults to true, so the ordering specs below can keep
+--- asserting where a contribution's commands land among core's
+local function mock_config( show_commands )
   return {
     minimap_button_locked = function() return false end,
     minimap_button_hidden = function() return false end,
+    minimap_tooltip_commands = function() return show_commands ~= false end,
     subscribe = function() end
   }
 end
@@ -40,9 +43,10 @@ local function index_of_line( lines, needle )
 end
 
 ---@param contributions MinimapContribution[]
+---@param show_commands boolean?
 ---@return string[] -- the tooltip's lines after OnEnter ran
-local function render_tooltip( contributions )
-  MinimapButton.new( api, {}, mock_config(), EventBus.new(), contributions )
+local function render_tooltip( contributions, show_commands )
+  MinimapButton.new( api, {}, mock_config( show_commands ), EventBus.new(), contributions )
 
   local frame = _G[ "RollForMinimapButton" ]
   local tooltip = make_tooltip()
@@ -186,6 +190,50 @@ function ColourSeveritySpec:should_reflect_a_contribution_registered_after_login
   rf.on_group_changed()
 
   eq( rf.minimap_button.get_icon_color(), rf.minimap_button.ColorType.Red )
+end
+
+CommandVisibilitySpec = {}
+
+-- Off by default, and this is what off looks like: no core commands, no contributed ones,
+-- and the hint still there. The hint is what the tooltip must never stop saying.
+function CommandVisibilitySpec:should_draw_no_commands_when_the_setting_is_off()
+  local lines = render_tooltip( { {
+    commands = { { cmd = "/sr", description = "manage softres" } },
+    hint = "Right click to manage softres."
+  } }, false )
+
+  eq( index_of_line( lines, "/htr" ), nil )
+  eq( index_of_line( lines, "/rf config" ), nil )
+  eq( index_of_line( lines, "/sr" ), nil )
+  eq( index_of_line( lines, "Right click to manage softres." ) ~= nil, true )
+end
+
+function CommandVisibilitySpec:should_draw_them_when_the_setting_is_on()
+  local lines = render_tooltip( { {
+    commands = { { cmd = "/sr", description = "manage softres" } },
+    hint = "Right click to manage softres."
+  } }, true )
+
+  eq( index_of_line( lines, "/htr" ) ~= nil, true )
+  eq( index_of_line( lines, "/sr" ) ~= nil, true )
+end
+
+-- The title is not a command, so it stays either way -- an empty tooltip would read as a
+-- broken button rather than as a setting being off.
+function CommandVisibilitySpec:should_keep_the_title_with_the_commands_hidden()
+  local lines = render_tooltip( {}, false )
+
+  eq( index_of_line( lines, "RollFor" ) ~= nil, true )
+end
+
+-- Status lines are what a contribution has to *report* rather than what a user can type,
+-- so they are not commands and the setting does not touch them.
+function CommandVisibilitySpec:should_still_report_status_lines_with_the_commands_hidden()
+  local lines = render_tooltip( { {
+    status = function() return { color = "Red", lines = { "Found outdated softres data." } } end
+  } }, false )
+
+  eq( index_of_line( lines, "Found outdated softres data." ) ~= nil, true )
 end
 
 os.exit( lu.LuaUnit.run() )

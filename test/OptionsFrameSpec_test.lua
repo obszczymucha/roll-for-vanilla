@@ -178,6 +178,31 @@ function OptionsFrameSpec:should_display_boolean_config_settings_as_checkboxes_i
   ) )
 end
 
+-- Against the real Config rather than the mock: the label and the default are Config's, and
+-- a mock that is told both proves neither.
+function OptionsFrameSpec:should_display_the_minimap_tooltip_commands_checkbox_disabled_by_default()
+  -- Given
+  local db = Db.new( {} )
+  -- Config only ever notifies the bus (on a reload-requiring toggle), and nothing here
+  -- flips one.
+  ---@diagnostic disable-next-line: missing-fields
+  local config = Config.new( db( "config" ), { notify = function() end } )
+  local options = options_frame_mock.new( popup_builder.new(), config, db( "options" ) )
+
+  -- When
+  options.show()
+
+  -- Then
+  local found
+
+  for _, line in ipairs( options.content() ) do
+    if line.type == "checkbox" and line.label == "Display slash commands in minimap tooltip" then found = line end
+  end
+
+  eq( found ~= nil, true )
+  eq( found and found.value, false )
+end
+
 function OptionsFrameSpec:should_not_display_a_boolean_setting_the_config_does_not_define()
   -- Given
   local config = mock_config( { auto_loot = false, not_a_real_setting = true } )
