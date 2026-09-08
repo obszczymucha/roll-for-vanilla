@@ -107,9 +107,8 @@ function RegistrationSpec:should_refuse_a_nameless_extension()
   eq( #Extensions.all(), 0 )
 end
 
-function RegistrationSpec:should_refuse_an_extension_without_an_on_enable()
+function RegistrationSpec:should_refuse_an_extension_with_no_hooks_at_all()
   eq( Extensions.register( malformed( { name = "nether_vortex", api_version = Extensions.API_VERSION } ) ), false )
-  eq( Extensions.register( spec( "nether_vortex", { on_enable = "nope" } ) ), false )
   eq( #Extensions.all(), 0 )
 end
 
@@ -130,6 +129,27 @@ function CompatibilitySpec:should_register_but_never_enable_an_extension_from_th
   eq( #Extensions.all(), 1 )
   eq( Extensions.all()[ 1 ].incompatible, true )
   eq( Extensions.is_enabled( "future" ), false )
+end
+
+-- An extension with nothing to declare is a real thing: one whose whole job needs a component
+-- core has not built yet has no use for the declaration phase, and an empty on_enable to say
+-- so taught nobody anything.
+function RegistrationSpec:should_accept_an_extension_with_no_on_enable()
+  eq( Extensions.register( {
+    name = "ready_only",
+    title = "Ready Only",
+    api_version = Extensions.API_VERSION,
+    on_ready = function() end
+  } ), true )
+
+  eq( Extensions.all()[ 1 ].name, "ready_only" )
+end
+
+-- Still refused when it is there and is not a function -- a typo'd hook that silently never
+-- runs is the outcome worth failing on.
+function RegistrationSpec:should_refuse_an_on_enable_that_is_not_a_function()
+  eq( Extensions.register( spec( "nether_vortex", { on_enable = "nope" } ) ), false )
+  eq( #Extensions.all(), 0 )
 end
 
 function CompatibilitySpec:should_treat_a_missing_api_version_as_incompatible()

@@ -118,7 +118,18 @@ function M.register( spec )
     return false
   end
 
-  if type( spec.on_enable ) ~= "function" then
+  -- Either phase will do, but not neither. An extension with nothing to declare is a real
+  -- thing -- everything RollForBtSrLimitCheck does needs the soft-res tap, which only exists
+  -- once the chain has been built, so it has no use for the declaration phase at all, and an
+  -- empty on_enable to say so taught nobody anything. One that does nothing in either phase
+  -- is not an extension; it is a switch in the options window that switches nothing.
+  if spec.on_enable == nil and spec.on_ready == nil then
+    m.err( string.format( "Extension %s failed to register: it must have an 'on_enable' or an 'on_ready'.",
+      hl( spec.name ) ) )
+    return false
+  end
+
+  if spec.on_enable ~= nil and type( spec.on_enable ) ~= "function" then
     m.err( string.format( "Extension %s failed to register: 'on_enable' must be a function.", hl( spec.name ) ) )
     return false
   end

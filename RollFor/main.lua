@@ -530,35 +530,6 @@ local function create_components()
   -- TODO: Add type.
   M.minimap_button = m.MinimapButton.new( M.api, db( "minimap_button" ), M.config, M.event_bus, M.minimap_contributions )
 
-  -- Registered unconditionally rather than behind a source check: with nothing installed
-  -- M.softres is the null object, so this finds no items and contributes nothing, which is
-  -- the correct answer rather than a special case. The sentences are written here because
-  -- the tooltip is core's -- the extension writes its own for /src from the same data.
-  table.insert( M.minimap_contributions, {
-    status = function()
-      local violations = m.SoftResLimitCheck.find_violations( M.softres )
-      if getn( violations ) == 0 then return nil end
-
-      local lines = {
-        string.format( "%s %s", m.colors.white( "Softres status:" ),
-          m.colors.purple( "Limit check failed!" ) )
-      }
-
-      for _, violation in ipairs( violations ) do
-        local player = M.group_roster.find_player( violation.name )
-        local name = player and m.colorize_player_by_class( player.name, player.class ) or violation.name
-
-        table.insert( lines, violation.regular > m.SoftResLimitCheck.MAX_SOFT_RES
-          and string.format( "%s soft-ressed %s items outside the last 3 bosses (max %s).",
-            name, hl( violation.regular ), hl( m.SoftResLimitCheck.MAX_SOFT_RES ) )
-          or string.format( "%s soft-ressed %s items (max %s).",
-            name, hl( violation.total ), hl( m.SoftResLimitCheck.MAX_SOFT_RES_WITH_BONUS ) ) )
-      end
-
-      return { color = m.MinimapButton.ColorType.Purple, lines = lines }
-    end
-  } )
-
   -- TODO: Add type.
   M.master_loot_warning = m.MasterLootWarning.new( M.api, M.config, m.BossList.zones, M.player_info )
 

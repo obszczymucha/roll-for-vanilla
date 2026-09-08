@@ -37,7 +37,6 @@ src\DroppedLoot.lua
 src\TradeTracker.lua
 src\SoftRes.lua
 src\SoftResSource.lua
-src\SoftResLimitCheck.lua
 src\DroppedLootAnnounce.lua
 src\AwardedLoot.lua
 src\GroupRoster.lua

@@ -143,17 +143,11 @@ function BuiltInSteppedAsideSpec:should_not_subscribe_to_simulation_started()
   eq( rf.event_bus.has_subscribers( "simulation_started" ), false )
 end
 
--- The limit check is core's and registers unconditionally, so the list is not empty. What
--- matters is that it stays silent: with no source, M.softres is the null object, so it
--- finds no items, reports no violation and never paints the button.
-function BuiltInSteppedAsideSpec:should_contribute_only_the_silent_limit_check_to_the_minimap_button()
-  eq( table.getn( rf.minimap_contributions ), 1 )
-  eq( rf.minimap_contributions[ 1 ].status(), nil )
-end
-
--- The soft-res status lines are the source's, and there is no source.
-function BuiltInSteppedAsideSpec:should_not_contribute_any_softres_commands_to_the_minimap_button()
-  eq( rf.minimap_contributions[ 1 ].commands, nil )
+-- Nothing painted the button. Core contributes nothing to it at all: the soft-res status is
+-- the source's and the Black Temple budget check is RollForBtSrLimitCheck's, so with neither
+-- installed there is nobody to say anything.
+function BuiltInSteppedAsideSpec:should_not_contribute_to_the_minimap_button()
+  eq( rf.minimap_contributions, {} )
 end
 
 ChainOrderingSpec = {}
