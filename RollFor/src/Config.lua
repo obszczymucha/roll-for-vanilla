@@ -509,8 +509,45 @@ function M.new( db, event_bus )
     config[ "set_" .. key ] = set_toggle( key )
   end
 
+  -- The same for a number. Extensions get a value, a setter that validates against the
+  -- bounds they declared, and the subscribe() their frames already use to redraw -- which
+  -- is what the round-robin queue window wants for its row count.
+  --
+  -- Not folded into register_toggle: a toggle needs no bounds and a number has no
+  -- cmd/display/help row in the toggles table, so one function doing both would be two
+  -- functions wearing a coat.
+  ---@param key string
+  ---@param default number
+  ---@param min number
+  ---@param max number
+  local function register_number( key, default, min, max )
+    if type( key ) ~= "string" or key == "" then
+      m.err( "Cannot register a config number without a key." )
+      return
+    end
+
+    if config[ key ] then
+      m.err( string.format( "Config setting %s is already registered.", hl( key ) ) )
+      return
+    end
+
+    if db[ key ] == nil then db[ key ] = default end
+
+    config[ key ] = get( key )
+    config[ "set_" .. key ] = function( value )
+      value = tonumber( value )
+      if not value or value < min or value > max then return false end
+
+      db[ key ] = value
+      notify_subscribers( key, value )
+
+      return true
+    end
+  end
+
   config = {
     register_toggle = register_toggle,
+    register_number = register_number,
     configure_ms_threshold = configure_ms_threshold,
     configure_os_threshold = configure_os_threshold,
     hide_minimap_button = hide_minimap_button,

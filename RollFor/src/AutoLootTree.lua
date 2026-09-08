@@ -47,16 +47,26 @@ local BOSS_COLOR = { 1, 1, 1 }
 local TRASH_COLOR = { 0.45, 0.45, 0.45 }
 local TRASH_HOVER_TEXT_COLOR = { 0.65, 0.65, 0.65 }
 
--- AutoLootDb only owns the verified |cffXXXXXX fact per quality (see quality_color_hex) -- turning
--- that into an { r, g, b, a } highlight is this tree's own display decision, so the parsing lives
--- here.
----@param quality number
+-- A category names its colour as RRGGBB (see AutoRoundRobinDb); turning that into an
+-- { r, g, b, a } highlight is this tree's own display decision, so the parsing lives here.
+---@param hex string -- RRGGBB
+---@param a number
+---@return number[]
+local function hex_color_rgb( hex, a )
+  local rr, gg, bb = hex:match( "(%x%x)(%x%x)(%x%x)$" )
+  return { tonumber( rr, 16 ) / 255, tonumber( gg, 16 ) / 255, tonumber( bb, 16 ) / 255, a }
+end
+
+-- The client already keeps a colour per quality, as floats, so there is nothing to look up here
+-- and nothing to parse. Unknown qualities fall back to Poor.
+---@param quality number?
 ---@param a number
 ---@return number[]
 local function quality_color_rgb( quality, a )
-  local hex = m.AutoLootDb.quality_color_hex( quality )
-  local rr, gg, bb = hex:match( "(%x%x)(%x%x)(%x%x)$" )
-  return { tonumber( rr, 16 ) / 255, tonumber( gg, 16 ) / 255, tonumber( bb, 16 ) / 255, a }
+  local colors = m.api.ITEM_QUALITY_COLORS
+  local color = colors[ quality or 0 ] or colors[ 0 ]
+
+  return { color.r, color.g, color.b, a }
 end
 
 local ITEM_HOVER_BACKGROUND_ALPHA = 0.25
@@ -79,9 +89,82 @@ end
 -- `enabled`, which is this tree's initial checked state and the write-back target for toggling
 -- (see set_checked below). No enabled-based filtering here: unlike the old AutoLootDb.ids gate,
 -- a seeded entry always exists once seeded, it's just off (enabled = false) by default.
----@param ids table
+-- The leaves are the same in every catalogue: an item is an item.
+---@param items table -- persisted item entries, keyed by item id
 ---@return TreeNode[]
-local function build_tree( ids )
+local function build_items( items )
+  local result = {}
+
+  for _, item_id in ipairs( sorted_keys( items or {} ) ) do
+    local item_entry = items[ item_id ]
+
+    table.insert( result, Tree.new_leaf( {
+      id = item_id,
+      item = item_entry,
+      entry = item_entry,
+      hover_background_color = quality_color_rgb( item_entry.quality, ITEM_HOVER_BACKGROUND_ALPHA ),
+      tooltip_position = item_tooltip_position,
+      checked = item_entry.enabled,
+    } ) )
+  end
+
+  return result
+end
+
+-- The round-robin catalogue's Trash category names qualities instead of item ids (see
+-- AutoRoundRobinDb), so its rows have a name and no item. That makes them label leaves -- a
+-- checkbox and a coloured word, no icon and no item tooltip -- which is why they carry `name`
+-- where an item row would carry `id`/`item`.
+--
+-- The quality is carried along too, unused here: the round-robin window reads it to work out
+-- whether the master loot threshold has made the row inert. This tree has no business asking the
+-- client anything, so it only passes the fact on.
+---@param qualities table -- persisted quality entries, keyed by quality
+---@return TreeNode[]
+local function build_qualities( qualities )
+  local result = {}
+  local keys = {}
+
+  for quality in pairs( qualities or {} ) do table.insert( keys, quality ) end
+  table.sort( keys )
+
+  for _, quality in ipairs( keys ) do
+    local entry = qualities[ quality ]
+
+    table.insert( result, Tree.new_leaf( {
+      name = entry.name,
+      entry = entry,
+      quality = quality,
+      color = quality_color_rgb( quality, 1 ),
+      hover_background_color = quality_color_rgb( quality, ITEM_HOVER_BACKGROUND_ALPHA ),
+      checked = entry.enabled,
+    } ) )
+  end
+
+  return result
+end
+
+---@param name string
+---@param entry table -- the persisted node this row writes its `enabled` back to
+---@param color number[]
+---@param hover_text_color number[]
+---@param children TreeNode[]
+---@return TreeNode
+local function build_group( name, entry, color, hover_text_color, children )
+  return Tree.new_node( {
+    name = name,
+    entry = entry,
+    color = color,
+    hover_text_color = hover_text_color,
+    checked = entry.enabled,
+    expanded = false,
+  }, children )
+end
+
+---@param ids table
+---@param non_bosses table<string, boolean> -- which node names under a dungeon aren't encounters
+---@return TreeNode[]
+local function build_tree( ids, non_bosses )
   local dungeons = {}
 
   for _, dungeon_name in ipairs( ordered_keys( ids ) ) do
@@ -90,42 +173,19 @@ local function build_tree( ids )
 
     for _, boss_name in ipairs( ordered_keys( dungeon_entry.bosses or {} ) ) do
       local boss_entry = dungeon_entry.bosses[ boss_name ]
-      local items = {}
 
-      for _, item_id in ipairs( sorted_keys( boss_entry.items or {} ) ) do
-        local item_entry = boss_entry.items[ item_id ]
+      -- Trash and Patterns aren't bosses, so they don't get the boss colour. Which names those
+      -- are is the catalogue's answer, not this tree's.
+      local is_trash = non_bosses[ boss_name ] and true or false
 
-        table.insert( items, Tree.new_leaf( {
-          id = item_id,
-          item = item_entry,
-          entry = item_entry,
-          hover_background_color = quality_color_rgb( item_entry.quality, ITEM_HOVER_BACKGROUND_ALPHA ),
-          tooltip_position = item_tooltip_position,
-          checked = item_entry.enabled,
-        } ) )
-      end
-
-      -- Trash and Patterns aren't bosses, so they don't get the boss colour.
-      local is_trash = m.AutoLootDb.non_bosses[ boss_name ] and true or false
-
-      table.insert( bosses, Tree.new_node( {
-        name = boss_name,
-        entry = boss_entry,
-        color = is_trash and TRASH_COLOR or BOSS_COLOR,
-        hover_text_color = is_trash and TRASH_HOVER_TEXT_COLOR or BOSS_HOVER_TEXT_COLOR,
-        checked = boss_entry.enabled,
-        expanded = false,
-      }, items ) )
+      table.insert( bosses, build_group( boss_name, boss_entry,
+        is_trash and TRASH_COLOR or BOSS_COLOR,
+        is_trash and TRASH_HOVER_TEXT_COLOR or BOSS_HOVER_TEXT_COLOR,
+        build_items( boss_entry.items ) ) )
     end
 
-    table.insert( dungeons, Tree.new_node( {
-      name = dungeon_name,
-      entry = dungeon_entry,
-      color = DUNGEON_COLOR,
-      hover_text_color = DUNGEON_HOVER_TEXT_COLOR,
-      checked = dungeon_entry.enabled,
-      expanded = false,
-    }, bosses ) )
+    table.insert( dungeons, build_group( dungeon_name, dungeon_entry,
+      DUNGEON_COLOR, DUNGEON_HOVER_TEXT_COLOR, bosses ) )
   end
 
   return dungeons
@@ -134,13 +194,55 @@ end
 ---@type TreeNode[]
 M.dungeons = {}
 
--- Seeds the persisted db (if needed) and builds the tree from it. Called once from main.lua once
--- the SavedVariables-backed db is actually available -- can't happen at module load time like the
--- old AutoLootDb.ids-only version did, since db doesn't exist yet then.
+-- Builds a Dungeon -> Boss -> items tree out of an already-seeded selection db. Takes the
+-- catalogue's own non-boss set rather than reaching for AutoLootDb's, and returns the roots
+-- instead of assigning them anywhere: more than one window is built from this module now, so a
+-- module-level singleton can only belong to one of them.
+---@param db table -- a persisted selection db, already seeded
+---@param non_bosses table<string, boolean>
+---@return TreeNode[]
+function M.build( db, non_bosses )
+  return build_tree( db.ids, non_bosses )
+end
+
+-- Builds a Category -> items tree, which is the round-robin catalogue's shape. Every layer below
+-- the top is the same as build's, and everything downstream -- visible_rows, set_checked,
+-- is_leaf_enabled, the whole frame -- walks children rather than counting levels, so nothing
+-- else has to know the tree is two deep instead of three.
+--
+-- Categories take the top-level colour for the same reason dungeons do: they are the top level.
+---@param db table -- a persisted selection db, already seeded
+---@return TreeNode[]
+function M.build_flat( db )
+  local categories = {}
+
+  for _, category_name in ipairs( ordered_keys( db.ids or {} ) ) do
+    local entry = db.ids[ category_name ]
+
+    -- A category names either item ids or qualities, never both -- the Trash fallback is the only
+    -- one of the second kind, and asking which it is here keeps every layer below this one
+    -- ignorant of the difference: both branches return leaves.
+    local children = entry.qualities and build_qualities( entry.qualities ) or build_items( entry.items )
+
+    -- A category names the colour it is drawn in (see AutoRoundRobinDb). Falls back to the
+    -- dungeon blue for a catalogue that names none, which is what the auto-loot tree draws the
+    -- node at this depth in.
+    local color = entry.color and hex_color_rgb( entry.color, 1 ) or DUNGEON_COLOR
+
+    table.insert( categories, build_group( category_name, entry,
+      color, entry.color and color or DUNGEON_HOVER_TEXT_COLOR, children ) )
+  end
+
+  return categories
+end
+
+-- Seeds the auto-loot db (if needed) and builds its tree into M.dungeons. Called once from
+-- main.lua once the SavedVariables-backed db is actually available -- can't happen at module load
+-- time like the old AutoLootDb.ids-only version did, since db doesn't exist yet then.
 ---@param db table
 function M.init( db )
   m.AutoLootDb.ensure_seeded( db )
-  M.dungeons = build_tree( db.ids )
+  M.dungeons = M.build( db, m.AutoLootDb.non_bosses )
 end
 
 -- Each node's own `data.checked` is independent and never touched by its parent/ancestors --

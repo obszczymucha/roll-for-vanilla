@@ -640,10 +640,21 @@ local function create_components()
   ---@type AutoLootFrameContentTransformer
   local autoloot_frame_content_transformer = m.AutoLootFrameContentTransformer.new()
 
-  ---@type AutoLootFrame
-  M.autoloot_frame = m.AutoLootFrame.new( popup_builder(), autoloot_frame_content_transformer, db( "autoloot_frame" ) )
-
+  -- The tree has to exist before the window that renders it: AutoLootFrame takes its roots
+  -- rather than reaching for the module-level singleton, now that a second window is built
+  -- from the same module.
   m.AutoLootTree.init( M.autoloot_db )
+
+  ---@type AutoLootFrame
+  M.autoloot_frame = m.AutoLootFrame.new( {
+    popup_builder = popup_builder(),
+    content_transformer = autoloot_frame_content_transformer,
+    db = db( "autoloot_frame" ),
+    name = "RollForAutoLootFrame",
+    title = "RollFor Auto Loot",
+    roots = m.AutoLootTree.dungeons,
+    make_link = m.AutoLootDb.make_link
+  } )
 
   -- Construction phase. Everything above exists now, so extensions that build frames or
   -- register slash commands do it here rather than in on_enable.
