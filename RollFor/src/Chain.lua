@@ -97,133 +97,17 @@ function M.new( chain_name )
     return table.concat( n, ", " )
   end
 
-  ---@param placed ChainLink[]
-  ---@param name string
-  ---@return number?
-  local function index_among( placed, name )
-    for i, link in ipairs( placed ) do
-      if link.name == name then return i end
-    end
-  end
-
-  -- "base" sits at index 0, so `after = "base"` lands at position 1 and everything else
-  -- falls out of the same arithmetic.
-  --
-  -- Three answers, not two: a position, or `nil` plus a complaint when the link can never
-  -- be placed, or `nil` and no complaint when its anchor simply has not been placed
-  -- *yet*. Only resolve() knows which of the last two it is, because only resolve() knows
-  -- whether there is another pass coming.
-  ---@param placed ChainLink[]
-  ---@param link ChainLink
-  ---@return number?, string?
-  local function position_for( placed, link )
-    local after_index, before_index
-
-    if link.after then
-      if link.after == BASE then
-        after_index = 0
-      else
-        after_index = index_among( placed, link.after )
-        if not after_index then return nil end
-      end
-    end
-
-    if link.before then
-      before_index = index_among( placed, link.before )
-      if not before_index then return nil end
-    end
-
-    -- With both anchors given, `after` decides the position and `before` is the
-    -- constraint it has to satisfy. Two links asking for the same slot break the tie by
-    -- registration order.
-    if after_index then
-      local position = after_index + 1
-
-      if before_index and position > before_index then
-        return nil, string.format( "link '%s' cannot be both after '%s' and before '%s'.",
-          link.name, link.after, link.before )
-      end
-
-      return position
-    end
-
-    if before_index then return before_index end
-
-    return getn( placed ) + 1
-  end
-
-  ---@param link ChainLink
-  ---@return string
-  local function unplaceable( link )
-    local missing = {}
-
-    if link.after and link.after ~= BASE and not index_among( links, link.after ) then
-      table.insert( missing, string.format( "after '%s'", link.after ) )
-    end
-
-    if link.before and not index_among( links, link.before ) then
-      table.insert( missing, string.format( "before '%s'", link.before ) )
-    end
-
-    -- Every name it asked for exists, so the only way it can still be unplaceable is a
-    -- cycle: two links each waiting for the other. Worth saying out loud, because the
-    -- obvious reading of the message above -- "which is not in the chain" -- would be a
-    -- lie here, and would send whoever reads it looking for a typo that isn't there.
-    if getn( missing ) == 0 then
-      return string.format(
-        "link '%s' could not be placed: its anchors and something anchored to it are waiting on each other. Known: %s.",
-        link.name, known() )
-    end
-
-    return string.format( "link '%s' is anchored %s, which is not in the chain. Known: %s.",
-      link.name, table.concat( missing, " and " ), known() )
-  end
-
-  -- Placement, once every link that could be an anchor has arrived. Repeated passes in
-  -- registration order rather than a topological sort: a pass that places anything makes
-  -- the next one possible, and a pass that places nothing means what is left cannot be
-  -- placed at all. Slower than sorting and small enough not to care -- there are a
-  -- handful of links -- and it keeps the placement arithmetic identical to the order
-  -- links used to be inserted in one at a time.
-  ---@param report boolean -- false when only the order is wanted, e.g. from names()
+  -- Placement is Ordering's; what is left here is composition and whether an unplaceable
+  -- link is worth saying out loud. `report` is false when only the order is wanted, e.g.
+  -- from names().
+  ---@param report boolean
   ---@return ChainLink[]
   local function resolve( report )
-    ---@type ChainLink[]
-    local placed = {}
-    local pending = {}
-
-    for _, link in ipairs( links ) do table.insert( pending, link ) end
-
-    local progress = true
-
-    while progress and getn( pending ) > 0 do
-      progress = false
-      local remaining = {}
-
-      for _, link in ipairs( pending ) do
-        local position, contradiction = position_for( placed, link )
-
-        if position then
-          table.insert( placed, position, link )
-          progress = true
-        elseif contradiction then
-          -- Not waiting on anything: no later pass can make this true.
-          if report then
-            m.err( string.format( "RollFor chain '%s': %s It has been left out.", chain_name, contradiction ) )
-          end
-
-          progress = true
-        else
-          table.insert( remaining, link )
-        end
-      end
-
-      pending = remaining
-    end
+    local placed, unplaceable = m.Ordering.place( links, { base = BASE, noun = "link" } )
 
     if report then
-      for _, link in ipairs( pending ) do
-        m.err( string.format( "RollFor chain '%s': %s It has been left out.", chain_name, unplaceable( link ) ) )
+      for _, rejected in ipairs( unplaceable ) do
+        m.err( string.format( "RollFor chain '%s': %s It has been left out.", chain_name, rejected.reason ) )
       end
     end
 

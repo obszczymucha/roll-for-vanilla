@@ -17,6 +17,7 @@ src\modules.lua
 src\DebugBuffer.lua
 src\Module.lua
 src\Db.lua
+src\Ordering.lua
 src\Chain.lua
 src\Extensions.lua
 src\Types.lua

@@ -5,6 +5,7 @@ require( "src/compat" )
 local utils = require( "test/utils" )
 local lu, eq = utils.luaunit( "assertEquals" )
 require( "src/modules" )
+require( "src/Ordering" )
 local Chain = require( "src/Chain" )
 
 -- Links that wrap a string, so the built value spells out the order they ran in. A chain
