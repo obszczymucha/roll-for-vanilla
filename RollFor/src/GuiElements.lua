@@ -1032,6 +1032,9 @@ function M.tree_node( parent )
 
   local depth = 0
   local expandable = false
+  -- Whether this row renders as an item link or as a plain label. Decided by which of SetItem /
+  -- SetText the caller reaches for, not by whether the row has children: a leaf that names a
+  -- quality rather than an item (see AutoLootTree.build_qualities) is childless and still a label.
   local is_link = false
 
   local function layout()
@@ -1082,10 +1085,11 @@ function M.tree_node( parent )
       label:Show()
       content_width = label:GetWidth()
 
-      -- Only expandable rows (dungeon/boss) reach this branch, so it's always safe to make the
-      -- label clickable here. Stretched to the popup's right edge (like item rows), so hover/click
-      -- covers the full row, not just the text -- content_width above stays the natural
-      -- (unstretched) measurement used for the popup's own auto-sizing.
+      -- Every label row gets the button, expandable or not: it carries the hover feedback and the
+      -- tooltip as well as the click, and a label leaf wants all three. What the click does
+      -- differs by row kind -- see label_button's OnClick below. Stretched to the popup's right
+      -- edge (like item rows), so hover/click covers the full row, not just the text --
+      -- content_width above stays the natural (unstretched) measurement used for auto-sizing.
       label_button:SetPoint( "LEFT", container, "LEFT", content_start, 0 )
       label_button:SetPoint( "RIGHT", parent, "RIGHT", -tree_node_row_right_margin, 0 )
       label_button:SetHeight( tree_node_toggle_size )
@@ -1115,7 +1119,12 @@ function M.tree_node( parent )
     container:SetWidth( content_start + content_width )
   end
 
+  -- Which of the two the row renders through is decided here and in SetItem, not by whether the
+  -- row happens to be expandable: rows are recycled between refreshes, and a flat tree puts item
+  -- leaves and label leaves at the same depth, so the row that drew an item last pass is the one
+  -- drawing a label this pass.
   container.SetText = function( _, text )
+    is_link = false
     label:SetText( text )
     layout()
   end
@@ -1171,6 +1180,7 @@ function M.tree_node( parent )
   container.SetItem = function( _, item, tooltip_link )
     -- Rows are recycled between refreshes, so an item row has to drop whatever a label row left
     -- behind: it renders through item_link_widget, which brings its own tooltip.
+    is_link = true
     label_tooltip = nil
 
     if item.hover_background_color then
@@ -1183,7 +1193,6 @@ function M.tree_node( parent )
 
   container.SetExpandable = function( _, is_expandable, is_expanded )
     expandable = is_expandable and true or false
-    is_link = not expandable
 
     if expandable then
       toggle:SetNormalTexture( is_expanded and "Interface\\Buttons\\UI-MinusButton-Up" or "Interface\\Buttons\\UI-PlusButton-Up" )
@@ -1198,7 +1207,14 @@ function M.tree_node( parent )
   end )
 
   label_button:SetScript( "OnClick", function()
-    if container.on_click then container.on_click() end
+    -- An expandable row expands. A label leaf has nothing to expand, so clicking it toggles its
+    -- own checkbox instead -- the same thing clicking an item leaf's link does, and better than
+    -- leaving a whole row inert.
+    if expandable then
+      if container.on_click then container.on_click() end
+    else
+      checkbox:Click()
+    end
   end )
 
   label_button:SetScript( "OnEnter", function( self )
