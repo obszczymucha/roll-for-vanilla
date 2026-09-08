@@ -25,7 +25,7 @@ local ColorType = {
 ---@class MinimapContribution
 ---@field commands { cmd: string, args: string?, description: string }[]?
 ---@field hint string?
----@field status fun(): { color: string, lines: string[]? }?
+---@field status? fun(): { color: string, lines: string[]? }?
 
 ---@param entry { cmd: string, args: string?, description: string }
 ---@return string

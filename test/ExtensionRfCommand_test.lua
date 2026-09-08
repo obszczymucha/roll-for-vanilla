@@ -31,6 +31,7 @@ Extensions.register( {
   api_version = Extensions.API_VERSION,
   on_enable = function( ctx )
     local err = RollFor.err
+    ---@diagnostic disable-next-line: duplicate-set-field
     RollFor.err = function( message ) table.insert( complaints, message ) end
 
     ctx.on_rf_command( "probe", record( "probe" ) )
@@ -48,7 +49,7 @@ Extensions.register( {
 
 utils.player( "Psikutas" )
 
-local rf = utils.load_roll_for()
+utils.load_roll_for()
 
 -- /rf config prints, and core's printer goes straight to the chat frame rather than
 -- through the Chat the rest of the addon uses. One of these specs runs it on purpose.

@@ -23,6 +23,7 @@ local sr = u.soft_res_item
 
 -- Literal content builders. These describe the *expected* shapes and must stay
 -- independent of src/ and of test/gui_helpers.lua.
+---@diagnostic disable-next-line: unused-local, unused-function
 local function item_line( item, count )
   return {
     type = "item_link_with_icon",
@@ -61,6 +62,7 @@ local function row( name, cells, best_index, cell_count, padding )
   }
 end
 
+---@diagnostic disable-next-line: unused-local, unused-function
 local function button( label, width )
   return { type = "button", label = label, width = width }
 end

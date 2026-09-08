@@ -4,7 +4,6 @@ local m = RollFor
 if m.Chain then return end
 
 local M = {}
-local getn = m.getn
 
 -- An ordered chain of decorators, built once at login.
 --
@@ -51,7 +50,7 @@ local getn = m.getn
 ---@field tap fun( tap: ChainTap )
 ---@field has fun( name: string ): boolean
 ---@field names fun(): string[]
----@field build fun( base: any ): BuiltChain
+---@field build fun( base: any, options: { report: boolean }? ): BuiltChain
 
 -- The undecorated object the chain is built on. Usable as an anchor so a link can ask to
 -- come first without knowing which core link currently holds that position.
@@ -162,8 +161,6 @@ function M.new( chain_name )
     return result
   end
 
-  ---@param base any
-  ---@return BuiltChain
   -- `report` says whether an unplaceable link is worth complaining about. It is, normally:
   -- a link that cannot be placed is a typo in somebody's anchor and the addon quietly does
   -- less than it should. It is not when the caller already knows the anchors are missing
@@ -172,6 +169,7 @@ function M.new( chain_name )
   -- reads like four bugs.
   ---@param base any
   ---@param options { report: boolean }?
+  ---@return BuiltChain
   local function build( base, options )
     if base == nil then fail( "cannot build on a nil base." ) end
 

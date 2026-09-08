@@ -210,7 +210,6 @@ utils.mock_object( "DEFAULT_CHAT_FRAME", {
   AddMessage = function( _, message ) table.insert( complaints, message ) end
 } )
 
-RollFor.api = _G
 
 ---@param f fun()
 ---@param expected string

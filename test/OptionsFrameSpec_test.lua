@@ -12,7 +12,7 @@ local EventBus = require( "src/EventBus" )
 local popup_builder = require( "mocks/PopupBuilder" )
 local options_frame_mock = require( "mocks/OptionsFrame" )
 local gui = require( "test/gui_helpers" )
-local options_buttons, checkbox, slider, editbox, dropdown, text = gui.options_buttons, gui.checkbox, gui.slider, gui.editbox, gui.dropdown, gui.text
+local checkbox, slider, editbox, dropdown = gui.checkbox, gui.slider, gui.editbox, gui.dropdown
 local ItemQuality = RollFor.Types.ItemQuality
 
 u.mock_wow_api()
@@ -197,7 +197,7 @@ function OptionsFrameSpec:should_display_the_minimap_tooltip_commands_checkbox_d
   -- Config only ever notifies the bus (on a reload-requiring toggle), and nothing here
   -- flips one.
   ---@diagnostic disable-next-line: missing-fields
-  local config = Config.new( db( "config" ), { notify = function() end } )
+  local config = Config.new( db( "config" ), { notify = function() return 0 end } )
   local options = options_frame_mock.new( popup_builder.new(), config, db( "options" ) )
 
   -- When

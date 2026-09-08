@@ -24,7 +24,7 @@ local LootFacadeListener = require( "src/LootFacadeListener" )
 -- Every collaborator is the same shape: a table whose methods append their own name to a
 -- shared log. What is asserted is the log, so a handler that stops being called is as
 -- visible as one that moves.
-local function listener()
+local function core_listener()
   local calls = {}
 
   local function record( name )
@@ -63,7 +63,7 @@ LootOpenedOrderSpec = {}
 
 function LootOpenedOrderSpec:should_fire_cores_six_handlers_in_order()
   -- Given
-  local loot_facade, calls = listener()
+  local loot_facade, calls = core_listener()
 
   -- When
   loot_facade.notify( "LootOpened" )
@@ -83,7 +83,7 @@ LootSlotClearedOrderSpec = {}
 
 function LootSlotClearedOrderSpec:should_fire_cores_two_handlers_in_order()
   -- Given
-  local loot_facade, calls = listener()
+  local loot_facade, calls = core_listener()
 
   -- When
   loot_facade.notify( "LootSlotCleared", 3 )
@@ -125,7 +125,7 @@ SingleHandlerEventSpec = {}
 
 function SingleHandlerEventSpec:should_fire_the_roll_controller_on_loot_closed()
   -- Given
-  local loot_facade, calls = listener()
+  local loot_facade, calls = core_listener()
 
   -- When
   loot_facade.notify( "LootClosed" )
@@ -136,7 +136,7 @@ end
 
 function SingleHandlerEventSpec:should_fire_master_loot_on_a_loot_message_naming_a_player()
   -- Given
-  local loot_facade, calls = listener()
+  local loot_facade, calls = core_listener()
 
   -- When
   loot_facade.notify( "ChatMsgLoot", "Obszczymucha receives loot: " .. u.item_link( "Hearthstone", 6948 ) )
@@ -147,7 +147,7 @@ end
 
 function SingleHandlerEventSpec:should_fire_master_loot_on_a_loot_message_naming_you()
   -- Given
-  local loot_facade, calls = listener()
+  local loot_facade, calls = core_listener()
 
   -- When
   loot_facade.notify( "ChatMsgLoot", "You receive loot: " .. u.item_link( "Hearthstone", 6948 ) )
@@ -233,12 +233,14 @@ end
 
 function RegistryErrorSpec:should_refuse_an_unknown_event()
   should_fail_with( function()
+    ---@diagnostic disable-next-line: param-type-mismatch
     LootFacadeListener.new().on_loot( "LootPlundered", { name = "x", callback = function() end } )
   end, "'LootPlundered' is not a loot event" )
 end
 
 function RegistryErrorSpec:should_refuse_a_handler_without_a_callback()
   should_fail_with( function()
+    ---@diagnostic disable-next-line: missing-fields
     LootFacadeListener.new().on_loot( "LootOpened", { name = "x" } )
   end, "handler 'x' must have a 'callback' function." )
 end
@@ -277,6 +279,7 @@ function RegistryErrorSpec:should_drop_a_handler_anchored_to_a_name_that_never_a
   local listener = LootFacadeListener.new()
   local complaints = {}
   local err = RollFor.err
+  ---@diagnostic disable-next-line: duplicate-set-field
   RollFor.err = function( message ) table.insert( complaints, message ) end
 
   listener.on_loot( "LootOpened", { name = "mine", after = "nonexistent", callback = function() end } )

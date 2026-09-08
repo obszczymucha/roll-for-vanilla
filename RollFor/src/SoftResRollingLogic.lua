@@ -9,7 +9,6 @@ local getn = m.getn
 local map = m.map
 local take = m.take
 local hl = m.colors.hl
-local RT = m.Types.RollType ---@type RT
 local roll_type = m.Types.RollType.SoftRes
 local strategy = m.Types.RollingStrategy.SoftResRoll
 local available_rolls = m.RollingLogicUtils.available_rolls

@@ -779,12 +779,12 @@ function M.dropdown( parent )
   --
   -- Safe to do once here: UIDropDownMenu_SetWidth only ever sets this FontString's width, never
   -- its anchor, so a later SetDropdownWidth cannot undo it.
-  local text = dropdown.Text or m.api[ name .. "Text" ]
+  local dropdown_text = dropdown.Text or m.api[ name .. "Text" ]
   local right = dropdown.Right or m.api[ name .. "Right" ]
 
-  if text and right then
-    text:ClearAllPoints()
-    text:SetPoint( "RIGHT", right, "RIGHT", dropdown_text_x, dropdown_text_y )
+  if dropdown_text and right then
+    dropdown_text:ClearAllPoints()
+    dropdown_text:SetPoint( "RIGHT", right, "RIGHT", dropdown_text_x, dropdown_text_y )
   end
 
   -- The template's box sits low inside its own frame, so a label centred against it reads as

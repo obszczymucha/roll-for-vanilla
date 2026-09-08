@@ -41,6 +41,7 @@ if not lua50 then
   if not table.getn then
     ---@param t table
     ---@return number
+    ---@diagnostic disable-next-line: duplicate-set-field
     function table.getn( t ) return #t end
   end
 end

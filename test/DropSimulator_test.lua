@@ -85,7 +85,10 @@ local function simulator()
   -- Leaves the question hanging, the way the dialog does until it's clicked.
   sut.dont_answer = function() answer_with_yes = false end
   sut.asked = function() return asked end
-  sut.answer_yes = function() pending_yes() end
+  sut.answer_yes = function()
+    if not pending_yes then error( "Nothing was asked." ) end
+    pending_yes()
+  end
 
   -- Everything the lockout told its subscribers, in order.
   sut.turnovers = {}

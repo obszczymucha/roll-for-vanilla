@@ -49,13 +49,17 @@ local function refresh_minimap()
 
   for _, contribution in ipairs( M.minimap_contributions ) do
     local status = contribution.status and contribution.status()
+    local status_color = status and status.color
+
     -- A colour we don't know the severity of comes from a contribution we don't own, so
     -- it is ignored rather than allowed to take the button over.
-    local severity = status and status.color and ColorSeverity[ status.color ]
+    if status_color then
+      local severity = ColorSeverity[ status_color ]
 
-    if severity and severity > best then
-      color = status.color
-      best = severity
+      if severity and severity > best then
+        color = status_color
+        best = severity
+      end
     end
   end
 

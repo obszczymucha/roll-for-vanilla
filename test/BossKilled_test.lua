@@ -156,6 +156,7 @@ function BossKilledSpec:should_ignore_a_missing_item_id()
   local sut = boss_killed()
 
   -- When
+  ---@diagnostic disable-next-line: param-type-mismatch
   sut.on_item_dropped( nil )
 
   -- Then

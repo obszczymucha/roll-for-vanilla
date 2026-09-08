@@ -9,7 +9,8 @@ local SoftResSourceMock = require( "mocks/SoftResSource" )
 require( "src/Ordering" )
 local Chain = require( "src/Chain" )
 require( "src/AutoLootDb" )
-local SoftRes, Db = require( "src/SoftRes" ), require( "src/Db" )
+require( "src/SoftRes" )
+local Db = require( "src/Db" )
 local RollingLogic = require( "src/RollingLogic" )
 local sr, hr = u.soft_res_item, u.hard_res_item ---@diagnostic disable-line: unused-local
 local c, r, pm = u.console_message, u.raid_message, u.party_message ---@diagnostic disable-line: unused-local

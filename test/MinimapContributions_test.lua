@@ -25,11 +25,11 @@ end
 -- A GameTooltip stand-in that just records everything written to it, in order.
 local function make_tooltip()
   local tooltip = { lines = {} }
-  tooltip.SetOwner = function() end
-  tooltip.SetText = function( self, text ) table.insert( self.lines, text ) end
-  tooltip.AddLine = function( self, text ) table.insert( self.lines, text ) end
-  tooltip.Show = function() end
-  tooltip.Hide = function() end
+  tooltip.SetOwner = function( ... ) end
+  tooltip.SetText = function( self, text, _, _, _, _, _ ) table.insert( self.lines, text ) end
+  tooltip.AddLine = function( self, text, _, _, _, _ ) table.insert( self.lines, text ) end
+  tooltip.Show = function( ... ) end
+  tooltip.Hide = function( ... ) end
   return tooltip
 end
 

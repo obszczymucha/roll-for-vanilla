@@ -48,6 +48,7 @@ local getn = m.getn
 ---@param bottom_margin number?
 ---@param bottom_button_margin number?
 ---@param side_margin number?
+---@return PopupBuilder
 local function new( frame_builder, bottom_margin, bottom_button_margin, side_margin )
   local m_button_padding = 10
   local m_bottom_button_margin = bottom_button_margin or 8
@@ -179,13 +180,14 @@ local function new( frame_builder, bottom_margin, bottom_button_margin, side_mar
     return result
   end
 
-  return decoratee
+  return decoratee --[[@as PopupBuilder]]
 end
 
 ---@param frame_builder FrameBuilderFactory
 ---@param bottom_margin number?
 ---@param bottom_button_margin number?
 ---@param side_margin number?
+---@return PopupBuilder
 function M.modern( frame_builder, bottom_margin, bottom_button_margin, side_margin )
   local builder = new( frame_builder, bottom_margin, bottom_button_margin, side_margin )
       :frame_style( "Modern" )
@@ -198,6 +200,7 @@ end
 ---@param bottom_margin number?
 ---@param bottom_button_margin number?
 ---@param side_margin number?
+---@return PopupBuilder
 function M.classic( frame_builder, bottom_margin, bottom_button_margin, side_margin )
   local builder = new( frame_builder, bottom_margin, bottom_button_margin, side_margin )
       :frame_style( "Classic" )

@@ -17,7 +17,7 @@ local M = {}
 -- one up while it filters. The rows core renders are built from that field, so the double
 -- would misrepresent the data shape without it. It enriches only -- a player who is not in
 -- the group still comes back, with no class. That is the half this double refuses to copy.
----@param entries table[] -- soft_res_item / hard_res_item entries
+---@param entries table[]? -- soft_res_item / hard_res_item entries
 ---@param find_class fun( player_name: string ): string?
 ---@return SoftRes
 function M.new( entries, find_class )

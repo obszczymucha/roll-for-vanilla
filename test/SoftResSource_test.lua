@@ -43,42 +43,42 @@ local function malformed( value )
   return value
 end
 
-RegistrationSpec = {}
+SourceRegistrationSpec = {}
 
-function RegistrationSpec:setUp() SoftResSource.clear() end
+function SourceRegistrationSpec:setUp() SoftResSource.clear() end
 
-function RegistrationSpec:should_register_a_source()
+function SourceRegistrationSpec:should_register_a_source()
   eq( SoftResSource.register( spec( "softres_it" ) ), true )
   eq( SoftResSource.get().id, "softres_it" )
 end
 
-function RegistrationSpec:should_refuse_a_second_registration_and_keep_the_first()
+function SourceRegistrationSpec:should_refuse_a_second_registration_and_keep_the_first()
   eq( SoftResSource.register( spec( "softres_it" ) ), true )
   eq( SoftResSource.register( spec( "raidres" ) ), false )
   eq( SoftResSource.get().id, "softres_it" )
 end
 
-function RegistrationSpec:should_refuse_a_spec_that_is_not_a_table()
+function SourceRegistrationSpec:should_refuse_a_spec_that_is_not_a_table()
   eq( SoftResSource.register( malformed( "softres_it" ) ), false )
   eq( SoftResSource.get(), nil )
 end
 
-function RegistrationSpec:should_refuse_a_nameless_source()
+function SourceRegistrationSpec:should_refuse_a_nameless_source()
   eq( SoftResSource.register( spec( "", {} ) ), false )
   eq( SoftResSource.get(), nil )
 end
 
-function RegistrationSpec:should_refuse_a_titleless_source()
+function SourceRegistrationSpec:should_refuse_a_titleless_source()
   eq( SoftResSource.register( malformed( { id = "softres_it", base = function() end, has_data = function() end } ) ), false )
   eq( SoftResSource.get(), nil )
 end
 
-function RegistrationSpec:should_refuse_a_source_without_a_base_function()
+function SourceRegistrationSpec:should_refuse_a_source_without_a_base_function()
   eq( SoftResSource.register( spec( "softres_it", { base = "nope" } ) ), false )
   eq( SoftResSource.get(), nil )
 end
 
-function RegistrationSpec:should_refuse_a_source_without_a_has_data_function()
+function SourceRegistrationSpec:should_refuse_a_source_without_a_has_data_function()
   eq( SoftResSource.register( spec( "softres_it", { has_data = "nope" } ) ), false )
   eq( SoftResSource.get(), nil )
 end
@@ -90,7 +90,7 @@ function NullFallbackSpec:setUp() SoftResSource.clear() end
 function NullFallbackSpec:should_return_a_working_null_when_nothing_is_registered()
   local softres = SoftResSource.base()
 
-  eq( softres.get( { item_id = 123 } ), {} )
+  eq( softres.get( RollFor.SoftRes.softres_item_data( 123, 1 ) ), {} )
   eq( softres.get_all_rollers(), {} )
   eq( softres.is_player_softressing( "Drutree" ), false )
   eq( softres.get_items(), {} )

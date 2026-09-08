@@ -13,7 +13,7 @@
     "Libs",
     "libs"
   ],
-  "workspace.library": [],
-  "diagnostics.disable": [],
-  "Lua.hint.enable": true
+  "Lua.hint.enable": true,
+  "Lua.workspace.library": [],
+  "Lua.diagnostics.disable": []
 }

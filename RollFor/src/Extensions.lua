@@ -63,7 +63,7 @@ M.API_VERSION = 3
 ---@field title string? -- names its page in the options window; defaults to name
 ---@field api_version number
 ---@field default_enabled boolean? -- defaults to true
----@field on_enable fun( ctx: ExtensionContext ) -- declare only: chain links, config, hooks
+---@field on_enable fun( ctx: ExtensionContext )? -- declare only: chain links, config, hooks
 ---@field on_ready fun( ctx: ExtensionContext )? -- build frames and slash commands here
 ---@field options_page ExtensionOptionsPage? -- builds this extension's page in the game's options
 

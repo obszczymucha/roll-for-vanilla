@@ -93,11 +93,11 @@ local function clicked( button )
 
   -- OnClick redraws the tooltip and hides it again, so there has to be one to redraw.
   _G[ "GameTooltip" ] = {
-    SetOwner = function() end,
-    SetText = function() end,
-    AddLine = function() end,
-    Show = function() end,
-    Hide = function() end
+    SetOwner = function( ... ) end,
+    SetText = function( ... ) end,
+    AddLine = function( ... ) end,
+    Show = function( ... ) end,
+    Hide = function( ... ) end
   }
   RollFor.api.GameTooltip = _G[ "GameTooltip" ]
 
