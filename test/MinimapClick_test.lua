@@ -8,11 +8,14 @@ u.mock_libraries()
 u.load_real_stuff_and_inject( {}, {} )
 local EventBus = require( "src/EventBus" )
 
--- Left click on the minimap button is nothing but `event_bus.notify( "minimap_icon_left_
--- click" )` -- see src/MinimapButton.lua's frame.OnClick. What decides whether that opens
--- the options window is main.lua's create_components(): after every extension has had its
--- chance to subscribe (on_enable/on_ready), core installs itself as the fallback only if
--- EventBus.has_subscribers says nobody claimed the click yet.
+-- Clicking the minimap button is nothing but a notify -- see src/MinimapButton.lua's
+-- frame.OnClick, which picks the event from which button was pressed. What decides whether
+-- the left one opens the options window is main.lua's create_components(): after every
+-- extension has had its chance to subscribe (on_enable/on_ready), core installs itself as
+-- the fallback only if EventBus.has_subscribers says nobody claimed the click yet.
+--
+-- The right one has no fallback. Core does nothing with it, so an unclaimed right click is
+-- a no-op rather than a second way to open the options window.
 FallbackMechanismSpec = {}
 
 function FallbackMechanismSpec:should_open_options_when_nobody_claimed_the_click()
@@ -69,6 +72,79 @@ function RealAddonClickSpec:should_open_options_with_no_source_installed()
   rf.event_bus.notify( "minimap_icon_left_click" )
 
   eq( opened, { true } )
+end
+
+-- Which event a click produces is the button's own doing, and the only thing that tells
+-- the two apart. Reached through the real frame, because the mapping lives in the script
+-- the client calls, not in anything main.lua can be asked about.
+ButtonMappingSpec = {}
+
+---@return table, string[]
+local function clicked( button )
+  u.player( "Psikutas" )
+  local rf = u.load_roll_for()
+  local notified = {}
+
+  local notify = rf.event_bus.notify
+  rf.event_bus.notify = function( event, ... )
+    table.insert( notified, event )
+    return notify( event, ... )
+  end
+
+  -- OnClick redraws the tooltip and hides it again, so there has to be one to redraw.
+  _G[ "GameTooltip" ] = {
+    SetOwner = function() end,
+    SetText = function() end,
+    AddLine = function() end,
+    Show = function() end,
+    Hide = function() end
+  }
+  RollFor.api.GameTooltip = _G[ "GameTooltip" ]
+
+  local frame = _G[ "RollForMinimapButton" ]
+  frame.OnClick( frame, button )
+  rf.event_bus.notify = notify
+
+  return rf, notified
+end
+
+function ButtonMappingSpec:should_notify_the_left_click_event_for_the_left_button()
+  local _, notified = clicked( "LeftButton" )
+
+  eq( notified, { "minimap_icon_left_click" } )
+end
+
+function ButtonMappingSpec:should_notify_the_right_click_event_for_the_right_button()
+  local _, notified = clicked( "RightButton" )
+
+  eq( notified, { "minimap_icon_right_click" } )
+end
+
+-- Middle-click, mouse4, and whatever else the client reports: anything that isn't the
+-- right button is treated as the left one, which is what the button did before there were
+-- two events at all.
+function ButtonMappingSpec:should_treat_any_other_button_as_the_left_one()
+  local _, notified = clicked( "MiddleButton" )
+
+  eq( notified, { "minimap_icon_left_click" } )
+end
+
+RightClickSpec = {}
+
+-- Nothing in core answers it, and core installs no fallback: with no source extension
+-- installed, right-clicking the button does nothing at all.
+function RightClickSpec:should_do_nothing_with_no_source_installed()
+  local rf, notified = clicked( "RightButton" )
+
+  eq( notified, { "minimap_icon_right_click" } )
+  eq( rf.event_bus.has_subscribers( "minimap_icon_right_click" ), false )
+end
+
+-- The left one still opens options, which is the point of leaving it to core's fallback.
+function RightClickSpec:should_not_have_taken_the_left_click_with_it()
+  local rf = clicked( "RightButton" )
+
+  eq( rf.event_bus.has_subscribers( "minimap_icon_left_click" ), true )
 end
 
 os.exit( lu.LuaUnit.run() )

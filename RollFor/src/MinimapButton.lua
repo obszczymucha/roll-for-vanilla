@@ -106,8 +106,13 @@ function M.new( api, db, config, event_bus, contributions )
   local function create()
     local frame = api().CreateFrame( "Button", "RollForMinimapButton", api().Minimap )
 
-    function frame.OnClick( self )
-      event_bus.notify( "minimap_icon_left_click" )
+    -- Two events, so the two buttons can be claimed independently. Either may be taken by
+    -- an extension; who answers, and whether anybody does, is main.lua's business. Core
+    -- falls back to opening the options window on the left one and leaves the right alone,
+    -- so an unclaimed right click does nothing.
+    ---@param button string -- "LeftButton" / "RightButton", from the client
+    function frame.OnClick( self, button )
+      event_bus.notify( button == "RightButton" and "minimap_icon_right_click" or "minimap_icon_left_click" )
       self:OnEnter()
       api().GameTooltip:Hide()
     end
