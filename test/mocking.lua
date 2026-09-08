@@ -36,13 +36,13 @@ function M.mock_api( ... )
         local value = v.value.value[ key ]
 
         if value and value.mocked_type == MockType.PACKED_VALUE then
-          return table.unpack( value.value )
+          return unpack( value.value )
         else
           return value
         end
       end
     elseif v.value.mocked_type == MockType.PACKED_VALUE then
-      result[ v.function_name ] = function() return table.unpack( v.value.value ) end
+      result[ v.function_name ] = function() return unpack( v.value.value ) end
     end
   end
 

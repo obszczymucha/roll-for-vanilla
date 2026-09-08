@@ -29,7 +29,7 @@ M.API_VERSION = 3
 -- small and grows only on demand -- everything else in this addon is refactorable,
 -- and this is not.
 ---@class ExtensionContext
----@field db fun( key: string ): table -- scoped to this extension
+---@field db fun( key: string, migrations: DbMigration[]? ): table -- scoped to this extension
 ---@field api fun(): table -- the WoW API table; call it, m.api style
 ---@field config Config
 ---@field chat Chat
@@ -48,6 +48,9 @@ M.API_VERSION = 3
 ---@field on_group_changed fun( callback: fun() )
 ---@field on_lockout_reset fun( callback: fun() )
 ---@field lockout_loss fun( describe: fun(): { count: number, noun: string }[] )
+---@field on_loot fun( event: LootEventName, handler: LootHandler ) -- anchors a handler into core's loot pipeline by name
+---@field on_dropped_item fun( predicate: fun( item: table ): boolean? ) -- answer false to keep an item out of the drop announcement
+---@field on_rf_command fun( name: string, callback: fun( args: string ) ) -- a subcommand of core's /rf; args are unparsed
 ---@field is_enabled fun(): boolean -- this extension's own on/off state
 ---@field set_enabled fun( value: boolean ) -- toggles it, and asks for the UI reload
 ---@field title string
@@ -80,6 +83,8 @@ M.API_VERSION = 3
 ---@field title string
 ---@field api_version number
 ---@field default_enabled boolean
+---@field on_enable fun( ctx: ExtensionContext )?
+---@field on_ready fun( ctx: ExtensionContext )?
 ---@field options_page ExtensionOptionsPage?
 ---@field incompatible boolean?
 ---@field failed boolean?

@@ -349,7 +349,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_displa
   rf.loot_frame.should_display(
     selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
-  rf.rolling_popup.should_display( table.unpack( rolling_popup_content ) )
+  rf.rolling_popup.should_display( unpack( rolling_popup_content ) )
 
   -- When
   rf.rolling_popup.click( "AwardWinner" )
@@ -364,7 +364,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_displa
 
   -- Then
   rf.confirmation_popup.should_be_hidden()
-  rf.rolling_popup.should_display( table.unpack( rolling_popup_content ) )
+  rf.rolling_popup.should_display( unpack( rolling_popup_content ) )
 end
 
 function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_the_winner_when_confirmed()
@@ -405,7 +405,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
     selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } ),
     disabled_item( 2, "Bag" )
   )
-  rf.rolling_popup.should_display( table.unpack( rolling_popup_content ) )
+  rf.rolling_popup.should_display( unpack( rolling_popup_content ) )
 
   -- When
   rf.rolling_popup.click( "AwardWinner" )
@@ -540,7 +540,7 @@ function PreviewSoftResWinnersSpec:should_display_award_winner_button_and_award_
     selected_item( 1, "Hearthstone", "SR", { "Soft-ressed by", "Psikutas" } )
   )
   rf.confirmation_popup.should_be_hidden()
-  rf.rolling_popup.should_display( table.unpack( rolling_popup_content ) )
+  rf.rolling_popup.should_display( unpack( rolling_popup_content ) )
 
   -- When
   rf.rolling_popup.click( "AwardWinner" )

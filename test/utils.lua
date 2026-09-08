@@ -1,3 +1,6 @@
+-- This harness exists to stuff mocks into the API and lua tables, so injecting fields is
+-- what it does rather than a mistake it makes.
+---@diagnostic disable: inject-field
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua;../RollFor/libs/LibStub/?.lua"
 
 local M = {}
@@ -84,7 +87,7 @@ function M.raid_message( ... )
   end
 
   ---@diagnostic disable-next-line: deprecated
-  return function() return table.unpack( result ) end
+  return function() return unpack( result ) end
 end
 
 function M.raid_warning( message )
@@ -1279,7 +1282,7 @@ function M.luaunit( ... )
     table.insert( result, lu[ name ] )
   end
 
-  return lu, table.unpack( result )
+  return lu, unpack( result )
 end
 
 function M.mock_values( values )

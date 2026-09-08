@@ -133,7 +133,7 @@ function M.buttons( ... )
     table.insert( result, button_definitions[ button_type ] )
   end
 
-  return table.unpack( result )
+  return unpack( result )
 end
 
 M.individual_award_button = { type = "award_button", label = "Award", width = 90, padding = 6 }
@@ -149,7 +149,7 @@ function M.options_buttons( ... )
     table.insert( result, options_button_definitions[ button_type ] )
   end
 
-  return table.unpack( result )
+  return unpack( result )
 end
 
 ---@param label string

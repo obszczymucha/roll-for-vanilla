@@ -35,7 +35,7 @@ end
 
 local function group( _player, is_in_raid, ... )
   local args = { ... }
-  local all_players = { _player, table.unpack( args ) }
+  local all_players = { _player, unpack( args ) }
 
   return function()
     return {
