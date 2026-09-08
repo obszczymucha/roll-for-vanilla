@@ -289,8 +289,14 @@ local function create_components()
     return {
       -- Scoped, so an extension can't collide with core's db keys or another
       -- extension's, and so its data is recognisable when it needs cleaning up.
-      db = function( key )
-        return db( string.format( "extension_%s_%s", extension_name, key ) )
+      -- Migrations are forwarded rather than left to the extension, so its stored data gets
+      -- the same machinery core's does: each step runs exactly once and the version it
+      -- reached is written down. An extension rolling its own has no way to record that,
+      -- so its "migration" would run again on every login.
+      ---@param key string
+      ---@param migrations DbMigration[]?
+      db = function( key, migrations )
+        return db( string.format( "extension_%s_%s", extension_name, key ), migrations )
       end,
       api = M.api,
       config = M.config,

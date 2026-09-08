@@ -18,6 +18,8 @@ local lu, eq = u.luaunit( "assertEquals" )
 u.mock_wow_api()
 require( "src/modules" )
 local GuiElements = require( "src/GuiElements" )
+local PopupBuilder = require( "src/PopupBuilder" )
+local GuiElements_frame_builder = require( "src/FrameBuilder" )
 
 -- Every method AutoLootFrame calls on the row it is handed. Read off the file rather than
 -- remembered: a new call there should fail here, not in the game.
@@ -103,6 +105,72 @@ function ListPopupContractSpec:should_answer_every_method_list_popup_calls()
   end
 
   table.sort( missing )
+
+  eq( missing, {} )
+end
+
+-- Two seams, same failure mode as the widgets above. Every window in every addon is
+-- assembled by chaining builder methods and then calling methods on what comes back, and
+-- every spec that renders one does it through doubles that answer to anything -- so a
+-- builder that stopped providing one of these would be found by opening a window rather
+-- than by a test. set_max_scroll_lines was exactly that.
+BuilderContractSpec = {}
+
+-- Everything ListPopup, the auto-robin windows and the extension options pages chain.
+local BUILDER_REQUIRED = {
+  "name", "parent", "point", "gui_elements", "movable", "on_drag_stop", "strata",
+  "self_centered_anchor", "anchor_point", "hidden", "backdrop_color", "border_color",
+  "no_border", "scrollable", "on_scroll", "esc", "build"
+}
+
+-- Everything they then call on the popup it builds.
+local POPUP_REQUIRED = {
+  "add_line", "clear", "position", "get_anchor_point",
+  "set_scroll_total", "set_max_scroll_lines",
+  "Show", "Hide", "IsVisible"
+}
+
+---@return PopupBuilder
+local function builder()
+  return PopupBuilder.modern( GuiElements_frame_builder, 0, 0, 0 )
+end
+
+function BuilderContractSpec:should_answer_every_method_its_callers_chain()
+  local b = builder()
+  local missing = {}
+
+  for _, name in ipairs( BUILDER_REQUIRED ) do
+    if type( b[ name ] ) ~= "function" then table.insert( missing, name ) end
+  end
+
+  eq( missing, {} )
+end
+
+-- Chained, not merely present: each one has to answer with the builder or the next call in
+-- the chain is on nil. no_border is the one this branch added and master never had, so it
+-- is the one most likely to be dropped by a future wholesale copy from over there.
+function BuilderContractSpec:should_answer_with_itself_so_the_calls_chain()
+  local b = builder()
+
+  eq( b:no_border(), b )
+  eq( b:movable(), b )
+  eq( b:hidden(), b )
+end
+
+PopupContractSpec = {}
+
+function PopupContractSpec:should_answer_every_method_list_popup_calls()
+  local popup = builder()
+      :name( "RollForPopupContractProbe" )
+      :gui_elements( GuiElements )
+      :scrollable( { line_types = "text", max_lines = 5 } )
+      :build()
+
+  local missing = {}
+
+  for _, name in ipairs( POPUP_REQUIRED ) do
+    if type( popup[ name ] ) ~= "function" then table.insert( missing, name ) end
+  end
 
   eq( missing, {} )
 end
