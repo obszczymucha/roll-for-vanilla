@@ -189,15 +189,32 @@ function M.create_item_announcements( summary )
   return stringify( sort( result ) )
 end
 
+-- `withhold` is the extension seam: each predicate is asked about every dropped item and
+-- one answering false takes it out of the announcement. Core cannot ask the question
+-- itself -- "is this item somebody else's to hand out?" is only answerable by whoever is
+-- handing it out, and that may be in another addon entirely.
+--
+-- False withholds; anything else (including nil, from a predicate that has no opinion)
+-- leaves the item alone. Every predicate is asked rather than stopping at the first
+-- false, so a predicate is never quietly skipped because of the order it registered in.
 ---@param loot_list LootList
 ---@param softres GroupAwareSoftRes
 ---@param auto_loot AutoLoot
 ---@param config Config
-function M.process_dropped_items( loot_list, softres, auto_loot, config )
+---@param withhold (fun( item: table ): boolean?)[]?
+function M.process_dropped_items( loot_list, softres, auto_loot, config, withhold )
   local source_guid = loot_list.get_source_guid()
   local threshold = m.api.GetLootThreshold()
   local items = filter( loot_list.get_items(), function( item )
     if auto_loot.is_auto_looted( item ) and not auto_loot.is_on_predefined_list( item ) and not config.auto_loot_announce() or item.id == 29434 then return false end
+
+    local withheld = false
+
+    for _, predicate in ipairs( withhold or {} ) do
+      if predicate( item ) == false then withheld = true end
+    end
+
+    if withheld then return false end
 
     local quality = item.quality or 0
 
@@ -280,7 +297,8 @@ end
 ---@param player_info PlayerInfo
 ---@param auto_loot AutoLoot
 ---@param config Config
-function M.new( loot_list, chat, softres, winner_tracker, player_info, auto_loot, config )
+---@param withhold (fun( item: table ): boolean?)[]? -- see process_dropped_items
+function M.new( loot_list, chat, softres, winner_tracker, player_info, auto_loot, config, withhold )
   local announcing = false
   local announced_source_ids = {}
 
@@ -295,7 +313,7 @@ function M.new( loot_list, chat, softres, winner_tracker, player_info, auto_loot
       return
     end
 
-    local source_guid, items, announcements = M.process_dropped_items( loot_list, softres, auto_loot, config )
+    local source_guid, items, announcements = M.process_dropped_items( loot_list, softres, auto_loot, config, withhold )
     local was_announced = announced_source_ids[ source_guid ]
     if was_announced then return end
 

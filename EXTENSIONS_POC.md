@@ -398,6 +398,9 @@ resulting order and the failure when an anchor is renamed away.
 | Extension namespace | Its own `RollForNetherVortex` global; core helpers read off `RollFor` |
 | Soft-res | Extracted to `RollForSoftResIt` (`SR-EXTENSION.md`). Core keeps the consumers and the `SoftResSource` seam; the import, the store, name matching, `SoftResCheck`, the window and the `/sr` family are the extension's. Exactly one source may register |
 | Soft-res with no source installed | Supported. Core falls back to `SoftRes.null()`, prints one line at login, and every non-soft-res feature works |
+| Loot pipeline hooks | `ctx.on_loot( event, { name, after, before, callback } )`. Chain's *ordering* half is reused -- extracted into `Ordering` -- but not its composition: the pipeline is an ordered list of callbacks, not nested decorators. One vocabulary, one set of ordering bugs, one error message users have already seen from the soft-res chain |
+| Withholding a dropped item | `ctx.on_dropped_item( fn )`; answering `false` keeps the item out of the announcement. Core cannot ask "is this item somebody else's to hand out?" -- only whoever hands it out can. Every predicate is asked, so none is skipped by registration order |
+| API version | 3. v2 added `api`, `softres_source`, `softres_tap` and `minimap`; v3 adds `on_loot` and `on_dropped_item` |
 | Resistance bonus rolls | Deleted outright, not extracted. `src/resistances/`, `SoftResBonusRollDecorator`, the `BonusRoll` roll type and `RollingPlayer.bonus_rolls` are gone; core now contributes no link to the soft-res chain at all |
 
 ## 7. Known risks

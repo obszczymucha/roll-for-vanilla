@@ -22,7 +22,7 @@ local function hl( text ) return m.colors.hl( text ) end
 
 -- Bumped when the context object or the chain contract changes in a way that would break
 -- an extension built against the previous number.
-M.API_VERSION = 2
+M.API_VERSION = 3
 
 -- What an extension is allowed to see of RollFor. Built per extension by main.lua and
 -- handed to both phases. This is the surface we commit to across versions, so it stays

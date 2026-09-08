@@ -17,7 +17,7 @@ local alid = m.AwardedLoot.awarded_loot_item_data
 -- Assigned by create_components(); declared here so describe_lockout_loss(), which runs
 -- above it, can see them.
 ---@type table<string, function[]>
-local extension_hooks = { group_changed = {}, lockout_reset = {}, lockout_loss = {} }
+local extension_hooks = { group_changed = {}, lockout_reset = {}, lockout_loss = {}, dropped_item = {} }
 ---@type fun( extension_name: string ): ExtensionContext
 local make_extension_context
 
@@ -257,7 +257,7 @@ local function create_components()
 
   -- Fan-outs that used to be a hardcoded list of callees in this file. Rebuilt on every
   -- create_components() so a reload doesn't accumulate the previous run's subscribers.
-  extension_hooks = { group_changed = {}, lockout_reset = {}, lockout_loss = {} }
+  extension_hooks = { group_changed = {}, lockout_reset = {}, lockout_loss = {}, dropped_item = {} }
 
   ---@type MinimapContribution[]
   M.minimap_contributions = {}
@@ -307,6 +307,14 @@ local function create_components()
       on_group_changed = function( callback ) table.insert( extension_hooks.group_changed, callback ) end,
       on_lockout_reset = function( callback ) table.insert( extension_hooks.lockout_reset, callback ) end,
       lockout_loss = function( describe ) table.insert( extension_hooks.lockout_loss, describe ) end,
+      -- Anchored by name into core's loot pipeline. What an extension's handler needs to
+      -- say is *when* it runs relative to core's -- "after auto_loot", not "sometime
+      -- during LootOpened" -- because the positions are what decide who gets the item.
+      on_loot = function( event, handler ) M.loot_facade_listener.on_loot( event, handler ) end,
+      -- Answer false to keep a dropped item out of the announcement. For items an
+      -- extension hands out itself: core has no way to ask whether an item is somebody
+      -- else's, so whoever knows says so here.
+      on_dropped_item = function( predicate ) table.insert( extension_hooks.dropped_item, predicate ) end,
       -- on_ready only: everything core builds exists by then. Named lookup rather than
       -- handing over M itself, so what extensions depend on stays visible.
       get = function( name ) return M[ name ] end
@@ -467,7 +475,8 @@ local function create_components()
     M.winner_tracker,
     M.player_info,
     M.auto_loot,
-    M.config
+    M.config,
+    extension_hooks.dropped_item
   )
 
   -- TODO: Add type.
