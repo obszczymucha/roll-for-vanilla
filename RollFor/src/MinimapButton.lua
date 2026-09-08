@@ -43,6 +43,10 @@ end
 ---@param event_bus EventBus
 ---@param contributions MinimapContribution[]
 function M.new( api, db, config, event_bus, contributions )
+  -- Read once, here rather than at file scope: the version comes from the TOC through the
+  -- client, and this module is loaded before there is a client to ask.
+  local version = m.get_addon_version()
+
   local icon_color
 
   local function persist_angle( angle )
@@ -62,7 +66,9 @@ function M.new( api, db, config, event_bus, contributions )
   end
 
   local function build_tooltip( tooltip )
-    tooltip:SetText( blue( "RollFor" ) )
+    -- Which RollFor this is, on the line naming it. Worth a hover rather than a slash command:
+    -- the first thing anyone is asked when they report something is what version they are on.
+    tooltip:SetText( string.format( "%s %s", blue( "RollFor" ), grey( string.format( "v%s", version.str ) ) ) )
 
     -- Off by default: a dozen command lines is something you read once and then scroll past
     -- every time you hover the button. What is left is the hint and whatever the

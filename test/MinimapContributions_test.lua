@@ -192,6 +192,23 @@ function ColourSeveritySpec:should_reflect_a_contribution_registered_after_login
   eq( rf.minimap_button.get_icon_color(), rf.minimap_button.ColorType.Red )
 end
 
+TitleSpec = {}
+
+-- Which RollFor this is, on the line naming it. The first thing anyone is asked when they
+-- report something is what version they are on, and a hover is cheaper to ask for than a
+-- slash command.
+function TitleSpec:should_name_the_addon_and_its_version()
+  local lines = render_tooltip( {} )
+
+  eq( lines[ 1 ], string.format( "%s %s",
+    RollFor.colors.blue( "RollFor" ), RollFor.colors.grey( "v2.6" ) ) )
+end
+
+-- The commands setting hides commands, and the title is not one of them.
+function TitleSpec:should_keep_the_version_with_the_commands_hidden()
+  eq( render_tooltip( {}, false )[ 1 ], render_tooltip( {}, true )[ 1 ] )
+end
+
 CommandVisibilitySpec = {}
 
 -- Off by default, and this is what off looks like: no core commands, no contributed ones,
