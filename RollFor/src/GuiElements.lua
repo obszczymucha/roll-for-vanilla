@@ -756,7 +756,16 @@ function M.dropdown( parent )
   dropdown_count = dropdown_count + 1
   local name = "RollForOptionsDropdown" .. dropdown_count
 
-  local dropdown_width = 90
+  -- Where the selected value sits inside the box. x is the template's own; y is the template's
+  -- own minus the two pixels it lifts the text by (see below).
+  local dropdown_text_x = -43
+  local dropdown_text_y = 0
+
+  -- Wide enough for the longest option any caller has, which is not the same number for all of
+  -- them -- a queue named "Hearts" needs a good deal less room than "Uncommon" -- so callers that
+  -- want it narrower say so with SetDropdownWidth.
+  local default_dropdown_width = 90
+  local dropdown_width = default_dropdown_width
   -- UIDropDownMenuTemplate bakes in ~16px of empty space to the left of its visible box.
   local value_gap = 4 - 16
 
@@ -764,14 +773,32 @@ function M.dropdown( parent )
   local dropdown = m.api.CreateFrame( "Frame", name, container, "UIDropDownMenuTemplate" )
   m.api.UIDropDownMenu_SetWidth( dropdown, dropdown_width )
 
-  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormal" )
-  label:SetTextColor( 1, 1, 1 )
-  label:SetPoint( "LEFT", container, "LEFT", 0, 0 )
+  -- UIDropDownMenuTemplate anchors its selected-value text RIGHT to $parentRight at (-43, 2) --
+  -- lifted two pixels above where the box's artwork wants it. Re-anchored to the same point with
+  -- the lift taken out; nothing else about it changes.
+  --
+  -- Safe to do once here: UIDropDownMenu_SetWidth only ever sets this FontString's width, never
+  -- its anchor, so a later SetDropdownWidth cannot undo it.
+  local text = dropdown.Text or m.api[ name .. "Text" ]
+  local right = dropdown.Right or m.api[ name .. "Right" ]
 
-  -- Three pixels below the label's centre line. UIDropDownMenuTemplate's visible box sits
-  -- high in its frame, the same way the slider's knob does, so centre-to-centre leaves the
-  -- box reading as though it floats above the option it belongs to.
-  dropdown:SetPoint( "LEFT", label, "RIGHT", value_gap, -3 )
+  if text and right then
+    text:ClearAllPoints()
+    text:SetPoint( "RIGHT", right, "RIGHT", dropdown_text_x, dropdown_text_y )
+  end
+
+  -- The template's box sits low inside its own frame, so a label centred against it reads as
+  -- sitting below the text in the box. Lifting the label alone is not enough on its own: the
+  -- dropdown is anchored to the label (it needs the label's width to know where to start), so it
+  -- would rise with it. The same lift comes back off the dropdown's own anchor, leaving the box
+  -- exactly where it was.
+  local label_lift = 3
+
+  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormalSmall" )
+  label:SetTextColor( 1, 1, 1 )
+  label:SetPoint( "LEFT", container, "LEFT", 0, label_lift )
+
+  dropdown:SetPoint( "LEFT", label, "RIGHT", value_gap, -label_lift )
 
   container:SetHeight( dropdown:GetHeight() )
 
@@ -803,9 +830,22 @@ function M.dropdown( parent )
 
   m.api.UIDropDownMenu_Initialize( dropdown, initialize )
 
+  -- The container is what the popup measures, so it has to be recomputed whenever either the
+  -- label or the box changes width.
+  local function resize()
+    container:SetWidth( label:GetWidth() + value_gap + dropdown_width + 40 )
+  end
+
   container.SetText = function( _, text )
     label:SetText( text )
-    container:SetWidth( label:GetWidth() + value_gap + dropdown_width + 40 )
+    resize()
+  end
+
+  ---@param width number? -- nil restores the default
+  container.SetDropdownWidth = function( _, width )
+    dropdown_width = width or default_dropdown_width
+    m.api.UIDropDownMenu_SetWidth( dropdown, dropdown_width )
+    resize()
   end
 
   container.SetOptions = function( _, opts )
@@ -983,6 +1023,9 @@ function M.tree_node( parent )
   local label_hover_text_color
   local label_hover_background_color
 
+  -- Set per row via SetLabelTooltip below. Same nil-means-nothing rule as the colors.
+  local label_tooltip
+
   local label_highlight = container:CreateTexture( nil, "BACKGROUND" )
   label_highlight:SetTexture( "Interface\\Buttons\\WHITE8x8" )
   label_highlight:Hide()
@@ -1086,6 +1129,16 @@ function M.tree_node( parent )
     checkbox:SetChecked( checked and true or false )
   end
 
+  -- Why this row is the way it is, when that is decided outside the tree -- a quality row the
+  -- loot threshold has made inert, say. Title first, body after.
+  --
+  -- Plain text, unrelated to the item tooltip item_link_with_icon puts up from a hyperlink: label
+  -- rows have no item to ask the client about, which is the whole reason they're label rows.
+  ---@param lines string[]?
+  container.SetLabelTooltip = function( _, lines )
+    label_tooltip = lines
+  end
+
   -- Per-row label styling: base text color (required) and hover text/background color
   -- (optional -- nil means no hover effect), all { r, g, b }. Only meaningful for label rows
   -- (dungeon/boss), not item rows.
@@ -1116,6 +1169,10 @@ function M.tree_node( parent )
   -- item: { link, texture, count, quantity, hover_background_color } -- hover_background_color
   -- ({r,g,b}) comes from AutoLootTree, the rest is consumed by item_link_with_icon.SetItem.
   container.SetItem = function( _, item, tooltip_link )
+    -- Rows are recycled between refreshes, so an item row has to drop whatever a label row left
+    -- behind: it renders through item_link_widget, which brings its own tooltip.
+    label_tooltip = nil
+
     if item.hover_background_color then
       local c = item.hover_background_color
       item_highlight:SetVertexColor( c[ 1 ], c[ 2 ], c[ 3 ], c[ 4 ] )
@@ -1144,14 +1201,26 @@ function M.tree_node( parent )
     if container.on_click then container.on_click() end
   end )
 
-  label_button:SetScript( "OnEnter", function()
+  label_button:SetScript( "OnEnter", function( self )
     if label_hover_background_color then label_highlight:Show() end
     if label_hover_text_color then label:SetTextColor( unpack( label_hover_text_color ) ) end
+    if not label_tooltip then return end
+
+    m.api.GameTooltip:SetOwner( self, "ANCHOR_RIGHT" )
+    m.api.GameTooltip:SetText( label_tooltip[ 1 ] )
+
+    -- Wrapped: these are sentences, not the short labels the rest of the window is made of.
+    for i = 2, getn( label_tooltip ) do
+      m.api.GameTooltip:AddLine( label_tooltip[ i ], 1, 1, 1, true )
+    end
+
+    m.api.GameTooltip:Show()
   end )
 
   label_button:SetScript( "OnLeave", function()
     if label_hover_background_color then label_highlight:Hide() end
     if label_hover_text_color then label:SetTextColor( unpack( label_color ) ) end
+    if label_tooltip then m.api.GameTooltip:Hide() end
   end )
 
   checkbox:SetScript( "OnClick", function()
