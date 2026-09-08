@@ -331,6 +331,11 @@ local function create_components()
 
   M.raw_awarded_loot = m.AwardedLoot.new( db( "awarded_loot" ), M.chat )
 
+  -- Collecting loot handlers, but not subscribing yet: extensions declare theirs during
+  -- Extensions.enable() below, which runs before the loot facade exists. start() resolves
+  -- the order once and subscribes, the same way the chain is built after its links arrive.
+  M.loot_facade_listener = m.LootFacadeListener.new()
+
   -- Extensions declare themselves here: chain links, config settings, lifecycle hooks.
   -- First, so a source extension can contribute the backbone before core decides whether
   -- to supply its own; before anything is built, so their links are in the chain when it
@@ -559,16 +564,20 @@ local function create_components()
   -- TODO: Add type.
   M.roll_result_announcer = m.RollResultAnnouncer.new( M.chat, M.roll_controller, M.config )
 
-  M.loot_facade_listener = m.LootFacadeListener.new(
-    M.loot_facade,
-    M.auto_loot,
-    M.dropped_loot,
-    M.dropped_loot_announce,
-    M.master_loot,
-    M.auto_group_loot,
-    M.roll_controller,
-    M.player_info
-  )
+  -- Registered here rather than above, because every one of these is a method on a
+  -- component that did not exist yet when the registry was made. Extensions anchored to
+  -- these names long before now; Ordering does not care who arrived first.
+  M.loot_facade_listener.register_core( {
+    auto_loot = M.auto_loot,
+    dropped_loot = M.dropped_loot,
+    dropped_loot_announce = M.dropped_loot_announce,
+    master_loot = M.master_loot,
+    auto_group_loot = M.auto_group_loot,
+    roll_controller = M.roll_controller,
+    player_info = M.player_info
+  } )
+
+  M.loot_facade_listener.start( M.loot_facade )
 
   M.roll_simulator = m.RollSimulator.new( M )
 

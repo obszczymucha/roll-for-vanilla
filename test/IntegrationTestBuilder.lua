@@ -375,16 +375,19 @@ function M.new_roll_for()
     )
 
     local auto_group_loot = require( "mocks/AutoGroupLoot" ).new()
-    local loot_facade_listener = require( "src/LootFacadeListener" ).new(
-      loot_facade,
-      auto_loot,
-      dropped_loot,
-      dropped_loot_announce,
-      master_loot,
-      auto_group_loot,
-      roll_controller,
-      player_info
-    )
+    local loot_facade_listener = require( "src/LootFacadeListener" ).new()
+
+    loot_facade_listener.register_core( {
+      auto_loot = auto_loot,
+      dropped_loot = dropped_loot,
+      dropped_loot_announce = dropped_loot_announce,
+      master_loot = master_loot,
+      auto_group_loot = auto_group_loot,
+      roll_controller = roll_controller,
+      player_info = player_info
+    } )
+
+    loot_facade_listener.start( loot_facade )
     deps[ "LootFacadeListener" ] = loot_facade_listener
 
     require( "src/DebugBuffer" ).disable_all()
