@@ -400,7 +400,8 @@ resulting order and the failure when an anchor is renamed away.
 | Soft-res with no source installed | Supported. Core falls back to `SoftRes.null()`, prints one line at login, and every non-soft-res feature works |
 | Loot pipeline hooks | `ctx.on_loot( event, { name, after, before, callback } )`. Chain's *ordering* half is reused -- extracted into `Ordering` -- but not its composition: the pipeline is an ordered list of callbacks, not nested decorators. One vocabulary, one set of ordering bugs, one error message users have already seen from the soft-res chain |
 | Withholding a dropped item | `ctx.on_dropped_item( fn )`; answering `false` keeps the item out of the announcement. Core cannot ask "is this item somebody else's to hand out?" -- only whoever hands it out can. Every predicate is asked, so none is skipped by registration order |
-| API version | 3. v2 added `api`, `softres_source`, `softres_tap` and `minimap`; v3 adds `on_loot` and `on_dropped_item` |
+| Extension `/rf` subcommands | `ctx.on_rf_command( name, fn )`. Core matches the first word, its own subcommands win, and a name that is core's, taken, or not a single word is refused out loud rather than shadowed. Everything after the name is handed over unparsed -- what a subcommand's arguments mean is the extension's business |
+| API version | 3. v2 added `api`, `softres_source`, `softres_tap` and `minimap`; v3 adds `on_loot`, `on_dropped_item` and `on_rf_command` |
 | Resistance bonus rolls | Deleted outright, not extracted. `src/resistances/`, `SoftResBonusRollDecorator`, the `BonusRoll` roll type and `RollingPlayer.bonus_rolls` are gone; core now contributes no link to the soft-res chain at all |
 
 ## 7. Known risks

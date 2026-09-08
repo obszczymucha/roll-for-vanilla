@@ -17,7 +17,16 @@ local alid = m.AwardedLoot.awarded_loot_item_data
 -- Assigned by create_components(); declared here so describe_lockout_loss(), which runs
 -- above it, can see them.
 ---@type table<string, function[]>
-local extension_hooks = { group_changed = {}, lockout_reset = {}, lockout_loss = {}, dropped_item = {} }
+local extension_hooks = { group_changed = {}, lockout_reset = {}, lockout_loss = {}, dropped_item = {}, rf_commands = {} }
+
+-- The subcommands /rf answers itself. Named here so an extension asking for one is told no
+-- rather than silently losing to it -- see ctx.on_rf_command.
+local RF_COMMANDS = {
+  debug = true,
+  config = true,
+  options = true,
+  autoloot = true
+}
 ---@type fun( extension_name: string ): ExtensionContext
 local make_extension_context
 
@@ -257,7 +266,7 @@ local function create_components()
 
   -- Fan-outs that used to be a hardcoded list of callees in this file. Rebuilt on every
   -- create_components() so a reload doesn't accumulate the previous run's subscribers.
-  extension_hooks = { group_changed = {}, lockout_reset = {}, lockout_loss = {}, dropped_item = {} }
+  extension_hooks = { group_changed = {}, lockout_reset = {}, lockout_loss = {}, dropped_item = {}, rf_commands = {} }
 
   ---@type MinimapContribution[]
   M.minimap_contributions = {}
@@ -315,6 +324,33 @@ local function create_components()
       -- extension hands out itself: core has no way to ask whether an item is somebody
       -- else's, so whoever knows says so here.
       on_dropped_item = function( predicate ) table.insert( extension_hooks.dropped_item, predicate ) end,
+      -- A subcommand of core's own /rf, so an extension's window opens the way every other
+      -- RollFor window does rather than from a slash command of its own that users have to
+      -- learn separately. The name is the first word after /rf; everything after it is handed
+      -- over unparsed, because what a subcommand's arguments mean is the extension's business.
+      on_rf_command = function( name, callback )
+        if type( name ) ~= "string" or string.find( name, "%s" ) or name == "" then
+          m.err( string.format( "%s cannot register '%s' as a /rf command: it must be a single word.",
+            hl( extension_name ), tostring( name ) ) )
+          return
+        end
+
+        -- Core's own subcommands win, and are refused rather than shadowed: an extension that
+        -- quietly took over /rf config would be a bug nobody could see.
+        if RF_COMMANDS[ name ] then
+          m.err( string.format( "%s cannot register '%s' as a /rf command: it is one of RollFor's own.",
+            hl( extension_name ), hl( name ) ) )
+          return
+        end
+
+        if extension_hooks.rf_commands[ name ] then
+          m.err( string.format( "%s cannot register '%s' as a /rf command: it is already taken.",
+            hl( extension_name ), hl( name ) ) )
+          return
+        end
+
+        extension_hooks.rf_commands[ name ] = callback
+      end,
       -- on_ready only: everything core builds exists by then. Named lookup rather than
       -- handing over M itself, so what extensions depend on stays visible.
       get = function( name ) return M[ name ] end
@@ -755,6 +791,16 @@ local function on_roll_command( roll_slash_command )
 
     if string.find( args, "^autoloot" ) then
       M.autoloot_frame.toggle()
+      return
+    end
+
+    -- Extensions' own subcommands, matched after core's so an extension can never take one
+    -- of core's over, and only on the first word -- the rest is theirs to parse.
+    local subcommand, subcommand_args = string.match( args, "^(%S+)%s*(.*)$" )
+    local extension_command = subcommand and extension_hooks.rf_commands[ subcommand ]
+
+    if extension_command then
+      extension_command( subcommand_args )
       return
     end
 
