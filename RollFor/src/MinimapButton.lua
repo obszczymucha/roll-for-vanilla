@@ -113,8 +113,12 @@ function M.new( api, db, config, event_bus, contributions )
       if status and status.lines then
         tooltip:AddLine( " " )
 
+        -- White explicitly. AddLine without a colour is the client's normal font colour, which
+        -- is yellow -- and worse, `|r` in the line resets back to *that*, so a line with any
+        -- colouring in it comes out half yellow. Every contribution's status lines are written
+        -- as white text with coloured pieces, which is what this makes them.
         for _, line in ipairs( status.lines ) do
-          tooltip:AddLine( line )
+          tooltip:AddLine( line, 1, 1, 1 )
         end
       end
     end
