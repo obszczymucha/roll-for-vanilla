@@ -86,7 +86,13 @@ local function default_popup( value_overrides, ... )
   local v = default_setting_values()
   for key, value in pairs( value_overrides or {} ) do v[ key ] = value end
 
-  local settings = {}
+  -- Which RollFor this is, above everything it configures. First line on every general page,
+  -- so every expectation here starts with it.
+  local settings = { {
+    type = "paragraph",
+    value = string.format( "%s %s", RollFor.colors.blue( "RollFor" ), RollFor.colors.grey( "v2.6" ) )
+  } }
+
   for _, line in ipairs( { ... } ) do table.insert( settings, line ) end
 
   table.insert( settings, editbox( "MS roll threshold", v.ms_roll_threshold, 0 ) )
@@ -99,7 +105,12 @@ local function default_popup( value_overrides, ... )
   local content = {}
 
   for i, line in ipairs( settings ) do
-    line.padding = i == 1 and 0 or type_paddings[ line.type ]
+    local previous = settings[ i - 1 ]
+
+    line.padding = i == 1 and 0
+        or previous and previous.type == "paragraph" and after_paragraph_padding
+        or type_paddings[ line.type ]
+
     table.insert( content, line )
   end
 
@@ -201,6 +212,24 @@ function OptionsFrameSpec:should_display_the_minimap_tooltip_commands_checkbox_d
 
   eq( found ~= nil, true )
   eq( found and found.value, false )
+end
+
+-- Which RollFor this is, above everything it configures. Same line the minimap tooltip shows:
+-- it is what anyone is asked first when they report something, and it should not take a slash
+-- command to find.
+function OptionsFrameSpec:should_name_the_addon_and_its_version_first()
+  -- Given
+  local options = new_options()
+
+  -- When
+  options.show()
+
+  -- Then
+  local first = options.content()[ 1 ]
+
+  eq( first.type, "paragraph" )
+  eq( first.value, string.format( "%s %s",
+    RollFor.colors.blue( "RollFor" ), RollFor.colors.grey( "v2.6" ) ) )
 end
 
 function OptionsFrameSpec:should_not_display_a_boolean_setting_the_config_does_not_define()
@@ -363,6 +392,22 @@ function ExtensionPageSpec:should_show_only_an_enabled_checkbox()
   options.show()
 
   options.should_display( page_of( { checkbox( "Enabled", true ) } ) )
+end
+
+-- The version line belongs to the general page. An extension's page is the extension's, and
+-- core's version is not what it is about.
+function ExtensionPageSpec:should_not_put_cores_version_on_an_extensions_page()
+  register_nether_vortex()
+
+  local options = new_extension_page( "nether_vortex" )
+  options.show()
+
+  for _, line in ipairs( options.content() ) do
+    -- A checkbox's `value` is its state, so only the lines that carry text are worth reading.
+    if type( line.value ) == "string" then
+      eq( string.find( line.value, "RollFor", 1, true ), nil )
+    end
+  end
 end
 
 function ExtensionPageSpec:should_reflect_a_disabled_extension()

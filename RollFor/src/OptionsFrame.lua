@@ -205,6 +205,20 @@ function M.new( popup_builder, content_transformer, config, parent, section, ext
 
   ---@param settings OptionsSetting[]
   local function general_settings( settings )
+    -- Which RollFor this is, above everything it configures. Same line the minimap tooltip
+    -- shows, for the same reason: it is what anyone is asked first when they report
+    -- something, and it should not take a slash command to find.
+    --
+    -- Read here rather than at file scope: the version comes from the TOC through the
+    -- client, and this module is loaded before there is a client to ask.
+    table.insert( settings, {
+      -- A paragraph rather than a header: header colours its whole label blue, and the version
+      -- after the name wants to sit back from it. paragraph passes its value through as given.
+      type = "paragraph",
+      value = string.format( "%s %s", m.colors.blue( "RollFor" ),
+        m.colors.grey( string.format( "v%s", m.get_addon_version().str ) ) )
+    } )
+
     add_toggle( settings, "auto_loot" )
     add_toggle( settings, "auto_loot_announce" )
     add_toggle( settings, "auto_loot_messages" )
