@@ -36,6 +36,14 @@ function M.new( loot_facade )
     return result
   end
 
+  -- A corpse: what these specs loot is loot that dropped. Kept beside get_source_guid because it
+  -- answers the same question about one slot rather than the window (see LootFacade).
+  ---@param slot number
+  ---@return string?
+  local function get_slot_source( slot )
+    return "Creature-0-4321-1234-0-19044-000012C1B7"
+  end
+
   local function get_source_guid()
     return M.source_guid or "PrincessKenny"
   end
@@ -105,6 +113,7 @@ function M.new( loot_facade )
     ---@diagnostic disable-next-line: assign-type-mismatch
     get_items = get_items,
     get_items_by_slot = get_items_by_slot,
+    get_slot_source = get_slot_source,
     get_source_guid = get_source_guid,
     get_slot = get_slot,
     count = count,

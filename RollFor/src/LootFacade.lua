@@ -10,6 +10,7 @@ M.interface = {
   subscribe = "function",
   get_item_count = "function",
   get_source_guid = "function",
+  get_slot_source = "function",
   get_link = "function",
   get_info = "function",
   is_item = "function",
@@ -27,6 +28,7 @@ M.interface = {
 ---@field subscribe fun( event_name: LootEventName, callback: fun( arg: any? ) )
 ---@field get_item_count fun(): number
 ---@field get_source_guid fun(): string
+---@field get_slot_source fun( slot: number ): string? -- the GUID of what this slot came out of
 ---@field get_link fun( slot: number ): ItemLink
 ---@field get_info fun( slot: number ): LootSlotInfo
 ---@field is_item fun( slot: number ): boolean
@@ -64,6 +66,16 @@ function M.new( event_frame, api )
   ---@return string?
   local function get_source_guid()
     return m.UnitGUID( api, "target" )
+  end
+
+  -- What the slot came out of, as a GUID. The prefix is the useful part -- Creature for a corpse,
+  -- GameObject for a chest, Item for something the player opened -- and reading it through the
+  -- facade rather than off the global is what lets a simulated loot window answer for its own
+  -- slots (see RfTestLootFacade).
+  ---@param slot number
+  ---@return string?
+  local function get_slot_source( slot )
+    return api.GetLootSourceInfo( slot )
   end
 
   ---@param slot number
@@ -109,6 +121,7 @@ function M.new( event_frame, api )
     subscribe = subscribe,
     get_item_count = get_item_count,
     get_source_guid = get_source_guid,
+    get_slot_source = get_slot_source,
     get_link = get_link,
     get_info = get_info,
     is_item = is_item,

@@ -12,6 +12,7 @@ local clear = m.clear_table
 ---@field get_items fun(): DroppedItem[]
 ---@field get_items_by_slot fun(): table<number, DroppedItem|Coin>
 ---@field get_source_guid fun(): string
+---@field get_slot_source fun( slot: number ): string? -- the GUID of what this slot came out of
 ---@field get_slot fun( item_id: number|"Coin" ): number? -- first matching slot only; use get_items_by_slot for duplicate-aware work
 ---@field is_looting fun(): boolean
 ---@field count fun( item_id: number ): number
@@ -112,6 +113,14 @@ function M.new( loot_facade, item_utils, tooltip_reader, dummy_items_fn )
   -- the slot of every item, so duplicates of the same item id remain
   -- distinguishable (each occupies its own slot).
   ---@return table<Slot, Coin|DroppedItem>
+  -- Straight through to the facade: the loot list keeps what is in the window, not where it came
+  -- from, and this is only here so its readers have one place to ask about a slot.
+  ---@param slot number
+  ---@return string?
+  local function get_slot_source( slot )
+    return lf.get_slot_source( slot )
+  end
+
   local function get_items_by_slot()
     local result = {}
 
@@ -169,13 +178,14 @@ function M.new( loot_facade, item_utils, tooltip_reader, dummy_items_fn )
       result = result + 1
     end
 
-    return 0
+    return result
   end
 
   ---@type LootList
   return {
     get_items = get_items,
     get_items_by_slot = get_items_by_slot,
+    get_slot_source = get_slot_source,
     get_source_guid = function() return source_guid end,
     get_slot = get_slot,
     is_looting = is_looting,

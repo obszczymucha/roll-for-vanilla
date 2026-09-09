@@ -36,6 +36,7 @@ function M.new()
     build = function()
       ---@type Popup
       return {
+        side_margin = 0,
         add_line = function() return {} end,
         clear = function() end,
         set_scroll_total = function() end,

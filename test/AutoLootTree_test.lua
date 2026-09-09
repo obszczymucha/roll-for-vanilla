@@ -20,6 +20,63 @@ local function branch( checked, children )
   return Tree.new_node( { checked = checked, entry = { enabled = checked }, expanded = false, name = "Node" }, children or {} )
 end
 
+AutoLootTreeGeneralSpec = {}
+
+-- The catalogue's one static category: two quality rows rather than a dungeon's bosses, and
+-- first in the window because it is the only part of the list that is not about a raid.
+local function seeded_tree()
+  local db = {}
+
+  RollFor.AutoLootDb.ensure_seeded( db )
+
+  return AutoLootTree.build( db, RollFor.AutoLootDb.non_bosses ), db
+end
+
+function AutoLootTreeGeneralSpec:should_come_first()
+  local roots = seeded_tree()
+
+  eq( roots[ 1 ].data.name, RollFor.AutoLootDb.GENERAL )
+end
+
+-- Label leaves: a checkbox and a coloured word, no icon and no item tooltip, which is what a
+-- quality row is. Uncommon before Rare, the order the qualities themselves are in.
+function AutoLootTreeGeneralSpec:should_offer_an_uncommon_and_a_rare_row()
+  local roots = seeded_tree()
+  local rows = {}
+
+  for _, row in ipairs( roots[ 1 ].children ) do
+    table.insert( rows, { name = row.data.name, quality = row.data.quality, id = row.data.id } )
+  end
+
+  eq( rows, { { name = "Uncommon", quality = 2 }, { name = "Rare", quality = 3 } } )
+end
+
+-- It is not a raid and should not read as one: the window is a wall of dungeon-blue category
+-- rows, and this is the one that is about the loot itself.
+function AutoLootTreeGeneralSpec:should_be_drawn_in_its_own_colour()
+  local roots = seeded_tree()
+
+  lu.assertNotEquals( roots[ 1 ].data.color, roots[ 2 ].data.color )
+  lu.assertNotEquals( roots[ 1 ].data.hover_text_color, roots[ 2 ].data.hover_text_color )
+end
+
+function AutoLootTreeGeneralSpec:should_start_with_both_rows_unticked()
+  local roots = seeded_tree()
+
+  eq( roots[ 1 ].data.checked, false )
+  eq( roots[ 1 ].children[ 1 ].data.checked, false )
+  eq( roots[ 1 ].children[ 2 ].data.checked, false )
+end
+
+-- Ticking a row writes through to the persisted entry, the same as every other row in this tree.
+function AutoLootTreeGeneralSpec:should_write_a_ticked_row_back_to_the_db()
+  local roots, db = seeded_tree()
+
+  AutoLootTree.set_checked( roots[ 1 ].children[ 1 ], true )
+
+  eq( db.ids[ RollFor.AutoLootDb.GENERAL ].qualities[ 2 ].enabled, true )
+end
+
 AutoLootTreeIsLeafEnabledSpec = {}
 
 function AutoLootTreeIsLeafEnabledSpec:should_be_enabled_when_dungeon_boss_and_item_are_all_checked()

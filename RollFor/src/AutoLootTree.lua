@@ -171,6 +171,20 @@ local function build_tree( ids, non_bosses )
     local dungeon_entry = ids[ dungeon_name ]
     local bosses = {}
 
+    -- A catalogue entry names either encounters or qualities, never both: General is the only one
+    -- of the second kind (see AutoLootDb). Its rows are quality leaves, which is the same thing
+    -- the round-robin catalogue's Trash category draws, so build_flat's leaves serve here too.
+    -- A catalogue entry may name the colour it is drawn in, as RRGGBB (see AutoLootDb's General
+    -- and the round-robin catalogue's categories). Everything that names none is a raid, and
+    -- raids are dungeon blue.
+    local color = dungeon_entry.color and hex_color_rgb( dungeon_entry.color, 1 ) or DUNGEON_COLOR
+    local hover_text_color = dungeon_entry.color and color or DUNGEON_HOVER_TEXT_COLOR
+
+    if dungeon_entry.qualities then
+      table.insert( dungeons, build_group( dungeon_name, dungeon_entry,
+        color, hover_text_color, build_qualities( dungeon_entry.qualities ) ) )
+    end
+
     for _, boss_name in ipairs( ordered_keys( dungeon_entry.bosses or {} ) ) do
       local boss_entry = dungeon_entry.bosses[ boss_name ]
 
@@ -184,8 +198,9 @@ local function build_tree( ids, non_bosses )
         build_items( boss_entry.items ) ) )
     end
 
-    table.insert( dungeons, build_group( dungeon_name, dungeon_entry,
-      DUNGEON_COLOR, DUNGEON_HOVER_TEXT_COLOR, bosses ) )
+    if not dungeon_entry.qualities then
+      table.insert( dungeons, build_group( dungeon_name, dungeon_entry, color, hover_text_color, bosses ) )
+    end
   end
 
   return dungeons

@@ -16,10 +16,14 @@ local getn = m.getn
 -- once per window, which is how three of them ended up with three chances to fix the
 -- same layout bug.
 --
--- Rows are laid out by chaining each line under the one before it, centered. Every row
--- widget reports the same fixed width for the reason GuiElements documents: the popup
--- sizes itself from the widest line, so self-measuring rows would let the columns
--- drift between windows.
+-- Rows are laid out by chaining each line under the one before it. Centred by default, which
+-- is right when every row widget reports the same fixed width for the reason GuiElements
+-- documents: the popup sizes itself from the widest line, so self-measuring rows would let the
+-- columns drift between windows.
+--
+-- A window whose rows measure themselves -- nothing anchored to their right edge, so their width
+-- is whatever their content came to -- wants `align = "LEFT"` instead: centring rows of differing
+-- widths fans them out around the middle of the window rather than starting them in a column.
 
 local button_defaults = {
   width = 80,
@@ -27,7 +31,10 @@ local button_defaults = {
   scale = 0.76
 }
 
-local top_padding = 16
+-- Clearance above the first line. A window with a border needs enough of it that the rows are not
+-- crowded by the frame; one built without a border (see no_border) is asking for the opposite,
+-- and says so by passing its own.
+local default_top_padding = 16
 
 -- UIPanelCloseButtonNoScripts is 32x32, which is most of a title bar, so it is scaled rather than
 -- resized -- SetWidth on a textured button stretches the artwork. The offsets are in screen
@@ -55,7 +62,9 @@ local default_border_color = { 0.65, 0.22, 0.22, 0.22 }
 
 ---@class ListPopupConfig
 ---@field name string -- the global frame name
----@field slash_command string -- without the leading slash
+---@field slash_command string? -- without the leading slash; omitted by a window that registers its
+--- own, which is what a window with rules about when it may open at all has to do -- the toggle
+--- below opens it unconditionally
 ---@field db table -- where the window position is remembered
 ---@field popup_builder PopupBuilder
 ---@field content_transformer table -- anything with transform( data ): table
@@ -63,11 +72,26 @@ local default_border_color = { 0.65, 0.22, 0.22, 0.22 }
 ---@field row_type string -- the name of the GuiElements line type its rows use
 ---@field row_callback string? -- the field a row carries that its widget calls back on
 ---@field close_button boolean? -- an X in the top right corner instead of a Close in the button row
+---@field right_click_hides boolean? -- right-clicking the window closes it, for windows with no
+--- close button of any kind. Rows that take the mouse have to hand the click on (see the widgets
+--- in RollForPendingLoot for how), or only the bare parts of the window would answer
 ---@field border_color number[]? -- { r, g, b, a }; defaults to the red every list popup shipped with
+---@field no_border boolean? -- no frame edge at all, leaving the backdrop on its own. Not the
+--- same as a transparent border_color, which the classic frame style overrides
+---@field top_padding number? -- clearance above the first line; defaults to 16
+---@field backdrop_color number[]? -- { r, g, b, a }; defaults to the frame style's own fill
 ---@field esc boolean? -- whether Escape closes it
 ---@field header_type string? -- a widget drawn like a row but outside the scroll viewport
 ---@field max_rows (fun(): number)? -- rows shown before the list scrolls; nil for no limit. A
 --- function, not a number, because it is a user setting that can change while the window is open.
+---@field align ListPopupAlignment? -- how lines sit across the window; defaults to centred
+
+---Where a line is pinned across the window. "LEFT" lines every line up on the left margin, which
+---is where centring would have put the widest of them, so the window looks the same until the
+---rows stop being equally wide.
+---@alias ListPopupAlignment
+---| "CENTER"
+---| "LEFT"
 
 M.center_point = { point = "CENTER", relative_point = "CENTER", x = 0, y = 0 }
 
@@ -76,6 +100,8 @@ M.center_point = { point = "CENTER", relative_point = "CENTER", x = 0, y = 0 }
 function M.new( config )
   ---@type Popup?
   local popup
+
+  local top_padding = config.top_padding or default_top_padding
 
   -- Forward declared: create_popup wires the scroll wheel to it.
   local refresh
@@ -129,11 +155,32 @@ function M.new( config )
     end
 
     if config.esc then builder:esc() end
+    if config.no_border then builder:no_border() end
 
     local result = builder:build()
 
-    local border = config.border_color or default_border_color
-    result:border_color( border[ 1 ], border[ 2 ], border[ 3 ], border[ 4 ] )
+    local backdrop = config.backdrop_color
+
+    if backdrop then
+      result:backdrop_color( backdrop[ 1 ], backdrop[ 2 ], backdrop[ 3 ], backdrop[ 4 ] )
+    end
+
+    -- A window without an edge has no border to colour, and border_color on one is a no-op the
+    -- builder ignores anyway -- asked here rather than there so the default doesn't read as
+    -- something that applies.
+    if not config.no_border then
+      local border = config.border_color or default_border_color
+      result:border_color( border[ 1 ], border[ 2 ], border[ 3 ], border[ 4 ] )
+    end
+
+    -- The whole window is the close button. For a window with no X and no button row this is the
+    -- only way to put it away with the mouse, so it is deliberately the frame itself rather than
+    -- anything drawn: there is nothing to aim at.
+    if config.right_click_hides then
+      result:SetScript( "OnMouseUp", function( self, button )
+        if button == "RightButton" then self:Hide() end
+      end )
+    end
 
     -- The client's own frame close button, in the corner every other WoW window puts it. Created
     -- once with the popup rather than added as a line, because it isn't content: clear() throws
@@ -182,18 +229,33 @@ function M.new( config )
     end
   end
 
+  -- Left-aligned lines are pinned by their own top left corner, so each one chains off the left
+  -- edge of the line above rather than off its centre. The first is inset by half the popup's
+  -- side margin: the popup is the widest line plus that margin, so half of it is the gap centring
+  -- would have left on the left of that line, and the rows keep the margin the window was built
+  -- with.
+  ---@return string -- the corner each line pins to
+  ---@return number -- how far in from the window's left edge the first one sits
+  local function alignment()
+    if config.align ~= "LEFT" then return "TOP", 0 end
+
+    return "TOPLEFT", (popup and popup.side_margin or 0) / 2
+  end
+
   ---@param frame table
   ---@param v table
   ---@param lines table[]
   local function place( frame, v, lines )
     local count = getn( lines )
+    local point, inset = alignment()
 
     frame:ClearAllPoints()
 
     if count == 0 then
-      frame:SetPoint( "TOP", popup, "TOP", 0, -top_padding - (v.padding or 0) )
+      frame:SetPoint( point, popup, point, inset, -top_padding - (v.padding or 0) )
     else
-      frame:SetPoint( "TOP", lines[ count ].frame, "BOTTOM", 0, v.padding and -v.padding or 0 )
+      local anchor_to = point == "TOPLEFT" and "BOTTOMLEFT" or "BOTTOM"
+      frame:SetPoint( point, lines[ count ].frame, anchor_to, 0, v.padding and -v.padding or 0 )
     end
   end
 
@@ -278,7 +340,7 @@ function M.new( config )
     if popup and popup:IsVisible() then refresh() end
   end
 
-  m.slash_cmd( config.slash_command, toggle )
+  if config.slash_command then m.slash_cmd( config.slash_command, toggle ) end
 
   ---@type ListPopup
   return {

@@ -42,6 +42,17 @@ function M.new( real_facade )
     return items and #items or real_facade.get_item_count()
   end
 
+  -- A corpse, so simulated loot is loot that dropped: DroppedLoot and anything downstream of it
+  -- decide that from the source GUID's prefix, and there is no real loot window for the client to
+  -- answer about. Falls through when nothing is set up, like everything else here.
+  ---@param slot number
+  ---@return string?
+  local function get_slot_source( slot )
+    if not items then return real_facade.get_slot_source( slot ) end
+
+    return items[ slot ] and "Creature-0-4321-1234-0-19044-000012C1B7" or nil
+  end
+
   local function get_source_guid()
     return items and nil or real_facade.get_source_guid()
   end
@@ -81,6 +92,7 @@ function M.new( real_facade )
     setup = setup,
     get_item_count = get_item_count,
     get_source_guid = get_source_guid,
+    get_slot_source = get_slot_source,
     get_link = get_link,
     get_info = get_info,
     is_item = is_item,

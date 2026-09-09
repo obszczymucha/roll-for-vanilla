@@ -101,6 +101,8 @@ end
 function M.mock_wow_api()
   M.modules().lua.time = os.time
   M.modules().lua.random = math.random
+  -- A corpse, which is what every test that loots something is looting. See mock_api.
+  M.loot_source( "Creature-0-4321-1234-0-19044-000012C1B7" )
   M.modules().api.UISpecialFrames = {}
   M.modules().api.InCombatLockdown = function() return false end
   M.modules().api.IsAltKeyDown = function() return false end
@@ -374,6 +376,11 @@ function M.mock_library( name, object )
   return result
 end
 
+---@param guid string -- the source every loot slot reports; see mock_api
+function M.loot_source( guid )
+  M.mock( "GetLootSourceInfo", function() return guid, 1 end )
+end
+
 function M.mock_api()
   M.mock_slashcmdlist()
   M.mock( "IsInGuild", false )
@@ -392,6 +399,10 @@ function M.mock_api()
   M.mock( "GetLootSlotInfo" )
   M.mock( "GetLootSlotType" )
   M.mock( "GetNumLootItems" )
+  -- A corpse, which is what every test that loots something is looting. The GUID's prefix is the
+  -- whole of what DroppedLoot reads: Creature for a corpse, GameObject for a chest, Item for
+  -- something the player opened, and only the first of those is loot anybody dropped.
+  M.loot_source( "Creature-0-4321-1234-0-19044-000012C1B7" )
 
   M.zone_name()
   M.loot_threshold( 2 )
@@ -1005,6 +1016,7 @@ function M.load_real_stuff( req )
   r( "src/InstaRaidRollRollingLogic" )
   r( "src/LootList" )
   r( "src/SoftResLootListDecorator" )
+  r( "src/RfTestLootFacade" )
   r( "src/LootFrame" )
   r( "src/RollForAd" )
   r( "src/LootAutoProcess" )

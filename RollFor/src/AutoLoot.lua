@@ -60,6 +60,13 @@ function M.new( loot_list, api, autoloot_db, config, player_info, chat )
       return true
     end
 
+    -- The General category's quality rows: sweep up everything of this quality, whatever the
+    -- master loot threshold is. As deliberate a selection as ticking an item, so it answers to
+    -- the same rules -- above the threshold and bind type included.
+    if auto_loot_db.is_quality_enabled( autoloot_db, item.quality ) then
+      return true
+    end
+
     if item.bind == item_utils.BindType.BindOnPickup or item.bind == item_utils.BindType.Quest then
       return false
     end
@@ -117,7 +124,7 @@ function M.new( loot_list, api, autoloot_db, config, player_info, chat )
   end
 
   local function has_auto_loot_items()
-    return auto_loot_db.has_enabled_items( autoloot_db )
+    return auto_loot_db.has_enabled_items( autoloot_db ) or auto_loot_db.has_enabled_qualities( autoloot_db )
   end
 
   local function on_loot_opened()

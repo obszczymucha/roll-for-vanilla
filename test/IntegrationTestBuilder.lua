@@ -155,9 +155,33 @@ function M.auto_loot_list( db )
     boss_entry().enabled = enabled
   end
 
+  -- The General category, which names item qualities instead of a dungeon's bosses. Written the
+  -- same way and for the same reason as the boss entry above: the shape ticking the row in the
+  -- GUI would produce, so what these specs cover is AutoLoot honouring the selection.
+  ---@param quality number
+  ---@param enabled boolean
+  local function set_quality( quality, enabled )
+    local general = RollFor.AutoLootDb.GENERAL
+
+    db.ids = db.ids or {}
+    db.ids[ general ] = db.ids[ general ] or { enabled = true, order = 0, qualities = {} }
+    db.ids[ general ].qualities[ quality ] = { enabled = enabled, name = "Quality" }
+  end
+
+  ---@param enabled boolean
+  local function set_general_enabled( enabled )
+    local general = RollFor.AutoLootDb.GENERAL
+
+    set_quality( 2, db.ids and db.ids[ general ] and db.ids[ general ].qualities[ 2 ]
+      and db.ids[ general ].qualities[ 2 ].enabled or false )
+    db.ids[ general ].enabled = enabled
+  end
+
   return {
     enable = enable,
     disable = disable,
+    set_quality = set_quality,
+    set_general_enabled = set_general_enabled,
     set_dungeon_enabled = set_dungeon_enabled,
     set_boss_enabled = set_boss_enabled
   }
@@ -315,6 +339,17 @@ function M.new_roll_for()
 
     local loot_award_callback = require( "src/LootAwardCallback" ).new( awarded_loot, roll_controller, winner_tracker, group_roster )
     local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, loot_list, roll_controller )
+
+    -- Where main.lua registers them, and for its reason: an award by hand goes through the same
+    -- callback master loot and trading do, so everything downstream hears it.
+    u.modules().slash_cmd( "award", raw_awarded_loot.make_command( "/award", function( player_name, item_data )
+      loot_award_callback.on_loot_awarded( item_data.item_id, item_data.link, player_name )
+    end ) )
+
+    u.modules().slash_cmd( "unaward", raw_awarded_loot.make_command( "/unaward", function( player_name, item_data )
+      awarded_loot.unaward( player_name, item_data, true )
+      roll_controller.loot_unawarded( item_data.item_id, item_data.link, player_name )
+    end ) )
     deps[ "MasterLoot" ] = master_loot
 
     local strategy_factory = require( "src/RollingStrategyFactory" ).new(

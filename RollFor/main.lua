@@ -418,13 +418,13 @@ local function create_components()
   ---@type LootFacade
   M.loot_facade = m.LootFacade.new( m.EventFrame.new( m.api ), m.api )
 
-  local rf_test = false
-  local loot_facade = M.loot_facade
+  -- The loot window /rftest simulates, in front of the real one. Always built rather than hidden
+  -- behind a flag somebody has to edit and rebuild for: with nothing set up it delegates every
+  -- question to the facade it wraps, a real LOOT_OPENED throws away whatever it was holding, and
+  -- the other simulators (/rfdrop, /rfsetup, /rft) ship the same way.
+  M.rf_test_loot_facade = m.RfTestLootFacade.new( M.loot_facade )
 
-  if rf_test then
-    M.rf_test_loot_facade = m.RfTestLootFacade.new( M.loot_facade )
-    loot_facade = M.rf_test_loot_facade
-  end
+  local loot_facade = M.rf_test_loot_facade
 
   ---@type LootList
   M.raw_loot_list = m.LootList.new( loot_facade, M.item_utils, M.tooltip_reader )
@@ -603,7 +603,9 @@ local function create_components()
     player_info = M.player_info
   } )
 
-  M.loot_facade_listener.start( M.loot_facade )
+  -- The same facade everything else was built on, which is the simulator's wrapper: starting the
+  -- pipeline on the raw one instead left /rftest talking to a loot list nobody was listening to.
+  M.loot_facade_listener.start( loot_facade )
 
   M.roll_simulator = m.RollSimulator.new( M )
 
@@ -987,14 +989,83 @@ local function on_reset_command( args )
   reset_usage()
 end
 
-local function on_rftest_command()
+-- Puts back what /rftest left behind: the simulated loot window, and core's record of the loot
+-- that never dropped. Boss kills are deliberately not touched -- the simulator credits real
+-- bosses from real item ids, and rolling those back is what /rfdrop lockout is for, with the
+-- confirmation that goes with it.
+--
+-- The event is for anything keeping its own list off that record -- the pending list is one --
+-- since none of them can be reached from here.
+local function clear_simulation()
+  M.rf_test_loot_facade.setup( nil )
+  M.dropped_loot.clear()
+  M.event_bus.notify( "simulation_cleared" )
+
+  info( string.format( "Simulated loot cleared. Boss kills are untouched -- see %s.",
+    hl( "/rfdrop lockout" ) ) )
+end
+
+---@param args string
+local function on_rftest_command( args )
   if not M.player_info.is_master_looter() then
     info( "You must be the master looter to use this command." )
     return
   end
 
+  if string.find( args or "", "^%s*clear" ) then
+    clear_simulation()
+    return
+  end
+
+  -- Emptying the corpse is its own step. The loot frame is a window over what is still in there,
+  -- so looting on the way in would leave nothing to look at -- and what the raid is holding, which
+  -- is what the pending list is, only changes when a slot actually clears.
+  --
+  -- A slot number takes just that one, which is the half-emptied corpse a demo actually wants:
+  -- some of it on the pending list, the rest still in the window.
+  local looting, slot_arg = string.match( args or "", "^%s*(loot)%s*(%S*)" )
+
+  if looting then
+    -- Which slots are still in there, not how many. Looting takes an item out of the window and
+    -- leaves the rest where they were, so after the first four are gone the corpse holds slots
+    -- five to eight -- and a count would call every one of them out of range.
+    local remaining = M.loot_list.get_items_by_slot()
+    local slot = tonumber( slot_arg )
+
+    if slot_arg ~= "" and not slot then
+      info( string.format( "%s takes a loot slot, or nothing at all.", hl( "/rftest loot" ) ) )
+      return
+    end
+
+    if slot and not remaining[ slot ] then
+      local slots = {}
+      for i in pairs( remaining ) do table.insert( slots, i ) end
+      table.sort( slots )
+
+      info( getn( slots ) == 0 and "The simulated corpse is empty." or
+        string.format( "Slot %s is empty. Still in there: %s.",
+          hl( slot ), hl( table.concat( slots, ", " ) ) ) )
+
+      return
+    end
+
+    if slot then
+      M.rf_test_loot_facade.notify( "LootSlotCleared", slot )
+      return
+    end
+
+    for i in pairs( remaining ) do
+      M.rf_test_loot_facade.notify( "LootSlotCleared", i )
+    end
+
+    return
+  end
+
   M.rf_test_loot_facade.setup( get_dummy_items() )
   M.rf_test_loot_facade.notify( "LootOpened" )
+
+  info( string.format( "Simulated loot dropped. %s to empty the corpse (or %s for one slot), %s to put it all back.",
+    hl( "/rftest loot" ), hl( "/rftest loot <slot>" ), hl( "/rftest clear" ) ) )
 end
 
 local function setup_slash_commands()
@@ -1006,6 +1077,20 @@ local function setup_slash_commands()
   slash_cmd( "htr", in_group_check( show_how_to_roll ) )
   slash_cmd( "cr", is_rolling_check( M.roll_controller.cancel_rolling ) )
   slash_cmd( "fr", is_rolling_check( M.roll_controller.finish_rolling_early ) )
+  -- Registered here rather than in AwardedLoot, which owns only the store and the parsing: an
+  -- award by hand is still an award, so it goes through the same callback master loot and trading
+  -- do and everything downstream hears it (see AwardedLoot's own note).
+  slash_cmd( "award", M.raw_awarded_loot.make_command( "/award", function( player_name, item_data )
+    M.loot_award_callback.on_loot_awarded( item_data.item_id, item_data.link, player_name )
+  end ) )
+
+  -- Its own message rather than unaward_item's: "returned" is what a trade back reads like, and
+  -- this is a correction to the record made by hand. The event is the same either way.
+  slash_cmd( "unaward", M.raw_awarded_loot.make_command( "/unaward", function( player_name, item_data )
+    M.awarded_loot.unaward( player_name, item_data, true )
+    M.roll_controller.loot_unawarded( item_data.item_id, item_data.link, player_name )
+  end ) )
+
   slash_cmd( "rfreset", on_reset_command )
 
   if M.rf_test_loot_facade then
@@ -1080,6 +1165,10 @@ function M.unaward_item( player_name, item_id, item_link )
   local al_item = alid( item_id )
   M.awarded_loot.unaward( player_name, al_item )
   info( string.format( "%s returned %s.", hl( player_name ), item_link ) )
+
+  -- Said out loud for the same reason an award is: an item that is not awarded any more is owed
+  -- to the raid again, and everything that keeps a list of what is owed hears it here.
+  M.roll_controller.loot_unawarded( item_id, item_link, player_name )
 end
 
 function M.on_item_info_received( item_id )

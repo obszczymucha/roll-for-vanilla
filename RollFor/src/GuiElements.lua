@@ -54,7 +54,7 @@ local cell_icon_texture = "Interface\\AddOns\\RollFor\\assets\\icon-white2.tga"
 
 ---@class GuiElements
 ---@field item_link fun( parent: Frame ): Frame
----@field item_link_with_icon fun( parent: Frame, text: string, spacing: number? ): Frame
+---@field item_link_with_icon fun( parent: Frame, text: string, spacing: number?, count_color: ColorFn? ): Frame
 ---@field text fun( parent: Frame, text: string ): Frame
 ---@field paragraph fun( parent: Frame ): Frame
 ---@field section_header fun( parent: Frame ): Frame
@@ -99,8 +99,127 @@ function M.empty_line( parent )
   return result
 end
 
-function M.item_link_with_icon( parent, text, spacing )
+-- The tooltip, the dressing room and the chat link: the behaviour that makes an item link an item
+-- link rather than a coloured word. Shared by both link widgets below, which differ in what they
+-- draw and not in what they do -- the state they need is kept on the frame so the same handlers
+-- serve either.
+--
+-- ANCHOR_CURSOR ignores SetOwner's offsetX/offsetY -- the client repositions the tooltip to the
+-- raw cursor position every frame regardless of what's passed there. Shifting it requires
+-- fighting that same per-frame repositioning with our own OnUpdate. tooltip_position (supplied
+-- per item, see SetItem) decides how far and in which direction; this only feeds it the cursor.
+---@param container table
+local function reposition_at_cursor( container )
+  return function( tooltip )
+    local x, y = m.api.GetCursorPosition()
+    local scale = m.api.UIParent:GetEffectiveScale()
+    local anchor, px, py = container.tooltip_position( x / scale, y / scale )
+
+    -- px/py are absolute screen coordinates (GetCursorPosition's origin), so the relative-to point
+    -- has to stay UIParent's BOTTOMLEFT -- the only UIParent anchor that actually sits at (0, 0).
+    -- Only the tooltip's own corner/edge is meant to be configurable via `anchor`.
+    tooltip:ClearAllPoints()
+    tooltip:SetPoint( anchor, m.api.UIParent, "BOTTOMLEFT", px, py )
+  end
+end
+
+---@param container table
+local function bind_link_scripts( container )
+  container:SetScript( "OnEnter", function( self )
+    if not container.tooltip_link then return end
+
+    m.api.GameTooltip:SetOwner( self, "ANCHOR_CURSOR" )
+    m.api.GameTooltip:SetHyperlink( container.tooltip_link )
+    m.api.GameTooltip:Show()
+
+    if container.tooltip_position then
+      m.api.GameTooltip:SetScript( "OnUpdate", reposition_at_cursor( container ) )
+    end
+  end )
+
+  container:SetScript( "OnLeave", function()
+    if container.tooltip_position then m.api.GameTooltip:SetScript( "OnUpdate", nil ) end
+
+    m.api.GameTooltip:Hide()
+  end )
+
+  container:SetScript( "OnClick", function()
+    if not container.tooltip_link then return end
+
+    if m.is_ctrl_key_down() then
+      m.api.DressUpItemLink( container.text:GetText() )
+      return
+    end
+
+    if m.is_shift_key_down() then
+      m.link_item_in_chat( container.text:GetText() )
+      return
+    end
+
+    if container.on_click then container.on_click() end
+  end )
+end
+
+-- An item link and nothing else. Its own widget rather than the one below drawing no icon: a
+-- window either shows icons or it doesn't, and a widget told which by being handed a missing
+-- texture is a widget with a hole where the icon goes -- the stack size, drawn in that icon's
+-- corner, ends up painted over the item's name.
+--
+-- The count is not the icon's business, so it stays: it is how many of this item there are, drawn
+-- in front of the name as text.
+---@param parent table
+---@param text string?
+function M.item_link( parent, text )
   local container = M.create_text_in_container( "Button", parent, 20, nil, nil, "text" )
+
+  local count = 0
+
+  container.count = M.text( container )
+  container.text:SetTextColor( 1, 1, 1 )
+  container.text:SetText( text or "PrincessKenny" )
+  container:SetHeight( container.text:GetHeight() )
+
+  local function resize()
+    container.text:ClearAllPoints()
+
+    if count > 1 then
+      container.count:Show()
+      container.count:ClearAllPoints()
+      container.count:SetPoint( "LEFT", container, "LEFT", 0, 0 )
+      container.text:SetPoint( "LEFT", container.count, "RIGHT", 0, 0 )
+      container:SetWidth( container.count:GetWidth() + container.text:GetWidth() )
+    else
+      container.count:Hide()
+      container.text:SetPoint( "LEFT", container, "LEFT", 0, 0 )
+      container:SetWidth( container.text:GetWidth() )
+    end
+  end
+
+  container.SetItem = function( _, i, tooltip_link )
+    count = i.count or 0
+    container.tooltip_link = tooltip_link
+    container.tooltip_position = i.tooltip_position
+
+    container.text:SetText( i.link )
+    container.count:SetText( count > 1 and hl( string.format( "%sx", count ) ) or nil )
+
+    resize()
+  end
+
+  bind_link_scripts( container )
+
+  return container
+end
+
+-- The same link with the item's icon in front of it, and the stack size in the icon's corner.
+-- `count_color` is for a window whose rows already spend the highlight colour on something else:
+-- the pending list draws an orange SR indicator right next to the count, and two oranges a foot
+-- apart meaning different things is what a caller gets to opt out of. Everything that names none
+-- keeps the highlight this has always drawn.
+---@param count_color ColorFn?
+function M.item_link_with_icon( parent, text, spacing, count_color )
+  local container = M.create_text_in_container( "Button", parent, 20, nil, nil, "text" )
+  local colorize_count = count_color or hl
 
   local w = 14
   local h = 14
@@ -108,8 +227,6 @@ function M.item_link_with_icon( parent, text, spacing )
   local count = 0
   local quantity = 1
   local texture
-  local tooltip_link
-  local tooltip_position
 
   container:SetPoint( "TOP", 0, 0 )
   container.icon = M.icon( container, true, w, h )
@@ -166,71 +283,22 @@ function M.item_link_with_icon( parent, text, spacing )
     end
   end
 
-  container.SetItem = function( _, i, tt_link )
+  container.SetItem = function( _, i, tooltip_link )
     texture = i.texture
     count = i.count or 0
     quantity = i.quantity or 1
-    tooltip_link = tt_link
-    tooltip_position = i.tooltip_position
+    container.tooltip_link = tooltip_link
+    container.tooltip_position = i.tooltip_position
 
     container.text:SetText( i.link )
     container.icon:SetTexture( texture )
-    container.count:SetText( count > 1 and hl( string.format( "%sx", count ) ) or nil )
+    container.count:SetText( count > 1 and colorize_count( string.format( "%sx", count ) ) or nil )
     container.quantity:SetText( quantity > 1 and quantity or "" )
 
     resize()
   end
 
-  -- ANCHOR_CURSOR ignores SetOwner's offsetX/offsetY -- the client repositions the tooltip to the
-  -- raw cursor position every frame regardless of what's passed there. Shifting it requires
-  -- fighting that same per-frame repositioning with our own OnUpdate. tooltip_position (supplied
-  -- per item, see SetItem) decides how far and in which direction; this only feeds it the cursor.
-  local function reposition_at_cursor( tooltip )
-    local x, y = m.api.GetCursorPosition()
-    local scale = m.api.UIParent:GetEffectiveScale()
-    local anchor, px, py = tooltip_position( x / scale, y / scale )
-
-    -- px/py are absolute screen coordinates (GetCursorPosition's origin), so the relative-to point
-    -- has to stay UIParent's BOTTOMLEFT -- the only UIParent anchor that actually sits at (0, 0).
-    -- Only the tooltip's own corner/edge is meant to be configurable via `anchor`.
-    tooltip:ClearAllPoints()
-    tooltip:SetPoint( anchor, m.api.UIParent, "BOTTOMLEFT", px, py )
-  end
-
-  local function on_enter( self )
-    if not tooltip_link then return end
-
-    m.api.GameTooltip:SetOwner( self, "ANCHOR_CURSOR" )
-    m.api.GameTooltip:SetHyperlink( tooltip_link )
-    m.api.GameTooltip:Show()
-
-    if tooltip_position then
-      m.api.GameTooltip:SetScript( "OnUpdate", reposition_at_cursor )
-    end
-  end
-
-  local function on_leave()
-    if tooltip_position then m.api.GameTooltip:SetScript( "OnUpdate", nil ) end
-    m.api.GameTooltip:Hide()
-  end
-
-  container:SetScript( "OnEnter", on_enter )
-  container:SetScript( "OnLeave", on_leave )
-  container:SetScript( "OnClick", function()
-    if not tooltip_link then return end
-
-    if m.is_ctrl_key_down() then
-      m.api.DressUpItemLink( container.text:GetText() )
-      return
-    end
-
-    if m.is_shift_key_down() then
-      m.link_item_in_chat( container.text:GetText() )
-      return
-    end
-
-    if container.on_click then container.on_click() end
-  end )
+  bind_link_scripts( container )
 
   return container
 end

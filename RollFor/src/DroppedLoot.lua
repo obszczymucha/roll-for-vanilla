@@ -6,6 +6,14 @@ if m.DroppedLoot then return end
 local M = {}
 local getn = m.getn
 
+-- What a loot window can be. A corpse and a chest are both loot the raid found and has to hand
+-- out -- Zul'Aman's timed chests are exactly that -- while an Item is something a player opened
+-- for themselves: a lockbox, or the disenchant window.
+local DROP_SOURCES = {
+  Creature = true,
+  GameObject = true
+}
+
 ---@class DroppedLoot
 ---@field get_dropped_item_id fun( item_name: string ): number
 ---@field get_dropped_item_name fun( item_id: number ): string
@@ -66,13 +74,30 @@ function M.new( db, loot_list, player_info, boss_killed )
     return quality >= m.api.GetLootThreshold()
   end
 
+  -- Whether this slot is loot the raid found, or something a player opened for
+  -- themselves.
+  --
+  -- A loot window is a loot window: disenchanting and opening a lockbox raise
+  -- the same events with the same slots as a corpse does, and neither dropped
+  -- for anybody. Registering them would mean trading a shard to a guildmate
+  -- counted as awarding them an item, and a boss credited with a kill for a
+  -- disenchant. The source GUID's prefix is what separates them.
+  ---@param slot number
+  local function dropped_rather_than_opened( slot )
+    local guid = loot_list.get_slot_source( slot )
+    local source = guid and string.match( guid, "^(%a+)%-" )
+
+    return source and DROP_SOURCES[ source ] and true or false
+  end
+
   -- Registers every awardable item currently in the loot. Must run before
-  -- auto-loot clears the slots, so the loot is still present when we read it.
+  -- auto-loot clears the slots, so the loot is still present when we read it --
+  -- and so is the source, which is forgotten with the slot.
   local function on_loot_opened()
     if not player_info.is_master_looter() then return end
 
-    for _, item in ipairs( loot_list.get_items() ) do
-      if is_registerable( item ) then
+    for slot, item in pairs( loot_list.get_items_by_slot() ) do
+      if dropped_rather_than_opened( slot ) and is_registerable( item ) then
         add( item.id, item.name )
         -- Told about every drop, not just the first: which of them names a boss
         -- and whether that boss is already on the list is its own business.

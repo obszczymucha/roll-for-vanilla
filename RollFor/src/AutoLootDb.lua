@@ -9,7 +9,26 @@ local M = {}
 -- doesn't hardcode name/link/icon either -- it resolves those live via GetItemInfo, which the
 -- WoW client caches locally after the first server fetch. We do the same here instead of baking
 -- in name/link/icon strings that could go stale or be wrong.
+-- Not a raid: two checkboxes that say "sweep up everything of this quality", whatever the master
+-- loot threshold happens to be. It names qualities where every other entry names bosses, which is
+-- the same shape the round-robin catalogue's Trash category uses, and the tree already draws.
+--
+-- First in the window (order 0), because it is the only part of the list that is not about a
+-- particular raid.
+local GENERAL = "General"
+
 local ids = {
+  [ GENERAL ] = {
+    order = 0,
+    -- RollFor's own highlight colour, as RRGGBB the way a category names one (see the round-robin
+    -- catalogue). Every other row at this level is dungeon blue; this one is not a raid, and the
+    -- window is easier to read when the part that is about the loot itself says so.
+    color = "ff9f69",
+    qualities = {
+      [ 2 ] = { name = "Uncommon" },
+      [ 3 ] = { name = "Rare" }
+    }
+  },
   [ "Serpentshrine Cavern" ] = {
     order = 4,
     bosses = {
@@ -1338,7 +1357,23 @@ function M.ensure_seeded( db )
   for dungeon_name, dungeon_entry in pairs( ids ) do
     local dungeon = db.ids[ dungeon_name ] or { enabled = false }
     dungeon.order = dungeon_entry.order
+    -- Overwritten from the catalogue every login, like order and the names below: what colour a
+    -- category is drawn in is a fact of the catalogue, not of anybody's selection.
+    dungeon.color = dungeon_entry.color
     dungeon.bosses = dungeon.bosses or {}
+
+    -- A catalogue entry names either encounters or qualities, never both. General is the only
+    -- one of the second kind; seeded the same way, so a row's `enabled` is its own and survives.
+    if dungeon_entry.qualities then
+      dungeon.qualities = dungeon.qualities or {}
+
+      for quality, quality_entry in pairs( dungeon_entry.qualities ) do
+        local row = dungeon.qualities[ quality ] or { enabled = false }
+        row.name = quality_entry.name
+
+        dungeon.qualities[ quality ] = row
+      end
+    end
 
     for boss_name, boss_entry in pairs( dungeon_entry.bosses or {} ) do
       local boss = dungeon.bosses[ boss_name ] or { enabled = false }
@@ -1386,6 +1421,38 @@ function M.is_enabled( db, item_id )
         end
       end
     end
+  end
+
+  return false
+end
+
+-- Whether a whole quality is being swept up, which is what the General category's rows say. The
+-- same rule as an item's: the row and the category above it both have to be ticked.
+---@param db table the persisted autoloot_db
+---@param quality number?
+---@return boolean
+function M.is_quality_enabled( db, quality )
+  if not db or not db.ids or not quality then return false end
+
+  local general = db.ids[ GENERAL ]
+  if not general or not general.enabled then return false end
+
+  local row = general.qualities and general.qualities[ quality ]
+
+  return (row and row.enabled) and true or false
+end
+
+-- Whether any quality row is ticked at all -- the General half of has_enabled_items.
+---@param db table the persisted autoloot_db
+---@return boolean
+function M.has_enabled_qualities( db )
+  if not db or not db.ids then return false end
+
+  local general = db.ids[ GENERAL ]
+  if not general or not general.enabled then return false end
+
+  for _, row in pairs( general.qualities or {} ) do
+    if row.enabled then return true end
   end
 
   return false
@@ -1658,6 +1725,7 @@ function M.on_item_info_received( item_id )
   if callback then callback() end
 end
 
+M.GENERAL = GENERAL
 M.ids = ids
 M.non_bosses = NON_BOSSES
 

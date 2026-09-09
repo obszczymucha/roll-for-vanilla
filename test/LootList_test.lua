@@ -269,4 +269,32 @@ function LootListSpec.should_populate_from_test_facade_when_loot_opens()
   eq( result.quantity, 2 )
 end
 
+LootListSizeSpec = {}
+
+-- Counted and then thrown away: size() built its total and returned a hardcoded 0, so every
+-- caller was told the loot window was empty. /rftest loot was the first thing to ask.
+function LootListSizeSpec.should_count_what_is_in_the_loot_window()
+  -- Given
+  local loot_facade = LootFacade.new()
+  loot_facade.get_item_count = mock_value( 2 )
+  loot_facade.is_coin = mock_value( false )
+  loot_facade.get_link = function( slot ) return utils.item_link( "Item", 100 + slot ) end
+  loot_facade.get_info = mock_value( { texture = "texture", name = "Item", quantity = 1, quality = 4 } )
+
+  local sut = m.LootList.new( loot_facade, m.ItemUtils, tooltip_reader )
+
+  -- When
+  LootFacade.notify( "LootOpened" )
+
+  -- Then
+  eq( sut.size(), 2 )
+end
+
+function LootListSizeSpec.should_be_empty_before_anything_is_looted()
+  local loot_facade = LootFacade.new()
+  local sut = m.LootList.new( loot_facade, m.ItemUtils, tooltip_reader )
+
+  eq( sut.size(), 0 )
+end
+
 os.exit( lu.LuaUnit.run() )

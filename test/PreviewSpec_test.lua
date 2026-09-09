@@ -901,4 +901,28 @@ function PreviewHardResWinnersSpec:should_display_award_other_button_that_shows_
   chat.console( "RollFor: Psikutas received [Hearthstone]." )
 end
 
+PreviewOutsideTheLootWindowSpec = {}
+
+-- An item can be previewed with no loot window open at all -- a pending list, /rf [item], a
+-- simulated roll -- and the quantity is part of what it is: a Nether Vortex that dropped as two
+-- is a different thing to soft-res than one that dropped as one. The window was the only place
+-- quantity was ever read from, so away from it every stack became a single.
+function PreviewOutsideTheLootWindowSpec:should_keep_the_items_own_quantity()
+  -- Given
+  local chat = mock_chat()
+  local item = i( "Nether Vortex", 30183 )
+  item.quantity = 2
+
+  local rf = new_roll_for():chat( chat ):build()
+
+  -- When
+  rf.roll_controller.preview( item, 1 )
+
+  -- Then
+  rf.rolling_popup.should_display(
+    item_link( item, 1 ),
+    buttons( "Roll", "RaidRoll", "Close" )
+  )
+end
+
 os.exit( lu.LuaUnit.run() )

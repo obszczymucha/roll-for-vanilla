@@ -14,6 +14,7 @@ local getn = m.getn
 ---@field scroll_size_total number? -- the list length both of those were measured against
 ---@field scroll_size_max_lines number? -- and the window height they were measured against
 ---@field close_button Frame? -- the corner X, when the window asked for one (see ListPopup)
+---@field side_margin number -- the horizontal margin resize() adds to the widest line
 
 ---@class PopupBuilder
 ---@field name fun( self: PopupBuilder, name: string ): PopupBuilder
@@ -176,6 +177,11 @@ local function new( frame_builder, bottom_margin, bottom_button_margin, side_mar
     ---@class Popup
     local result = build( decoratee )
     result.resize = resize
+    -- What resize() adds to the widest line to get the window's width, and therefore what is left
+    -- over on each side of a centred line. Published because a window that lines its rows up on
+    -- the left has to put them where centring would have put the widest of them, and this is the
+    -- only number that says where that is.
+    result.side_margin = m_side_margin
 
     return result
   end

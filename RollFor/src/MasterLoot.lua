@@ -94,6 +94,12 @@ function M.new( master_loot_candidates, loot_award_callback, loot_list, roll_con
     -- This isn't tested, because it's hard to reproduce. Not sure if it can happen. Let's keep it here to be safe.
     if m_confirmed.item.id ~= item_id then return end
 
+    -- And it has to be the player the award was confirmed for. This message is how an award is
+    -- reconciled when the loot frame closed before LOOT_SLOT_CLEARED could fire, which is also
+    -- the case where the assignment never went through and the item is still in the corpse: the
+    -- master looter picking it up themselves is not somebody being awarded it.
+    if m_confirmed.player.name ~= player_name then return end
+
     loot_award_callback.on_loot_awarded( item_id, item_link, player_name )
     reset_confirmation()
   end

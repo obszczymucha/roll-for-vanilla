@@ -80,6 +80,86 @@ end
 
 -- Items ticked in the auto-loot GUI are auto-looted whatever their quality or bind type -- the
 -- player asked for them by name, so none of the automatic rules get a say.
+-- The General category: two checkboxes that say "sweep up everything of this quality", whatever
+-- the master loot threshold happens to be. An uncommon at an uncommon threshold is not below it,
+-- so nothing but this tick can auto-loot it.
+function AutoLootSpec:should_autoloot_uncommon_items_when_general_uncommon_is_ticked()
+  local item = qi( "Green Sword", 123, 2, boe )
+
+  local rf = new_roll_for():config( { auto_loot = true } ):build()
+
+  u.loot_threshold( 2 )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), false )
+
+  rf.auto_loot_list.set_quality( 2, true )
+
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
+end
+
+function AutoLootSpec:should_autoloot_rare_items_when_general_rare_is_ticked()
+  local item = qi( "Blue Sword", 123, 3, boe )
+
+  local rf = new_roll_for():config( { auto_loot = true } ):build()
+
+  u.loot_threshold( 3 )
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), false )
+
+  rf.auto_loot_list.set_quality( 3, true )
+
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
+end
+
+-- One checkbox per quality, and each says only its own.
+function AutoLootSpec:should_not_autoloot_rare_items_when_only_general_uncommon_is_ticked()
+  local rare = qi( "Blue Sword", 123, 3, boe )
+
+  local rf = new_roll_for():config( { auto_loot = true } ):build()
+
+  u.loot_threshold( 3 )
+  rf.auto_loot_list.set_quality( 2, true )
+
+  lu.assertEquals( rf.auto_loot.is_auto_looted( rare ), false )
+end
+
+-- A ticked row under an unticked category is not effectively ticked, the same rule an item under
+-- a disabled boss answers to.
+function AutoLootSpec:should_not_autoloot_a_quality_whose_category_is_disabled()
+  local item = qi( "Green Sword", 123, 2, boe )
+
+  local rf = new_roll_for():config( { auto_loot = true } ):build()
+
+  u.loot_threshold( 2 )
+  rf.auto_loot_list.set_quality( 2, true )
+  rf.auto_loot_list.set_general_enabled( false )
+
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), false )
+end
+
+-- Ticking a quality is as deliberate as ticking an item, so it wins over the bind rule the same
+-- way the predefined list does: "all uncommon items" means all of them.
+function AutoLootSpec:should_autoloot_a_bop_item_of_a_ticked_quality()
+  local item = qi( "Green Sword", 123, 2, bop )
+
+  local rf = new_roll_for():config( { auto_loot = true } ):build()
+
+  u.loot_threshold( 2 )
+  rf.auto_loot_list.set_quality( 2, true )
+
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), true )
+end
+
+-- Auto-loot being off is off, whatever is ticked.
+function AutoLootSpec:should_not_autoloot_a_ticked_quality_when_auto_loot_is_off()
+  local item = qi( "Green Sword", 123, 2, boe )
+
+  local rf = new_roll_for():config( { auto_loot = false } ):build()
+
+  u.loot_threshold( 2 )
+  rf.auto_loot_list.set_quality( 2, true )
+
+  lu.assertEquals( rf.auto_loot.is_auto_looted( item ), false )
+end
+
 function AutoLootSpec:should_autoloot_items_on_the_predefined_list()
   local item = qi( "Fire for Crafting", 123, 4, bop )
 

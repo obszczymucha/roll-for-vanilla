@@ -38,6 +38,7 @@ local sid = m.SoftRes.softres_item_data
 ---@field waiting_for_rolls fun()
 ---@field award_aborted fun( item: Item )
 ---@field loot_awarded fun( item_id: number, item_link: string, player_name: string, player_class: PlayerClass? )
+---@field loot_unawarded fun( item_id: number, item_link: string, player_name: string )
 ---@field loot_closed fun()
 ---@field loot_opened fun()
 ---@field player_already_has_unique_item fun()
@@ -107,10 +108,12 @@ function M.new(
   ---| AwardAbortedEvent
   ---| AwardConfirmedEvent
   ---| CancelRollingEvent
+  ---| DisplayedItemChangedEvent
   ---| FinishRollingEarlyEvent
   ---| IgnoredRollEvent
   ---| LootAwardedEvent
   ---| LootAwardPopupClosedEvent
+  ---| LootUnawardedEvent
   ---| LootFrameClearSelectionCacheEvent
   ---| LootFrameDeselectEvent
   ---| LootFrameUpdateEvent
@@ -135,6 +138,29 @@ function M.new(
     for _, callback in ipairs( callbacks[ event.type ] or {} ) do
       callback( event )
     end
+  end
+
+  ---@class DisplayedItemChangedEvent
+  ---@field type "displayed_item_changed"
+  ---@field item Item? -- what the rolling popup is showing; nil when it is showing nothing
+
+  -- The item the rolling popup is on, and the only way it changes.
+  --
+  -- Every window that shows the same loot from another angle -- the loot frame, an extension's
+  -- pending list -- needs to know which item is on screen, and closing the popup is just this
+  -- going nil. Routed through a setter rather than assigned in the nine places that used to
+  -- assign it, so the answer cannot change without everyone being told: a subscriber that has to
+  -- watch a frame for OnHide is a subscriber watching the drawing instead of the fact.
+  ---@param item Item?
+  local function set_displayed_item( item )
+    local previous = currently_displayed_item and currently_displayed_item.id
+    currently_displayed_item = item
+
+    -- Previewing the same item twice is not a change, and a redraw per preview is what
+    -- subscribers would get if it were.
+    if (item and item.id) == previous then return end
+
+    notify_subscribers( { type = "displayed_item_changed", item = item } )
   end
 
   ---@class RgbaColor
@@ -304,7 +330,7 @@ function M.new(
     end
 
     new_roll_tracker( item )
-    currently_displayed_item = item
+    set_displayed_item( item )
 
     ---@type StartEvent
     local event = {
@@ -339,7 +365,7 @@ function M.new(
 
       if currently_displayed_item then
         rolling_popup_data[ currently_displayed_item.id ] = nil
-        currently_displayed_item = nil
+        set_displayed_item( nil )
       end
 
       rolling_popup.hide()
@@ -502,8 +528,22 @@ function M.new(
   ---@param dropped_item MasterLootDistributableItem?
   ---@param candidate_count number
   ---@param candidates ItemCandidate[]
+  -- How many the item is a stack of.
+  --
+  -- The open loot window first, since that is the copy actually in front of us; then whatever the
+  -- item itself carries. An item can be rolled with no window open at all -- a pending list, /rf
+  -- [item], a simulated roll -- and reading only the window turned every stack that arrived that
+  -- way into a single, which for something like a Nether Vortex is a different item to soft-res.
+  ---@param item Item|MasterLootDistributableItem
+  ---@param dropped_item DroppedItem?
+  ---@return number
+  local function quantity_of( item, dropped_item )
+    ---@diagnostic disable-next-line: undefined-field
+    return dropped_item and dropped_item.quantity or item.quantity or 1
+  end
+
   local function preview_non_soft_ressed_items( buttons, item, item_count, dropped_item, candidate_count, candidates )
-    local quantity = dropped_item and dropped_item.quantity or 1
+    local quantity = quantity_of( item, dropped_item )
     add_roll_button( buttons, RS.NormalRoll, item, item_count, quantity )
     add_raid_roll_button( buttons, "InstaRaidRoll", item, item_count, quantity )
 
@@ -517,7 +557,7 @@ function M.new(
       item_tooltip_link = IU.get_tooltip_link( item.link ),
       item_texture = item.texture,
       item_count = item_count,
-      item_quantity = dropped_item and dropped_item.quantity or 1,
+      item_quantity = quantity_of( item, dropped_item ),
       hard_ressed = false,
       winners = {},
       rolls = {},
@@ -537,7 +577,7 @@ function M.new(
   ---@param candidate_count number
   ---@param candidates ItemCandidate[]
   local function preview_hard_ressed_item( buttons, item, item_count, dropped_item, candidate_count, candidates )
-    local quantity = dropped_item and dropped_item.quantity or 1
+    local quantity = quantity_of( item, dropped_item )
     add_roll_button( buttons, RS.SoftResRoll, item, item_count, quantity )
 
     if candidate_count > 0 then add_award_other_button( dropped_item, buttons, candidates, {}, RS.SoftResRoll ) end
@@ -602,7 +642,7 @@ function M.new(
     if candidate_count > 0 then add_award_other_button( dropped_item, buttons, candidates, winners, RS.SoftResRoll ) end
 
     add_close_button( buttons, S.Preview )
-    local quantity = dropped_item and dropped_item.quantity or 1
+    local quantity = quantity_of( item, dropped_item )
 
     rolling_popup_data[ item.id ] = {
       item_link = item.link,
@@ -630,7 +670,7 @@ function M.new(
   ---@param candidate_count number
   ---@param candidates ItemCandidate[]
   local function preview_sr_items_not_equal_to_item_count( soft_ressers, item, item_count, dropped_item, buttons, candidate_count, candidates )
-    local quantity = dropped_item and dropped_item.quantity or 1
+    local quantity = quantity_of( item, dropped_item )
     add_roll_button( buttons, RS.SoftResRoll, item, item_count, quantity )
 
     if candidate_count > 0 then add_award_other_button( dropped_item, buttons, candidates, {}, RS.SoftResRoll ) end
@@ -701,7 +741,7 @@ function M.new(
       winners[ 1 ].award_callback = nil
     end
 
-    local quantity = dropped_item and dropped_item.quantity or 1
+    local quantity = quantity_of( item, dropped_item )
 
     add_raid_roll_again_button( buttons, item, data.item_count, quantity, strategy_type )
 
@@ -709,7 +749,7 @@ function M.new(
 
     add_close_button( buttons, S.Finish )
 
-    currently_displayed_item = item
+    set_displayed_item( item )
 
     ---@type RollingPopupRaidRollData
     rolling_popup_data[ item.id ] = {
@@ -759,7 +799,7 @@ function M.new(
       winners[ 1 ].award_callback = nil
     end
 
-    local quantity = dropped_item and dropped_item.quantity or 1
+    local quantity = quantity_of( item, dropped_item )
 
     add_raid_roll_button( buttons, "RaidRoll", item, data.item_count, quantity )
 
@@ -767,7 +807,7 @@ function M.new(
 
     add_close_button( buttons, S.Finish )
 
-    currently_displayed_item = item
+    set_displayed_item( item )
     ---@type RollingPopupRollData
     rolling_popup_data[ item.id ] = {
       item_link = item.link,
@@ -797,7 +837,7 @@ function M.new(
     local buttons = waiting and roll_in_progress_buttons( first_iteration.rolls ) or {}
     local mapped_winners = {} ---@type WinnerWithAwardCallback[]
     local dropped_item = loot_list.get_by_id( item.id )
-    local quantity = dropped_item and dropped_item.quantity or 1
+    local quantity = quantity_of( item, dropped_item )
 
     if data.status and data.status.type == "Finished" then
       local slot = loot_list.get_slot( item.id )
@@ -910,7 +950,7 @@ function M.new(
       local data = roll_trackers[ item.id ].get()
 
       if data.status and data.status.type == S.Finished then
-        currently_displayed_item = data.item
+        set_displayed_item( data.item )
         local slot = loot_list.get_slot( item.id )
         local candidates = slot and ml_candidates.get( slot ) or {}
         refresh_finish_popup_content( candidates )
@@ -927,7 +967,7 @@ function M.new(
     local hard_ressed = softres.is_item_hardressed( item.id )
     local dropped_item = loot_list.get_by_id( item.id )
     local roll_tracker = new_roll_tracker( item )
-    local quantity = dropped_item and dropped_item.quantity or 1
+    local quantity = quantity_of( item, dropped_item )
     roll_tracker.preview( item_count, quantity, candidates, soft_ressers, hard_ressed )
 
     local color = m.get_popup_border_color( item.quality )
@@ -937,7 +977,7 @@ function M.new(
     local buttons = {} ---@type RollingPopupButtonWithCallback[]
     local candidate_count = getn( candidates )
 
-    currently_displayed_item = item
+    set_displayed_item( item )
 
     if hard_ressed then
       preview_hard_ressed_item( buttons, item, item_count, dropped_item, candidate_count, candidates )
@@ -1296,6 +1336,12 @@ function M.new(
   ---@field player_name string
   ---@field player_class string?
 
+  ---@class LootUnawardedEvent
+  ---@field type "loot_unawarded"
+  ---@field item_id number
+  ---@field item_link string
+  ---@field player_name string
+
   ---@class LootFrameUpdateEvent
   ---@field type "loot_frame_update"
 
@@ -1305,6 +1351,21 @@ function M.new(
 
   ---@class NotAllItemsAwardedEvent
   ---@field type "not_all_items_awarded"
+
+  -- An award taken back: the item is owed to the raid again. Only the fact is broadcast -- no
+  -- roll tracker is touched, because unawarding does not resurrect a roll that already finished.
+  ---@param item_id ItemId
+  ---@param item_link string
+  ---@param player_name string
+  local function loot_unawarded( item_id, item_link, player_name )
+    ---@type LootUnawardedEvent
+    notify_subscribers( {
+      type = "loot_unawarded",
+      item_id = item_id,
+      item_link = item_link,
+      player_name = player_name
+    } )
+  end
 
   ---@param item_id ItemId
   ---@param item_link string
@@ -1348,7 +1409,7 @@ function M.new(
 
       if currently_displayed_item and currently_displayed_item.id == item_id then
         rolling_popup_data[ currently_displayed_item.id ] = nil
-        currently_displayed_item = nil
+        set_displayed_item( nil )
         rolling_popup.hide()
       end
 
@@ -1426,7 +1487,7 @@ function M.new(
 
       if currently_displayed_item then
         rolling_popup_data[ currently_displayed_item.id ] = nil
-        currently_displayed_item = nil
+        set_displayed_item( nil )
       end
 
       rolling_popup.hide()
@@ -1503,7 +1564,7 @@ function M.new(
     local data = roll_tracker.get()
 
     if data.status and data.status.type == S.Finished and not currently_displayed_item then
-      currently_displayed_item = data.item
+      set_displayed_item( data.item )
       local slot = loot_list.get_slot( item_id )
       refresh_finish_popup_content( slot and ml_candidates.get( slot ) or {} )
       return
@@ -1532,6 +1593,7 @@ function M.new(
     tie_start = tie_start,
     award_aborted = award_aborted,
     loot_awarded = loot_awarded,
+    loot_unawarded = loot_unawarded,
     loot_closed = loot_closed,
     loot_opened = loot_opened,
     player_already_has_unique_item = player_already_has_unique_item,

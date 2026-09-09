@@ -26,6 +26,7 @@ function M.awarded_loot_item_data( item_id, item_quantity )
 end
 
 ---@class AwardedLoot
+---@field make_command fun( slash: string, action: fun( player_name: string, item_data: AwardedLootItemData, verbose: boolean? ) ): fun( args: string )
 ---@field award fun( player_name: string, item_data: AwardedLootItemData, verbose: boolean? )
 ---@field unaward fun( player_name: string, item_data: AwardedLootItemData, verbose: boolean? )
 ---@field has_item_been_awarded fun( player_name: string, item_data: AwardedLootItemData ): boolean
@@ -131,13 +132,19 @@ function M.new( db, chat )
     end
   end
 
-  m.slash_cmd( "award", make_command( "/award", award ) )
-  m.slash_cmd( "unaward", make_command( "/unaward", unaward ) )
-
+  -- The commands themselves are registered by the composition root, not here.
+  --
+  -- Awarding an item is not just a row in this store: the pending list, the winner tracker and
+  -- the announcement all hang off the roll controller's word, and LootAwardCallback is what says
+  -- it. That sits *above* this module -- it is built with this one as an argument -- so a command
+  -- registered here could only ever reach the store and would leave everything downstream
+  -- believing nothing had happened. What belongs to this module is how the command's arguments
+  -- are read, which is what make_command is, so main.lua takes that and supplies the action.
   ---@type AwardedLoot
   return {
     award = award,
     unaward = unaward,
+    make_command = make_command,
     has_item_been_awarded = has_item_been_awarded,
     has_item_been_awarded_to_any_player = has_item_been_awarded_to_any_player,
     clear = clear
