@@ -85,11 +85,11 @@ do not reintroduce a `m.vanilla` / `m.bcc` split. See `CLAUDE.md`.
 Four addons and one core change. Nothing else is added, and nothing outside this list moves.
 
 ```
-RollFor                     core
-  └── RollForSoftRes        ## Dependencies: RollFor
-        ├── RollForSoftResIt   ## Dependencies: RollFor, RollForSoftRes
-        ├── RollForRaidRes     ## Dependencies: RollFor, RollForSoftRes
-        └── RollForSrPlus      ## Dependencies: RollFor, RollForSoftRes, RollForRaidRes
+RollFor                          core
+  └── RollForSoftRes             ## Dependencies: RollFor
+        ├── RollForSoftResIt     ## Dependencies: RollFor, RollForSoftRes
+        ├── RollForRaidRes       ## Dependencies: RollFor, RollForSoftRes
+        └── RollForSrPlusRaidres ## Dependencies: RollFor, RollForSoftRes, RollForRaidRes
 ```
 
 `RollFor` is named on the three leaves as well as implied through the library. It costs
@@ -131,7 +131,7 @@ That difference is the entire reason the two addons exist separately.
 They create no frames, claim no slash commands, touch no chain, and never call
 `SoftResSource.register`.
 
-### RollForSrPlus -- the roll bonus
+### RollForSrPlusRaidres -- the roll bonus
 
 Reads `sr_plus` off the soft-res data and adds it to a player's roll: a chain link on the
 read path, a roll modifier on the roll path, and an options page. raidres-only -- softres.it
@@ -151,7 +151,7 @@ abandoned by decision (SR-DIFF §8, item 5), so nothing is named for what it use
 
 | Thing | Rule | Values |
 |---|---|---|
-| Addon folder and global table | `RollFor<Name>` | `RollForSoftRes`, `RollForSoftResIt`, `RollForRaidRes`, `RollForSrPlus` |
+| Addon folder and global table | `RollFor<Name>` | `RollForSoftRes`, `RollForSoftResIt`, `RollForRaidRes`, `RollForSrPlusRaidres` |
 | Extension `name` (also the db scope) | snake_case of the addon | `softres`, `softres_it`, `raidres`, `sr_plus` |
 | `X-RollFor-Extension` in the TOC | the extension `name` | matches exactly |
 | Provider `id` | the provider's extension `name` | `softres_it`, `raidres` |
@@ -159,7 +159,7 @@ abandoned by decision (SR-DIFF §8, item 5), so nothing is named for what it use
 | Provider `title` | the site, shown in the dropdown | `softres.it`, `raidres.top` |
 | Db keys | `extension_<name>_<key>`, `<key>` names the thing | `extension_softres_store`, `extension_softres_name_matcher`, `extension_sr_plus_settings` |
 | Global frames | `RollFor<Name><Purpose>Frame` | `RollForSoftResImportFrame` |
-| Options popups | `RollFor<Name>OptionsPage` | `RollForSoftResOptionsPage`, `RollForSoftResItOptionsPage`, `RollForRaidResOptionsPage`, `RollForSrPlusOptionsPage` |
+| Options popups | `RollFor<Name>OptionsPage` | `RollForSoftResOptionsPage`, `RollForSoftResItOptionsPage`, `RollForRaidResOptionsPage`, `RollForSrPlusRaidresOptionsPage` |
 | `softres_*` event `source` | the provider `id` | `softres_it`, `raidres` |
 | Chain link names | unchanged -- they are public API | `matched_name`, `awarded_loot`, `present_players`, tap `unfiltered` |
 
@@ -176,7 +176,7 @@ Two deliberate consequences:
 
 The TOC dependency chain fixes it, and nothing relies on the alphabet:
 
-1. The client loads `RollFor`, then `RollForSoftRes`, then the providers and `RollForSrPlus`.
+1. The client loads `RollFor`, then `RollForSoftRes`, then the providers and `RollForSrPlusRaidres`.
 2. That is the order `Extensions.register` runs at file scope, which is registration order.
 3. Which is the order `Extensions.enable` runs every `on_enable`, and then, separately, the
    order `Extensions.ready` runs every `on_ready`.
@@ -207,7 +207,7 @@ Two consequences the build depends on:
 | **No data migration.** The library starts empty; users re-import | confirmed by the user |
 | A modifier declares `delta` **xor** `adjust`; that choice decides previewability | SR-PLUS §10.2 |
 | Modifier ordering uses the existing `Ordering.place`, not a new scheme | SR-PLUS §10.2 |
-| SR+ ships as its own addon, `RollForSrPlus` | SR-PLUS §10.5; confirmed by the user |
+| SR+ ships as its own addon, `RollForSrPlusRaidres` | SR-PLUS §10.5; confirmed by the user |
 | One agent takes Phases 0-9; nothing is blocked | confirmed by the user |
 | Commit to the current branches (core `extensions`, addons `master`); do not push | confirmed by the user |
 | PLAN.md, SR-DIFF.md and SR-PLUS.md are committed, not scratch | confirmed by the user |
@@ -379,7 +379,7 @@ a fresh install and an upgrade-over-existing both start with an empty list and n
 6. **Transformer passthrough (required).** SR+ reads `sr_plus` out of raidres data
    (SR-PLUS §7), the provider is only a decoder, and the library owns the transformer -- so
    the transformer must carry provider-supplied per-roller values through to the store, or
-   a separate `RollForSrPlus` addon can never see them.
+   a separate `RollForSrPlusRaidres` addon can never see them.
 
 **Done when:** both provider addons are three files each; both installed together produce
 one window, one `/sr`, one minimap handler; every suite green.
@@ -460,7 +460,7 @@ to before -- an empty list must be exactly today's behaviour.
 
 ### Phase 8. SR+ itself
 
-SR+ is its own addon, `RollForSrPlus` (SR-PLUS §10.5, confirmed): a chain link on the read
+SR+ is its own addon, `RollForSrPlusRaidres` (SR-PLUS §10.5, confirmed): a chain link on the read
 path and a modifier on the roll path. `## Dependencies: RollFor, RollForSoftRes,
 RollForRaidRes` -- it needs the transformer's passthrough (Phase 4) to see `sr_plus` at all,
 and raidres.top is the only site that emits it (§6 item 12).
@@ -550,7 +550,7 @@ Each of these fails **silently**. They are the reason a phase can look done and 
 - [x] No file duplicated across addons; the softres.it decoder test exists.
 - [x] Core + every extension suite green. **Not** at or above the Phase 0 test count -- see
       §6 item 5 for why the number went down and the coverage went up.
-- [x] `RollForSrPlus` exists as its own addon and can be disabled without affecting imports.
+- [x] `RollForSrPlusRaidres` exists as its own addon and can be disabled without affecting imports.
 - [x] Duplicate entries with differing values take the highest and print a warning; the
       divergent fixture fails a first-entry-wins transformer on 32232 (SR-PLUS §7.4).
 - [x] Every phase committed to its repo's current branch. Nothing pushed.
@@ -584,9 +584,9 @@ through `RollForSoftRes/src/SoftResDataTransformer.lua` either way.
 Phase 5 item 2 said one -- a decoder test. There are two: `Decoder_test` and
 `Registration_test`. After the shrink the two registrations *are* the addon, and nothing
 else asserted the three-way identity the definition of done names (provider `id` ==
-extension `name` == `X-RollFor-Extension`). `RollForSrPlus` has the same pair.
+extension `name` == `X-RollFor-Extension`). `RollForSrPlusRaidres` has the same pair.
 
-### 4. `RollForSrPlus` has no chain link
+### 4. `RollForSrPlusRaidres` has no chain link
 
 Phase 8 items 1-2 assumed SR+ would annotate a roller on the read path and therefore had to
 copy it first, because `m.clone` is shallow and an annotation would write through to the
@@ -615,7 +615,7 @@ coverage at baseline was **137**.
 | `RollForSoftRes` | -- | 155 |
 | `RollForSoftResIt` | 133 | 11 |
 | `RollForRaidRes` | 130 | 13 |
-| `RollForSrPlus` | -- | 20 |
+| `RollForSrPlusRaidres` | -- | 20 |
 | **Addon-tree total** | **263** | **199** |
 | **Unique addon-tree coverage** | **137** | **199** |
 
@@ -633,7 +633,7 @@ because a modifier's answer is per (player, item) and a link is not an item.
 
 Phase 9 item 4 put it with SR+. It is in `test/RollModifierAccumulation_test.lua` instead:
 it needs no SR+ at all, and it is core's seam that it proves. The tie case is there too, and
-again in `RollForSrPlus/test/SrPlusSpec_test.lua` against the real feature.
+again in `RollForSrPlusRaidres/test/SrPlusSpec_test.lua` against the real feature.
 
 ### 8. Fixtures
 
@@ -665,7 +665,7 @@ addon list disables the leaves directly, instead of depending on the client reso
 chain. It also matches what SR-DIFF §8 item 3 asked for and what `RollForNetherVortex` and
 `RollForBtSrLimitCheck` already declare.
 
-### 11. `RollForSrPlus` hard-depends on `RollForRaidRes`
+### 11. `RollForSrPlusRaidres` hard-depends on `RollForRaidRes`
 
 Built without it, on the reasoning that a TOC dependency states what the code needs and
 this addon calls into `RollForRaidRes` nowhere -- it reads `player.sr_plus`, which
@@ -684,9 +684,22 @@ The extension title names the site, the way the two providers' do. It is the fir
 user sees in the options tree, and which site they import from decides whether the addon
 does anything at all. Display text only -- the extension `name` stays `sr_plus`.
 
-### 13. Declared API versions
+### 13. The SR+ addon is `RollForSrPlusRaidres`
+
+Planned and built as `RollForSrPlus`; renamed on request once it gained the hard dependency
+on `RollForRaidRes` (§6 item 11). The folder, the TOC, the main file, the global table and
+the options popup all follow the §1 scheme off the new name --
+`RollForSrPlusRaidresOptionsPage` in particular, since that is a `_G` name and has to stay
+unique.
+
+The extension `name` stays **`sr_plus`**, and so does `X-RollFor-Extension`. It is the key
+core looks the extension up by and the scope its db would use; the folder is what a user
+sees. §1's "snake_case of the addon" is a naming guide, not a derivation -- `RollForRaidRes`
+is already `raidres` rather than `raid_res`.
+
+### 14. Declared API versions
 
 `Extensions.API_VERSION` is **4**. `RollForSoftRes`, `RollForSoftResIt` and
 `RollForRaidRes` declare **2** -- what they are actually written against, since none of them
-touches the new field. `RollForSrPlus` declares **4**, because `roll_modifier` is the whole
+touches the new field. `RollForSrPlusRaidres` declares **4**, because `roll_modifier` is the whole
 of what it needs.

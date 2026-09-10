@@ -244,9 +244,9 @@ $ lua SoftResRollSpec_test.lua             -> Ran 8 tests, 8 successes
 ### 6.1 The winner announcement lies after a tie re-roll -- reproduced, and fixed
 
 **Fixed by `Roll.adjustments` (§10.1).** The announcer no longer queries the store; it reads
-what the roll recorded. `RollForSrPlus` declares `rounds = { RS.SoftResRoll }`, so a tie
+what the roll recorded. `RollForSrPlusRaidres` declares `rounds = { RS.SoftResRoll }`, so a tie
 re-roll carries no adjustment and prints the bare number.
-`RollForSrPlus/test/SrPlusSpec_test.lua :: TieSpec` is the probe below, as a real test.
+`RollForSrPlusRaidres/test/SrPlusSpec_test.lua :: TieSpec` is the probe below, as a real test.
 
 
 `RollingStrategyFactory.tie_roll` rebuilds the tied players:
@@ -795,7 +795,7 @@ case anywhere, which is the property being bought.
 Two additive modifiers, any order, same total. Add a cap -- "no roll above 100" -- and order
 is load-bearing: cap-then-add is not add-then-cap. Without an explicit rule the default is
 registration order, which is addon load order, which is alphabetical:
-`RollForRoleBonus` before `RollForSrPlus` for no reason anybody chose. Hence `Ordering` in
+`RollForRoleBonus` before `RollForSrPlusRaidres` for no reason anybody chose. Hence `Ordering` in
 §10.2.
 
 ### 10.4 The source of the number: settled
@@ -826,7 +826,7 @@ Three shapes, in the terms [SR-DIFF.md](SR-DIFF.md) sets out:
 - **Provider-side field.** The transformer reads it, exactly as before. Cheapest, but ties
   the feature to whichever provider's format carries it, and duplicates into every provider
   that wants it.
-- **A chain link plus a modifier, in its own extension** -- `RollForSrPlus`, modelled on
+- **A chain link plus a modifier, in its own extension** -- `RollForSrPlusRaidres`, modelled on
   `SoftResNetherVortexDecorator` and `SoftResBonusRollDecorator`. Both are live proof that
   an extension can annotate rollers on the read path, and it is where option 3 above would
   naturally hold its data. This is the shape that generalises: SR+ becomes one modification

@@ -286,7 +286,7 @@ decoded document shape is, for everything the addon consumes, the same.
 7. **Both declare `api_version = 2`** while core is at `API_VERSION = 3`.
    *(Built: core is at 4 now -- `roll_modifier` arrived with it, SR-PLUS §10.2. All three
    soft-res addons still declare 2, which is what they are written against;
-   `RollForSrPlus` declares 4.)*
+   `RollForSrPlusRaidres` declares 4.)*
 8. **`LibDeflate` is core's**, reached through `LibStub` -- a zlib provider does not have
    to ship it.
 
