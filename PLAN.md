@@ -89,7 +89,7 @@ RollFor                     core
   └── RollForSoftRes        ## Dependencies: RollFor
         ├── RollForSoftResIt   ## Dependencies: RollFor, RollForSoftRes
         ├── RollForRaidRes     ## Dependencies: RollFor, RollForSoftRes
-        └── RollForSrPlus      ## Dependencies: RollFor, RollForSoftRes
+        └── RollForSrPlus      ## Dependencies: RollFor, RollForSoftRes, RollForRaidRes
 ```
 
 `RollFor` is named on the three leaves as well as implied through the library. It costs
@@ -155,7 +155,7 @@ abandoned by decision (SR-DIFF §8, item 5), so nothing is named for what it use
 | Extension `name` (also the db scope) | snake_case of the addon | `softres`, `softres_it`, `raidres`, `sr_plus` |
 | `X-RollFor-Extension` in the TOC | the extension `name` | matches exactly |
 | Provider `id` | the provider's extension `name` | `softres_it`, `raidres` |
-| Extension `title` | human, shown in the options tree | `SoftRes`, `SoftRes (softres.it)`, `SoftRes (raidres)`, `SR+ (raidres.top)` |
+| Extension `title` | human, shown in the options tree | `SoftRes`, `SR Provider (softres.it)`, `SR Provider (raidres.top)`, `SR+ (raidres.top)` |
 | Provider `title` | the site, shown in the dropdown | `softres.it`, `raidres.top` |
 | Db keys | `extension_<name>_<key>`, `<key>` names the thing | `extension_softres_store`, `extension_softres_name_matcher`, `extension_sr_plus_settings` |
 | Global frames | `RollFor<Name><Purpose>Frame` | `RollForSoftResImportFrame` |
@@ -362,10 +362,10 @@ a fresh install and an upgrade-over-existing both start with an empty list and n
 
 1. `RollForSoftResIt` keeps: `.toc`, `src/Decoder.lua`, `src/OptionsPage.lua`, and a
    `RollForSoftResIt.lua` that registers **twice** -- with `Extensions`
-   (`name = "softres_it"`, `title = "SoftRes (softres.it)"`, `options_page`), and from its
+   (`name = "softres_it"`, `title = "SR Provider (softres.it)"`, `options_page`), and from its
    `on_enable` with the library: `RollForSoftRes.register{ id, title, decode }`. Delete the
    other 13 `src/` files and the shared test harness.
-2. `RollForRaidRes` likewise: `name = "raidres"`, `title = "SoftRes (raidres)"`.
+2. `RollForRaidRes` likewise: `name = "raidres"`, `title = "SR Provider (raidres.top)"`.
 3. Both TOCs become `## Dependencies: RollFor, RollForSoftRes` and **keep**
    `X-RollFor-Extension`, so `/rf` still reports their versions. (Named rather than left
    transitive: see §1.)
@@ -461,8 +461,9 @@ to before -- an empty list must be exactly today's behaviour.
 ### Phase 8. SR+ itself
 
 SR+ is its own addon, `RollForSrPlus` (SR-PLUS §10.5, confirmed): a chain link on the read
-path and a modifier on the roll path. `## Dependencies: RollFor, RollForSoftRes` -- it needs
-the transformer's passthrough (Phase 4) to see `sr_plus` at all.
+path and a modifier on the roll path. `## Dependencies: RollFor, RollForSoftRes,
+RollForRaidRes` -- it needs the transformer's passthrough (Phase 4) to see `sr_plus` at all,
+and raidres.top is the only site that emits it (§6 item 12).
 
 1. Read `sr_plus` off the roller (§3, SR-PLUS §10.4).
 2. **Copy the roller before annotating** -- `m.clone` is shallow and writes through to the
@@ -664,7 +665,26 @@ addon list disables the leaves directly, instead of depending on the client reso
 chain. It also matches what SR-DIFF §8 item 3 asked for and what `RollForNetherVortex` and
 `RollForBtSrLimitCheck` already declare.
 
-### 11. Declared API versions
+### 11. `RollForSrPlus` hard-depends on `RollForRaidRes`
+
+Built without it, on the reasoning that a TOC dependency states what the code needs and
+this addon calls into `RollForRaidRes` nowhere -- it reads `player.sr_plus`, which
+`RollForSoftRes`'s transformer put on the roller. "Works only with raidres" is a fact about
+what the two sites emit, not about what the code requires, and declaring it costs the
+addon's options page and Enabled checkbox for anyone without raidres.top installed. It also
+forecloses a `RollForSoftResIt` decoder that maps softres.it's per-entry `rollBonus` down
+onto items, which would make SR+ work there with no change to SR+.
+
+Added on request anyway. The user's call: absent is preferred to installed-and-silent on a
+setup that could never feed it, and the title says the same thing (§6 item 12).
+
+### 12. `SR+ (raidres.top)`
+
+The extension title names the site, the way the two providers' do. It is the first thing a
+user sees in the options tree, and which site they import from decides whether the addon
+does anything at all. Display text only -- the extension `name` stays `sr_plus`.
+
+### 13. Declared API versions
 
 `Extensions.API_VERSION` is **4**. `RollForSoftRes`, `RollForSoftResIt` and
 `RollForRaidRes` declare **2** -- what they are actually written against, since none of them
