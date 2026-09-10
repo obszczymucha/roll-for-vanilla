@@ -20,7 +20,7 @@ Read those before starting. Do not re-derive their conclusions; they are settled
 | | What | Driver doc | Blocked on |
 |---|---|---|---|
 | **A** | Extract shared soft-res code into a `RollForSoftRes` addon; providers become decoders | SR-DIFF | nothing |
-| **B** | Bring SR+ back on a general roll-modifier seam | SR-PLUS | a product decision (§2) |
+| **B** | Bring SR+ back on a general roll-modifier seam | SR-PLUS | nothing |
 
 **They are independent.** A touches the addons repo, B touches core. Do A first: it is
 mechanical and well covered by existing tests. The only coupling is
@@ -80,7 +80,85 @@ do not reintroduce a `m.vanilla` / `m.bcc` split. See `CLAUDE.md`.
 
 ---
 
-## 1. Decisions already made -- do not relitigate
+## 1. The end state
+
+Four addons and one core change. Nothing else is added, and nothing outside this list moves.
+
+```
+RollFor                     core
+  └── RollForSoftRes        ## Dependencies: RollFor
+        ├── RollForSoftResIt   ## Dependencies: RollForSoftRes
+        ├── RollForRaidRes     ## Dependencies: RollForSoftRes
+        └── RollForSrPlus      ## Dependencies: RollForSoftRes
+```
+
+**Every one of these is a RollFor extension.** Each registers with `Extensions`, so each has
+its own options page, its own Enabled checkbox, its own db scope, and its version reported
+through `X-RollFor-Extension` -- configured and toggled exactly like `RollForNetherVortex` or
+any other. There is no second class of addon here.
+
+### RollForSoftRes -- the soft-res addon
+
+Owns everything soft-res that is not a wire format:
+
+- the store, `SoftResDataTransformer`, and the four chain decorators
+  (`matched_name`, `awarded_loot`, `present_players`, plus the `unfiltered` tap)
+- name matching (`NameAutoMatcher`, `NameManualMatcher`, `NameMatchReport`)
+- **the import window**, including the Provider dropdown (SR-DIFF §7)
+- `/sr`, `/src`, `/srs`, `/sro`
+- the minimap contribution, the simulation bridge, its own options page
+- the single registration with core's `SoftResSource`
+
+It has no idea what base64 is. It asks a provider to turn a string into a table.
+
+### RollForSoftResIt / RollForRaidRes -- data providers
+
+Four files each: `.toc`, `src/Decoder.lua`, `src/OptionsPage.lua`, and the main file. They
+register **twice**:
+
+| With | What | When |
+|---|---|---|
+| `Extensions` | `name`, `title`, `api_version`, `options_page` | file scope |
+| `RollForSoftRes` | `{ id, title, decode }` | from `on_enable` |
+
+`RollForSoftResIt.decode` is base64 → zlib → JSON. `RollForRaidRes.decode` is base64 → JSON.
+That difference is the entire reason the two addons exist separately.
+
+They create no frames, claim no slash commands, touch no chain, and never call
+`SoftResSource.register`.
+
+### RollForSrPlus -- the roll bonus
+
+Reads `sr_plus` off the soft-res data and adds it to a player's roll: a chain link on the
+read path, a roll modifier on the roll path, and an options page. raidres-only -- softres.it
+carries no equivalent (SR-PLUS §7.3).
+
+### Core
+
+One new seam, `roll_modifiers`, so an extension can affect a roll's value; plus
+`Roll.adjustments` so the announcer reports how a roll was composed instead of guessing.
+**Part A needs no core change at all** -- `SoftResSource` already exists and already accepts
+exactly one registration.
+
+### Ordering
+
+The TOC dependency chain fixes it, and nothing relies on the alphabet:
+
+1. The client loads `RollFor`, then `RollForSoftRes`, then the providers and `RollForSrPlus`.
+2. That is the order `Extensions.register` runs at file scope, which is registration order.
+3. Which is the order `Extensions.enable` runs every `on_enable`, and then, separately, the
+   order `Extensions.ready` runs every `on_ready`.
+
+Two consequences the build depends on:
+
+- **The library's `on_ready` runs before any provider's.** The window is built there, so a
+  provider must hand over its decoder in `on_enable` -- `on_ready` is too late.
+- **`on_enable` does not run for a disabled extension.** That is precisely what keeps a
+  disabled provider out of the dropdown, with no extra bookkeeping.
+
+---
+
+## 2. Decisions already made -- do not relitigate
 
 | Decision | Where it is argued |
 |---|---|
@@ -89,7 +167,7 @@ do not reintroduce a `m.vanilla` / `m.bcc` split. See `CLAUDE.md`.
 | The window has a **Provider dropdown**; the user selects, then imports | SR-DIFF §7.1 |
 | Zero providers → message + import disabled; do **not** wipe saved data | SR-DIFF §7.1, §7.3 |
 | A provider is `{ id, title, decode }` and owns no data | SR-DIFF §6, §7.2 |
-| The **library** is the RollFor extension; providers are not | SR-DIFF §6 Option A, §7.2 |
+| Library **and** providers are all RollFor extensions, each with its own page and Enabled checkbox | SR-DIFF §6 Option A, §7.2; confirmed by the user |
 | No format sniffing -- selection is explicit | SR-DIFF §9 |
 | SR+ returns as a **roll modifier**, not as fields on `Roll` | SR-PLUS §10.1, §10.2 |
 | SR+'s number comes from raidres' per-item `sr_plus`; the field is real | SR-PLUS §7 |
@@ -104,7 +182,7 @@ do not reintroduce a `m.vanilla` / `m.bcc` split. See `CLAUDE.md`.
 
 ---
 
-## 2. The SR+ data model -- specified
+## 3. The SR+ data model -- specified
 
 Earlier revisions of this plan got this wrong twice: the first said `sr_plus` had no source
 at all, the second required per-roll bonus lists. Both are superseded. What follows is
@@ -156,6 +234,9 @@ New addon at `~/.projects/lua/wow-2.5.x-addons.git/master/RollForSoftRes`.
    `RollForSoftResIt` on lines 1-2 of each file.
 2. Write `RollForSoftRes.toc`: `## Interface: 20506`, `## Dependencies: RollFor`,
    `## X-RollFor-Extension: softres`, and the same file order the two existing TOCs use.
+   The dependency chain -- `RollFor` → `RollForSoftRes` → providers -- is what fixes load
+   order, and therefore extension registration order, and therefore the order `on_enable`
+   and `on_ready` run in. The library is always first.
 3. Write `RollForSoftRes.lua` from `RollForSoftResIt.lua`, **dropping** the migration block
    (`MIGRATION`, `deep_copy`, `is_empty`, `migrate_from_core`) and the identity strings.
    Per Phase 3 there is no migration of any kind. It registers **one** RollFor
@@ -248,16 +329,22 @@ a fresh install and an upgrade-over-existing both start with an empty list and n
 
 ### Phase 4. Shrink the providers
 
-1. `RollForSoftResIt` keeps: `.toc`, `src/Decoder.lua`, and a `RollForSoftResIt.lua` that
-   registers `{ id = "softres_it", title = "softres.it", decode = ... }`. Delete the other
-   14 `src/` files and the shared test harness.
-2. `RollForRaidRes` likewise: `{ id = "raidres", title = "raidres" }`.
-3. Both TOCs become `## Dependencies: RollFor, RollForSoftRes`. Remove
-   `X-RollFor-Extension` -- they are no longer extensions.
-4. They no longer register with `Extensions`, no longer create frames, no longer claim
-   slash commands, no longer subscribe to `minimap_icon_right_click`. `RollForSoftRes` owns
-   all of that, which is what lets both providers be installed at once.
-5. **Transformer passthrough (required).** SR+ reads `sr_plus` out of raidres data
+1. `RollForSoftResIt` keeps: `.toc`, `src/Decoder.lua`, `src/OptionsPage.lua`, and a
+   `RollForSoftResIt.lua` that registers **twice** -- with `Extensions`
+   (`name = "softres_it"`, `title = "SoftRes (softres.it)"`, `options_page`), and from its
+   `on_enable` with the library: `RollForSoftRes.register{ id, title, decode }`. Delete the
+   other 13 `src/` files and the shared test harness.
+2. `RollForRaidRes` likewise: `name = "raidres"`, `title = "SoftRes (raidres)"`.
+3. Both TOCs become `## Dependencies: RollForSoftRes` -- which pulls in `RollFor`
+   transitively -- and **keep** `X-RollFor-Extension`, so `/rf` still reports their versions.
+4. What they stop doing: creating frames, claiming slash commands, subscribing to
+   `minimap_icon_right_click`, adding chain links, and registering with `SoftResSource`.
+   `RollForSoftRes` owns all of that, which is what lets both be installed at once.
+5. **Register the decoder from `on_enable`, not at file scope and not from `on_ready`.**
+   The TOC chain puts the library first, so its `on_ready` -- where the window is built --
+   runs *before* any provider's `on_ready`. `on_enable` is early enough, and it does not run
+   for a disabled extension, which is what keeps a disabled provider out of the dropdown.
+6. **Transformer passthrough (required).** SR+ reads `sr_plus` out of raidres data
    (SR-PLUS §7), the provider is only a decoder, and the library owns the transformer -- so
    the transformer must carry provider-supplied per-roller values through to the store, or
    a separate `RollForSrPlus` addon can never see them.
@@ -345,12 +432,12 @@ SR+ is its own addon, `RollForSrPlus` (SR-PLUS §10.5, confirmed): a chain link 
 path and a modifier on the roll path. `## Dependencies: RollFor, RollForSoftRes` -- it needs
 the transformer's passthrough (Phase 4) to see `sr_plus` at all.
 
-1. Read `sr_plus` off the roller (§2, SR-PLUS §10.4).
+1. Read `sr_plus` off the roller (§3, SR-PLUS §10.4).
 2. **Copy the roller before annotating** -- `m.clone` is shallow and writes through to the
    store (SR-PLUS §6.3). `SoftResBonusRollDecorator` is the deleted precedent; its comment
    names the failure mode.
 3. Transformer takes `math.max` across a player's duplicate entries for an item, replacing
-   first-entry-wins (SR-PLUS §6.2, reproduced), and warns when they disagree (§2).
+   first-entry-wins (SR-PLUS §6.2, reproduced), and warns when they disagree (§3).
 4. Register one modifier: `name = "sr_plus"`, `rounds = { RS.SoftResRoll }`, `delta`.
 5. Restore both display sites via the Phase 6 preview path.
 
@@ -378,7 +465,7 @@ the transformer's passthrough (Phase 4) to see `sr_plus` at all.
 
 ---
 
-## 3. Traps
+## 4. Traps
 
 Each of these fails **silently**. They are the reason a phase can look done and not be.
 
@@ -401,12 +488,15 @@ Each of these fails **silently**. They are the reason a phase can look done and 
 
 ---
 
-## 4. Definition of done
+## 5. Definition of done
 
 - [ ] `RollForSoftRes` owns the store, window, name matching, slash commands, minimap
       contribution and options page; is the only registrant with core's `SoftResSource`.
-- [ ] `RollForSoftResIt` and `RollForRaidRes` are three files each and register only a
-      decoder.
+- [ ] `RollForSoftResIt` and `RollForRaidRes` are four files each, are still RollFor
+      extensions with their own options page and Enabled checkbox, and contribute only a
+      decoder to the library.
+- [ ] Disabling a provider removes it from the dropdown after the reload; disabling the last
+      one leaves the window in its no-providers state.
 - [ ] Both installed together: one import window, one `/sr`, one minimap handler, a
       dropdown listing both.
 - [ ] No providers installed: the message shows and import is impossible; saved data intact.

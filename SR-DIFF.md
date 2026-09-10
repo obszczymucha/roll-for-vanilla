@@ -324,11 +324,13 @@ Providers become ~60-line addons: a TOC, a `decode` function, four strings.
   single registrant with core's `SoftResSource`, and the user picks a *decoder* per import
   from the window's Provider dropdown (§7). Today's alphabetical accident stops existing.
 - `−` A third addon in the install instructions, plus `## Dependencies: RollFor, RollForSoftRes`.
-- `−` The library must be the RollFor extension, because it owns the store, the window, the
-  slash commands, the minimap contribution and the options page -- all of which need a
-  `ctx`. Providers are plain addons that register with it, not extensions. That costs a
-  clean break with existing saved data (§8.5) and means a provider has no options page of
-  its own.
+- `+` **Everything stays an extension.** The library is one, and so is each provider, so
+  every piece is configured, enabled and disabled the same way as `RollForNetherVortex` or
+  any other -- one options page each, one Enabled checkbox each, versions reported through
+  `X-RollFor-Extension` as usual.
+- `−` The library owns the store, the window, the slash commands, the minimap contribution
+  and its own options page, so its `ctx.db` scope is new. That costs a clean break with
+  existing saved data (§8.5).
 
 ### Option B -- shared code moves back into core `RollFor`
 
@@ -388,9 +390,19 @@ provider.** This settles the arbitration question in §6 and closes the sniffing
 
 - **Two providers coexist instead of one shutting the other out.** Both formats become
   usable from one install, chosen at import time.
-- **The provider owns no data.** It is a decoder. The store holds *the imported list*,
-  whoever decoded it, which is why the store is scoped to the library rather than per
-  provider -- and why the spec in §6 lost `summary`, `migrations` and `ctx`.
+- **The provider owns no soft-res data.** It is a decoder. The store holds *the imported
+  list*, whoever decoded it, so the store is scoped to the library, not per provider. A
+  provider is still a RollFor extension in its own right -- it just registers two things:
+  itself with `Extensions`, and its decoder with `RollForSoftRes`.
+- **Load order comes from the TOC, not from the alphabet.** `RollForSoftRes` declares
+  `## Dependencies: RollFor`; each provider declares `## Dependencies: RollForSoftRes`. The
+  client loads the chain in that order, so `Extensions.register` is called in that order,
+  and that is the order `on_enable` and `on_ready` run in. The library is always first.
+- **A provider registers its decoder from `on_enable`, not at file scope.** Two reasons: the
+  library's own `on_ready` runs *before* any provider's, so a decoder registered in
+  `on_ready` would arrive after the window was built; and `on_enable` does not run for a
+  **disabled** extension, which is exactly what keeps a disabled provider out of the
+  dropdown.
 - **The selection is state and must persist.** The store already writes `data` and
   `import_timestamp`; it gains the provider id. Login re-imports the saved string
   (`import_encoded( data )` on `player_login`), and it has to know which decoder to use.
@@ -412,13 +424,12 @@ no-providers state must disable without clearing, so the two are not the same lo
 
 ### 7.4 Loose ends this creates
 
-- **Provider versions.** `Extensions.version` finds an extension's version by matching
-  `X-RollFor-Extension` in installed TOCs against the extension name. Providers are no
-  longer extensions, so their versions stop being reported in `/rf`'s version output. If
-  that matters, the library reads their TOCs itself and lists them on its options page.
-- **Disabling one provider.** There is no per-provider Enabled checkbox any more, because
-  there is no per-provider extension. Uninstalling is the off switch; the dropdown is the
-  chooser.
+- **Disabling a provider needs a UI reload**, the same as every other extension --
+  `Extensions.set_enabled` already raises `config_change_requires_ui_reload`. Turning one off
+  removes it from the dropdown after the reload.
+- **A provider's options page** has little to say beyond its Enabled checkbox: what site it
+  reads, and its own version. That is still worth having, because it is where the checkbox
+  lives.
 - **`source` in the `softres_*` events.** Nothing reads it (§9), so it becomes the selected
   provider's id -- the honest value, and the only one that stays meaningful now that one
   addon can import from either site.
@@ -465,8 +476,9 @@ no-providers state must disable without clearing, so the two are not the same lo
   of asking?~~ **Closed by §7**: selection is explicit. Sniffing would also have had to
   guess the zlib layer *before* parsing, and would have cost raidres its documented
   "cannot read a softres.it string" behaviour.
-- Should the library report provider versions on its options page, now that providers are
-  no longer extensions and `Extensions.version` cannot see them (§7.4)?
+- ~~Should the library report provider versions, now that providers are no longer
+  extensions?~~ **Moot** -- providers stay extensions, so `X-RollFor-Extension` and
+  `Extensions.version` work unchanged.
 - ~~Does anything consume the `softres_imported` / `softres_cleared` / `softres_checked`
   `source` field?~~ **No** -- checked core and all four sibling extensions; the field is
   written and never read. It is free to become the provider id, the library name, or to be
