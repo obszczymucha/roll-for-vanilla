@@ -376,10 +376,10 @@ a fresh install and an upgrade-over-existing both start with an empty list and n
    The TOC chain puts the library first, so its `on_ready` -- where the window is built --
    runs *before* any provider's `on_ready`. `on_enable` is early enough, and it does not run
    for a disabled extension, which is what keeps a disabled provider out of the dropdown.
-6. **Transformer passthrough (required).** SR+ reads `sr_plus` out of raidres data
-   (SR-PLUS §7), the provider is only a decoder, and the library owns the transformer -- so
-   the transformer must carry provider-supplied per-roller values through to the store, or
-   a separate `RollForSrPlusRaidres` addon can never see them.
+6. ~~**Transformer passthrough (required).**~~ **Dropped -- see §6 item 4.** The premise is
+   sound (a provider is only a decoder, and the library owns the transformer) but the
+   conclusion is not: the transformer does not have to carry the field, because
+   `softres_imported` carries the whole decoded document and SR+ reads it there.
 
 **Done when:** both provider addons are three files each; both installed together produce
 one window, one `/sr`, one minimap handler; every suite green.
@@ -465,12 +465,13 @@ path and a modifier on the roll path. `## Dependencies: RollFor, RollForSoftRes,
 RollForRaidRes` -- it needs the transformer's passthrough (Phase 4) to see `sr_plus` at all,
 and raidres.top is the only site that emits it (§6 item 12).
 
-1. Read `sr_plus` off the roller (§3, SR-PLUS §10.4).
-2. **Copy the roller before annotating** -- `m.clone` is shallow and writes through to the
-   store (SR-PLUS §6.3). `SoftResBonusRollDecorator` is the deleted precedent; its comment
-   names the failure mode.
-3. Transformer takes `math.max` across a player's duplicate entries for an item, replacing
-   first-entry-wins (SR-PLUS §6.2, reproduced), and warns when they disagree (§3).
+1. ~~Read `sr_plus` off the roller~~ -- read it off the imported document, which
+   `softres_imported` carries. Nothing touches the roller (§6 item 4).
+2. ~~**Copy the roller before annotating**~~ -- moot. Nothing is annotated, so there is
+   nothing to copy and `m.clone`'s shallowness (SR-PLUS §6.3) cannot bite.
+3. ~~Transformer takes~~ **SR+ takes** `math.max` across a player's duplicate entries for an
+   item, replacing first-entry-wins (SR-PLUS §6.2, reproduced), and warns when they
+   disagree (§3). The shared transformer is untouched and knows nothing about any of it.
 4. Register one modifier: `name = "sr_plus"`, `rounds = { RS.SoftResRoll }`, `delta`.
 5. Restore both display sites via the Phase 6 preview path.
 
@@ -586,21 +587,35 @@ Phase 5 item 2 said one -- a decoder test. There are two: `Decoder_test` and
 else asserted the three-way identity the definition of done names (provider `id` ==
 extension `name` == `X-RollFor-Extension`). `RollForSrPlusRaidres` has the same pair.
 
-### 4. `RollForSrPlusRaidres` has no chain link
+### 4. SR+ lives entirely in `RollForSrPlusRaidres`
 
 Phase 8 items 1-2 assumed SR+ would annotate a roller on the read path and therefore had to
-copy it first, because `m.clone` is shallow and an annotation would write through to the
-store (SR-PLUS §6.3).
+copy it first (SR-PLUS §6.3). It does not annotate, so that is moot.
 
-It does not annotate. The library's transformer puts `sr_plus` on the roller at import,
-because the transformer is the only thing that ever sees a player's *duplicate* entries for
-an item and duplicate resolution is where the whole highest-wins rule lives. The roller
-tables then ride the soft-res chain unchanged into `SoftResRollingLogic`'s player list, so
-the modifier's `delta` reads `player.sr_plus` and writes nothing. There is nothing to copy
-because nothing is annotated, and Phase 8 item 2 is moot rather than skipped.
+**Built wrong first.** Following Phase 4 item 6 and SR-PLUS §10.4, the shared transformer
+read `item.sr_plus`, applied highest-wins and printed the divergence warning -- giving
+`RollForSoftRes`, which holds lists from either site, a named field only one site emits.
+The plan asserted this was "a required step"; it was not, and the addon that owns the
+feature is the one that should own the rule and its warning.
 
-The cost is one named field in the library's transformer, which SR-PLUS §10.4 argued for
-directly ("the library's transformer must carry it... that is a required step").
+Corrected. `softres_imported` now carries `document`, the decoded table, alongside `raw`.
+`RollForSrPlusRaidres` subscribes, reads `softreserves[].items[].sr_plus` itself, resolves a
+player's duplicate entries for an item, warns when they disagree, and keeps its own
+`(player, item) -> bonus` map. The modifier reads that map.
+
+What this buys beyond tidiness:
+
+- `RollForSoftRes` has no mention of `sr_plus` anywhere. Neither has core, neither has
+  either provider. One addon knows the field exists.
+- The store's rollers are never written to, so nothing is left behind to go stale when the
+  feature is switched off -- the exact failure `SoftResBonusRollDecorator`'s comment named.
+- The map is rebuilt from the login re-import as well as from a human clicking Import, so
+  SR+ saves nothing of its own.
+- The `RollForRaidRes` dependency (§6 item 11) stops being purely about data availability.
+
+The constraint that misled it is real: highest-wins needs the duplicate *entries*, which
+only exist in the document. That decides *when* the resolution happens, not *which addon*
+does it.
 
 ### 5. The test count went down, and the coverage went up
 

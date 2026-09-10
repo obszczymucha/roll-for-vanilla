@@ -383,7 +383,8 @@ raidres documents its own answer:
 > 20 + (point increase) for both items.
 
 **Decision: take the highest of a player's entries for that item and apply it to all their
-rolls on it.**
+rolls on it.** *(Built in `RollForSrPlusRaidres`, off the imported document -- not in the
+shared transformer, which knows nothing about any of this. See the correction to §10.4.)*
 
 The reasoning is that divergence is usually *stale data rather than intent*. Values become
 10 and 20 because the player reserved once when their points were 10 and again after the
@@ -812,10 +813,22 @@ replacing "first entry wins", plus a warning when they disagree.
 
 Two consequences for the surrounding work:
 
-- **The provider supplies it, so the library's transformer must carry it.** In the
-  SR-DIFF §7 design a provider is a decoder and the shared addon owns the transformer, so
-  SR+ living in its own addon (§10.5) can only see the field if the transformer passes it
-  through. That is a required step, not an optional one -- see PLAN.md Phase 4.
+- ~~**The provider supplies it, so the library's transformer must carry it.**~~ **Wrong, and
+  built wrong once before it was corrected.** The conclusion does not follow: a provider is
+  a decoder and the shared addon owns the transformer, but it does not follow that the
+  transformer has to know what `sr_plus` *is*. Putting it there gave `RollForSoftRes` --
+  which holds lists from either site -- a named field only one site emits, plus that field's
+  duplicate-resolution rule and its warning text.
+
+  What the transformer actually has to do is nothing. `softres_imported` carries the decoded
+  document, and `RollForSrPlusRaidres` reads `softreserves[].items[].sr_plus` out of it
+  itself, resolves duplicates, warns, and keeps its own `(player, item) -> bonus` map. The
+  library has never heard of a roll bonus; the provider has no opinion about what is in the
+  document it decoded; SR+ is the only thing in the chain that knows the field exists.
+
+  The constraint that misled it is real: **highest-wins needs the duplicate entries**, and
+  they only exist in the document. That is an argument about *when* the resolution happens,
+  not about *which addon* does it -- and the document is available to any subscriber.
 - **softres.it lists produce no bonus** (§7.3). SR+ is a raidres capability until somebody
   maps `rollBonus` deliberately.
 
@@ -832,13 +845,11 @@ Three shapes, in the terms [SR-DIFF.md](SR-DIFF.md) sets out:
   naturally hold its data. This is the shape that generalises: SR+ becomes one modification
   among several rather than a provider feature.
 
-  *(Built as the modifier half only, and the chain link turned out to be unnecessary. §10.4
-  already requires the library's transformer to carry `sr_plus` -- and the transformer is
-  the only thing that ever sees a player's duplicate entries for an item, which is where
-  §7.2's highest-wins rule has to live. With the number already on the roller and the roller
-  tables riding the chain into `SoftResRollingLogic`'s player list unchanged, the modifier
-  reads `player.sr_plus` and writes nothing. §6.3's copy-before-annotating trap does not
-  apply to something that annotates nothing.)*
+  *(Built as the modifier half only; the chain link is unnecessary. The addon reads the
+  decoded document off `softres_imported` and keeps its own `(player, item) -> bonus` map,
+  so nothing is annotated onto the store's rollers and §6.3's copy-before-annotating trap
+  cannot apply -- there is nothing left behind to go stale when the feature is switched
+  off. See the correction to §10.4.)*
 - **Back in core.** Only if the bonus is considered part of what a soft-res roll *is*.
 
 The blocker for the middle option used to be that **annotating is not enough**: a chain link
