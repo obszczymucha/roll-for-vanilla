@@ -56,8 +56,11 @@ end
 ---@field after string? -- anchors, in the vocabulary Chain and the loot pipeline already use
 ---@field before string?
 ---@field rounds RollingStrategyType[] -- which rounds it takes part in
----@field delta fun( player: RollingPlayer, item: Item ): number?
----@field adjust fun( player: RollingPlayer, item: Item, base: number, current: number ): number?
+-- Both optional because a spec carries exactly one of them, and registration refuses a spec
+-- that carries both or neither. The `?` on the field is what says "may be absent"; the one
+-- on the return says "may decline to adjust this player".
+---@field delta? fun( player: RollingPlayer, item: Item ): number?
+---@field adjust? fun( player: RollingPlayer, item: Item, base: number, current: number ): number?
 
 ---@type RollModifier[]
 local roll_modifiers = {}
