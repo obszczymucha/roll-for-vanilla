@@ -59,6 +59,7 @@ local sid = m.SoftRes.softres_item_data
 ---@param ml_candidates MasterLootCandidates
 ---@param softres GroupAwareSoftRes
 ---@param loot_list SoftResLootList
+---@param config Config
 ---@param rolling_popup RollingPopup
 ---@param loot_award_popup LootAwardPopup
 ---@param player_selection_frame MasterLootCandidateSelectionFrame
@@ -522,12 +523,6 @@ function M.new(
     end ) )
   end
 
-  ---@param buttons RollingPopupButtonWithCallback[]
-  ---@param item Item
-  ---@param item_count number
-  ---@param dropped_item MasterLootDistributableItem?
-  ---@param candidate_count number
-  ---@param candidates ItemCandidate[]
   -- How many the item is a stack of.
   --
   -- The open loot window first, since that is the copy actually in front of us; then whatever the
@@ -542,6 +537,12 @@ function M.new(
     return dropped_item and dropped_item.quantity or item.quantity or 1
   end
 
+  ---@param buttons RollingPopupButtonWithCallback[]
+  ---@param item Item
+  ---@param item_count number
+  ---@param dropped_item MasterLootDistributableItem?
+  ---@param candidate_count number
+  ---@param candidates ItemCandidate[]
   local function preview_non_soft_ressed_items( buttons, item, item_count, dropped_item, candidate_count, candidates )
     local quantity = quantity_of( item, dropped_item )
     add_roll_button( buttons, RS.NormalRoll, item, item_count, quantity )

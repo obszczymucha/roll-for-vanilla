@@ -101,12 +101,16 @@ end
 
 function RegistrationSpec:should_refuse_something_that_is_not_a_table()
   reset()
+  -- The wrong type is the point of the case.
+  ---@diagnostic disable-next-line: param-type-mismatch
   eq( RLU.register_delta( "sr_plus" ), false )
   eq( complained_about( "must be a table" ), true )
 end
 
 function RegistrationSpec:should_refuse_a_missing_name()
   reset()
+  -- The missing name is the point of the case.
+  ---@diagnostic disable-next-line: missing-fields
   eq( RLU.register_delta( { rounds = { RS.SoftResRoll }, apply = function() end } ), false )
   eq( complained_about( "'name' must be a non-empty string" ), true )
 end
@@ -135,6 +139,8 @@ end
 
 function RegistrationSpec:should_refuse_an_apply_that_is_not_a_function()
   reset()
+  -- The apply that is not a function is the point of the case.
+  ---@diagnostic disable-next-line: assign-type-mismatch
   eq( RLU.register_delta( { name = "sr_plus", rounds = { RS.SoftResRoll }, apply = 30 } ), false )
   eq( complained_about( "'apply' must be a function" ), true )
 end
