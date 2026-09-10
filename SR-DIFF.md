@@ -191,6 +191,27 @@ The divergence in the shared suites is mechanical: `RollForSoftResIt` → `RollF
 `test/utils.lua` (1531 lines) and `test/IntegrationTestBuilder.lua` (486) are wholesale
 copies of core's harness with `-- EXTENSION:` marked patches, duplicated a third time here.
 
+### 3.8 The import window, and what two copies of it do
+
+`SoftResGui.lua` is 373 lines and provider-coupled in exactly **two** places: the frame name
+(`create_backdrop_frame` plus the `UISpecialFrames` insert) and the corner label. The
+editbox, the Import/Clear/Close buttons, the simulation lock and the scroll handling are
+generic already.
+
+What is *not* written down anywhere is what happens when both addons are installed. Core
+refuses the second `SoftResSource.register`, but `Extensions` still runs both `on_ready`, so
+two complete GUIs get built. Two consequences, both real today:
+
+- **A minimap right-click opens two import windows.** Both addons run
+  `ctx.event_bus.subscribe( "minimap_icon_right_click", softres_gui.toggle )`, and
+  `EventBus.notify` fans out to every subscriber.
+- **The second provider's slash commands silently do not exist.** `m.slash_cmd`
+  (`RollFor/src/modules.lua:230`) refuses a duplicate with a `dbg` line and nothing else, so
+  whichever addon loads first claims `/sr`, `/src`, `/srs` and `/sro`, and the other's are
+  dead with no message anywhere the user will see.
+
+Both dissolve under §7, which gives the window a single owner.
+
 ---
 
 ## 4. Where the data shapes actually differ
@@ -286,12 +307,9 @@ entire job is:
 
 ```lua
 ---@class SoftResProvider
----@field id string             -- "softres_it" | "raidres"; db scope, event source, extension name
----@field title string          -- "SoftRes (softres.it)"
----@field website string        -- label in the import window: "softres.it"
----@field summary string        -- OptionsPage prose
+---@field id string      -- "softres_it" | "raidres"; persisted with the imported list
+---@field title string   -- what the Provider dropdown shows: "softres.it"
 ---@field decode fun( encoded: string? ): table?  -- the wire format, and nothing else
----@field migrations DbMigration[]?               -- optional, provider-owned
 ```
 
 Everything else -- store, transformer, four decorators, name matching, the import window,
@@ -316,18 +334,14 @@ Providers become ~60-line addons: a TOC, a `decode` function, four strings.
 
 - `+` One copy of 1892 lines and one copy of the ~11.7k-line test harness.
 - `+` Providers are genuinely trivial; a third site is an afternoon.
-- `+` The library can own the "only one source may be active" arbitration properly:
-  register providers with *it*, let the user pick one on the options page, and register
-  exactly one with core's `SoftResSource`. That turns today's alphabetical accident into a
-  setting.
+- `+` The library owns the "only one source may be active" question outright: it is the
+  single registrant with core's `SoftResSource`, and the user picks a *decoder* per import
+  from the window's Provider dropdown (§7). Today's alphabetical accident stops existing.
 - `−` A third addon in the install instructions, plus `## Dependencies: RollFor, RollForSoftRes`.
-- `−` The shared addon needs its own extension identity for the options page and db
-  scoping; the *provider's* data must key off the provider id, not the library's, or
-  switching providers loses lists. Practically: the library holds a store per provider id.
-- `−` The extension registry currently gives one options page per registered extension. A
-  library that owns the UI either registers itself as the extension (and the providers
-  register only with it, not with core) or the page has to host a provider picker.
-  The former is cleaner and is what the "arbitration" bullet above assumes.
+- `−` The library must be the RollFor extension, because it owns the store, the window, the
+  slash commands, the minimap contribution and the options page -- all of which need a
+  `ctx`. Providers are plain addons that register with it, not extensions. That costs a
+  one-off db migration (§8.5) and means a provider has no options page of its own.
 
 ### Option B -- shared code moves back into core `RollFor`
 
@@ -363,20 +377,89 @@ it leaves the mutual exclusivity unsolved and leaves SoftResIt without a decoder
 
 ---
 
-## 7. Concrete work items implied by Option A
+## 7. The import window (decided)
+
+**The `RollForSoftRes` addon owns the import GUI. Providers register themselves with it.
+The window carries a Provider dropdown; the user picks, and the paste is decoded with that
+provider.** This settles the arbitration question in §6 and closes the sniffing option in
+§9: selection is explicit, not inferred.
+
+### 7.1 What the window does
+
+- **Provider dropdown**, listing every registered provider by `title`. Always present, even
+  with one provider registered, so there is no special case to maintain and no layout that
+  changes shape underneath the user.
+- **No providers registered**: the window says `No SoftRes data providers registered.` and
+  **import is not possible** -- the editbox and the Import button are disabled.
+- **Import** decodes the pasted string with the selected provider's `decode` and nothing
+  else. A string from a different site fails the way it does today: `Could not load
+  soft-res data!`, with the selected provider named so the cause is obvious.
+- The rest of the window is unchanged: editbox, Clear, Close, the scroll behaviour and the
+  simulation lock all survive as-is.
+
+### 7.2 What this changes structurally
+
+- **One window, one `/sr`, one minimap subscription.** Both bugs in §3.8 stop being
+  possible, because there is no longer a second copy of anything to collide with.
+- **The provider owns no data.** It is a decoder. The store holds *the imported list*,
+  whoever decoded it, which is why the store is scoped to the library rather than per
+  provider -- and why the spec in §6 lost `summary`, `migrations` and `ctx`.
+- **The selection is state and must persist.** The store already writes `data` and
+  `import_timestamp`; it gains the provider id. Login re-imports the saved string
+  (`import_encoded( data )` on `player_login`), and it has to know which decoder to use.
+- **`SoftResSource` is untouched.** The library registers once, unconditionally. Core's
+  one-source-only rule is now trivially satisfied instead of being fought over.
+
+### 7.3 Cases the spec has to answer
+
+| Case | Behaviour |
+|---|---|
+| No providers registered | Message, input and Import disabled. Do **not** clear the saved list -- an uninstalled decoder is not a reason to destroy data. |
+| One provider | Dropdown shows it, preselected. |
+| Saved provider no longer installed | Report it by name and leave the raw string on disk untouched, so reinstalling restores the list. The list is empty for the session; it is not wiped. |
+| Provider selected, wrong string pasted | Decode fails, existing error path, name the selected provider in the message. |
+| User switches provider with a list already loaded | Selection alone changes nothing. The next Import is what re-decodes. |
+
+Note on reusing the simulation lock: it disables the editbox **and clears its text**. The
+no-providers state must disable without clearing, so the two are not the same lock.
+
+### 7.4 Loose ends this creates
+
+- **Provider versions.** `Extensions.version` finds an extension's version by matching
+  `X-RollFor-Extension` in installed TOCs against the extension name. Providers are no
+  longer extensions, so their versions stop being reported in `/rf`'s version output. If
+  that matters, the library reads their TOCs itself and lists them on its options page.
+- **Disabling one provider.** There is no per-provider Enabled checkbox any more, because
+  there is no per-provider extension. Uninstalling is the off switch; the dropdown is the
+  chooser.
+- **`source` in the `softres_*` events.** Nothing reads it (§9), so it becomes the selected
+  provider's id -- the honest value, and the only one that stays meaningful now that one
+  addon can import from either site.
+- **`import_softres_via_gui`** in the shared test harness sets the frame's editbox and
+  clicks Import. It needs to select a provider first, or default to the only one.
+
+---
+
+## 8. Concrete work items implied by Option A
 
 1. New addon `RollForSoftRes`: the 15 `src/` files minus `Decoder.lua`, namespaced once.
-2. Provider registry inside it (`RollForSoftRes.Providers.register( spec )`), plus the
-   picker on its options page when more than one is installed.
+2. Provider registry inside it (`RollForSoftRes.register( spec )`), and the Provider
+   dropdown in the import window (§7), including the empty and single-provider states.
 3. `RollForSoftResIt` / `RollForRaidRes` shrink to a TOC + `Decoder.lua` + a registration
-   call. `## Dependencies: RollFor, RollForSoftRes`.
-4. Frame names derived from provider id; keep `RollForSoftResLootFrame` as-is for the
-   softres.it provider if any user macro or `UISpecialFrames` habit depends on it.
-5. **Db keys**: the library's `ctx.db( "softres" )` resolves under *its* extension name.
-   Existing users hold data under `extension_softres_it_softres` and
-   `extension_softres_it_name_matcher`. A one-off copy (the same shape as
-   `migrate_from_core`) is needed, and `RollForSoftResIt`'s existing core→extension
-   migration has to keep working for anyone upgrading from a pre-extension RollFor.
+   call. `## Dependencies: RollFor, RollForSoftRes`. They stop being RollFor extensions.
+4. One window, one frame name -- `RollForSoftResLootFrame` is the name to keep, since it is
+   already the softres.it one and is in `UISpecialFrames` and possibly in user macros. One
+   `/sr`, one minimap subscription (§3.8).
+5. **Db keys, and the migration this design costs.** The library is the extension, so
+   `ctx.db( "softres" )` resolves to `extension_softres_softres`. Existing users hold their
+   list at `extension_softres_it_softres` and their matches at
+   `extension_softres_it_name_matcher`. `Db` migrations run *inside* a store and cannot
+   rename its key, so this needs a one-off copy of the same shape as
+   `RollForSoftResIt.migrate_from_core` -- copy, do not move, and record that it ran.
+   `RollForSoftResIt`'s existing core→extension migration must also keep working for anyone
+   upgrading from a pre-extension RollFor, which makes two hops for the oldest installs.
+   The store additionally gains the provider id alongside `data` and `import_timestamp`
+   (§7.2).
 6. Move `test/utils.lua` + `IntegrationTestBuilder.lua` + `mocks/` to the library; the
    provider addons need only a decoder test each.
 7. Add the missing softres.it `Decoder_test` while the fixtures are being moved --
@@ -388,16 +471,17 @@ it leaves the mutual exclusivity unsolved and leaves SoftResIt without a decoder
 
 ---
 
-## 8. Open questions
+## 9. Open questions
 
-- Should both providers be installable and switchable at runtime, or is "one installed at
-  a time" acceptable? Option A's value is much higher if the answer is switchable.
-- Is `metadata.origin` worth reading? It would let a single decoder identify which site
-  produced a document after decoding, which is a cheaper answer than a provider picker --
-  though it does not help with the zlib layer, which must be decided *before* parsing.
-  (A single decoder could sniff: zlib header → inflate, `{"` → parse directly. That
-  collapses both providers into one addon entirely, at the cost of the deliberate
-  "raidres cannot read softres.it strings" behaviour RaidRes documents.)
+- ~~Should both providers be installable and switchable at runtime?~~ **Decided: yes.**
+  Both install side by side and the user chooses per import from the window's Provider
+  dropdown (§7).
+- ~~Is `metadata.origin` worth reading, so a single decoder could sniff the format instead
+  of asking?~~ **Closed by §7**: selection is explicit. Sniffing would also have had to
+  guess the zlib layer *before* parsing, and would have cost raidres its documented
+  "cannot read a softres.it string" behaviour.
+- Should the library report provider versions on its options page, now that providers are
+  no longer extensions and `Extensions.version` cannot see them (§7.4)?
 - ~~Does anything consume the `softres_imported` / `softres_cleared` / `softres_checked`
   `source` field?~~ **No** -- checked core and all four sibling extensions; the field is
   written and never read. It is free to become the provider id, the library name, or to be

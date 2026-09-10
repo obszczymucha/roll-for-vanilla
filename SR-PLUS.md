@@ -668,8 +668,9 @@ on the roll path. §10.3 is the demonstration that the pair generalises past SR+
 
 1. `Roll.adjustments` + `RollAdjustment` in `Types.lua`; carry it through `make_roll`,
    `transform_to_winner` and `make_winner` (§10.1).
-2. `RollResultAnnouncer` reads the list instead of querying the store; drop its `softres`
-   argument, undoing both commits' `main.lua` and `IntegrationTestBuilder.lua` change (§3.6).
+2. `RollResultAnnouncer` reads the list off the winner instead of querying the store. Note
+   it already has no `softres` argument -- `7d169a5` removed it -- so the work here is *not
+   re-adding* one, and `main.lua` and `IntegrationTestBuilder.lua` stay untouched (§3.6).
 3. `roll_modifiers`, `apply_modifiers` and registration validation in `RollingLogicUtils`,
    ordered through `Ordering.place` (§10.2).
 4. Fold it into all three `on_roll` implementations, honouring `rounds` (§10.2).
