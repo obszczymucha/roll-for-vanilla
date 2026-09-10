@@ -22,9 +22,12 @@ Keys from _G variable are located in:
 WowApiDump_20260822.txt
 
 
-## Diagnostics: lua-language-server
-Installed at `/usr/local/bin/lua-language-server` (3.19.1). Run it on a
-workspace directory:
+## Diagnostics: ./check.sh
+`./check.sh` next to `./test.sh` runs both checks a passing suite cannot make,
+over every workspace, and exits non-zero if either finds something. Prefer it
+to running the pieces by hand.
+
+`lua-language-server` is installed at `/usr/local/bin` (3.19.1). By hand:
 
     lua-language-server --check <dir> --checklevel=Hint --logpath=<tmpdir>
 
@@ -46,14 +49,15 @@ This repo, plus the eight addons under
 core proves nothing about the addons. The `test/mocks/` directories are
 duplicated per addon, so a fix in one copy is four copies short.
 
-The glob also matches `master/RollFor`, core's synced copy. Redundant rather
-than wrong -- it is a byte copy of the `RollFor/` the first check covered --
-so the loop below prints ten lines, not nine.
+`check.sh` skips `master/RollFor`, core's synced copy: it is a byte copy of
+this repo's `RollFor/`, so checking it is checking the same files twice. It
+finds the addons tree relative to itself rather than through `$HOME`, which is
+not the same directory in every shell that runs it -- override with
+`ROLLFOR_ADDONS` if the two repos are not siblings.
 
-    for d in "$PWD" $HOME/.projects/lua/wow-2.5.x-addons.git/master/RollFor*; do
-      lua-language-server --check "$d" --checklevel=Hint --logpath=$(mktemp -d) 2>&1 |
-        tr '\r' '\n' | grep -viE '^[[:space:]]*$|^(Initializing|>|=)'
-    done
+Two traps if you loop by hand instead: `lua-language-server` and `lua` both
+read stdin, so a `while read` loop feeding them needs `</dev/null` or it stops
+after one workspace; and a bare glob picks up the synced copy.
 
 ### When to run it
 Alongside `./test.sh`, never instead of it -- they catch disjoint things.
@@ -66,14 +70,21 @@ Specifically, after:
   function silently transfers its `---@param`/`---@return` to it. That has
   happened three times here (`RollController`, `LootList`, and a test stub).
 
-### What it does not catch
-- **A test that never runs.** luaunit's `-m should` filter skips any case not
-  named `should_*`, and nothing subtracts it from the count. Compare declared
-  `function XSpec:` count per file against luaunit's reported "Ran N tests" --
-  that is what found a dead auto-loot test that had rotted three ways.
+### The second check: cases that never run
+luaunit's `-m should` filter skips any case not named `should_*`, and nothing
+subtracts it from the count -- a suite can report "6 tests" for years while a
+seventh rots. `check.sh` compares the cases each file declares (less `setUp`
+and `tearDown`) against luaunit's "Ran N tests" and names the ones left out.
+That is what found a dead auto-loot test that had rotted three ways: a builder
+method that no longer existed, inverted expectations, and a setter that never
+worked.
+
+The Spec pattern has to allow digits. `Base64Spec` is a real one.
+
+### What neither check catches
 - **Duplicate spec-table names across files.** Harmless at run time, since
-  `test.sh` runs each file as its own process, but the checker only sees it
-  within a workspace.
+  `test.sh` runs each file as its own process, but worth fixing: two files
+  claiming one global is the only clue they cover different ground.
 - **Anything visual.** Frame layout, dropdowns and options pages need a human
   in the client.
 
