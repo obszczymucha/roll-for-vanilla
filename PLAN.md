@@ -156,7 +156,7 @@ abandoned by decision (SR-DIFF §8, item 5), so nothing is named for what it use
 | `X-RollFor-Extension` in the TOC | the extension `name` | matches exactly |
 | Provider `id` | the provider's extension `name` | `softres_it`, `raidres` |
 | Extension `title` | human, shown in the options tree | `SoftRes`, `SoftRes (softres.it)`, `SoftRes (raidres)`, `SR+` |
-| Provider `title` | the site, shown in the dropdown | `softres.it`, `raidres` |
+| Provider `title` | the site, shown in the dropdown | `softres.it`, `raidres.top` |
 | Db keys | `extension_<name>_<key>`, `<key>` names the thing | `extension_softres_store`, `extension_softres_name_matcher`, `extension_sr_plus_settings` |
 | Global frames | `RollFor<Name><Purpose>Frame` | `RollForSoftResImportFrame` |
 | Options popups | `RollFor<Name>OptionsPage` | `RollForSoftResOptionsPage`, `RollForSoftResItOptionsPage`, `RollForRaidResOptionsPage`, `RollForSrPlusOptionsPage` |
