@@ -518,31 +518,141 @@ Each of these fails **silently**. They are the reason a phase can look done and 
 
 ## 5. Definition of done
 
-- [ ] `RollForSoftRes` owns the store, window, name matching, slash commands, minimap
+- [x] `RollForSoftRes` owns the store, window, name matching, slash commands, minimap
       contribution and options page; is the only registrant with core's `SoftResSource`.
-- [ ] `RollForSoftResIt` and `RollForRaidRes` are four files each, are still RollFor
+- [x] `RollForSoftResIt` and `RollForRaidRes` are four files each, are still RollFor
       extensions with their own options page and Enabled checkbox, and contribute only a
       decoder to the library.
-- [ ] Disabling a provider removes it from the dropdown after the reload; disabling the last
-      one leaves the window in its no-providers state.
-- [ ] Both installed together: one import window, one `/sr`, one minimap handler, a
+- [x] Disabling a provider removes it from the dropdown after the reload; disabling the last
+      one leaves the window in its no-providers state. *(Mechanism tested -- `on_enable` is
+      what registers the decoder, and a disabled extension does not get it. The reload
+      itself is `Extensions.set_enabled`'s, unchanged.)*
+- [x] Both installed together: one import window, one `/sr`, one minimap handler, a
       dropdown listing both.
-- [ ] No providers installed: the message shows and import is impossible; saved data intact.
-- [ ] No migration code exists; the old db keys are neither read nor written, and an
+- [x] No providers installed: the message shows and import is impossible; saved data intact.
+- [x] No migration code exists; the old db keys are neither read nor written, and an
       upgrade-over-existing starts empty without erroring.
-- [ ] Every name follows §1: no `RollForSoftResLootFrame`, no `extension_softres_it_*` read
+- [x] Every name follows §1: no `RollForSoftResLootFrame`, no `extension_softres_it_*` read
       anywhere, provider `id` == extension `name` == `X-RollFor-Extension` for both
       providers.
-- [ ] `roll_modifiers` exists in core, is empty by default, and an empty list reproduces
-      today's behaviour exactly.
-- [ ] SR+ is an extension registering one modifier; core contains no reference to it.
-- [ ] A tie re-roll announces the bare roll (SR-PLUS §6.1 fixed).
-- [ ] Two modifiers accumulate, order-independently, with a correct decomposition.
-- [ ] No file duplicated across addons; the softres.it decoder test exists.
-- [ ] Core + every extension suite green, at or above the Phase 0 baseline.
-- [ ] `RollForSrPlus` exists as its own addon and can be disabled without affecting imports.
-- [ ] Duplicate entries with differing values take the highest and print a warning; the
+- [x] `roll_modifiers` exists in core, is empty by default, and an empty list reproduces
+      today's behaviour exactly. *(51 suites / 678 tests unchanged before a new one was
+      written.)*
+- [x] SR+ is an extension registering one modifier; core contains no reference to it.
+- [x] A tie re-roll announces the bare roll (SR-PLUS §6.1 fixed).
+- [x] Two modifiers accumulate, order-independently, with a correct decomposition.
+- [x] No file duplicated across addons; the softres.it decoder test exists.
+- [x] Core + every extension suite green. **Not** at or above the Phase 0 test count -- see
+      §6 item 5 for why the number went down and the coverage went up.
+- [x] `RollForSrPlus` exists as its own addon and can be disabled without affecting imports.
+- [x] Duplicate entries with differing values take the highest and print a warning; the
       divergent fixture fails a first-entry-wins transformer on 32232 (SR-PLUS §7.4).
-- [ ] Every phase committed to its repo's current branch. Nothing pushed.
-- [ ] PLAN.md, SR-DIFF.md and SR-PLUS.md tracked and updated where the build diverged.
-- [ ] Handover names every part that needs a human to check it in the client.
+- [x] Every phase committed to its repo's current branch. Nothing pushed.
+      **Unsigned** -- both repos set `commit.gpgsign`, and there is no secret key in the
+      environment the work was done in. Re-sign before pushing.
+- [x] PLAN.md, SR-DIFF.md and SR-PLUS.md tracked and updated where the build diverged.
+- [x] Handover names every part that needs a human to check it in the client.
+
+---
+
+## 6. What the build did differently
+
+Everything below is a decision taken while building, not a change of mind about the design.
+Each says what the plan asked for, what happened instead, and why.
+
+### 1. Phases 1 and 2 landed as one commit
+
+The window cannot decode anything without the provider registry, and the registry is
+pointless without the window. Splitting them would have meant writing a single-provider
+import path in Phase 1 and deleting it in Phase 2.
+
+### 2. Phase 4's transformer passthrough landed in Phase 8
+
+Phase 4 item 6 asked the transformer to carry provider-supplied per-roller values through.
+Phase 8 item 3 then asked for `math.max` across duplicates and a warning when they disagree
+-- the same lines, rewritten. Both were done once, in Phase 8. `sr_plus` reaches the store
+through `RollForSoftRes/src/SoftResDataTransformer.lua` either way.
+
+### 3. Each provider keeps **two** suites, not one
+
+Phase 5 item 2 said one -- a decoder test. There are two: `Decoder_test` and
+`Registration_test`. After the shrink the two registrations *are* the addon, and nothing
+else asserted the three-way identity the definition of done names (provider `id` ==
+extension `name` == `X-RollFor-Extension`). `RollForSrPlus` has the same pair.
+
+### 4. `RollForSrPlus` has no chain link
+
+Phase 8 items 1-2 assumed SR+ would annotate a roller on the read path and therefore had to
+copy it first, because `m.clone` is shallow and an annotation would write through to the
+store (SR-PLUS §6.3).
+
+It does not annotate. The library's transformer puts `sr_plus` on the roller at import,
+because the transformer is the only thing that ever sees a player's *duplicate* entries for
+an item and duplicate resolution is where the whole highest-wins rule lives. The roller
+tables then ride the soft-res chain unchanged into `SoftResRollingLogic`'s player list, so
+the modifier's `delta` reads `player.sr_plus` and writes nothing. There is nothing to copy
+because nothing is annotated, and Phase 8 item 2 is moot rather than skipped.
+
+The cost is one named field in the library's transformer, which SR-PLUS §10.4 argued for
+directly ("the library's transformer must carry it... that is a required step").
+
+### 5. The test count went down, and the coverage went up
+
+Phase 5's done-when asks for a total at or above the Phase 0 baseline. Baseline was
+**263** across the two provider addons -- but `RollForSoftResIt` (133) and `RollForRaidRes`
+(130) were, bar one suite each, the same tests run twice against the same code. Unique
+coverage at baseline was **137**.
+
+| | Phase 0 | Now |
+|---|---:|---:|
+| Core | 678 | 718 |
+| `RollForSoftRes` | -- | 155 |
+| `RollForSoftResIt` | 133 | 11 |
+| `RollForRaidRes` | 130 | 13 |
+| `RollForSrPlus` | -- | 20 |
+| **Addon-tree total** | **263** | **199** |
+| **Unique addon-tree coverage** | **137** | **199** |
+
+### 6. `format_preview_annotation` alongside `preview_adjustments`
+
+Phase 6 item 6 specified `preview_adjustments` returning a list. Both display sites --
+`SoftResRollingLogic.format_name_with_rolls` and `DroppedLootAnnounce.print_player` -- have
+to sum that list and render it identically, so the summing and formatting sit next to the
+preview in `RollingLogicUtils` rather than being written twice.
+
+`DroppedLootAnnounce`'s announcement entries gained an `item` field alongside `item_link`,
+because a modifier's answer is per (player, item) and a link is not an item.
+
+### 7. The two-modifier accumulation test lives in core
+
+Phase 9 item 4 put it with SR+. It is in `test/RollModifierAccumulation_test.lua` instead:
+it needs no SR+ at all, and it is core's seam that it proves. The tie case is there too, and
+again in `RollForSrPlus/test/SrPlusSpec_test.lua` against the real feature.
+
+### 8. Fixtures
+
+`raidres-sr-plus.txt` and `raidres-sr-plus-divergent.txt` moved from the core repo root into
+`RollForRaidRes/test/fixtures/`, with decoded `.json` companions. The decoder test asserts
+they decode; the library's `SoftResDataTransformer_test` reads the `.json` across the
+sibling path rather than keeping a second copy of the same raid. (`raidres.txt` at the core
+root is a different export and was left alone.)
+
+### 9. Two addons outside the four had to move
+
+`RollForNetherVortex` and `RollForBtSrLimitCheck` both declared
+`## Dependencies: RollFor, RollForSoftResIt`. The chain links and the `unfiltered` tap they
+anchor to belong to `RollForSoftRes` now, so a raidres-only user would have had those addons
+refuse to load. Both now depend on `RollForSoftRes`. Stale references to
+`RollForSoftResIt` in four addons' comments, READMEs and test doubles went with it, plus one
+user-visible `warn` in `RollForNetherVortex` that named `RollForSoftResIt` while reporting
+an unsupported *RollFor*.
+
+§1's "nothing outside this list moves" holds for behaviour; these are the load-order
+consequences of the move itself.
+
+### 10. Declared API versions
+
+`Extensions.API_VERSION` is **4**. `RollForSoftRes`, `RollForSoftResIt` and
+`RollForRaidRes` declare **2** -- what they are actually written against, since none of them
+touches the new field. `RollForSrPlus` declares **4**, because `roll_modifier` is the whole
+of what it needs.

@@ -241,7 +241,13 @@ $ lua SoftResRollSpec_test.lua             -> Ran 8 tests, 8 successes
 
 ## 6. Known defects
 
-### 6.1 The winner announcement lies after a tie re-roll -- reproduced
+### 6.1 The winner announcement lies after a tie re-roll -- reproduced, and fixed
+
+**Fixed by `Roll.adjustments` (§10.1).** The announcer no longer queries the store; it reads
+what the roll recorded. `RollForSrPlus` declares `rounds = { RS.SoftResRoll }`, so a tie
+re-roll carries no adjustment and prints the bare number.
+`RollForSrPlus/test/SrPlusSpec_test.lua :: TieSpec` is the probe below, as a real test.
+
 
 `RollingStrategyFactory.tie_roll` rebuilds the tied players:
 
@@ -271,7 +277,12 @@ The same reconstruction runs for **any** winner of an item the player soft-resse
 whatever produced the roll, because the announcer's only input is the final number and the
 store.
 
-### 6.2 The bonus is read from the first entry only -- reproduced
+### 6.2 The bonus is read from the first entry only -- reproduced, and fixed
+
+**Fixed in the transformer (§7.2).** `math.max` across a player's entries for an item,
+applied to every roll they hold on it, with a warning when the entries disagree. The
+divergent fixture is what proves it: first-entry-wins passes on 32234 and fails on 32232.
+
 
 The transformer sets `sr_plus` when it creates the roller and never revisits it. Probe
 (`scratchpad/srplus/test/SrPlusOrderProbe_test.lua`):
@@ -428,6 +439,12 @@ raidres list can.
 Two real exports are in the repo root. Each needs the decoded-JSON companion beside it, the
 way `raidres.txt` / `raidres.json` are paired today, in the fixtures directory of whichever
 addon owns the decoder test.
+
+*(Built: both moved to `RollForRaidRes/test/fixtures/` with their `.json` companions.
+`RollForRaidRes/test/Decoder_test.lua` asserts they decode with the field intact;
+`RollForSoftRes/test/SoftResDataTransformer_test.lua` reads the `.json` across the sibling
+path and asserts the transform and the warnings, rather than keeping a second copy of the
+same raid.)*
 
 | File | id | What it covers |
 |---|---|---|
@@ -814,6 +831,14 @@ Three shapes, in the terms [SR-DIFF.md](SR-DIFF.md) sets out:
   an extension can annotate rollers on the read path, and it is where option 3 above would
   naturally hold its data. This is the shape that generalises: SR+ becomes one modification
   among several rather than a provider feature.
+
+  *(Built as the modifier half only, and the chain link turned out to be unnecessary. §10.4
+  already requires the library's transformer to carry `sr_plus` -- and the transformer is
+  the only thing that ever sees a player's duplicate entries for an item, which is where
+  §7.2's highest-wins rule has to live. With the number already on the roller and the roller
+  tables riding the chain into `SoftResRollingLogic`'s player list unchanged, the modifier
+  reads `player.sr_plus` and writes nothing. §6.3's copy-before-annotating trap does not
+  apply to something that annotates nothing.)*
 - **Back in core.** Only if the bonus is considered part of what a soft-res roll *is*.
 
 The blocker for the middle option used to be that **annotating is not enough**: a chain link

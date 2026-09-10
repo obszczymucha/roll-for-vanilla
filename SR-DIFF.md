@@ -88,6 +88,10 @@ Note the asymmetry: **SoftResIt has no `Decoder_test`** -- there is no suite any
 asserting that a real softres.it string decodes. RaidRes has one, including a negative
 case proving a softres.it string does *not* decode there.
 
+*(Built: it has one now. It runs the real `LibDeflate` out of `RollFor/libs`, because the
+zlib layer is the entire behavioural difference between the two providers and mocking it
+away would leave nothing under test.)*
+
 ---
 
 ## 3. The differences, in full
@@ -280,6 +284,9 @@ decoded document shape is, for everything the addon consumes, the same.
    `RollForBtSrLimitCheck` reads `ctx.softres_tap( "unfiltered" )` and subscribes to all
    three `softres_*` events. Whoever declares those anchors must keep the names.
 7. **Both declare `api_version = 2`** while core is at `API_VERSION = 3`.
+   *(Built: core is at 4 now -- `roll_modifier` arrived with it, SR-PLUS §10.2. All three
+   soft-res addons still declare 2, which is what they are written against;
+   `RollForSrPlus` declares 4.)*
 8. **`LibDeflate` is core's**, reached through `LibStub` -- a zlib provider does not have
    to ship it.
 
@@ -445,7 +452,10 @@ no-providers state must disable without clearing, so the two are not the same lo
 2. Provider registry inside it (`RollForSoftRes.register( spec )`), and the Provider
    dropdown in the import window (§7), including the empty and single-provider states.
 3. `RollForSoftResIt` / `RollForRaidRes` shrink to a TOC + `Decoder.lua` + a registration
-   call. `## Dependencies: RollFor, RollForSoftRes`. They stop being RollFor extensions.
+   call. ~~`## Dependencies: RollFor, RollForSoftRes`. They stop being RollFor extensions.~~
+   **Superseded by §6 Option A and PLAN.md §1**: they stay extensions, with their own page
+   and Enabled checkbox, and register twice. *(Built: `## Dependencies: RollForSoftRes`
+   alone, which pulls RollFor in transitively; four files each, counting `OptionsPage.lua`.)*
 4. One window, one `/sr`, one minimap subscription. Names follow PLAN.md §1 throughout --
    `RollForSoftResImportFrame`, not the old `RollForSoftResLootFrame`. User macros
    referencing the old global break, accepted with the rest of the clean break (§8, item 5).
@@ -464,7 +474,10 @@ no-providers state must disable without clearing, so the two are not the same lo
 8. Decide whether `quality` stays in the transformer. Nothing reads it; if it is kept, the
    `RaidRes*` type annotations in `SoftResDataTransformer.lua` should be renamed to
    provider-neutral ones, since that file is the shared contract, not a raidres one.
+   *(Built: `quality` stays -- the store writes it and it is cheap. The annotations are now
+   `SoftResDocument*`, with `quality` optional because softres.it does not emit it.)*
 9. Bump `api_version` to 3 (or confirm 2 is still what the code is written against).
+   *(Built: confirmed 2. The three soft-res addons use nothing newer.)*
 
 ---
 
