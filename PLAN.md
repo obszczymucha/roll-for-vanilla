@@ -255,9 +255,8 @@ a fresh install and an upgrade-over-existing both start with an empty list and n
 3. Both TOCs become `## Dependencies: RollFor, RollForSoftRes`. Remove
    `X-RollFor-Extension` -- they are no longer extensions.
 4. They no longer register with `Extensions`, no longer create frames, no longer claim
-   slash commands, no longer subscribe to `minimap_icon_right_click`. This is what lets two
-   providers coexist: today the second to load dies in `on_enable` on a duplicate chain-link
-   name and prints an error at login (SR-DIFF §3.8).
+   slash commands, no longer subscribe to `minimap_icon_right_click`. `RollForSoftRes` owns
+   all of that, which is what lets both providers be installed at once.
 5. **Transformer passthrough (required).** SR+ reads `sr_plus` out of raidres data
    (SR-PLUS §7), the provider is only a decoder, and the library owns the transformer -- so
    the transformer must carry provider-supplied per-roller values through to the store, or

@@ -191,38 +191,12 @@ The divergence in the shared suites is mechanical: `RollForSoftResIt` → `RollF
 `test/utils.lua` (1531 lines) and `test/IntegrationTestBuilder.lua` (486) are wholesale
 copies of core's harness with `-- EXTENSION:` marked patches, duplicated a third time here.
 
-### 3.8 The import window, and what two copies of it do
+### 3.8 The import window
 
 `SoftResGui.lua` is 373 lines and provider-coupled in exactly **two** places: the frame name
 (`create_backdrop_frame` plus the `UISpecialFrames` insert) and the corner label. The
 editbox, the Import/Clear/Close buttons, the simulation lock and the scroll handling are
-generic already.
-
-**With both addons installed, only one of them runs.** An earlier revision of this section
-claimed two -- that a minimap right-click would open two import windows and that the second
-addon's slash commands would silently vanish. **Both claims were wrong**, and the mechanism
-that makes them wrong is worth recording:
-
-1. Addons load alphabetically, so `RollForRaidRes` reaches `on_enable` first. It registers
-   the soft-res source and adds `matched_name`, `awarded_loot` and `present_players` to the
-   chain.
-2. `RollForSoftResIt` follows. `SoftResSource.register` refuses it and returns `false`, which
-   nothing checks -- so it carries on to `ctx.softres_chain.add( { name = "matched_name" … } )`.
-3. `Chain.add` rejects the duplicate name through `fail()`, which calls `error()`.
-4. `Extensions.run` wraps each phase in `pcall`, so the throw marks the extension `failed`.
-5. `Extensions.ready` skips a failed extension: `if callback and not extension.failed`.
-
-So the loser's `on_ready` never runs. No second `SoftResGui` is constructed, nothing else
-subscribes to `minimap_icon_right_click`, and `m.slash_cmd` is never reached a second time.
-What the user gets instead is a visible error at login:
-
-```
-Extension SoftRes (softres.it) failed during on_enable: RollFor chain 'softres':
-link 'matched_name' is already in the chain.
-```
-
-Degraded, loud, and no worse than that. **The case for §7's single window is duplication and
-the mutual exclusivity itself, not a rescue from broken behaviour.**
+generic already, which is why the window moves to `RollForSoftRes` whole (§7).
 
 ---
 
@@ -412,10 +386,8 @@ provider.** This settles the arbitration question in §6 and closes the sniffing
 
 ### 7.2 What this changes structurally
 
-- **Two providers coexist instead of one shutting the other out.** Today the second addon
-  to load dies during `on_enable` and prints an error at login (§3.8). With one window and
-  one registrant there is nothing to collide over, and both formats are usable from the same
-  install.
+- **Two providers coexist instead of one shutting the other out.** Both formats become
+  usable from one install, chosen at import time.
 - **The provider owns no data.** It is a decoder. The store holds *the imported list*,
   whoever decoded it, which is why the store is scoped to the library rather than per
   provider -- and why the spec in §6 lost `summary`, `migrations` and `ctx`.
