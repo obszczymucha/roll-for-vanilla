@@ -60,10 +60,17 @@ end
 local function stringify( announcements )
   local result = {}
 
-  local function print_player( show_rolls )
+  -- The soft-resser list, one name per player, annotated with what is true before anybody
+  -- rolls: how many rolls they hold, and what a modifier is going to add to each of them.
+  ---@param show_rolls boolean
+  ---@param item Item? -- the dropped item; a modifier's answer is per (player, item)
+  local function print_player( show_rolls, item )
     return function( player )
       local rolls = show_rolls and player.rolls > 1 and string.format( " [%s rolls]", player.rolls ) or ""
-      return string.format( "%s%s", player.name, rolls )
+      local adjustment = item and
+          m.RollingLogicUtils.format_preview_annotation( player, item, m.Types.RollingStrategy.SoftResRoll ) or ""
+
+      return string.format( "%s%s%s", player.name, rolls, adjustment )
     end
   end
 
@@ -78,7 +85,7 @@ local function stringify( announcements )
     elseif entry.softres_count > 0 then
       local count = entry.how_many_dropped
       local prefix = count == 1 and "" or string.format( "%sx", count )
-      local f = print_player( entry.softres_count > 1 )
+      local f = print_player( entry.softres_count > 1, entry.item )
       table.insert( result, {
         text = string.format( "%s. %s%s (SR by %s)", i, prefix, entry.item_link, commify( entry.softressers, f ) ),
         entry = entry
@@ -169,6 +176,9 @@ function M.create_item_announcements( summary )
           item_link = entry.item.link,
           item_name = entry.item.name,
           item_quality = entry.item.quality,
+          -- Carried whole as well as flattened: a roll modifier's answer is per
+          -- (player, item), so the annotation needs the item and not just its link.
+          item = entry.item,
           softres_count = 1,
           how_many_dropped = 1,
           softressers = { entry.softressers[ j ] }
@@ -179,6 +189,7 @@ function M.create_item_announcements( summary )
         item_link = entry.item.link,
         item_name = entry.item.name,
         item_quality = entry.item.quality,
+        item = entry.item,
         softres_count = getn( entry.softressers ),
         how_many_dropped = entry.how_many_dropped,
         softressers = entry.softressers

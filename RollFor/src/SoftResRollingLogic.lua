@@ -13,6 +13,8 @@ local roll_type = m.Types.RollType.SoftRes
 local strategy = m.Types.RollingStrategy.SoftResRoll
 local available_rolls = m.RollingLogicUtils.available_rolls
 local consume_roll = m.RollingLogicUtils.consume_roll
+local apply_modifiers = m.RollingLogicUtils.apply_modifiers
+local format_preview_annotation = m.RollingLogicUtils.format_preview_annotation
 local best_roll_per_player = m.RollingLogicUtils.best_roll_per_player
 local count_top_roll_winners = m.RollingLogicUtils.count_top_roll_winners
 local players_with_available_rolls = m.RollingLogicUtils.players_with_available_rolls
@@ -155,8 +157,13 @@ function M.new(
       return
     end
 
-    table.insert( rolls, make_roll( player, roll_type_used, roll ) )
-    controller.roll_was_accepted( player.name, player.class, roll_type_used, roll )
+    -- Whatever the modifiers make of it is the roll from here on: it is what sorting
+    -- compares, what the popup shows and what the raid is told. The list records who
+    -- changed it, so the announcement does not have to guess afterwards.
+    local total, adjustments = apply_modifiers( player, item, roll, strategy )
+
+    table.insert( rolls, make_roll( player, roll_type_used, total, adjustments ) )
+    controller.roll_was_accepted( player.name, player.class, roll_type_used, total )
 
     find_winner( State.AfterRoll )
   end
@@ -183,14 +190,15 @@ function M.new(
   end
 
   -- The raid announcement has to say what a player's allowance actually is, so a player
-  -- holding more than one soft-res roll is annotated with the count. A player with one
+  -- holding more than one soft-res roll is annotated with the count, and a player whose
+  -- roll something is going to change is annotated with by how much. A player with one
   -- plain soft-res roll and nothing else stays the bare name it has always been.
   ---@param player RollingPlayer
   local function format_name_with_rolls( player )
-    if player_count == item_count then return player.name end
-    if player.rolls <= 1 then return player.name end
+    local show_rolls = player_count ~= item_count and player.rolls > 1
+    local roll_count = show_rolls and string.format( " [%s roll%s]", player.rolls, player.rolls == 1 and "" or "s" ) or ""
 
-    return string.format( "%s [%s roll%s]", player.name, player.rolls, player.rolls == 1 and "" or "s" )
+    return string.format( "%s%s%s", player.name, roll_count, format_preview_annotation( player, item, strategy ) )
   end
 
   local function start_rolling()

@@ -22,7 +22,7 @@ local function hl( text ) return m.colors.hl( text ) end
 
 -- Bumped when the context object or the chain contract changes in a way that would break
 -- an extension built against the previous number.
-M.API_VERSION = 3
+M.API_VERSION = 4
 
 -- What an extension is allowed to see of RollFor. Built per extension by main.lua and
 -- handed to both phases. This is the surface we commit to across versions, so it stays
@@ -44,6 +44,9 @@ M.API_VERSION = 3
 ---@field awarded_loot_chain Chain
 ---@field softres_source { register: fun( spec: SoftResSourceSpec ): boolean }
 ---@field softres_tap fun( name: string ): any? -- nil before the chain is built or if no such tap
+-- Registers something that adjusts a roll's value. Added in API 4; an extension that uses
+-- it must declare `api_version = 4` or higher, and one that does not is unaffected.
+---@field roll_modifier { register: fun( spec: RollModifier ): boolean }
 ---@field minimap { register: fun( c: MinimapContribution ), refresh: fun() }
 ---@field on_group_changed fun( callback: fun() )
 ---@field on_lockout_reset fun( callback: fun() )

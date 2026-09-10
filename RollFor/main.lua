@@ -316,6 +316,10 @@ local function create_components()
       awarded_loot_chain = M.awarded_loot_chain,
       softres_source = { register = m.SoftResSource.register },
       softres_tap = softres_tap,
+      -- How an extension changes what a roll is worth. The sibling of roll_pools, which
+      -- decides how many rolls a player gets: this one decides what one is worth, and core
+      -- registers nothing in it.
+      roll_modifier = { register = m.RollingLogicUtils.register_modifier },
       minimap = {
         register = function( contribution ) table.insert( M.minimap_contributions, contribution ) end,
         refresh = refresh_minimap

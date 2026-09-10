@@ -35,6 +35,206 @@ function M.available_rolls( player )
   return result
 end
 
+-- What may adjust a roll's *value*, after it is validated and before it is recorded.
+--
+-- `roll_pools` above is the seam for how many rolls a player gets; this is its sibling for
+-- what a roll is worth. Core adds nothing to it: an empty list is today's behaviour
+-- exactly, byte for byte, because a fold over nothing returns what it was given.
+--
+-- A modifier declares **either `delta` or `adjust`, never both**, and that one choice is
+-- what the rest of this falls out of:
+--
+--   * `delta` sees only the player and the item, so its answer is knowable before anybody
+--     rolls. That is what makes it previewable, and the pre-roll display needs previewable.
+--   * `adjust` also sees the base roll and the running total, which is what a percentage or
+--     a cap needs -- and is exactly why it cannot be previewed.
+--
+-- So "can this be announced in advance" is a consequence of which function was written,
+-- not a boolean anybody can set wrongly.
+---@class RollModifier
+---@field name string -- unique; this is what lands in RollAdjustment.by
+---@field after string? -- anchors, in the vocabulary Chain and the loot pipeline already use
+---@field before string?
+---@field rounds RollingStrategyType[] -- which rounds it takes part in
+---@field delta fun( player: RollingPlayer, item: Item ): number?
+---@field adjust fun( player: RollingPlayer, item: Item, base: number, current: number ): number?
+
+---@type RollModifier[]
+local roll_modifiers = {}
+
+-- Resolved once, on first use, and thrown away whenever a modifier is added. Chain and the
+-- loot pipeline resolve at their own build time; rolls have no build step, and every
+-- modifier arrives during Extensions.enable() -- long before anybody rolls -- so first use
+-- is the same moment by a different name.
+---@type RollModifier[]?
+local placed
+
+---@param spec RollModifier
+---@return boolean -- whether the modifier was registered
+function M.register_modifier( spec )
+  if type( spec ) ~= "table" then
+    m.err( "Roll modifier registration failed: the spec must be a table." )
+    return false
+  end
+
+  if type( spec.name ) ~= "string" or spec.name == "" then
+    m.err( "Roll modifier registration failed: 'name' must be a non-empty string." )
+    return false
+  end
+
+  for _, modifier in ipairs( roll_modifiers ) do
+    if modifier.name == spec.name then
+      m.err( string.format( "Roll modifier %s is already registered.", m.colors.hl( spec.name ) ) )
+      return false
+    end
+  end
+
+  if type( spec.rounds ) ~= "table" or getn( spec.rounds ) == 0 then
+    m.err( string.format( "Roll modifier %s failed to register: 'rounds' must name at least one round.",
+      m.colors.hl( spec.name ) ) )
+    return false
+  end
+
+  -- Both or neither is refused rather than guessed at, the way Extensions.register refuses
+  -- a spec with neither on_enable nor on_ready. A modifier that declared both would leave
+  -- previewability up to whichever branch the fold happened to take.
+  if (spec.delta == nil) == (spec.adjust == nil) then
+    m.err( string.format( "Roll modifier %s failed to register: it must have a 'delta' or an 'adjust', not both.",
+      m.colors.hl( spec.name ) ) )
+    return false
+  end
+
+  if spec.delta ~= nil and type( spec.delta ) ~= "function" then
+    m.err( string.format( "Roll modifier %s failed to register: 'delta' must be a function.",
+      m.colors.hl( spec.name ) ) )
+    return false
+  end
+
+  if spec.adjust ~= nil and type( spec.adjust ) ~= "function" then
+    m.err( string.format( "Roll modifier %s failed to register: 'adjust' must be a function.",
+      m.colors.hl( spec.name ) ) )
+    return false
+  end
+
+  table.insert( roll_modifiers, spec )
+  placed = nil
+
+  return true
+end
+
+-- Order comes from Ordering.place, the same vocabulary, failures and error messages a
+-- soft-res chain link or a loot handler already uses. For two additive modifiers the order
+-- does not change the total, but it changes the order they are *displayed* in, and it
+-- becomes load-bearing the moment somebody writes an `adjust` -- cap-then-add is not
+-- add-then-cap. Pinned before that happens rather than after.
+---@return RollModifier[]
+local function placed_modifiers()
+  if placed then return placed end
+
+  local ordered, rejected = m.Ordering.place( roll_modifiers, { base = "roll", noun = "Roll modifier" } )
+
+  for _, entry in ipairs( rejected ) do
+    m.err( entry.reason )
+  end
+
+  placed = ordered
+
+  return placed
+end
+
+---@param modifier RollModifier
+---@param strategy RollingStrategyType
+---@return boolean
+local function takes_part( modifier, strategy )
+  for _, round in ipairs( modifier.rounds ) do
+    if round == strategy then return true end
+  end
+
+  return false
+end
+
+-- The fold. `on_roll` calls it where a roll would otherwise be recorded as cast.
+--
+-- `d ~= 0` is deliberate, and 0 being truthy in Lua is exactly why it has to be written
+-- out: a zero adjustment is not an adjustment, and without the guard it would print as
+-- "(+0)" before the roll and decompose as "89+0=89" after it.
+---@param player RollingPlayer
+---@param item Item
+---@param roll number
+---@param strategy RollingStrategyType
+---@return number -- the total
+---@return RollAdjustment[]? -- absent when nothing adjusted it
+function M.apply_modifiers( player, item, roll, strategy )
+  local total, adjustments = roll, nil
+
+  for _, modifier in ipairs( placed_modifiers() ) do
+    if takes_part( modifier, strategy ) then
+      local d = modifier.delta and modifier.delta( player, item )
+          or modifier.adjust and modifier.adjust( player, item, roll, total )
+
+      if d and d ~= 0 then
+        total = total + d
+        adjustments = adjustments or {}
+        table.insert( adjustments, { by = modifier.name, delta = d } )
+      end
+    end
+  end
+
+  return total, adjustments
+end
+
+-- What this player would get if they rolled now. `delta` modifiers only: an `adjust`
+-- modifier depends on the roll value and has nothing to say before there is one.
+---@param player RollingPlayer
+---@param item Item
+---@param strategy RollingStrategyType
+---@return RollAdjustment[]?
+function M.preview_adjustments( player, item, strategy )
+  local adjustments
+
+  for _, modifier in ipairs( placed_modifiers() ) do
+    if modifier.delta and takes_part( modifier, strategy ) then
+      local d = modifier.delta( player, item )
+
+      if d and d ~= 0 then
+        adjustments = adjustments or {}
+        table.insert( adjustments, { by = modifier.name, delta = d } )
+      end
+    end
+  end
+
+  return adjustments
+end
+
+-- The pre-roll annotation, summed into one number. Two modifiers contributing +30 and +20
+-- read as " (+50)"; the breakdown is left to the winner announcement, where there is room
+-- for it. Empty string when nothing has anything to add, so callers can concatenate it
+-- unconditionally.
+--
+-- Shared because both display sites -- the roll call and the drop announcement -- have to
+-- say the same thing about the same player.
+---@param player RollingPlayer
+---@param item Item
+---@param strategy RollingStrategyType
+---@return string
+function M.format_preview_annotation( player, item, strategy )
+  local adjustments = M.preview_adjustments( player, item, strategy )
+  if not adjustments then return "" end
+
+  local total = 0
+  for _, adjustment in ipairs( adjustments ) do total = total + adjustment.delta end
+
+  if total == 0 then return "" end
+
+  return string.format( " (%s%d)", total > 0 and "+" or "-", math.abs( total ) )
+end
+
+---Drops every registration. Tests only -- an extension never unregisters.
+function M.clear_modifiers()
+  roll_modifiers = {}
+  placed = nil
+end
+
 -- Spends one roll out of the first pool that still has any, and says which pool it came
 -- from. nil means the player is out of rolls and nothing was spent.
 ---@param player RollingPlayer

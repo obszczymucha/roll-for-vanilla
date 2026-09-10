@@ -235,6 +235,9 @@ end
 ---@field is_on_master_loot_candidate_list boolean -- TODO: remove
 ---@field roll_type RollType
 ---@field winning_roll number?
+-- Carried over from the winning Roll. A Winner is where a Roll is flattened, so anything
+-- the announcement needs has to survive that step or it dies here.
+---@field adjustments RollAdjustment[]?
 ---@field rerolling boolean?
 ---@field type "Winner"
 
@@ -245,7 +248,8 @@ end
 ---  is_on_master_loot_candidate_list: boolean,
 ---  roll_type: RollType,
 ---  winning_roll: number?,
----  rerolling: boolean? ): Winner
+---  rerolling: boolean?,
+---  adjustments: RollAdjustment[]? ): Winner
 
 ---@type MakeWinnerFn
 ---@param name string
@@ -255,8 +259,10 @@ end
 ---@param roll_type RollType
 ---@param winning_roll number?
 ---@param rerolling boolean?
+---@param adjustments RollAdjustment[]?
 ---@return Winner
-function M.make_winner( name, class, item, is_on_master_loot_candidate_list, roll_type, winning_roll, rerolling )
+function M.make_winner( name, class, item, is_on_master_loot_candidate_list, roll_type, winning_roll, rerolling,
+                        adjustments )
   return {
     name = name,
     class = class,
@@ -265,6 +271,7 @@ function M.make_winner( name, class, item, is_on_master_loot_candidate_list, rol
     roll_type = roll_type,
     winning_roll = winning_roll,
     rerolling = rerolling,
+    adjustments = adjustments,
     type = PlayerType.Winner
   }
 end
@@ -330,23 +337,39 @@ M.ItemQuality = ItemQuality
 ---@field ScheduleRepeatingTimer fun( self: NotAceTimer, callback: function, delay: number, arg: any ): TimerId
 ---@field CancelTimer fun( self: AceTimer, timer_id: number )
 
+-- What one roll modifier did to a roll, in its own words.
+--
+-- Provenance, not components: `roll` stays the total and stays what sorting compares, and
+-- the base is the total less the sum of the deltas, so nothing is stored twice. A reader
+-- renders the list without knowing what produced it -- one entry is `89+30=119`, two are
+-- `50+30+20=100`, and an absent list is a roll as it was cast.
+--
+-- A delta is the currency because it is the only thing that composes. A multiplier, a cap,
+-- a penalty -- each works out its own effect and reports the difference it made.
+---@class RollAdjustment
+---@field by string    -- the modifier that made it, e.g. "sr_plus"
+---@field delta number -- signed, what it added or took away
+
 ---@class Roll
 ---@field player RollingPlayer
 ---@field roll_type RollType
----@field roll number
+---@field roll number -- the total. Still what sorting and winner selection compare.
+---@field adjustments RollAdjustment[]? -- how it got there; absent means "as rolled"
 
 ---@alias MakeRollFn fun(
 ---  player: RollingPlayer,
 ---  roll_type: RollType,
----  roll: number ): Roll
+---  roll: number,
+---  adjustments: RollAdjustment[]? ): Roll
 
 ---@type MakeRollFn
 ---@param player RollingPlayer
 ---@param roll_type RollType
 ---@param roll number
+---@param adjustments RollAdjustment[]?
 ---@return Roll
-function M.make_roll( player, roll_type, roll )
-  return { player = player, roll_type = roll_type, roll = roll }
+function M.make_roll( player, roll_type, roll, adjustments )
+  return { player = player, roll_type = roll_type, roll = roll, adjustments = adjustments }
 end
 
 m.Types = M

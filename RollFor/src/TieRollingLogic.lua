@@ -11,6 +11,7 @@ local RollType = m.Types.RollType
 local hl = m.colors.hl
 local available_rolls = m.RollingLogicUtils.available_rolls
 local consume_roll = m.RollingLogicUtils.consume_roll
+local apply_modifiers = m.RollingLogicUtils.apply_modifiers
 local best_roll_per_player = m.RollingLogicUtils.best_roll_per_player
 local count_top_roll_winners = m.RollingLogicUtils.count_top_roll_winners
 local winner_found = m.RollingLogicUtils.winner_found
@@ -130,8 +131,13 @@ function M.new( chat, players, item, item_count, item_quantity, on_rolling_finis
       return
     end
 
-    table.insert( rolls, make_roll( player, roll_type, roll ) )
-    controller.roll_was_accepted( roller.name, player.class, roll_type, roll )
+    -- This round is its own round as far as modifiers are concerned: one that declares
+    -- only the soft-res round contributes nothing here, and one that declares the tie round
+    -- contributes and says so, which is what makes the announcement right either way.
+    local total, adjustments = apply_modifiers( player, item, roll, m.Types.RollingStrategy.TieRoll )
+
+    table.insert( rolls, make_roll( player, roll_type, total, adjustments ) )
+    controller.roll_was_accepted( roller.name, player.class, roll_type, total )
 
     if have_all_rolls_been_exhausted() then find_winner() end
   end

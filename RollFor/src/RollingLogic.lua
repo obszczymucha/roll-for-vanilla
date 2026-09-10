@@ -125,7 +125,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
     local winners = m.map( winning_rolls,
       ---@param winning_roll Roll
       function( winning_roll )
-        return master_loot_candidates.transform_to_winner( winning_roll.player, item, winning_roll.roll_type, winning_roll.roll, rerolling )
+        return master_loot_candidates.transform_to_winner( winning_roll.player, item, winning_roll.roll_type, winning_roll.roll, rerolling, winning_roll.adjustments )
       end )
 
     local winner_count = getn( winners )
@@ -201,7 +201,7 @@ function M.new( chat, ace_timer, roll_controller, strategy_factory, master_loot_
       local winners = m.map( winning_rolls,
         ---@param winning_roll Roll
         function( winning_roll )
-          return master_loot_candidates.transform_to_winner( winning_roll.player, item, winning_roll.roll_type, winning_roll.roll, rerolling )
+          return master_loot_candidates.transform_to_winner( winning_roll.player, item, winning_roll.roll_type, winning_roll.roll, rerolling, winning_roll.adjustments )
         end )
 
       roll_controller.winners_found( item, item_count, winners, strategy )

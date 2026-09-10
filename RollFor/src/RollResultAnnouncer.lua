@@ -14,6 +14,30 @@ local grey = m.colors.grey
 ---@param roll_controller RollController
 ---@param config Config
 function M.new( chat, roll_controller, config )
+  -- How the winning number was arrived at: `89+30=119` for one adjustment, `50+30+20=100`
+  -- for two, and the bare total when nothing touched it. The base is the total less the
+  -- sum of the deltas, so it is never stored twice and never re-derived from anywhere else.
+  --
+  -- Read off the winner rather than looked up: what modified a roll recorded that it did,
+  -- and this renders the record without knowing what produced it.
+  ---@param value number
+  ---@param adjustments RollAdjustment[]?
+  ---@return string|number
+  local function decompose( value, adjustments )
+    if not adjustments or getn( adjustments ) == 0 then return value end
+
+    local base = value
+    for _, adjustment in ipairs( adjustments ) do base = base - adjustment.delta end
+
+    local result = tostring( base )
+
+    for _, adjustment in ipairs( adjustments ) do
+      result = string.format( "%s%s%s", result, adjustment.delta < 0 and "-" or "+", math.abs( adjustment.delta ) )
+    end
+
+    return string.format( "%s=%s", result, value )
+  end
+
   ---@param winners Winner[]
   ---@param top_roll boolean
   local announce_winner = function( winners, top_roll )
@@ -28,13 +52,19 @@ function M.new( chat, roll_controller, config )
     local rerolling = winners[ 1 ].rerolling
     local item = winners[ 1 ].item
 
+    -- Only one winner can be decomposed. Several tied on the same total need not have got
+    -- there the same way -- one 89+30, one flat 119 -- and attributing either breakdown to
+    -- both would be a lie. The total is the thing they have in common, so that is what a
+    -- tied group gets.
+    local composed = getn( winners ) == 1 and decompose( roll_value, winners[ 1 ].adjustments ) or roll_value
+
     -- Everything after the roller list, which is what the list has left to spend.
     local function suffix( f )
       return string.format(
         " %srolled the %shighest (%s) for %s%s.",
         rerolling and "re-" or "",
         top_roll and "" or "next ",
-        f and f( roll_value ) or roll_value,
+        f and f( composed ) or composed,
         item.link,
         roll_type_str
       )

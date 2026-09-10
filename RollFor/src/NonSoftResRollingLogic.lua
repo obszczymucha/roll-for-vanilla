@@ -15,6 +15,7 @@ local hl = m.colors.hl
 
 ---@type MakeRollFn
 local make_roll = m.Types.make_roll
+local apply_modifiers = m.RollingLogicUtils.apply_modifiers
 
 ---@param players RollingPlayer[]
 local function have_all_players_rolled( players )
@@ -193,9 +194,10 @@ function M.new(
     end
 
     player.rolls = player.rolls - 1
+    local total, adjustments = apply_modifiers( player, item, roll, m.Types.RollingStrategy.NormalRoll )
     local t = ms_roll and mainspec_rolls or offspec_rolls
-    table.insert( t, make_roll( player, roll_type, roll ) )
-    controller.roll_was_accepted( player.name, player.class, roll_type, roll )
+    table.insert( t, make_roll( player, roll_type, total, adjustments ) )
+    controller.roll_was_accepted( player.name, player.class, roll_type, total )
 
     if have_all_rolls_been_exhausted() then find_winner() end
   end

@@ -37,7 +37,7 @@ end
 ---@field get fun( slot: number ): ItemCandidate[]
 ---@field find fun( slot: number, player_name: string ): ItemCandidate?
 ---@field get_index fun( slot: number, player_name: string ): number?
----@field transform_to_winner fun( player: RollingPlayer, item: Item|MasterLootDistributableItem, roll_type: RollType, winning_roll: number?, rerolling: boolean? ): Winner
+---@field transform_to_winner fun( player: RollingPlayer, item: Item|MasterLootDistributableItem, roll_type: RollType, winning_roll: number?, rerolling: boolean?, adjustments: RollAdjustment[]? ): Winner
 
 ---@param api MasterLootCandidatesApi
 ---@param group_roster GroupRoster
@@ -74,10 +74,16 @@ function M.new( api, group_roster, loot_list )
   ---@param winning_roll number?
   ---@param rerolling boolean?
   ---@return Winner
-  local function transform_to_winner( player, item, roll_type, winning_roll, rerolling )
+  -- This is where a Roll is flattened into a Winner, so anything the announcement needs
+  -- has to be carried across here or it stops existing. `adjustments` is the winning
+  -- Roll's: how that number was arrived at, which the announcer would otherwise have to
+  -- re-derive by querying the soft-res store -- and re-derivation is what used to make it
+  -- report a tie re-roll as boosted when it was not.
+  local function transform_to_winner( player, item, roll_type, winning_roll, rerolling, adjustments )
     local slot = loot_list.get_slot( item.id )
     local candidate = slot and find( slot, player.name )
-    return make_winner( player.name, player.class, item, candidate and true or false, roll_type, winning_roll and winning_roll, rerolling )
+    return make_winner( player.name, player.class, item, candidate and true or false, roll_type,
+      winning_roll and winning_roll, rerolling, adjustments )
   end
 
   local function get_index( slot, player_name )
