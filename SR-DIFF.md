@@ -298,6 +298,14 @@ Everything else -- store, transformer, four decorators, name matching, the impor
 `/sr` `/src` `/srs` `/sro`, the minimap contribution, the simulation bridge, the options
 page, the chain links and the tap -- is identical today and becomes shared.
 
+**Providers are only one of the two axes.** A provider answers *where the list came from*.
+A **modification** -- SR+, `RollForNetherVortex`, a role bonus -- answers *what the list
+means once it is here*, and needs different seams: a soft-res chain link for the read path
+(which exists), and a roll-value modifier for the roll path (which does not).
+[SR-PLUS.md](SR-PLUS.md) works that second axis out in full against the removed SR+ feature;
+§10.2 there is the seam, §10.3 the two-modification worked example. Anything built here
+should leave room for it rather than assume a provider is all an extension can be.
+
 Frame names derive from `id` (`"RollFor" .. id .. "LootFrame"`), which also fixes the
 current inconsistency where SoftResIt's frame is called `RollForSoftResLootFrame` (no
 "It").
