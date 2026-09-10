@@ -454,8 +454,9 @@ no-providers state must disable without clearing, so the two are not the same lo
 3. `RollForSoftResIt` / `RollForRaidRes` shrink to a TOC + `Decoder.lua` + a registration
    call. ~~`## Dependencies: RollFor, RollForSoftRes`. They stop being RollFor extensions.~~
    **Superseded by §6 Option A and PLAN.md §1**: they stay extensions, with their own page
-   and Enabled checkbox, and register twice. *(Built: `## Dependencies: RollForSoftRes`
-   alone, which pulls RollFor in transitively; four files each, counting `OptionsPage.lua`.)*
+   and Enabled checkbox, and register twice. *(Built: `## Dependencies: RollFor,
+   RollForSoftRes` as written here -- naming RollFor is what makes unticking it in the addon
+   list disable them directly. Four files each, counting `OptionsPage.lua`.)*
 4. One window, one `/sr`, one minimap subscription. Names follow PLAN.md §1 throughout --
    `RollForSoftResImportFrame`, not the old `RollForSoftResLootFrame`. User macros
    referencing the old global break, accepted with the rest of the clean break (§8, item 5).

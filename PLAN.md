@@ -87,10 +87,14 @@ Four addons and one core change. Nothing else is added, and nothing outside this
 ```
 RollFor                     core
   └── RollForSoftRes        ## Dependencies: RollFor
-        ├── RollForSoftResIt   ## Dependencies: RollForSoftRes
-        ├── RollForRaidRes     ## Dependencies: RollForSoftRes
-        └── RollForSrPlus      ## Dependencies: RollForSoftRes
+        ├── RollForSoftResIt   ## Dependencies: RollFor, RollForSoftRes
+        ├── RollForRaidRes     ## Dependencies: RollFor, RollForSoftRes
+        └── RollForSrPlus      ## Dependencies: RollFor, RollForSoftRes
 ```
+
+`RollFor` is named on the three leaves as well as implied through the library. It costs
+nothing and it means unticking RollFor in the addon list greys them out directly, rather
+than leaving it to the client to work the chain out for itself.
 
 **Every one of these is a RollFor extension.** Each registers with `Extensions`, so each has
 its own options page, its own Enabled checkbox, its own db scope, and its version reported
@@ -362,8 +366,9 @@ a fresh install and an upgrade-over-existing both start with an empty list and n
    `on_enable` with the library: `RollForSoftRes.register{ id, title, decode }`. Delete the
    other 13 `src/` files and the shared test harness.
 2. `RollForRaidRes` likewise: `name = "raidres"`, `title = "SoftRes (raidres)"`.
-3. Both TOCs become `## Dependencies: RollForSoftRes` -- which pulls in `RollFor`
-   transitively -- and **keep** `X-RollFor-Extension`, so `/rf` still reports their versions.
+3. Both TOCs become `## Dependencies: RollFor, RollForSoftRes` and **keep**
+   `X-RollFor-Extension`, so `/rf` still reports their versions. (Named rather than left
+   transitive: see §1.)
 4. What they stop doing: creating frames, claiming slash commands, subscribing to
    `minimap_icon_right_click`, adding chain links, and registering with `SoftResSource`.
    `RollForSoftRes` owns all of that, which is what lets both be installed at once.
@@ -650,7 +655,16 @@ an unsupported *RollFor*.
 §1's "nothing outside this list moves" holds for behaviour; these are the load-order
 consequences of the move itself.
 
-### 10. Declared API versions
+### 10. `RollFor` is named on all three leaf TOCs
+
+They were built as `## Dependencies: RollForSoftRes` alone, since that pulls RollFor in
+transitively and the client will not load the library without it either. Changed on request
+to `## Dependencies: RollFor, RollForSoftRes`: naming it means unticking RollFor in the
+addon list disables the leaves directly, instead of depending on the client resolving the
+chain. It also matches what SR-DIFF §8 item 3 asked for and what `RollForNetherVortex` and
+`RollForBtSrLimitCheck` already declare.
+
+### 11. Declared API versions
 
 `Extensions.API_VERSION` is **4**. `RollForSoftRes`, `RollForSoftResIt` and
 `RollForRaidRes` declare **2** -- what they are actually written against, since none of them
