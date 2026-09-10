@@ -5,6 +5,7 @@
 ## Notes: An automated item roller with soft-res support (requires a soft-res source addon).
 ## SavedVariables: RollForDb
 ## SavedVariablesPerCharacter: RollForCharDb
+## Group: RollFor
 ## IconTexture: Interface\AddOns\RollFor\assets\icon-white
 
 libs\LibStub\LibStub.lua
