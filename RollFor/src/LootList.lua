@@ -109,10 +109,6 @@ function M.new( loot_facade, item_utils, tooltip_reader, dummy_items_fn )
     return result
   end
 
-  -- Returns a copy of the slot -> item map. Unlike get_slot(), this preserves
-  -- the slot of every item, so duplicates of the same item id remain
-  -- distinguishable (each occupies its own slot).
-  ---@return table<Slot, Coin|DroppedItem>
   -- Straight through to the facade: the loot list keeps what is in the window, not where it came
   -- from, and this is only here so its readers have one place to ask about a slot.
   ---@param slot number
@@ -121,6 +117,10 @@ function M.new( loot_facade, item_utils, tooltip_reader, dummy_items_fn )
     return lf.get_slot_source( slot )
   end
 
+  -- Returns a copy of the slot -> item map. Unlike get_slot(), this preserves
+  -- the slot of every item, so duplicates of the same item id remain
+  -- distinguishable (each occupies its own slot).
+  ---@return table<Slot, Coin|DroppedItem>
   local function get_items_by_slot()
     local result = {}
 
