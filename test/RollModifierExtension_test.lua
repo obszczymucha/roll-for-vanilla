@@ -57,7 +57,13 @@ RollFor.RollingLogicUtils.clear_modifiers()
 utils.player( "Psikutas" )
 
 local RLU = RollFor.RollingLogicUtils
-local ITEM = { id = 123, name = "Hearthstone" }
+local ITEM = RollFor.ItemUtils.make_item( 123, "Hearthstone", "[Hearthstone]", 4 )
+
+---@param name string
+---@return RollingPlayer
+local function roller( name )
+  return RollFor.Types.make_rolling_player( name, RollFor.Types.PlayerClass.Warrior, true, 1 )
+end
 
 ContextSpec = {}
 
@@ -78,20 +84,20 @@ end
 EffectSpec = {}
 
 function EffectSpec:should_apply_the_registered_modifier()
-  local total, adjustments = RLU.apply_modifiers( { name = "Psikutas", rolls = 1 }, ITEM, 50, RS.SoftResRoll )
+  local total, adjustments = RLU.apply_modifiers( roller( "Psikutas" ), ITEM, 50, RS.SoftResRoll )
 
   eq( total, 80 )
   eq( adjustments, { { by = "probe_bonus", delta = 30 } } )
 end
 
 function EffectSpec:should_leave_a_player_the_modifier_has_no_opinion_about_alone()
-  eq( RLU.apply_modifiers( { name = "Obszczymucha", rolls = 1 }, ITEM, 50, RS.SoftResRoll ), 50 )
+  eq( RLU.apply_modifiers( roller( "Obszczymucha" ), ITEM, 50, RS.SoftResRoll ), 50 )
 end
 
 -- on_enable does not run for a disabled extension, so its modifier never arrives. No flag
 -- to keep in step with the checkbox, and nothing to unregister.
 function EffectSpec:should_not_have_registered_the_disabled_extensions_modifier()
-  eq( RLU.apply_modifiers( { name = "Psikutas", rolls = 1 }, ITEM, 50, RS.SoftResRoll ), 80 )
+  eq( RLU.apply_modifiers( roller( "Psikutas" ), ITEM, 50, RS.SoftResRoll ), 80 )
 end
 
 os.exit( lu.LuaUnit.run() )

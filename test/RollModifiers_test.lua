@@ -14,13 +14,18 @@ local lu, eq = u.luaunit( "assertEquals" )
 u.mock_wow_api()
 require( "src/modules" )
 require( "src/Types" )
+require( "src/ItemUtils" )
 require( "src/Ordering" )
 local RLU = require( "src/RollingLogicUtils" )
 
 local RS = RollFor.Types.RollingStrategy
 
-local ITEM = { id = 123, name = "Hearthstone" }
-local PLAYER = { name = "Psikutas", class = "Warrior", online = true, rolls = 1 }
+-- Both built through core's own constructors, so they are the shapes a modifier is really
+-- handed rather than the subset these cases happen to read.
+---@type Item
+local ITEM = RollFor.ItemUtils.make_item( 123, "Hearthstone", "[Hearthstone]", 4 )
+---@type RollingPlayer
+local PLAYER = RollFor.Types.make_rolling_player( "Psikutas", RollFor.Types.PlayerClass.Warrior, true, 1 )
 
 local errors
 
