@@ -635,6 +635,12 @@ local roll_modifiers = {}
 ---@field adjust fun( player: RollingPlayer, item: Item, base: number, current: number ): number?
 ```
 
+*(Built differently, and better: **two registrars**, `roll_modifier.delta` and
+`roll_modifier.adjust`, each taking a spec with one required `apply`. "Exactly one of these
+two fields" is a thing a type cannot say -- written as two optionals it makes both-present
+and neither-present legal shapes that the code then has to reject by hand. Which registrar
+was called says it once and cannot be got wrong. See PLAN.md §6 item 14.)*
+
 A modifier declares **either `delta` or `adjust`, never both** -- and that single choice is
 what makes the rest of the design fall out:
 
@@ -716,10 +722,10 @@ Take a hypothetical `RollForRoleBonus`: **+20 for tanks, +10 for healers**. It i
 that matters, because SR+ alone never proves the seam is a seam.
 
 ```lua
-ctx.roll_modifier.register( {
+ctx.roll_modifier.delta( {
   name = "role_bonus",
   rounds = { RS.SoftResRoll, RS.NormalRoll, RS.TieRoll },
-  delta = function( player )
+  apply = function( player )
     local role = roles.get( player.name )
     if role == "tank" then return 20 end
     if role == "healer" then return 10 end
@@ -872,7 +878,8 @@ on the roll path. §10.3 is the demonstration that the pair generalises past SR+
 4. Fold it into all three `on_roll` implementations, honouring `rounds` (§10.2).
 5. A preview path for `delta`-style modifiers, consumed by `format_name_with_rolls` and
    `DroppedLootAnnounce.print_player`; re-check the `split_message` budget (§10.3).
-6. Expose `roll_modifier.register` on `ExtensionContext` and bump `Extensions.API_VERSION`.
+6. Expose `roll_modifier.delta` and `roll_modifier.adjust` on `ExtensionContext` and bump
+   `Extensions.API_VERSION`.
 
 **SR+, as a modification:**
 

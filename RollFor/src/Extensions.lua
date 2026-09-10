@@ -46,7 +46,11 @@ M.API_VERSION = 4
 ---@field softres_tap fun( name: string ): any? -- nil before the chain is built or if no such tap
 -- Registers something that adjusts a roll's value. Added in API 4; an extension that uses
 -- it must declare `api_version = 4` or higher, and one that does not is unaffected.
----@field roll_modifier { register: fun( spec: RollModifier ): boolean }
+--
+-- `delta` is for a bonus knowable from the player and the item alone, which is what lets
+-- core announce it before anybody rolls. `adjust` also sees the roll and the running total
+-- -- what a cap or a percentage needs -- and cannot be previewed. See RollingLogicUtils.
+---@field roll_modifier { delta: fun( spec: RollDeltaSpec ): boolean, adjust: fun( spec: RollAdjustSpec ): boolean }
 ---@field minimap { register: fun( c: MinimapContribution ), refresh: fun() }
 ---@field on_group_changed fun( callback: fun() )
 ---@field on_lockout_reset fun( callback: fun() )

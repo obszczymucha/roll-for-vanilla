@@ -41,26 +41,93 @@ end
 -- what a roll is worth. Core adds nothing to it: an empty list is today's behaviour
 -- exactly, byte for byte, because a fold over nothing returns what it was given.
 --
--- A modifier declares **either `delta` or `adjust`, never both**, and that one choice is
--- what the rest of this falls out of:
+-- ## Two kinds, and you pick one by which registrar you call
 --
---   * `delta` sees only the player and the item, so its answer is knowable before anybody
---     rolls. That is what makes it previewable, and the pre-roll display needs previewable.
---   * `adjust` also sees the base roll and the running total, which is what a percentage or
---     a cap needs -- and is exactly why it cannot be previewed.
+--     roll_modifier.delta { name, rounds, apply = function( player, item ) end }
+--     roll_modifier.adjust{ name, rounds, apply = function( player, item, base, current ) end }
 --
--- So "can this be announced in advance" is a consequence of which function was written,
--- not a boolean anybody can set wrongly.
----@class RollModifier
+-- Both `apply`s return the same thing: a signed number to add, or nil to decline this
+-- player. The difference is what they are given. A delta sees who is rolling and what for.
+-- An adjust also sees the roll that was just cast and the running total after earlier
+-- modifiers.
+--
+--     -- delta: the soft-res list already states the number. No roll needed to know it.
+--     ctx.roll_modifier.delta( {
+--       name = "sr_plus",
+--       rounds = { RS.SoftResRoll },
+--       apply = function( player, item ) return bonus_for( player.name, item.id ) end
+--     } )
+--
+--     -- adjust: "no roll above 100" is meaningless until there is a roll.
+--     ctx.roll_modifier.adjust( {
+--       name = "cap",
+--       rounds = { RS.SoftResRoll, RS.NormalRoll },
+--       apply = function( _, _, _, current ) return current > 100 and 100 - current or 0 end
+--     } )
+--
+--     -- adjust: ten percent of what, if not the roll?
+--     ctx.roll_modifier.adjust( {
+--       name = "tithe",
+--       rounds = { RS.NormalRoll },
+--       apply = function( _, _, base ) return math.floor( base * 0.1 ) end
+--     } )
+--
+-- ## Why the choice is the whole design
+--
+-- The roll call is printed *before anybody rolls*:
+--
+--     Roll for [Bag]. SR by Obszczymucha and Psikutas (+30)
+--
+-- To write `(+30)` there, core has to know what a modifier will contribute without a roll
+-- to give it. A `delta` can answer -- its inputs already exist. An `adjust` cannot: its
+-- answer is a function of a number that does not exist yet. Hence `preview_adjustments`
+-- below asking only the deltas.
+--
+-- So **previewability is a consequence of which function was written**, not a flag anybody
+-- can set wrongly. Had it been `previewable = true` on the spec, an author could set it
+-- wrong and the roll call would announce a bonus that never arrived.
+--
+-- ## Which is why the kind is the registrar and not a field
+--
+-- This began as one `register` taking a spec with an optional `delta` and an optional
+-- `adjust`, and a run-time check rejecting both-present and neither-present. That is an
+-- untagged union written as optionality: the type says "here are two things you may or may
+-- not supply" when the truth is "supply exactly one", so the checker accepts two shapes
+-- that are not legal and the code has to catch them by hand.
+--
+-- Two registrars say it once, in the only place it cannot be got wrong. There is no spec
+-- that carries two functions and none that carries none, so neither error exists to be
+-- checked for -- and neither does the question of what the fold should do when it meets
+-- one. What is left to validate is what any spec has to have: a name, a round, a function.
+--
+-- ## The knock-on
+--
+-- While every modifier is a `delta`, order does not affect the total -- addition commutes,
+-- so +30 then +20 and +20 then +30 both reach +50. It only changes the order the breakdown
+-- lists them in. The first `adjust` ends that: cap-then-add is not add-then-cap, since
+-- 95 -> cap -> +30 is 125 while 95 -> +30 -> cap is 100. That is why the order is pinned
+-- through `Ordering.place` rather than left to registration order -- which is load order,
+-- which is alphabetical, which nobody chose.
+-- What every modifier says regardless of kind. `apply` is the difference, and it is what
+-- each of the two specs below adds -- required in both, so there is no shape of either that
+-- is missing its function and no shape of either that carries the wrong one.
+---@class RollModifierSpec
 ---@field name string -- unique; this is what lands in RollAdjustment.by
 ---@field after string? -- anchors, in the vocabulary Chain and the loot pipeline already use
 ---@field before string?
 ---@field rounds RollingStrategyType[] -- which rounds it takes part in
--- Both optional because a spec carries exactly one of them, and registration refuses a spec
--- that carries both or neither. The `?` on the field is what says "may be absent"; the one
--- on the return says "may decline to adjust this player".
----@field delta? fun( player: RollingPlayer, item: Item ): number?
----@field adjust? fun( player: RollingPlayer, item: Item, base: number, current: number ): number?
+
+-- Registered through `roll_modifier.delta`. Previewable.
+---@class RollDeltaSpec : RollModifierSpec
+---@field apply fun( player: RollingPlayer, item: Item ): number? -- nil declines this player
+
+-- Registered through `roll_modifier.adjust`. Not previewable.
+---@class RollAdjustSpec : RollModifierSpec
+---@field apply fun( player: RollingPlayer, item: Item, base: number, current: number ): number?
+
+---@class RollModifier : RollModifierSpec
+---@field kind "delta" | "adjust" -- which registrar it came in through
+---@field apply function
 
 ---@type RollModifier[]
 local roll_modifiers = {}
@@ -72,9 +139,10 @@ local roll_modifiers = {}
 ---@type RollModifier[]?
 local placed
 
----@param spec RollModifier
+---@param spec RollDeltaSpec|RollAdjustSpec
+---@param kind "delta" | "adjust"
 ---@return boolean -- whether the modifier was registered
-function M.register_modifier( spec )
+local function register( spec, kind )
   if type( spec ) ~= "table" then
     m.err( "Roll modifier registration failed: the spec must be a table." )
     return false
@@ -98,32 +166,43 @@ function M.register_modifier( spec )
     return false
   end
 
-  -- Both or neither is refused rather than guessed at, the way Extensions.register refuses
-  -- a spec with neither on_enable nor on_ready. A modifier that declared both would leave
-  -- previewability up to whichever branch the fold happened to take.
-  if (spec.delta == nil) == (spec.adjust == nil) then
-    m.err( string.format( "Roll modifier %s failed to register: it must have a 'delta' or an 'adjust', not both.",
+  if type( spec.apply ) ~= "function" then
+    m.err( string.format( "Roll modifier %s failed to register: 'apply' must be a function.",
       m.colors.hl( spec.name ) ) )
     return false
   end
 
-  if spec.delta ~= nil and type( spec.delta ) ~= "function" then
-    m.err( string.format( "Roll modifier %s failed to register: 'delta' must be a function.",
-      m.colors.hl( spec.name ) ) )
-    return false
-  end
+  table.insert( roll_modifiers, {
+    name = spec.name,
+    after = spec.after,
+    before = spec.before,
+    rounds = spec.rounds,
+    apply = spec.apply,
+    kind = kind
+  } )
 
-  if spec.adjust ~= nil and type( spec.adjust ) ~= "function" then
-    m.err( string.format( "Roll modifier %s failed to register: 'adjust' must be a function.",
-      m.colors.hl( spec.name ) ) )
-    return false
-  end
-
-  table.insert( roll_modifiers, spec )
   placed = nil
 
   return true
 end
+
+-- Two registrars rather than one taking a spec with two optional functions.
+--
+-- "Exactly one of these two fields" is a thing a type cannot say: it would have to be
+-- declared as two optionals, and then both-present and neither-present are shapes the
+-- checker accepts and the code has to reject by hand at run time. Which registrar was
+-- called says the same thing, says it once, and cannot be got wrong -- there is no spec you
+-- can write that carries two functions or none.
+--
+-- The kind is not on the spec either. An author who could write `kind = "delta"` next to an
+-- `apply` taking four arguments would be back where we started.
+---@param spec RollDeltaSpec
+---@return boolean
+function M.register_delta( spec ) return register( spec, "delta" ) end
+
+---@param spec RollAdjustSpec
+---@return boolean
+function M.register_adjust( spec ) return register( spec, "adjust" ) end
 
 -- Order comes from Ordering.place, the same vocabulary, failures and error messages a
 -- soft-res chain link or a loot handler already uses. For two additive modifiers the order
@@ -172,8 +251,15 @@ function M.apply_modifiers( player, item, roll, strategy )
 
   for _, modifier in ipairs( placed_modifiers() ) do
     if takes_part( modifier, strategy ) then
-      local d = modifier.delta and modifier.delta( player, item )
-          or modifier.adjust and modifier.adjust( player, item, roll, total )
+      -- Branch rather than `and/or`: a delta that declines returns nil, and nil is what
+      -- `and/or` treats as "try the other side".
+      local d
+
+      if modifier.kind == "delta" then
+        d = modifier.apply( player, item )
+      else
+        d = modifier.apply( player, item, roll, total )
+      end
 
       if d and d ~= 0 then
         total = total + d
@@ -196,8 +282,8 @@ function M.preview_adjustments( player, item, strategy )
   local adjustments
 
   for _, modifier in ipairs( placed_modifiers() ) do
-    if modifier.delta and takes_part( modifier, strategy ) then
-      local d = modifier.delta( player, item )
+    if modifier.kind == "delta" and takes_part( modifier, strategy ) then
+      local d = modifier.apply( player, item )
 
       if d and d ~= 0 then
         adjustments = adjustments or {}

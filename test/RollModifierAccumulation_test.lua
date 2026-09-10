@@ -32,16 +32,16 @@ local sr_plus, role_bonus = {}, {}
 local function register_modifiers()
   RLU.clear_modifiers()
 
-  RLU.register_modifier( {
+  RLU.register_delta( {
     name = "sr_plus",
     rounds = { RS.SoftResRoll },
-    delta = function( player ) return sr_plus[ player.name ] end
+    apply = function( player ) return sr_plus[ player.name ] end
   } )
 
-  RLU.register_modifier( {
+  RLU.register_delta( {
     name = "role_bonus",
     rounds = { RS.SoftResRoll, RS.NormalRoll, RS.TieRoll },
-    delta = function( player ) return role_bonus[ player.name ] end
+    apply = function( player ) return role_bonus[ player.name ] end
   } )
 end
 
@@ -112,15 +112,15 @@ function AccumulationSpec:should_reach_the_same_total_whichever_order_they_regis
   role_bonus[ p1.name ] = 20
 
   RLU.clear_modifiers()
-  RLU.register_modifier( {
+  RLU.register_delta( {
     name = "role_bonus",
     rounds = { RS.SoftResRoll },
-    delta = function( player ) return role_bonus[ player.name ] end
+    apply = function( player ) return role_bonus[ player.name ] end
   } )
-  RLU.register_modifier( {
+  RLU.register_delta( {
     name = "sr_plus",
     rounds = { RS.SoftResRoll },
-    delta = function( player ) return sr_plus[ player.name ] end
+    apply = function( player ) return sr_plus[ player.name ] end
   } )
 
   -- When
@@ -160,10 +160,10 @@ function TieSpec:should_announce_the_bare_number_after_a_tie_reroll()
 
   sr_plus[ p1.name ] = 30
   RLU.clear_modifiers()
-  RLU.register_modifier( {
+  RLU.register_delta( {
     name = "sr_plus",
     rounds = { RS.SoftResRoll },
-    delta = function( player ) return sr_plus[ player.name ] end
+    apply = function( player ) return sr_plus[ player.name ] end
   } )
 
   -- When
@@ -211,10 +211,10 @@ function TieSpec:should_decompose_a_tie_reroll_that_a_modifier_took_part_in()
 
   role_bonus[ p1.name ] = 20
   RLU.clear_modifiers()
-  RLU.register_modifier( {
+  RLU.register_delta( {
     name = "role_bonus",
     rounds = { RS.SoftResRoll, RS.TieRoll },
-    delta = function( player ) return role_bonus[ player.name ] end
+    apply = function( player ) return role_bonus[ player.name ] end
   } )
 
   -- When

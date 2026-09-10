@@ -4,7 +4,7 @@ package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../Roll
 -- The seam as an extension actually reaches it.
 --
 -- RollModifiers_test drives RollingLogicUtils directly, which proves the fold. This proves
--- the wiring: that `ctx.roll_modifier.register` exists on the context core hands out, that
+-- the wiring: that both registrars exist on the context core hands out, that
 -- a modifier registered from on_enable is in play by the time anybody rolls, and that a
 -- *disabled* extension contributes nothing -- which is the mechanism, not a special case.
 
@@ -27,12 +27,14 @@ Extensions.register( {
   title = "Modifier Probe",
   api_version = Extensions.API_VERSION,
   on_enable = function( ctx )
-    seen.context_field = type( ctx.roll_modifier ) == "table" and type( ctx.roll_modifier.register ) == "function"
+    seen.context_field = type( ctx.roll_modifier ) == "table"
+        and type( ctx.roll_modifier.delta ) == "function"
+        and type( ctx.roll_modifier.adjust ) == "function"
 
-    seen.registered = ctx.roll_modifier.register( {
+    seen.registered = ctx.roll_modifier.delta( {
       name = "probe_bonus",
       rounds = { RS.SoftResRoll },
-      delta = function( player ) return player.name == "Psikutas" and 30 or nil end
+      apply = function( player ) return player.name == "Psikutas" and 30 or nil end
     } )
   end
 } )
@@ -43,10 +45,10 @@ Extensions.register( {
   api_version = Extensions.API_VERSION,
   default_enabled = false,
   on_enable = function( ctx )
-    ctx.roll_modifier.register( {
+    ctx.roll_modifier.delta( {
       name = "should_never_be_registered",
       rounds = { RS.SoftResRoll },
-      delta = function() return 100 end
+      apply = function() return 100 end
     } )
   end
 } )
@@ -59,7 +61,7 @@ local ITEM = { id = 123, name = "Hearthstone" }
 
 ContextSpec = {}
 
-function ContextSpec:should_offer_roll_modifier_on_the_extension_context()
+function ContextSpec:should_offer_both_registrars_on_the_extension_context()
   eq( seen.context_field, true )
 end
 

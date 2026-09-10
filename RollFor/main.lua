@@ -319,7 +319,14 @@ local function create_components()
       -- How an extension changes what a roll is worth. The sibling of roll_pools, which
       -- decides how many rolls a player gets: this one decides what one is worth, and core
       -- registers nothing in it.
-      roll_modifier = { register = m.RollingLogicUtils.register_modifier },
+      --
+      -- Two registrars, because the two kinds of modifier differ in what their function is
+      -- given and in whether their answer can be announced before anybody rolls. Which one
+      -- you call is the declaration; there is no field to set wrongly.
+      roll_modifier = {
+        delta = m.RollingLogicUtils.register_delta,
+        adjust = m.RollingLogicUtils.register_adjust
+      },
       minimap = {
         register = function( contribution ) table.insert( M.minimap_contributions, contribution ) end,
         refresh = refresh_minimap

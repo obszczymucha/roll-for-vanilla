@@ -205,7 +205,7 @@ Two consequences the build depends on:
 | SR+'s number comes from raidres' per-item `sr_plus`; the field is real | SR-PLUS §7 |
 | Duplicate entries on one item: **highest wins**, with a warning when they disagree | SR-PLUS §7.2 |
 | **No data migration.** The library starts empty; users re-import | confirmed by the user |
-| A modifier declares `delta` **xor** `adjust`; that choice decides previewability | SR-PLUS §10.2 |
+| A modifier declares `delta` **xor** `adjust`; that choice decides previewability | SR-PLUS §10.2; built as two registrars rather than two optional fields, §6 item 14 |
 | Modifier ordering uses the existing `Ordering.place`, not a new scheme | SR-PLUS §10.2 |
 | SR+ ships as its own addon, `RollForSrPlusRaidres` | SR-PLUS §10.5; confirmed by the user |
 | One agent takes Phases 0-9; nothing is blocked | confirmed by the user |
@@ -420,7 +420,7 @@ it does, the seam is wrong.
    It already has **no** `softres` argument (`7d169a5` removed it) -- the work is *not
    re-adding one*. `main.lua` and `IntegrationTestBuilder.lua` stay untouched.
 4. `RollFor/src/RollingLogicUtils.lua`: add `roll_modifiers` (empty), registration
-   validation (`delta` xor `adjust`, rejecting both or neither), ordering via
+   validation (built as two registrars, so both-and-neither cannot be written; §6 item 14), ordering via
    `Ordering.place`, and the `apply_modifiers` fold **with the `d ~= 0` guard**.
 5. Fold it into all three `on_roll` implementations, honouring each modifier's `rounds`:
    `SoftResRollingLogic`, `TieRollingLogic`, `NonSoftResRollingLogic`. The third still
@@ -712,7 +712,23 @@ core looks the extension up by and the scope its db would use; the folder is wha
 sees. §1's "snake_case of the addon" is a naming guide, not a derivation -- `RollForRaidRes`
 is already `raidres` rather than `raid_res`.
 
-### 14. Declared API versions
+### 14. The kind is the registrar, not a field
+
+Built first as SR-PLUS §10.2 specifies: one `register`, a spec with an optional `delta` and
+an optional `adjust`, and a run-time check rejecting both-present and neither-present.
+
+That is an untagged union written as optionality. The annotation has to declare two optional
+fields, so the checker accepts two shapes that are not legal, and the code catches them by
+hand -- which is the type failing to say the one thing that matters about the spec. It
+surfaced as a warning (`Missing required fields in type RollModifier: adjust`) on a
+perfectly valid modifier.
+
+Now `ctx.roll_modifier.delta{ ... }` and `ctx.roll_modifier.adjust{ ... }`, each taking a
+spec with one **required** `apply` of the right arity. Neither error exists to be checked
+for. The kind is not on the spec either -- an author who could write `kind = "delta"` beside
+a four-argument `apply` would be back where we started.
+
+### 15. Declared API versions
 
 `Extensions.API_VERSION` is **4**. `RollForSoftRes`, `RollForSoftResIt` and
 `RollForRaidRes` declare **2** -- what they are actually written against, since none of them
