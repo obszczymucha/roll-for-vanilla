@@ -347,7 +347,7 @@ M.ItemQuality = ItemQuality
 -- A delta is the currency because it is the only thing that composes. A multiplier, a cap,
 -- a penalty -- each works out its own effect and reports the difference it made.
 ---@class RollAdjustment
----@field by string    -- the modifier that made it, e.g. "sr_plus"
+---@field by string    -- the name the modifier registered under
 ---@field delta number -- signed, what it added or took away
 
 ---@class Roll
