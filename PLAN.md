@@ -5,9 +5,9 @@ worked. It does not argue for the design -- two companion documents do that, and
 the reference when a step is unclear:
 
 - **[SR-DIFF.md](SR-DIFF.md)** -- why `RollForSoftResIt` and `RollForRaidRes` are the same
-  program twice, what a provider is, and the decided design for the import window (§7).
+  program twice, what a provider is, and the decided design for the import window (SR-DIFF §7).
 - **[SR-PLUS.md](SR-PLUS.md)** -- what the removed SR+ feature was, how it worked, the two
-  reproduced bugs in it, and the `roll_modifiers` seam that brings it back (§10).
+  reproduced bugs in it, and the `roll_modifiers` seam that brings it back (SR-PLUS §10).
 
 Read those before starting. Do not re-derive their conclusions; they are settled.
 
@@ -143,7 +143,7 @@ exactly one registration.
 ### Naming
 
 One scheme, applied everywhere. No compatibility carve-outs: existing saved data is
-abandoned by decision (SR-DIFF §8.5), so nothing is named for what it used to be called.
+abandoned by decision (SR-DIFF §8, item 5), so nothing is named for what it used to be called.
 
 | Thing | Rule | Values |
 |---|---|---|
@@ -295,7 +295,7 @@ any provider yet.
 ### Phase 2. The Provider dropdown
 
 In `RollForSoftRes/src/SoftResGui.lua`. The spec is SR-DIFF §7.1 and §7.3; build every row
-of the §7.3 table.
+of the SR-DIFF §7.3 table.
 
 1. Add the dropdown above the editbox, populated from `RollForSoftRes.providers()`, showing
    `title`, always present even with one provider registered.
@@ -503,10 +503,11 @@ Each of these fails **silently**. They are the reason a phase can look done and 
   Anything that annotates a roller writes through to the soft-res data itself.
 - **`m.slash_cmd` refuses duplicates silently** (`modules.lua:230`) -- a `dbg` line and
   nothing the user sees.
-- **`EventBus.notify` fans out to every subscriber.** Two subscribers to
-  `minimap_icon_right_click` means two windows.
-- **`Db` migrations run *inside* a store** and cannot rename its key. A key change needs an
-  explicit copy.
+- **`EventBus.notify` fans out to every subscriber**, in subscription order, with no way to
+  stop the chain. Anything subscribing twice acts twice.
+- **`Db` migrations run *inside* a store** and cannot rename its key -- which is why a key
+  change would need an explicit copy. None is written here: §1 abandons the old keys
+  outright.
 - **`Ordering.place` and `Chain` resolve anchors at build time**, which is why load order
   does not matter for chain links -- do not "fix" it with load-order assumptions.
 - **`split_message` budgets bytes.** Longer per-name annotations move where messages split,

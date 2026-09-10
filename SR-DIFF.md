@@ -307,7 +307,7 @@ A **modification** -- SR+, `RollForNetherVortex`, a role bonus -- answers *what 
 means once it is here*, and needs different seams: a soft-res chain link for the read path
 (which exists), and a roll-value modifier for the roll path (which does not).
 [SR-PLUS.md](SR-PLUS.md) works that second axis out in full against the removed SR+ feature;
-§10.2 there is the seam, §10.3 the two-modification worked example. Anything built here
+SR-PLUS §10.2 is the seam, SR-PLUS §10.3 the two-modification worked example. Anything built here
 should leave room for it rather than assume a provider is all an extension can be.
 
 Names are unified across all four addons rather than inherited -- PLAN.md §1 carries the
@@ -331,7 +331,7 @@ Providers become ~60-line addons: a TOC, a `decode` function, four strings.
   `X-RollFor-Extension` as usual.
 - `−` The library owns the store, the window, the slash commands, the minimap contribution
   and its own options page, so its `ctx.db` scope is new. That costs a clean break with
-  existing saved data (§8.5).
+  existing saved data (§8, item 5).
 
 ### Option B -- shared code moves back into core `RollFor`
 
@@ -448,7 +448,7 @@ no-providers state must disable without clearing, so the two are not the same lo
    call. `## Dependencies: RollFor, RollForSoftRes`. They stop being RollFor extensions.
 4. One window, one `/sr`, one minimap subscription. Names follow PLAN.md §1 throughout --
    `RollForSoftResImportFrame`, not the old `RollForSoftResLootFrame`. User macros
-   referencing the old global break, accepted with the rest of the clean break (§8.5).
+   referencing the old global break, accepted with the rest of the clean break (§8, item 5).
 5. **Db keys: clean break, no migration.** `RollForSoftRes` opens `extension_softres_store`
    and `extension_softres_name_matcher` (PLAN.md §1) and starts empty. Existing users hold
    their list and matches under `extension_softres_it_*`; **nothing is carried over, and no
