@@ -909,6 +909,17 @@ function M.dropdown( parent )
     resize()
   end
 
+  -- Nudges the selected value inside the box, in pixels, positive being up. The template
+  -- anchors it two pixels above where the box artwork wants it and that lift is taken back
+  -- out above; this is for a caller that wants it somewhere else again.
+  ---@param lift number
+  container.SetValueLift = function( _, lift )
+    if not dropdown_text or not right then return end
+
+    dropdown_text:ClearAllPoints()
+    dropdown_text:SetPoint( "RIGHT", right, "RIGHT", dropdown_text_x, lift )
+  end
+
   -- Nudges the label alone, in pixels, positive being up. The box is anchored to the label
   -- -- it needs the label's width to know where to start -- so the same offset comes back
   -- off the box's own anchor, leaving the box exactly where it was.
