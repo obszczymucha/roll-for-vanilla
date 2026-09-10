@@ -909,6 +909,18 @@ function M.dropdown( parent )
     resize()
   end
 
+  -- Nudges the label alone, in pixels, positive being up. The box is anchored to the label
+  -- -- it needs the label's width to know where to start -- so the same offset comes back
+  -- off the box's own anchor, leaving the box exactly where it was.
+  ---@param lift number
+  container.SetLabelLift = function( _, lift )
+    label_lift = lift
+    label:ClearAllPoints()
+    label:SetPoint( "LEFT", container, "LEFT", 0, label_lift )
+    dropdown:ClearAllPoints()
+    dropdown:SetPoint( "LEFT", label, "RIGHT", value_gap, -label_lift )
+  end
+
   ---@param width number? -- nil restores the default
   container.SetDropdownWidth = function( _, width )
     dropdown_width = width or default_dropdown_width
