@@ -198,19 +198,31 @@ copies of core's harness with `-- EXTENSION:` marked patches, duplicated a third
 editbox, the Import/Clear/Close buttons, the simulation lock and the scroll handling are
 generic already.
 
-What is *not* written down anywhere is what happens when both addons are installed. Core
-refuses the second `SoftResSource.register`, but `Extensions` still runs both `on_ready`, so
-two complete GUIs get built. Two consequences, both real today:
+**With both addons installed, only one of them runs.** An earlier revision of this section
+claimed two -- that a minimap right-click would open two import windows and that the second
+addon's slash commands would silently vanish. **Both claims were wrong**, and the mechanism
+that makes them wrong is worth recording:
 
-- **A minimap right-click opens two import windows.** Both addons run
-  `ctx.event_bus.subscribe( "minimap_icon_right_click", softres_gui.toggle )`, and
-  `EventBus.notify` fans out to every subscriber.
-- **The second provider's slash commands silently do not exist.** `m.slash_cmd`
-  (`RollFor/src/modules.lua:230`) refuses a duplicate with a `dbg` line and nothing else, so
-  whichever addon loads first claims `/sr`, `/src`, `/srs` and `/sro`, and the other's are
-  dead with no message anywhere the user will see.
+1. Addons load alphabetically, so `RollForRaidRes` reaches `on_enable` first. It registers
+   the soft-res source and adds `matched_name`, `awarded_loot` and `present_players` to the
+   chain.
+2. `RollForSoftResIt` follows. `SoftResSource.register` refuses it and returns `false`, which
+   nothing checks -- so it carries on to `ctx.softres_chain.add( { name = "matched_name" … } )`.
+3. `Chain.add` rejects the duplicate name through `fail()`, which calls `error()`.
+4. `Extensions.run` wraps each phase in `pcall`, so the throw marks the extension `failed`.
+5. `Extensions.ready` skips a failed extension: `if callback and not extension.failed`.
 
-Both dissolve under §7, which gives the window a single owner.
+So the loser's `on_ready` never runs. No second `SoftResGui` is constructed, nothing else
+subscribes to `minimap_icon_right_click`, and `m.slash_cmd` is never reached a second time.
+What the user gets instead is a visible error at login:
+
+```
+Extension SoftRes (softres.it) failed during on_enable: RollFor chain 'softres':
+link 'matched_name' is already in the chain.
+```
+
+Degraded, loud, and no worse than that. **The case for §7's single window is duplication and
+the mutual exclusivity itself, not a rescue from broken behaviour.**
 
 ---
 
@@ -400,8 +412,10 @@ provider.** This settles the arbitration question in §6 and closes the sniffing
 
 ### 7.2 What this changes structurally
 
-- **One window, one `/sr`, one minimap subscription.** Both bugs in §3.8 stop being
-  possible, because there is no longer a second copy of anything to collide with.
+- **Two providers coexist instead of one shutting the other out.** Today the second addon
+  to load dies during `on_enable` and prints an error at login (§3.8). With one window and
+  one registrant there is nothing to collide over, and both formats are usable from the same
+  install.
 - **The provider owns no data.** It is a decoder. The store holds *the imported list*,
   whoever decoded it, which is why the store is scoped to the library rather than per
   provider -- and why the spec in §6 lost `summary`, `migrations` and `ctx`.
