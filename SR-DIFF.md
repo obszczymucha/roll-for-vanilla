@@ -341,7 +341,8 @@ Providers become ~60-line addons: a TOC, a `decode` function, four strings.
 - `−` The library must be the RollFor extension, because it owns the store, the window, the
   slash commands, the minimap contribution and the options page -- all of which need a
   `ctx`. Providers are plain addons that register with it, not extensions. That costs a
-  one-off db migration (§8.5) and means a provider has no options page of its own.
+  clean break with existing saved data (§8.5) and means a provider has no options page of
+  its own.
 
 ### Option B -- shared code moves back into core `RollFor`
 
@@ -450,16 +451,14 @@ no-providers state must disable without clearing, so the two are not the same lo
 4. One window, one frame name -- `RollForSoftResLootFrame` is the name to keep, since it is
    already the softres.it one and is in `UISpecialFrames` and possibly in user macros. One
    `/sr`, one minimap subscription (§3.8).
-5. **Db keys, and the migration this design costs.** The library is the extension, so
-   `ctx.db( "softres" )` resolves to `extension_softres_softres`. Existing users hold their
-   list at `extension_softres_it_softres` and their matches at
-   `extension_softres_it_name_matcher`. `Db` migrations run *inside* a store and cannot
-   rename its key, so this needs a one-off copy of the same shape as
-   `RollForSoftResIt.migrate_from_core` -- copy, do not move, and record that it ran.
-   `RollForSoftResIt`'s existing core→extension migration must also keep working for anyone
-   upgrading from a pre-extension RollFor, which makes two hops for the oldest installs.
-   The store additionally gains the provider id alongside `data` and `import_timestamp`
-   (§7.2).
+5. **Db keys: no migration.** The library is the extension, so `ctx.db( "softres" )`
+   resolves to `extension_softres_softres`, while existing users hold their list at
+   `extension_softres_it_softres` and their matches at `extension_softres_it_name_matcher`.
+   **Decided: nothing is carried over.** `RollForSoftRes` starts empty, users re-import, and
+   the old keys are left in place rather than deleted. The cost is the manual name matches,
+   which are hand-entered and not recoverable from a re-paste -- worth a release note.
+   `RollForSoftResIt`'s own core→extension migration is deleted with the rest of that addon.
+   The store still gains the provider id alongside `data` and `import_timestamp` (§7.2).
 6. Move `test/utils.lua` + `IntegrationTestBuilder.lua` + `mocks/` to the library; the
    provider addons need only a decoder test each.
 7. Add the missing softres.it `Decoder_test` while the fixtures are being moved --

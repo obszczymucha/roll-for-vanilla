@@ -234,7 +234,8 @@ $ lua SoftResRollSpec_test.lua             -> Ran 8 tests, 8 successes
 - **Bounds.** No test for a bonus pushing a roll past 100, a negative bonus, a zero bonus
   (`0` is truthy in Lua, so `(+0)` would have been printed and `+0=` decomposed), or a
   non-numeric one (`tonumber` yields `nil`, which reads as "no bonus" -- silently).
-- **Real data.** No fixture in the repo has ever contained an `sr_plus` field (§7).
+- **Real data.** No fixture in the repo contained an `sr_plus` field until now; both
+  tests fabricated it. A real export exists as of this revision (§7).
 
 ---
 
@@ -281,7 +282,10 @@ plus on SECOND entry: rolls=2 sr_plus=nil     <-- silently dropped
 two different values: rolls=2 sr_plus=40      <-- second value silently ignored
 ```
 
-An export that puts the bonus on a later duplicate loses it with no warning.
+An export that puts the bonus on a later duplicate loses it with no warning, and two
+duplicate entries with different bonuses silently collapse to whichever came first. raidres
+values are genuinely arbitrary per entry (§7.1), so this fires on real data. **First is the
+wrong rule** -- §7.2 settles it as highest-wins, with a warning when entries disagree.
 
 ### 6.3 The bonus is written onto the store's own roller tables
 
@@ -305,33 +309,173 @@ whoever supplies the number.
 
 ---
 
-## 7. The data problem: nothing produces `sr_plus`
+## 7. The data: raidres emits `sr_plus` per item
 
-The transformer expects `softreserves[].items[].sr_plus`. **No export format known to this
-repo has ever emitted that field**, and no fixture in any commit contains it
-(`git grep sr_plus` over every fixture in every revision: no hits). The two tests fabricate
-it through `u.soft_res_item( player, item_id, quality, sr_plus )`.
+**Corrected.** An earlier draft of this section claimed no export format emits `sr_plus`.
+That was wrong, and the error is worth naming because it nearly redirected the whole plan:
+every raidres payload available in this repo -- five exports across three raids, plus every
+fixture in every revision -- happens to be from a raid where **nobody had a plus set**. A
+field that raidres omits when it is zero cannot appear in any of them. "Not in our samples"
+was read as "not in the format".
 
-What the real formats carry:
+A real export with plus values set, `raidres-sr-plus.txt` (id `8UTE26`, Black Temple):
 
-| Site | Bonus-ish fields | Level | Read by RollFor? |
-|---|---|---|---|
-| softres.it | `rollBonus`, `plusOnes` | the reserve **entry** | never |
-| raidres.top | none | -- | -- |
+```json
+{ "metadata": { "id": "8UTE26", "instance": 209,
+                "instances": [ "Black Temple" ], "origin": "raidres" },
+  "softreserves": [
+    { "name": "Boulderdash", "role": "WarriorProtection",
+      "items": [ { "id": 32242, "quality": 4, "sr_plus": 5 },
+                 { "id": 32232, "quality": 4, "sr_plus": 5 },
+                 { "id": 32232, "quality": 4, "sr_plus": 5 } ] },
+    { "name": "Tachikoma", "role": "DruidRestoration",
+      "items": [ { "id": 32232, "quality": 4, "sr_plus": 10 },
+                 { "id": 32234, "quality": 4, "sr_plus": 10 },
+                 { "id": 32234, "quality": 4, "sr_plus": 10 } ] } ],
+  "hardreserves": [] }
+```
 
-Note the mismatch even for softres.it: its bonus is per **player**, SR+ expected it per
-**item**.
+So `13f9384` was right: `softreserves[].items[].sr_plus`, read with `tonumber`, is exactly
+where the field lives. The transformer line that removal deleted can go back verbatim.
 
-At the time SR+ was written the addon targeted `raidres.fly.dev` (the TOC's own Notes line
-at `13f9384`, and the README credits "Itamedruids for *Raidres* and adding the export
-function"). That instance is not the raidres.top of today, and neither the README's
-"Soft-Res data format" section nor the commit message documents where an `sr_plus` was
-supposed to come from. The most likely reading is that the contributor had a source that
-emitted it, and the field's provenance was never written down.
+### 7.1 What the payload tells us
 
-**This is the first thing to settle before writing any code**: SR+ is finished as a
-consumer and unstarted as a producer. Reintroducing §3 verbatim gives a feature no import
-can trigger.
+- **The bonus is per player, per item.** In this sample Boulderdash happens to carry `5` on
+  all three of their entries and Tachikoma `10` on all three, but **uniformity must not be
+  assumed** -- the field sits on the item, and different items can carry different values.
+  Anything that models it as one number per player is wrong.
+- **The store's shape already accommodates that.** `SoftResDataTransformer` builds
+  `sr_result[ item_id ].rollers[]`, so a roller entry is *already* scoped to one item. A
+  `sr_plus` on that roller is a per-(player, item) value, which is the right granularity.
+- **Duplicates carry it too.** Boulderdash has 32232 twice at `+5`, Tachikoma has 32234
+  twice at `+10`. Duplicates are what grant extra rolls, so Boulderdash gets **two rolls**
+  on 32232.
+- **32232 is contested with different bonuses**: Boulderdash `+5` with two rolls against
+  Tachikoma `+10` with one. That single item is a complete integration test on its own.
+- `role` is present as well (`WarriorProtection`, `DruidRestoration`) and still discarded --
+  the input a role-bonus modifier would need (§10.3, SR-DIFF §4).
+
+### 7.2 Duplicate entries: highest wins, and say so
+
+The raidres GUI gives an **editbox per item entry**, so values are arbitrary and a player's
+duplicate reservations on one item can differ. Two entries for 32232 at `+5` and `+7` is two
+rolls -- with what bonus?
+
+raidres documents its own answer:
+
+> When allowing duplicate reservations, the next calculated SR+ value will always be the
+> previous highest value. If this does not fit your loot rules you must edit the SR+ points
+> manually for duplicate reservations.
+>
+> Example: If a user makes a duplicate reservation on this event, and the SR+ values are 10
+> and 20, the next time the user makes a duplicate reservation, the SR+ value will be set to
+> 20 + (point increase) for both items.
+
+**Decision: take the highest of a player's entries for that item and apply it to all their
+rolls on it.**
+
+The reasoning is that divergence is usually *stale data rather than intent*. Values become
+10 and 20 because the player reserved once when their points were 10 and again after the
+event's points rose to 20. SR+ is conceptually a player's current points, and raidres is
+itself on its way to erasing the difference -- `20 + increase` for **both** items at the next
+recalculation. Taking the highest puts RollFor where raidres lands one recalculation later,
+instead of acting on a snapshot that upstream already considers superseded.
+
+**Warn when it happens.** The clause also names manual editing as the supported way to
+express different rules, so deliberate divergence is possible and cannot be distinguished
+from staleness. Nothing should be discarded silently -- at import, or in `/src`:
+
+```
+Boulderdash has 2 reservations on [Item] with different SR+ (20, 10). Using 20.
+```
+
+A leader who meant it sees it confirmed; one who did not learns their list is stale.
+
+#### Why not per-roll fidelity
+
+Keeping each entry's own bonus -- one roll worth +7, one worth +5 -- was the previous draft's
+answer. It is more faithful and considerably more expensive:
+
+| | Highest wins | Per roll |
+|---|---|---|
+| `SoftResDataTransformer` | one `math.max` | a list per (player, item) |
+| `RollingLogicUtils.consume_roll` | unchanged | must also return the roll's ordinal |
+| `delta` | scalar | list, indexed by ordinal |
+| Spend order | n/a | must be defined and deterministic |
+| Pre-roll display | `(+20)` | `[2 rolls] (+20, +10)` |
+
+And the in-game difference is marginal. `RollingLogicUtils.best_roll_per_player` means only
+a player's best roll can win, so per-roll bonuses change an outcome only when a player's
+*second* roll beats their first by more than the gap between the two bonuses -- rare, and
+never in the player's favour compared with uniform-highest.
+
+#### What this does not change
+
+Bonuses still differ **between items** for one player, and between players on one item. That
+is already handled: `SoftResDataTransformer` builds `sr_result[ item_id ].rollers[]`, so a
+roller entry is scoped to a single item and a scalar `sr_plus` on it is per (player, item).
+The §7 payload exercises both -- Boulderdash `+5` and Tachikoma `+10` both on 32232.
+
+### 7.3 softres.it has no equivalent
+
+Its `rollBonus` and `plusOnes` sit on the reserve *entry*, not the item, and nothing reads
+them. SR+ imported through the softres.it provider yields no bonus unless that mapping is
+added deliberately -- and if it is, note it is per-player there, so it cannot express what a
+raidres list can.
+
+### 7.4 Fixtures
+
+Two real exports are in the repo root. Each needs the decoded-JSON companion beside it, the
+way `raidres.txt` / `raidres.json` are paired today, in the fixtures directory of whichever
+addon owns the decoder test.
+
+| File | id | What it covers |
+|---|---|---|
+| `raidres-sr-plus.txt` | `8UTE26` | the field exists; uniform values; duplicates; one contested item |
+| `raidres-sr-plus-divergent.txt` | `UMMMKB` | duplicates with **differing** values -- the §7.2 rule and its warning |
+
+#### The divergent fixture, and why it is the important one
+
+```
+Boulderdash  32242 +5
+             32232 +7 , 32232 +9      <- duplicate, divergent, ASCENDING
+Tachikoma    32242 +1
+             32234 +4 , 32234 +3      <- duplicate, divergent, DESCENDING
+```
+
+It exercises three distinct shapes at once:
+
+- **32242 is contested with different bonuses and no duplicates** -- Boulderdash `+5` against
+  Tachikoma `+1`, one roll each. The plain per-(player, item) case.
+- **32232 is ascending (7 then 9).** First-entry-wins returns **7**; highest-wins returns
+  **9**. This is where §6.2's bug is visible.
+- **32234 is descending (4 then 3).** First-entry-wins returns **4** and highest-wins also
+  returns **4** -- the same answer by coincidence.
+
+Having both directions is what makes the test prove the *rule* rather than a happy accident:
+a transformer that still takes the first entry passes on 32234 and fails on 32232.
+
+#### Expected transform
+
+```lua
+[32242] = { quality = 4, rollers = { { name = "Boulderdash", rolls = 1, sr_plus = 5 },
+                                     { name = "Tachikoma",   rolls = 1, sr_plus = 1 } } }
+[32232] = { quality = 4, rollers = { { name = "Boulderdash", rolls = 2, sr_plus = 9 } } }
+[32234] = { quality = 4, rollers = { { name = "Tachikoma",   rolls = 2, sr_plus = 4 } } }
+```
+
+#### Expected warnings
+
+Both duplicate pairs disagree, so both are reported -- including 32234, where the rule
+happens to agree with the first entry. Divergence is what is being reported, not the
+outcome of the tie-break:
+
+```
+Boulderdash has 2 reservations on [Item:32232] with different SR+ (7, 9). Using 9.
+Tachikoma has 2 reservations on [Item:32234] with different SR+ (4, 3). Using 4.
+```
+
+`raidres-sr-plus.txt` produces **no** warning: its duplicates agree.
 
 ---
 
@@ -482,6 +626,12 @@ what makes the rest of the design fall out:
 - **`adjust` is dynamic.** It also sees the base roll and the running total, which is what a
   percentage or a cap needs -- and is exactly why it cannot be previewed.
 
+`delta` returns a **scalar**, and `consume_roll` is untouched. An earlier draft had `delta`
+return a list indexed by the consumed roll's ordinal, to give each of a player's rolls its
+own bonus. §7.2 settled that question the other way -- highest wins, resolved in the
+transformer -- so every roll a player holds for an item is worth the same, and the seam stays
+as simple as it looks above.
+
 Whether a modifier can be announced in advance is therefore a *consequence of which
 function it wrote*, not a boolean it can set wrongly. Registration rejects a modifier that
 declares both or neither, the way `Extensions.register` already rejects a spec with neither
@@ -631,16 +781,26 @@ registration order, which is addon load order, which is alphabetical:
 `RollForRoleBonus` before `RollForSrPlus` for no reason anybody chose. Hence `Ordering` in
 §10.2.
 
-### 10.4 Decide the source of the number
+### 10.4 The source of the number: settled
 
-Per §7 this is a product question, not a code one. The options, in the order they cost:
+**raidres emits `sr_plus` per item** (§7). The transformer line `13f9384` added and
+`7d169a5` removed goes back as it was:
 
-1. **Per-entry, from softres.it's existing `rollBonus`.** Real data, available today, no
-   new format. Costs a shape change: the bonus becomes per player, not per item.
-2. **Per-item, from a format that emits it.** What the original code expected. Needs a
-   source that actually produces it.
-3. **Locally assigned** -- a `/sr+ <player> <n>` command with its own db. Independent of
-   every provider, and the only option that works with raidres.top as it exists.
+```lua
+roller.sr_plus = tonumber( item.sr_plus )
+```
+
+with one change forced by §7.2: `math.max` across a player's duplicate entries for an item,
+replacing "first entry wins", plus a warning when they disagree.
+
+Two consequences for the surrounding work:
+
+- **The provider supplies it, so the library's transformer must carry it.** In the
+  SR-DIFF §7 design a provider is a decoder and the shared addon owns the transformer, so
+  SR+ living in its own addon (§10.5) can only see the field if the transformer passes it
+  through. That is a required step, not an optional one -- see PLAN.md Phase 4.
+- **softres.it lists produce no bonus** (§7.3). SR+ is a raidres capability until somebody
+  maps `rollBonus` deliberately.
 
 ### 10.5 Decide where it lives
 
