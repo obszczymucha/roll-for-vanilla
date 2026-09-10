@@ -272,8 +272,8 @@ decoded document shape is, for everything the addon consumes, the same.
    `RollForSoftResIt.lua` already performs.
 4. **The extension's own version is read from its TOC** via `X-RollFor-Extension`
    (`RollFor/src/Extensions.lua:M.version`), matching on extension name.
-5. **Global frame names** (`RollForSoftResLootFrame`, the options popup) must stay unique
-   per loaded addon.
+5. **Global frame names** must stay unique per loaded addon -- four addons now create
+   frames, so the scheme in PLAN.md §1 keys every one of them off its addon name.
 6. **Chain anchor names are public API**: `matched_name`, `awarded_loot`,
    `present_players` and the `unfiltered` tap are what *other* extensions attach to.
    `RollForNetherVortex` declares `after = "awarded_loot", before = "present_players"`;
@@ -310,9 +310,10 @@ means once it is here*, and needs different seams: a soft-res chain link for the
 §10.2 there is the seam, §10.3 the two-modification worked example. Anything built here
 should leave room for it rather than assume a provider is all an extension can be.
 
-Frame names derive from `id` (`"RollFor" .. id .. "LootFrame"`), which also fixes the
-current inconsistency where SoftResIt's frame is called `RollForSoftResLootFrame` (no
-"It").
+Names are unified across all four addons rather than inherited -- PLAN.md §1 carries the
+scheme. The window becomes `RollForSoftResImportFrame`, which drops both of the old name's
+faults: it was called `SoftRes` in the SoftResIt addon, and `Loot` for a window that imports
+text.
 
 ### Option A -- shared code moves into a `RollForSoftRes` library addon
 
@@ -445,17 +446,17 @@ no-providers state must disable without clearing, so the two are not the same lo
    dropdown in the import window (§7), including the empty and single-provider states.
 3. `RollForSoftResIt` / `RollForRaidRes` shrink to a TOC + `Decoder.lua` + a registration
    call. `## Dependencies: RollFor, RollForSoftRes`. They stop being RollFor extensions.
-4. One window, one frame name -- `RollForSoftResLootFrame` is the name to keep, since it is
-   already the softres.it one and is in `UISpecialFrames` and possibly in user macros. One
-   `/sr`, one minimap subscription (§3.8).
-5. **Db keys: no migration.** The library is the extension, so `ctx.db( "softres" )`
-   resolves to `extension_softres_softres`, while existing users hold their list at
-   `extension_softres_it_softres` and their matches at `extension_softres_it_name_matcher`.
-   **Decided: nothing is carried over.** `RollForSoftRes` starts empty, users re-import, and
-   the old keys are left in place rather than deleted. The cost is the manual name matches,
-   which are hand-entered and not recoverable from a re-paste -- worth a release note.
+4. One window, one `/sr`, one minimap subscription. Names follow PLAN.md §1 throughout --
+   `RollForSoftResImportFrame`, not the old `RollForSoftResLootFrame`. User macros
+   referencing the old global break, accepted with the rest of the clean break (§8.5).
+5. **Db keys: clean break, no migration.** `RollForSoftRes` opens `extension_softres_store`
+   and `extension_softres_name_matcher` (PLAN.md §1) and starts empty. Existing users hold
+   their list and matches under `extension_softres_it_*`; **nothing is carried over, and no
+   migration code is written.** Users re-import; their manual `/sro` name matches are lost
+   and have to be redone -- hand-entered and not recoverable from a re-paste, so it belongs
+   in the release notes. The old keys are simply never read again.
    `RollForSoftResIt`'s own core→extension migration is deleted with the rest of that addon.
-   The store still gains the provider id alongside `data` and `import_timestamp` (§7.2).
+   The store gains the provider id alongside `data` and `import_timestamp` (§7.2).
 6. Move `test/utils.lua` + `IntegrationTestBuilder.lua` + `mocks/` to the library; the
    provider addons need only a decoder test each.
 7. Add the missing softres.it `Decoder_test` while the fixtures are being moved --

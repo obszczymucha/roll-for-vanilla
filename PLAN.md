@@ -140,6 +140,34 @@ One new seam, `roll_modifiers`, so an extension can affect a roll's value; plus
 **Part A needs no core change at all** -- `SoftResSource` already exists and already accepts
 exactly one registration.
 
+### Naming
+
+One scheme, applied everywhere. No compatibility carve-outs: existing saved data is
+abandoned by decision (SR-DIFF §8.5), so nothing is named for what it used to be called.
+
+| Thing | Rule | Values |
+|---|---|---|
+| Addon folder and global table | `RollFor<Name>` | `RollForSoftRes`, `RollForSoftResIt`, `RollForRaidRes`, `RollForSrPlus` |
+| Extension `name` (also the db scope) | snake_case of the addon | `softres`, `softres_it`, `raidres`, `sr_plus` |
+| `X-RollFor-Extension` in the TOC | the extension `name` | matches exactly |
+| Provider `id` | the provider's extension `name` | `softres_it`, `raidres` |
+| Extension `title` | human, shown in the options tree | `SoftRes`, `SoftRes (softres.it)`, `SoftRes (raidres)`, `SR+` |
+| Provider `title` | the site, shown in the dropdown | `softres.it`, `raidres` |
+| Db keys | `extension_<name>_<key>`, `<key>` names the thing | `extension_softres_store`, `extension_softres_name_matcher`, `extension_sr_plus_settings` |
+| Global frames | `RollFor<Name><Purpose>Frame` | `RollForSoftResImportFrame` |
+| Options popups | `RollFor<Name>OptionsPage` | `RollForSoftResOptionsPage`, `RollForSoftResItOptionsPage`, `RollForRaidResOptionsPage`, `RollForSrPlusOptionsPage` |
+| `softres_*` event `source` | the provider `id` | `softres_it`, `raidres` |
+| Chain link names | unchanged -- they are public API | `matched_name`, `awarded_loot`, `present_players`, tap `unfiltered` |
+
+Two deliberate consequences:
+
+- `RollForSoftResLootFrame` is **gone**. It was the softres.it addon's window, misnamed
+  (`SoftRes`, not `SoftResIt`) and called `Loot` for a window that imports text. Any user
+  macro referencing it breaks; that is accepted along with the rest of the clean break.
+- The chain link names and the `unfiltered` tap do **not** change. `RollForNetherVortex` and
+  `RollForBtSrLimitCheck` anchor to them, and renaming them breaks those addons
+  (SR-DIFF §5, constraint 6).
+
 ### Ordering
 
 The TOC dependency chain fixes it, and nothing relies on the alphabet:
@@ -255,10 +283,9 @@ New addon at `~/.projects/lua/wow-2.5.x-addons.git/master/RollForSoftRes`.
 
    Validation mirrors `Extensions.register`: reject a non-table, a missing or non-string
    `id`/`title`, a non-function `decode`, and a duplicate `id`, each with `m.err`.
-5. Derive the frame name from the addon, not a provider: **keep
-   `RollForSoftResLootFrame`** -- it is already the softres.it name, it is in
-   `UISpecialFrames`, and user macros may reference it. Options popup:
-   `RollForSoftResOptionsPage`.
+5. Name everything per the §1 scheme. The window becomes `RollForSoftResImportFrame`
+   (and that is what goes into `UISpecialFrames`); the options popup is
+   `RollForSoftResOptionsPage`. `RollForSoftResLootFrame` is not preserved.
 
 **Done when:** the addon loads in isolation and its copied suites pass. It is not wired to
 any provider yet.
@@ -502,6 +529,9 @@ Each of these fails **silently**. They are the reason a phase can look done and 
 - [ ] No providers installed: the message shows and import is impossible; saved data intact.
 - [ ] No migration code exists; the old db keys are neither read nor written, and an
       upgrade-over-existing starts empty without erroring.
+- [ ] Every name follows §1: no `RollForSoftResLootFrame`, no `extension_softres_it_*` read
+      anywhere, provider `id` == extension `name` == `X-RollFor-Extension` for both
+      providers.
 - [ ] `roll_modifiers` exists in core, is empty by default, and an empty list reproduces
       today's behaviour exactly.
 - [ ] SR+ is an extension registering one modifier; core contains no reference to it.
