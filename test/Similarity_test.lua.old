@@ -141,6 +141,7 @@ end
 local function wrap( f )
   return function( ... )
     local args = { ... }
+    ---@diagnostic disable-next-line: deprecated
     return { fn = function() return f( table.unpack( args ) ) end, deb = function() return dump_table( args ) end }
   end
 end

@@ -263,15 +263,19 @@ function M.new_roll_for()
   end
 
   ---@param threshold number
+  -- Remembered rather than applied here: build() sets the threshold itself, and applying it
+  -- now would just be overwritten a moment later. That is what it used to do, which made
+  -- this setter look like it worked and do nothing.
   function builder.loot_threshold( self, threshold )
-    u.loot_threshold( threshold )
+    dependencies[ "LootThreshold" ] = threshold
     return self
   end
 
   function builder.build()
     u.mock_slashcmdlist() -- Drop the previous build's commands so this one can register its own.
     u.zone_name()
-    u.loot_threshold( 2 )
+    -- Uncommon unless a test said otherwise, which is what nearly every one of them wants.
+    u.loot_threshold( dependencies[ "LootThreshold" ] or 2 )
     u.targetting_enemy( "Princess Kenny" )
 
     local deps = dependencies or {}

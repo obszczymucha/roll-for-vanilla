@@ -15,9 +15,9 @@ local boe, bop, quest = ItemUtils.BindType.BindOnEquip, ItemUtils.BindType.BindO
 local individual_award_button = gui.individual_award_button
 local mock_random = u.mock_multiple_math_random
 
-LootListSpec = {}
+LootListBehaviourSpec = {}
 
-function LootListSpec:should_display_sr_tooltip()
+function LootListBehaviourSpec:should_display_sr_tooltip()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
   local item, p1, p2 = i( "Bag", 123 ), p( "Psikutas" ), p( "Obszczymucha" )
@@ -41,7 +41,7 @@ function LootListSpec:should_display_sr_tooltip()
   )
 end
 
-function LootListSpec:should_display_item_bind_type()
+function LootListBehaviourSpec:should_display_item_bind_type()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
   local p1, p2 = p( "Psikutas" ), p( "Obszczymucha" )
@@ -69,7 +69,7 @@ function LootListSpec:should_display_item_bind_type()
   )
 end
 
-function LootListSpec:should_display_sr_tooltip_and_item_bind_type()
+function LootListBehaviourSpec:should_display_sr_tooltip_and_item_bind_type()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
   local p1, p2 = p( "Psikutas" ), p( "Obszczymucha" )
@@ -96,7 +96,7 @@ function LootListSpec:should_display_sr_tooltip_and_item_bind_type()
   )
 end
 
-function LootListSpec:should_select_hr_item_if_clicked_on_any_item_of_that_id()
+function LootListBehaviourSpec:should_select_hr_item_if_clicked_on_any_item_of_that_id()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
   local item, item2, p1, p2 = i( "Bag", 123 ), i( "Hearthstone", 69 ), p( "Psikutas" ), p( "Obszczymucha" )
@@ -202,7 +202,7 @@ function LootListSpec:should_select_hr_item_if_clicked_on_any_item_of_that_id()
   )
 end
 
-function LootListSpec:should_select_both_sr_items_if_clicked_on_any_item_of_that_id()
+function LootListBehaviourSpec:should_select_both_sr_items_if_clicked_on_any_item_of_that_id()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
   local item, item2, p1, p2 = i( "Bag", 123 ), i( "Hearthstone", 69 ), p( "Psikutas" ), p( "Obszczymucha" )
@@ -304,7 +304,7 @@ function LootListSpec:should_select_both_sr_items_if_clicked_on_any_item_of_that
   )
 end
 
-function LootListSpec:should_not_select_the_loot_if_the_popup_was_closed_after_looting_low_quality_items_items()
+function LootListBehaviourSpec:should_not_select_the_loot_if_the_popup_was_closed_after_looting_low_quality_items_items()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
   local item, item2, p1, p2 = qi( "Bag", 123, 4 ), qi( "Hearthstone", 69, 4 ), p( "Psikutas" ), p( "Obszczymucha" )
@@ -380,7 +380,7 @@ function LootListSpec:should_not_select_the_loot_if_the_popup_was_closed_after_l
   )
 end
 
-function LootListSpec:should_loot_the_items_below_quality()
+function LootListBehaviourSpec:should_loot_the_items_below_quality()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
   local item, item2, p1, p2 = qi( "Bag", 123, 1 ), qi( "Hearthstone", 69, 1 ), p( "Psikutas" ), p( "Obszczymucha" )
@@ -415,7 +415,7 @@ function LootListSpec:should_loot_the_items_below_quality()
   rf.rolling_popup.should_be_hidden()
 end
 
-function LootListSpec:should_not_allow_to_select_item_while_rolling_is_in_progress()
+function LootListBehaviourSpec:should_not_allow_to_select_item_while_rolling_is_in_progress()
   -- Given
   local loot_facade, chat = mock_loot_facade(), mock_chat()
   local item, item2, item3, p1, p2 = i( "Bag", 123 ), i( "Hearthstone", 69 ), i( "Sword", 42 ), p( "Psikutas" ), p( "Obszczymucha" )

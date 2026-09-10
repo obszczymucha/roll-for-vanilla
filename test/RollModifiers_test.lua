@@ -63,14 +63,14 @@ local function static( name, amount, rounds )
   }
 end
 
-RegistrationSpec = {}
+ModifierRegistrationSpec = {}
 
-function RegistrationSpec:should_accept_a_delta_modifier()
+function ModifierRegistrationSpec:should_accept_a_delta_modifier()
   reset()
   eq( RLU.register_delta( static( "sr_plus", 30 ) ), true )
 end
 
-function RegistrationSpec:should_accept_an_adjust_modifier()
+function ModifierRegistrationSpec:should_accept_an_adjust_modifier()
   reset()
 
   eq( RLU.register_adjust( {
@@ -83,7 +83,7 @@ end
 -- There is no case here for "declared both" or "declared neither". Neither is a shape you
 -- can write: the kind is which registrar you called, and each spec carries exactly one
 -- `apply`. That is the point of there being two of them.
-function RegistrationSpec:should_take_its_kind_from_the_registrar_it_came_in_through()
+function ModifierRegistrationSpec:should_take_its_kind_from_the_registrar_it_came_in_through()
   reset()
 
   RLU.register_adjust( {
@@ -99,7 +99,7 @@ function RegistrationSpec:should_take_its_kind_from_the_registrar_it_came_in_thr
   eq( RLU.preview_adjustments( PLAYER, ITEM, RS.SoftResRoll ), nil )
 end
 
-function RegistrationSpec:should_refuse_something_that_is_not_a_table()
+function ModifierRegistrationSpec:should_refuse_something_that_is_not_a_table()
   reset()
   -- The wrong type is the point of the case.
   ---@diagnostic disable-next-line: param-type-mismatch
@@ -107,7 +107,7 @@ function RegistrationSpec:should_refuse_something_that_is_not_a_table()
   eq( complained_about( "must be a table" ), true )
 end
 
-function RegistrationSpec:should_refuse_a_missing_name()
+function ModifierRegistrationSpec:should_refuse_a_missing_name()
   reset()
   -- The missing name is the point of the case.
   ---@diagnostic disable-next-line: missing-fields
@@ -115,7 +115,7 @@ function RegistrationSpec:should_refuse_a_missing_name()
   eq( complained_about( "'name' must be a non-empty string" ), true )
 end
 
-function RegistrationSpec:should_refuse_a_duplicate_name()
+function ModifierRegistrationSpec:should_refuse_a_duplicate_name()
   reset( static( "sr_plus", 30 ) )
 
   eq( RLU.register_delta( static( "sr_plus", 10 ) ), false )
@@ -124,20 +124,20 @@ end
 
 -- One namespace across both kinds: `by` in a RollAdjustment says which modifier made it,
 -- and two of them answering to one name would make that unreadable.
-function RegistrationSpec:should_refuse_a_duplicate_name_across_the_two_registrars()
+function ModifierRegistrationSpec:should_refuse_a_duplicate_name_across_the_two_registrars()
   reset( static( "sr_plus", 30 ) )
 
   eq( RLU.register_adjust( { name = "sr_plus", rounds = { RS.SoftResRoll }, apply = function() end } ), false )
   eq( complained_about( "already registered" ), true )
 end
 
-function RegistrationSpec:should_refuse_a_modifier_that_takes_part_in_no_round()
+function ModifierRegistrationSpec:should_refuse_a_modifier_that_takes_part_in_no_round()
   reset()
   eq( RLU.register_delta( { name = "sr_plus", rounds = {}, apply = function() end } ), false )
   eq( complained_about( "'rounds' must name at least one round" ), true )
 end
 
-function RegistrationSpec:should_refuse_an_apply_that_is_not_a_function()
+function ModifierRegistrationSpec:should_refuse_an_apply_that_is_not_a_function()
   reset()
   -- The apply that is not a function is the point of the case.
   ---@diagnostic disable-next-line: assign-type-mismatch
@@ -248,11 +248,11 @@ function ApplySpec:should_give_an_adjust_the_base_roll_and_the_running_total()
   eq( adjustments, { { by = "sr_plus", delta = 30 }, { by = "cap", delta = -19 } } )
 end
 
-AccumulationSpec = {}
+FoldAccumulationSpec = {}
 
 -- The property the seam exists for: neither modifier knows the other is there, and core
 -- knows what neither of them does.
-function AccumulationSpec:should_accumulate_two_static_modifiers()
+function FoldAccumulationSpec:should_accumulate_two_static_modifiers()
   reset( static( "sr_plus", 30 ), static( "role_bonus", 20 ) )
 
   local total, adjustments = RLU.apply_modifiers( PLAYER, ITEM, 50, RS.SoftResRoll )
@@ -264,7 +264,7 @@ end
 -- Addition commutes, so registration order changes the order they are listed in and
 -- nothing else. It stops being free the moment somebody writes an `adjust`, which is why
 -- the order is pinned rather than left to load order.
-function AccumulationSpec:should_reach_the_same_total_whichever_order_they_registered_in()
+function FoldAccumulationSpec:should_reach_the_same_total_whichever_order_they_registered_in()
   reset( static( "role_bonus", 20 ), static( "sr_plus", 30 ) )
 
   local total, adjustments = RLU.apply_modifiers( PLAYER, ITEM, 50, RS.SoftResRoll )

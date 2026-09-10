@@ -63,7 +63,9 @@ function AutoLootSpec:should_not_autoloot_quest_items_of_any_quality()
   lu.assertEquals( rf.auto_loot.is_auto_looted( item ), false )
 end
 
-function AutoLootSpec:autoloot_should_depend_on_loot_threshold()
+-- Never ran until now: the name did not start with `should_`, which is what the suite's
+-- `-m should` filter matches on.
+function AutoLootSpec:should_depend_on_the_loot_threshold()
   local rf_builder = new_roll_for()
       :config( {
         auto_loot = true
@@ -71,11 +73,14 @@ function AutoLootSpec:autoloot_should_depend_on_loot_threshold()
 
   local item = qi( "Fire for Crafting", 123, 2, boe )
 
-  local rf_low_threshold = rf_builder:threshold( 2 ):build()
-  lu.assertEquals( rf_low_threshold.auto_loot.is_auto_looted( item ), true )
+  -- Below the threshold is what gets swept up; at it or above, it is master loot's. So an
+  -- uncommon is auto-looted at a rare threshold and not at an uncommon one -- which is the
+  -- same rule should_autoloot_uncommon_items_when_general_uncommon_is_ticked states in prose.
+  local rf_at_threshold = rf_builder:loot_threshold( 2 ):build()
+  lu.assertEquals( rf_at_threshold.auto_loot.is_auto_looted( item ), false )
 
-  local rf_high_threshold = rf_builder:threshold( 3 ):build()
-  lu.assertEquals( rf_high_threshold.auto_loot.is_auto_looted( item ), false )
+  local rf_below_threshold = rf_builder:loot_threshold( 3 ):build()
+  lu.assertEquals( rf_below_threshold.auto_loot.is_auto_looted( item ), true )
 end
 
 -- Items ticked in the auto-loot GUI are auto-looted whatever their quality or bind type -- the
