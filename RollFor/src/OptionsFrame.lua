@@ -237,7 +237,8 @@ function M.new( popup_builder, content_transformer, config, parent, section, ext
 
   -- The page core draws for an extension that supplies none of its own: the switch, and
   -- nothing else. Anything worth saying about what the extension does is the extension's
-  -- to say, on the page it builds itself -- core does not keep a copy.
+  -- to say, on the page it builds itself -- core does not keep a copy. An extension that
+  -- declares hide_enabled_option gets not even the switch.
   ---@param settings OptionsSetting[]
   local function extension_settings( settings )
     local extension = m.Extensions.get( extension_name )
@@ -252,6 +253,10 @@ function M.new( popup_builder, content_transformer, config, parent, section, ext
 
       return
     end
+
+    -- Nothing to offer: the extension says its own settings already answer this, and core has
+    -- no business drawing a switch it has declared there is no question about.
+    if extension.hide_enabled_option then return end
 
     ---@type BooleanSetting
     local enabled = {

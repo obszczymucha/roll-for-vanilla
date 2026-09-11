@@ -117,6 +117,59 @@ function RegistrationSpec:should_refuse_an_on_ready_that_is_not_a_function()
   eq( #Extensions.all(), 0 )
 end
 
+AlwaysOnSpec = {}
+
+function AlwaysOnSpec:setUp() Extensions.clear() end
+
+-- Some extensions are the feature: their own settings already say whether it does anything, so
+-- a second switch above those is the same question asked twice. Such an extension declares
+-- hide_enabled_option, and core stops offering the switch -- on the page it draws for an
+-- extension that supplies none of its own, and in what is_enabled answers.
+function AlwaysOnSpec:should_carry_the_flag_through_registration()
+  Extensions.register( spec( "auto_loot", { hide_enabled_option = true } ) )
+
+  eq( Extensions.all()[ 1 ].hide_enabled_option, true )
+end
+
+function AlwaysOnSpec:should_default_the_flag_to_false()
+  Extensions.register( spec( "auto_robin" ) )
+
+  eq( Extensions.all()[ 1 ].hide_enabled_option, false )
+end
+
+-- With no switch anywhere there is nothing left to turn it back on, so "off" has to be a state
+-- it can never reach. That is what makes hiding the switch safe rather than a trap.
+function AlwaysOnSpec:should_stay_enabled_even_when_the_db_says_off()
+  local db = attach()
+  Extensions.register( spec( "auto_loot", { hide_enabled_option = true } ) )
+
+  db[ "auto_loot" ] = false
+
+  eq( Extensions.is_enabled( "auto_loot" ), true )
+end
+
+-- Nothing should be calling this -- there is no switch to click -- but a stored `false` written
+-- by anything else would strand the extension, so the write is refused rather than ignored later.
+function AlwaysOnSpec:should_refuse_to_be_switched_off()
+  local db, reloads = attach()
+  Extensions.register( spec( "auto_loot", { hide_enabled_option = true } ) )
+
+  Extensions.set_enabled( "auto_loot", false )
+
+  eq( db[ "auto_loot" ], nil )
+  eq( Extensions.is_enabled( "auto_loot" ), true )
+  eq( table.getn( reloads ), 0 )
+end
+
+-- An incompatible extension is off whatever it asked for: it cannot run at all, and saying so
+-- is the whole point of leaving it registered.
+function AlwaysOnSpec:should_still_be_disabled_when_it_is_incompatible()
+  Extensions.register( spec( "auto_loot",
+    { hide_enabled_option = true, api_version = Extensions.API_VERSION + 1 } ) )
+
+  eq( Extensions.is_enabled( "auto_loot" ), false )
+end
+
 CompatibilitySpec = {}
 
 function CompatibilitySpec:setUp() Extensions.clear() end

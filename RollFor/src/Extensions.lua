@@ -87,6 +87,11 @@ M.API_VERSION = 5
 ---@field title string? -- names its page in the options window; defaults to name
 ---@field api_version number
 ---@field default_enabled boolean? -- defaults to true
+-- No user-facing on/off switch, and always on. For an extension that *is* the feature, whose
+-- own settings already say whether it does anything -- a switch above those asks the same
+-- question twice. Core stops drawing one, and is_enabled stops taking no for an answer: with
+-- no switch anywhere, "off" would be a state nothing could bring it back from.
+---@field hide_enabled_option boolean? -- defaults to false
 ---@field on_enable fun( ctx: ExtensionContext )? -- declare only: chain links, config, hooks
 ---@field on_ready fun( ctx: ExtensionContext )? -- build frames and slash commands here
 ---@field options_page ExtensionOptionsPage? -- builds this extension's page in the game's options
@@ -104,6 +109,7 @@ M.API_VERSION = 5
 ---@field title string
 ---@field api_version number
 ---@field default_enabled boolean
+---@field hide_enabled_option boolean
 ---@field on_enable fun( ctx: ExtensionContext )?
 ---@field on_ready fun( ctx: ExtensionContext )?
 ---@field options_page ExtensionOptionsPage?
@@ -176,6 +182,7 @@ function M.register( spec )
     title = spec.title or spec.name,
     api_version = spec.api_version,
     default_enabled = spec.default_enabled ~= false,
+    hide_enabled_option = spec.hide_enabled_option == true,
     on_enable = spec.on_enable,
     on_ready = spec.on_ready,
     options_page = spec.options_page
@@ -212,6 +219,12 @@ end
 function M.is_enabled( name )
   local extension = find( name )
   if not extension or extension.incompatible then return false end
+
+  -- Nothing can switch it off, so nothing stored may say it is -- including a value written
+  -- before it declared the flag. Checked after `incompatible`, which outranks it: an extension
+  -- that cannot run is off no matter what it asked for.
+  if extension.hide_enabled_option then return true end
+
   if not db then return extension.default_enabled end
 
   local value = db[ name ]
@@ -230,6 +243,10 @@ function M.set_enabled( name, value )
     m.err( string.format( "Extension %s is not compatible with this version of RollFor.", hl( extension.title ) ) )
     return
   end
+
+  -- There is no switch to have clicked, so this is nobody's deliberate choice. Refused rather
+  -- than written and ignored by is_enabled, which would leave a lie in the db.
+  if extension.hide_enabled_option then return end
 
   if not db then return end
 

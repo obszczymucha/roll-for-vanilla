@@ -449,6 +449,19 @@ function ExtensionPageSpec:should_toggle_the_extension_from_its_own_page()
   eq( db.nether_vortex, false )
 end
 
+-- An extension that is the feature -- whose own settings already say whether it does anything --
+-- declares hide_enabled_option, and core's fallback page has nothing left to draw. Rare on this
+-- page, since such an extension almost certainly has settings of its own and therefore a page of
+-- its own; core answers the same way regardless of which page is asking.
+function ExtensionPageSpec:should_offer_no_switch_when_the_extension_hides_it()
+  register_nether_vortex( { hide_enabled_option = true } )
+
+  local options = new_extension_page( "nether_vortex" )
+  options.show()
+
+  options.should_display( page_of( {} ) )
+end
+
 -- An extension built for a newer RollFor cannot be switched on, so it gets the reason
 -- instead of a checkbox that would refuse to do anything.
 function ExtensionPageSpec:should_explain_itself_instead_of_offering_a_switch_when_incompatible()
