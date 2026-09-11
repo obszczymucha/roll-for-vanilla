@@ -1095,12 +1095,15 @@ function M.trade_with( recipient, trade_tracker )
   end
 end
 
+-- Two states, always. The client never sends a lone 0 -- playerAccepted and targetAccepted
+-- are both `Nilable = false` -- and passing one is what let a truth test on them pass for
+-- years: nil is the only value of target_accepted that a truth test gets right.
 function M.cancel_trade( trade_tracker )
   if trade_tracker then
-    trade_tracker.on_trade_accept_update( 0 )
+    trade_tracker.on_trade_accept_update( 0, 0 )
     trade_tracker.on_trade_closed()
   else
-    M.fire_event( "TRADE_ACCEPT_UPDATE", 0 )
+    M.fire_event( "TRADE_ACCEPT_UPDATE", 0, 0 )
     M.fire_event( "TRADE_CLOSED" )
   end
 end

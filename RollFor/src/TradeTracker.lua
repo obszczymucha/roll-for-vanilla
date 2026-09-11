@@ -137,8 +137,16 @@ function M.new( ace_timer, chat, trade_complete_callback )
     m_trading = false
   end
 
+  -- Both states are numbers, 0 or 1, and never nil -- playerAccepted and targetAccepted are
+  -- both `Nilable = false` in the client's TradeInfoDocumentation. 0 is true in Lua, so a
+  -- plain truth test reads the first update of every trade (the 1,0 or 0,1 above) as both
+  -- parties having accepted. That is not just a wrong word in the chat log: the flag is what
+  -- locks the item lists, so everything put in after the first accept was dropped on the
+  -- floor and the trade completed awarding nothing.
+  ---@param player_accepted number
+  ---@param target_accepted number
   local function on_trade_accept_update( player_accepted, target_accepted )
-    if player_accepted and target_accepted then
+    if player_accepted == 1 and target_accepted == 1 then
       m_both_parties_accepted = true
     end
   end
