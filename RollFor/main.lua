@@ -93,13 +93,40 @@ local function trade_complete_callback( recipient_name, items_given, items_recei
 end
 
 -- TODO: Add type.
-local function get_dummy_items()
-  ---@diagnostic disable-next-line: unused-function
+-- Enum.ItemBind, which is what GetItemInfo's 14th return is, in the addon's own terms.
+-- Read rather than assumed because DroppedLoot registers a bind-on-pickup item on quality
+-- alone and everything else only at or above the loot threshold: tell it a green is BoP and
+-- a simulated drop registers where the real one wouldn't have. Anything not listed (bind on
+-- use, or an id the client has nothing for) binds nothing that matters here.
+local BIND_TYPES = {
+  [ 1 ] = m.ItemUtils.BindType.BindOnPickup,
+  [ 2 ] = m.ItemUtils.BindType.BindOnEquip,
+  [ 4 ] = m.ItemUtils.BindType.Quest
+}
+
+---@param item_id number
+---@param quantity number
+---@param name_override string?
+---@return DroppedItem? -- nil when the client has no item info cached for the id
+local function make_simulated_item( item_id, quantity, name_override )
   local function item_link( name, id, quality )
     local color = (quality and m.api.ITEM_QUALITY_COLORS[ quality ] and m.api.ITEM_QUALITY_COLORS[ quality ].hex) or "|cffffffff"
     return string.format( "%s|Hitem:%s::::::::70::::::::::|h[%s]|h|r", color, id or "3299", name )
   end
 
+  local item_info = { m.api.GetItemInfo( item_id ) }
+  local name, tooltip_link, quality = item_info[ 1 ], item_info[ 2 ], item_info[ 3 ]
+  local texture, bind_type = item_info[ 10 ], item_info[ 14 ]
+
+  if not name then return nil end
+
+  name = name_override or name
+
+  return m.ItemUtils.make_dropped_item( item_id, name, item_link( name, item_id, quality ), tooltip_link,
+    quality, quantity, texture, BIND_TYPES[ bind_type ] or m.ItemUtils.BindType.None )
+end
+
+local function get_dummy_items()
   -- { item_id, quantity, name_override }
   local ids = {
     { 30237, 1 }, -- Chestguard of the Vanquished Defender
@@ -112,24 +139,10 @@ local function get_dummy_items()
     { 29994, 1 }, -- Thalassian Wildercloak
   }
   local result = {}
-  ---@type MakeDroppedItemFn
-  local make_dropped_item = m.ItemUtils.make_dropped_item
-  local boe = m.ItemUtils.BindType.BindOnEquip
 
   for _, entry in ipairs( ids ) do
-    local item_id, quantity, name_override = entry[ 1 ], entry[ 2 ], entry[ 3 ]
-    local name, tooltip_link, quality, texture
-
-    local item_info = { m.api.GetItemInfo( item_id ) }
-    name, tooltip_link, quality = item_info[ 1 ], item_info[ 2 ], item_info[ 3 ]
-    texture = item_info[ 10 ]
-
-    if name then
-      name = name_override or name
-      local link = item_link( name, item_id, quality )
-      local item = make_dropped_item( item_id, name, link, tooltip_link, quality, quantity, texture, boe )
-      table.insert( result, item )
-    end
+    local item = make_simulated_item( entry[ 1 ], entry[ 2 ], entry[ 3 ] )
+    if item then table.insert( result, item ) end
   end
 
   return result
@@ -983,6 +996,37 @@ local function clear_simulation()
     hl( "/rfdrop lockout" ) ) )
 end
 
+-- One item of the caller's choosing, instead of the fixed eight. The point is to be able to
+-- simulate a drop of something actually in your bags, so that trading it exercises the award
+-- path -- which reads db.dropped_items, and knows nothing about the dummy list.
+--
+-- Whether it registers is DroppedLoot's call, not ours: a green under an epic loot threshold
+-- is dropped loot the addon deliberately ignores. Asking it afterwards is how we find out,
+-- rather than second-guessing the predicate here.
+---@param item_id number
+local function drop_one_item( item_id )
+  local item = make_simulated_item( item_id, 1 )
+
+  if not item then
+    info( string.format( "The client has no item info for %s. Link it from your bags instead.", hl( item_id ) ) )
+    return
+  end
+
+  M.rf_test_loot_facade.setup( { item } )
+  M.rf_test_loot_facade.notify( "LootOpened" )
+
+  if not M.dropped_loot.get_dropped_item_name( item_id ) then
+    local threshold = m.api.GetLootThreshold()
+
+    info( string.format( "%s dropped, but didn't register as loot worth awarding: the group's loot threshold is %s.",
+      item.link, hl( m.api[ string.format( "ITEM_QUALITY%s_DESC", threshold ) ] or threshold ) ) )
+    return
+  end
+
+  info( string.format( "%s dropped. Trade it to someone to test the award, %s to put it back.",
+    item.link, hl( "/rftest clear" ) ) )
+end
+
 ---@param args string
 local function on_rftest_command( args )
   if not M.player_info.is_master_looter() then
@@ -1036,6 +1080,22 @@ local function on_rftest_command( args )
       M.rf_test_loot_facade.notify( "LootSlotCleared", i )
     end
 
+    return
+  end
+
+  -- A shift-clicked link first: it has digits in it too, so a plain number check would
+  -- read the item id off the wrong part of it.
+  local query = string.match( args or "", "^%s*(.-)%s*$" )
+  local item_id = query ~= "" and (m.ItemUtils.get_item_id( query ) or tonumber( query )) or nil
+
+  if query ~= "" and not item_id then
+    info( string.format( "%s takes an item id or a shift-clicked item link, or nothing at all.",
+      hl( "/rftest <item>" ) ) )
+    return
+  end
+
+  if item_id then
+    drop_one_item( item_id )
     return
   end
 
