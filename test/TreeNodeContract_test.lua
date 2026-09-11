@@ -1,8 +1,8 @@
 package.path = "./?.lua;" .. package.path .. ";../?.lua;../RollFor/?.lua;../RollFor/libs/?.lua"
 
--- The methods AutoLootFrame calls on a tree_node row, checked against the real widget.
+-- The methods SelectionTreeFrame calls on a tree_node row, checked against the real widget.
 --
--- This suite exists because of a crash it would have caught. AutoLootFrame gained
+-- This suite exists because of a crash it would have caught. SelectionTreeFrame gained
 -- SetLabelTooltip (a row saying why it is greyed out) while GuiElements did not, and every
 -- window built on it went on passing its tests: the frame specs render through the popup
 -- mocks, which fabricate a widget that answers to anything. Nothing anywhere asked the real
@@ -21,7 +21,7 @@ local GuiElements = require( "src/GuiElements" )
 local PopupBuilder = require( "src/PopupBuilder" )
 local GuiElements_frame_builder = require( "src/FrameBuilder" )
 
--- Every method AutoLootFrame calls on the row it is handed. Read off the file rather than
+-- Every method SelectionTreeFrame calls on the row it is handed. Read off the file rather than
 -- remembered: a new call there should fail here, not in the game.
 local REQUIRED = {
   "ClearAllPoints",
@@ -42,7 +42,7 @@ local REQUIRED = {
 
 TreeNodeContractSpec = {}
 
-function TreeNodeContractSpec:should_answer_every_method_auto_loot_frame_calls()
+function TreeNodeContractSpec:should_answer_every_method_the_selection_tree_frame_calls()
   local row = GuiElements.tree_node( u.modules().api.CreateFrame( "Frame" ) )
   local missing = {}
 

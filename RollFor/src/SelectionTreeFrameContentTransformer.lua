@@ -1,44 +1,30 @@
 RollFor = RollFor or {}
 local m = RollFor
 
-if m.AutoLootFrameContentTransformer then return end
+if m.SelectionTreeFrameContentTransformer then return end
 
 local M = {}
 
----@param label string
----@param width number
-local function button_definition( label, width )
-  return { type = "button", label = label, width = width }
-end
-
-M.button_definitions = {
-  [ "Close" ] = button_definition( "Close", 70 ),
-  -- Only the round-robin window shows this one; auto-loot has no second window to open.
-  [ "Queues" ] = button_definition( "Queues", 70 )
-}
-
----@alias AutoLootFrameButtonType
----| "Close"
----| "Queues"
-
----@class AutoLootFrameButtonWithCallback
----@field type AutoLootFrameButtonType
+-- A button says what it reads and how wide it is, rather than naming an entry in a table here.
+-- The table used to hold one entry per button any caller might show, beside a closed list of the
+-- names allowed -- which meant both had to be edited here before anybody could add a window with
+-- a button of its own.
+---@class SelectionTreeFrameButton
+---@field label string
+---@field width number
 ---@field callback fun()
 
----@class AutoLootFrameContentTransformer
----@field transform fun( data: AutoLootFrameData ): table
+---@class SelectionTreeFrameContentTransformer
+---@field transform fun( data: SelectionTreeFrameData ): table
 
 ---@param content table
----@param buttons AutoLootFrameButtonWithCallback[]
+---@param buttons SelectionTreeFrameButton[]
 local function add_buttons( content, buttons )
   for _, button in ipairs( buttons or {} ) do
-    local definition = M.button_definitions[ button.type ]
-    if not definition then error( string.format( "Unsupported button type: %s", button.type or "nil" ) ) end
-
     table.insert( content, {
-      type = definition.type,
-      label = definition.label,
-      width = definition.width,
+      type = "button",
+      label = button.label,
+      width = button.width,
       on_click = button.callback
     } )
   end
@@ -52,10 +38,10 @@ local function add_title( content, title )
   table.insert( content, { type = "text", value = title, padding = 0 } )
 end
 
----@class AutoLootFrameTreeNode
+---@class SelectionTreeRow
 ---@field depth number
----@field data table AutoLootTree row payload -- name/id/item/color/hover_text_color/
---- hover_background_color, all already decided by AutoLootTree.
+---@field data table SelectionTree row payload -- name/id/item/color/hover_text_color/
+--- hover_background_color, all already decided by SelectionTree.
 ---@field expandable boolean?
 ---@field expanded boolean?
 ---@field checked boolean?
@@ -65,7 +51,7 @@ end
 ---@field on_check fun( checked: boolean )?
 
 ---@param content table
----@param rows AutoLootFrameTreeNode[]
+---@param rows SelectionTreeRow[]
 local function add_rows( content, rows )
   for i, row in ipairs( rows or {} ) do
     local padding = i == 1 and 10 or 2
@@ -96,12 +82,12 @@ local function add_rows( content, rows )
   end
 end
 
----@class AutoLootFrameData
+---@class SelectionTreeFrameData
 ---@field title string?
----@field rows AutoLootFrameTreeNode[]
----@field buttons AutoLootFrameButtonWithCallback[]
+---@field rows SelectionTreeRow[]
+---@field buttons SelectionTreeFrameButton[]
 
----@param data AutoLootFrameData
+---@param data SelectionTreeFrameData
 local function transform( data )
   local content = {}
   add_title( content, data.title )
@@ -117,5 +103,5 @@ function M.new()
   }
 end
 
-m.AutoLootFrameContentTransformer = M
+m.SelectionTreeFrameContentTransformer = M
 return M

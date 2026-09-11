@@ -73,8 +73,8 @@ local default_border_color = { 0.65, 0.22, 0.22, 0.22 }
 ---@field row_callback string? -- the field a row carries that its widget calls back on
 ---@field close_button boolean? -- an X in the top right corner instead of a Close in the button row
 ---@field right_click_hides boolean? -- right-clicking the window closes it, for windows with no
---- close button of any kind. Rows that take the mouse have to hand the click on (see the widgets
---- in RollForPendingLoot for how), or only the bare parts of the window would answer
+--- close button of any kind. A row widget that takes the mouse has to hand the right-click on to
+--- the window itself, or only the bare parts of it would answer
 ---@field border_color number[]? -- { r, g, b, a }; defaults to the red every list popup shipped with
 ---@field no_border boolean? -- no frame edge at all, leaving the backdrop on its own. Not the
 --- same as a transparent border_color, which the classic frame style overrides

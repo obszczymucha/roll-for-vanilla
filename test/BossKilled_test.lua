@@ -8,7 +8,7 @@ require( "src/modules" )
 require( "src/DebugBuffer" )
 require( "src/Module" )
 local Db = require( "src/Db" )
-require( "src/AutoLootDb" )
+require( "src/DropTable" )
 local BossKilled = require( "src/BossKilled" )
 
 -- Real item ids from the real catalogue, not a fixture: the whole job of this
@@ -308,36 +308,36 @@ function BossKilledSpec:should_register_a_boss_again_after_a_reset()
   eq( sut.is_killed( "Hydross the Unstable" ), true )
 end
 
-AutoLootDbFindBossSpec = {}
+DropTableFindBossSpec = {}
 
-function AutoLootDbFindBossSpec:should_find_the_boss_that_drops_an_item()
-  eq( RollFor.AutoLootDb.find_boss( ROBE_OF_HATEFUL_ECHOES ), "Hydross the Unstable" )
-  eq( RollFor.AutoLootDb.find_boss( VESTMENTS_OF_THE_SEA_WITCH ), "Lady Vashj" )
-  eq( RollFor.AutoLootDb.find_boss( CORD_OF_SCREAMING_TERRORS ), "The Lurker Below" )
+function DropTableFindBossSpec:should_find_the_boss_that_drops_an_item()
+  eq( RollFor.DropTable.find_boss( ROBE_OF_HATEFUL_ECHOES ), "Hydross the Unstable" )
+  eq( RollFor.DropTable.find_boss( VESTMENTS_OF_THE_SEA_WITCH ), "Lady Vashj" )
+  eq( RollFor.DropTable.find_boss( CORD_OF_SCREAMING_TERRORS ), "The Lurker Below" )
 end
 
-function AutoLootDbFindBossSpec:should_find_nothing_for_trash_and_for_unknown_items()
-  eq( RollFor.AutoLootDb.find_boss( ADAMANTITE_CHERRY_BOMB ), nil )
-  eq( RollFor.AutoLootDb.find_boss( NOT_IN_THE_CATALOGUE ), nil )
-  eq( RollFor.AutoLootDb.find_boss( nil ), nil )
+function DropTableFindBossSpec:should_find_nothing_for_trash_and_for_unknown_items()
+  eq( RollFor.DropTable.find_boss( ADAMANTITE_CHERRY_BOMB ), nil )
+  eq( RollFor.DropTable.find_boss( NOT_IN_THE_CATALOGUE ), nil )
+  eq( RollFor.DropTable.find_boss( nil ), nil )
 end
 
-function AutoLootDbFindBossSpec:should_answer_the_same_way_every_time_for_an_item_several_bosses_share()
+function DropTableFindBossSpec:should_answer_the_same_way_every_time_for_an_item_several_bosses_share()
   -- The catalogue still resolves the shared Opera items -- BossKilled screens
   -- them out rather than find_boss refusing to answer -- and pairs() order is
   -- not stable, so an unsorted walk could name a different boss on each call.
-  local first = RollFor.AutoLootDb.find_boss( BEASTMAW_PAULDRONS )
+  local first = RollFor.DropTable.find_boss( BEASTMAW_PAULDRONS )
 
   eq( first ~= nil, true )
 
   for _ = 1, 20 do
-    eq( RollFor.AutoLootDb.find_boss( BEASTMAW_PAULDRONS ), first )
+    eq( RollFor.DropTable.find_boss( BEASTMAW_PAULDRONS ), first )
   end
 end
 
-function AutoLootDbFindBossSpec:should_find_the_boss_that_uniquely_drops_an_opera_item()
-  eq( RollFor.AutoLootDb.find_boss( MASQUERADE_GOWN ), "Romulo and Julianne" )
-  eq( RollFor.AutoLootDb.find_boss( WICKED_WITCHS_HAT ), "The Wizard of Oz" )
+function DropTableFindBossSpec:should_find_the_boss_that_uniquely_drops_an_opera_item()
+  eq( RollFor.DropTable.find_boss( MASQUERADE_GOWN ), "Romulo and Julianne" )
+  eq( RollFor.DropTable.find_boss( WICKED_WITCHS_HAT ), "The Wizard of Oz" )
 end
 
 os.exit( lu.LuaUnit.run() )

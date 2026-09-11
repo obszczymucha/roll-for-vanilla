@@ -22,12 +22,19 @@ local function hl( text ) return m.colors.hl( text ) end
 
 -- Bumped when the context object or the chain contract changes in a way that would break
 -- an extension built against the previous number.
-M.API_VERSION = 4
+M.API_VERSION = 5
 
 -- What an extension is allowed to see of RollFor. Built per extension by main.lua and
 -- handed to both phases. This is the surface we commit to across versions, so it stays
 -- small and grows only on demand -- everything else in this addon is refactorable,
 -- and this is not.
+---@class ExtensionSoftResSource
+---@field register fun( spec: SoftResSourceSpec ): boolean
+-- What the installed source would hand somebody asking for the raw import string. Added in
+-- API 5, for an extension that speaks another addon's protocol and has to answer such a
+-- request. nil when no source is installed, or when the one that is offers none.
+---@field get_import_string fun(): string?
+
 ---@class ExtensionContext
 ---@field db fun( key: string, migrations: DbMigration[]? ): table -- scoped to this extension
 ---@field api fun(): table -- the WoW API table; call it, m.api style
@@ -40,9 +47,16 @@ M.API_VERSION = 4
 ---@field popup_builder fun( bottom_margin: number?, side_margin: number? ): PopupBuilder
 ---@field frame_builder table
 ---@field gui_elements table -- row widgets, keyed by line type
+-- The selection tree and the window that draws it. Two extensions build the same window over
+-- two different catalogues, so the components are core's while neither of them is. Added in
+-- API 5; they were reachable as RollFor globals before, which this file has always said is
+-- refactorable and uncommitted -- coming through ctx is what makes the next such move a
+-- version bump an extension is told about rather than an error somewhere less obvious.
+---@field selection_tree SelectionTree
+---@field selection_tree_frame { new: fun( config: SelectionTreeFrameConfig ): SelectionTreeFrame }
 ---@field softres_chain Chain
 ---@field awarded_loot_chain Chain
----@field softres_source { register: fun( spec: SoftResSourceSpec ): boolean }
+---@field softres_source ExtensionSoftResSource
 ---@field softres_tap fun( name: string ): any? -- nil before the chain is built or if no such tap
 -- Registers something that adjusts a roll's value. Added in API 4; an extension that uses
 -- it must declare `api_version = 4` or higher, and one that does not is unaffected.

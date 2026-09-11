@@ -35,7 +35,6 @@ local function core_listener()
   local listener = LootFacadeListener.new()
 
   listener.register_core( {
-    auto_loot = { on_loot_opened = record( "auto_loot" ) },
     dropped_loot = { on_loot_opened = record( "dropped_loot" ) },
     dropped_loot_announce = { on_loot_opened = record( "dropped_loot_announce" ) },
     master_loot = {
@@ -61,7 +60,10 @@ end
 
 LootOpenedOrderSpec = {}
 
-function LootOpenedOrderSpec:should_fire_cores_six_handlers_in_order()
+-- Five, not six: auto_loot is a position core declares and an extension occupies, so with no
+-- extension loaded the placeholder standing in for it fires nothing. Its place in the order is
+-- VacantPositionSpec's business.
+function LootOpenedOrderSpec:should_fire_cores_five_handlers_in_order()
   -- Given
   local loot_facade, calls = core_listener()
 
@@ -72,7 +74,6 @@ function LootOpenedOrderSpec:should_fire_cores_six_handlers_in_order()
   eq( calls, {
     "dropped_loot",
     "dropped_loot_announce",
-    "auto_loot",
     "master_loot",
     "auto_group_loot",
     "roll_controller"
@@ -99,7 +100,6 @@ function LootSlotClearedOrderSpec:should_pass_the_slot_through()
   local listener = LootFacadeListener.new()
 
   listener.register_core( {
-    auto_loot = { on_loot_opened = function() end },
     dropped_loot = { on_loot_opened = function() end },
     dropped_loot_announce = { on_loot_opened = function() end },
     master_loot = {
@@ -171,7 +171,6 @@ function ExtensionHandlerSpec:should_place_an_extension_handler_where_it_anchore
     { name = "auto_robin", after = "auto_loot", callback = record( "auto_robin" ) } )
 
   listener.register_core( {
-    auto_loot = { on_loot_opened = record( "auto_loot" ) },
     dropped_loot = { on_loot_opened = record( "dropped_loot" ) },
     dropped_loot_announce = { on_loot_opened = record( "dropped_loot_announce" ) },
     master_loot = { on_loot_opened = record( "master_loot" ), on_loot_slot_cleared = function() end,
@@ -190,7 +189,6 @@ function ExtensionHandlerSpec:should_place_an_extension_handler_where_it_anchore
   eq( calls, {
     "dropped_loot",
     "dropped_loot_announce",
-    "auto_loot",
     "auto_robin",
     "master_loot",
     "auto_group_loot",
@@ -207,7 +205,6 @@ function ExtensionHandlerSpec:should_not_care_who_registered_first()
     { name = "auto_robin", after = "auto_group_loot", callback = function() end } )
 
   listener.register_core( {
-    auto_loot = { on_loot_opened = function() end },
     dropped_loot = { on_loot_opened = function() end },
     dropped_loot_announce = { on_loot_opened = function() end },
     master_loot = { on_loot_opened = function() end, on_loot_slot_cleared = function() end,
@@ -218,6 +215,71 @@ function ExtensionHandlerSpec:should_not_care_who_registered_first()
   } )
 
   eq( listener.order( "LootSlotCleared" ), { "master_loot", "auto_group_loot", "auto_robin" } )
+end
+
+VacantPositionSpec = {}
+
+-- Core's own auto_loot handler leaves with the extension it belongs to, and an extension's
+-- handlers only exist while it is enabled. Three handlers anchor to auto_loot; none of them
+-- may fall out of the pipeline the moment nobody occupies that position.
+local function opened_pipeline_without_auto_loot( listener, record )
+  listener.on_loot( "LootOpened", { name = "dropped_loot", callback = record( "dropped_loot" ) } )
+  listener.on_loot( "LootOpened", { name = "dropped_loot_announce", after = "dropped_loot",
+    callback = record( "dropped_loot_announce" ) } )
+  listener.on_loot( "LootOpened", { name = "master_loot", after = "auto_loot",
+    callback = record( "master_loot" ) } )
+  listener.on_loot( "LootOpened", { name = "auto_group_loot", after = "master_loot",
+    callback = record( "auto_group_loot" ) } )
+  listener.on_loot( "LootOpened", { name = "roll_controller", after = "auto_group_loot",
+    callback = record( "roll_controller" ) } )
+end
+
+function VacantPositionSpec:should_keep_every_declared_name_in_order_with_auto_loot_vacant()
+  -- Given
+  local listener = LootFacadeListener.new()
+  local function record() return function() end end
+
+  opened_pipeline_without_auto_loot( listener, record )
+
+  -- When
+  listener.start( LootFacade.new() )
+
+  -- Then
+  eq( listener.order( "LootOpened" ), {
+    "dropped_loot",
+    "dropped_loot_announce",
+    "auto_loot",
+    "master_loot",
+    "auto_group_loot",
+    "roll_controller"
+  } )
+end
+
+function VacantPositionSpec:should_still_place_a_handler_anchored_to_a_vacant_position()
+  -- Given
+  local listener = LootFacadeListener.new()
+  local loot_facade = LootFacade.new()
+  local calls = {}
+  local function record( name ) return function() table.insert( calls, name ) end end
+
+  listener.on_loot( "LootOpened", { name = "auto_robin", after = "auto_loot",
+    callback = record( "auto_robin" ) } )
+  opened_pipeline_without_auto_loot( listener, record )
+
+  listener.start( loot_facade )
+
+  -- When
+  loot_facade.notify( "LootOpened" )
+
+  -- Then
+  eq( calls, {
+    "dropped_loot",
+    "dropped_loot_announce",
+    "auto_robin",
+    "master_loot",
+    "auto_group_loot",
+    "roll_controller"
+  } )
 end
 
 RegistryErrorSpec = {}
@@ -259,8 +321,18 @@ function RegistryErrorSpec:should_allow_the_same_name_on_two_events()
   listener.on_loot( "LootOpened", { name = "x", callback = function() end } )
   listener.on_loot( "LootSlotCleared", { name = "x", callback = function() end } )
 
-  eq( listener.order( "LootOpened" ), { "x" } )
-  eq( listener.order( "LootSlotCleared" ), { "x" } )
+  -- The declared positions are always there (see POSITIONS); "x" is the only handler that
+  -- actually arrived, and it arrived on both events.
+  eq( listener.order( "LootOpened" ), {
+    "dropped_loot",
+    "dropped_loot_announce",
+    "auto_loot",
+    "master_loot",
+    "auto_group_loot",
+    "roll_controller",
+    "x"
+  } )
+  eq( listener.order( "LootSlotCleared" ), { "master_loot", "auto_group_loot", "x" } )
 end
 
 -- Subscribing has already happened, so a handler arriving now would never be called.
@@ -288,7 +360,17 @@ function RegistryErrorSpec:should_drop_a_handler_anchored_to_a_name_that_never_a
 
   RollFor.err = err
 
-  eq( listener.order( "LootOpened" ), { "yours" } )
+  -- The declared positions are always there (see POSITIONS); "yours" is the only handler that
+  -- actually arrived, and "mine" is not among them.
+  eq( listener.order( "LootOpened" ), {
+    "dropped_loot",
+    "dropped_loot_announce",
+    "auto_loot",
+    "master_loot",
+    "auto_group_loot",
+    "roll_controller",
+    "yours"
+  } )
   eq( table.getn( complaints ), 1 )
   eq( string.find( complaints[ 1 ],
     "handler 'mine' is anchored after 'nonexistent', which is not in the chain", 1, true ) ~= nil, true )

@@ -1,7 +1,7 @@
 RollFor = RollFor or {}
 local m = RollFor
 
-if m.AutoLootFrame then return end
+if m.SelectionTreeFrame then return end
 
 local M = {}
 local getn = m.getn
@@ -14,41 +14,46 @@ local button_defaults = {
   scale = 0.76
 }
 
--- A 3-level tree (Dungeon -> Boss -> Item drops) selection GUI built on top of AutoLootTree's
+-- A 3-level tree (Dungeon -> Boss -> Item drops) selection GUI built on top of SelectionTree's
 -- pure data (tree contents, checked/desaturated/visibility already decided there). This file is
 -- dumb rendering only -- it wires click/check callbacks that mutate a row's node and calls
 -- refresh(), and translates rows into widget calls; it makes no decisions about the tree itself.
 --
--- Auto-loot and auto round robin are the same window over two different catalogues, so what
--- differs between them -- the frame name, the title, which tree roots to render, how to build an
--- item link, and any buttons beyond Close -- is supplied by the caller. If the two are ever meant
--- to diverge visually, that's the moment to split them; not before.
+-- One window over any catalogue, so everything that could differ between two of them -- the frame
+-- name, the title, which tree roots to render, how to build an item link, and any buttons beyond
+-- Close -- is supplied by the caller. If two callers are ever meant to look different, that is the
+-- moment to split this; not before.
 
----@class AutoLootFrame
+---@class SelectionTreeFrame
 ---@field show fun()
 ---@field hide fun()
 ---@field toggle fun()
 ---@field refresh fun() -- redraw what's on screen, for when something outside the tree changed
 ---@field get_frame fun(): Popup?
 
----@class AutoLootFrameConfig
+---@class SelectionTreeFrameConfig
 ---@field popup_builder PopupBuilder
----@field content_transformer AutoLootFrameContentTransformer
+-- Optional, and normally omitted: there is one transformer, it takes no arguments and holds no
+-- state, so every caller that named one named the same one. Passing one is for a test that wants
+-- to see what the window hands over.
+---@field content_transformer SelectionTreeFrameContentTransformer?
 ---@field db table -- where the window position is remembered
 ---@field name string -- the global frame name
 ---@field title string -- plain text; this file decides how it's colored
----@field roots TreeNode[] -- the tree to render, as returned by AutoLootTree.build
+---@field roots TreeNode[] -- the tree to render, as returned by SelectionTree.build
 ---@field make_link fun( item_id: number, quality: number, name: string ): string
----@field extra_buttons AutoLootFrameButtonWithCallback[]? -- rendered before Close
----@field decorate_row fun( row: AutoLootFrameTreeNode )? -- last word on a row, called per refresh
+---@field extra_buttons SelectionTreeFrameButton[]? -- rendered before Close
+---@field decorate_row fun( row: SelectionTreeRow )? -- last word on a row, called per refresh
 ---@field on_changed fun()? -- a row was ticked; the selection this window edits is now different
 
 M.center_point = { point = "CENTER", relative_point = "CENTER", x = 0, y = 0 }
 
----@param config AutoLootFrameConfig
+---@param config SelectionTreeFrameConfig
 function M.new( config )
   local popup_builder = config.popup_builder
-  local content_transformer = config.content_transformer
+  -- Resolved here rather than at file scope: the TOC loads this file before the transformer, and
+  -- by the time anybody calls new() -- PLAYER_LOGIN -- both are there.
+  local content_transformer = config.content_transformer or m.SelectionTreeFrameContentTransformer.new()
   local db = config.db
 
   ---@type Popup?
@@ -109,13 +114,13 @@ function M.new( config )
     return result
   end
 
-  -- Just relabels/wires callbacks onto AutoLootTree's already-decided rows -- no tree walking,
+  -- Just relabels/wires callbacks onto SelectionTree's already-decided rows -- no tree walking,
   -- no checked/desaturated computation here.
-  ---@return AutoLootFrameTreeNode[]
+  ---@return SelectionTreeRow[]
   local function tree_rows()
     local rows = {}
 
-    for _, row in ipairs( m.AutoLootTree.visible_rows( config.roots ) ) do
+    for _, row in ipairs( m.SelectionTree.visible_rows( config.roots ) ) do
       local node = row.node
 
       -- Raw data (with its `type`) passed straight through -- the content transformer is where
@@ -132,7 +137,7 @@ function M.new( config )
           refresh()
         end or nil,
         on_check = function( checked )
-          m.AutoLootTree.set_checked( node, checked )
+          m.SelectionTree.set_checked( node, checked )
           refresh()
 
           -- After the write and the redraw, so anyone listening sees the selection it landed on
@@ -142,9 +147,9 @@ function M.new( config )
       }
 
       -- The caller's chance to say something about a row that the tree can't know, because it
-      -- depends on the client rather than on the selection -- see AutoRoundRobinFrame, which greys
-      -- a quality row the loot threshold has made inert. Runs per refresh, on a table built fresh
-      -- each time, so nothing it writes can go stale or leak into the tree.
+      -- depends on the client rather than on the selection -- greying a quality row the loot
+      -- threshold has made inert, say. Runs per refresh, on a table built fresh each time, so
+      -- nothing it writes can go stale or leak into the tree.
       if config.decorate_row then config.decorate_row( result ) end
 
       table.insert( rows, result )
@@ -153,7 +158,7 @@ function M.new( config )
     return rows
   end
 
-  ---@return AutoLootFrameData
+  ---@return SelectionTreeFrameData
   local function content()
     local buttons = {}
 
@@ -161,7 +166,8 @@ function M.new( config )
       table.insert( buttons, button )
     end
 
-    table.insert( buttons, { type = "Close", callback = function() if popup then popup:Hide() end end } )
+    table.insert( buttons,
+      { label = "Close", width = 70, callback = function() if popup then popup:Hide() end end } )
 
     return {
       title = m.colorize_item_by_quality( config.title, ItemQuality.Legendary ),
@@ -258,8 +264,8 @@ function M.new( config )
 
   -- Redraws what's already on screen, and nothing else. A closed window has nothing to correct:
   -- show() refreshes on the way up, so the next opening is current either way. Callers use this
-  -- when something the rows depend on changed outside the tree -- see AutoRoundRobinFrame, whose
-  -- quality rows are drawn against the master loot threshold.
+  -- when something the rows depend on changed outside the tree -- a decorate_row answer drawn
+  -- against the master loot threshold, say.
   local function refresh_if_visible()
     if popup and popup:IsVisible() then refresh() end
   end
@@ -274,7 +280,7 @@ function M.new( config )
     end
   end
 
-  ---@type AutoLootFrame
+  ---@type SelectionTreeFrame
   return {
     show = show,
     hide = hide,
@@ -284,5 +290,5 @@ function M.new( config )
   }
 end
 
-m.AutoLootFrame = M
+m.SelectionTreeFrame = M
 return M

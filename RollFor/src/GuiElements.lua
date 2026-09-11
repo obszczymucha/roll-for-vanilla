@@ -830,8 +830,8 @@ function M.dropdown( parent )
   local dropdown_text_y = 0
 
   -- Wide enough for the longest option any caller has, which is not the same number for all of
-  -- them -- a queue named "Hearts" needs a good deal less room than "Uncommon" -- so callers that
-  -- want it narrower say so with SetDropdownWidth.
+  -- them -- a short name needs a good deal less room than "Uncommon" -- so callers that want it
+  -- narrower say so with SetDropdownWidth.
   local default_dropdown_width = 90
   local dropdown_width = default_dropdown_width
   -- UIDropDownMenuTemplate bakes in ~16px of empty space to the left of its visible box.
@@ -1052,7 +1052,7 @@ local tree_node_checkbox_gap = 4
 local tree_node_icon_spacing = 4
 local tree_node_row_right_margin = 18
 
--- A row in a tree/list view (e.g. AutoLootFrame): an expand/collapse icon button (only shown for
+-- A row in a tree/list view (e.g. SelectionTreeFrame): an expand/collapse icon button (only shown for
 -- expandable nodes) followed by a label. Indentation is baked into the row's own internal layout
 -- (rather than the row frame's outer position) so the popup's own width-to-content math, which
 -- only looks at each line's width, keeps working unmodified.
@@ -1102,8 +1102,8 @@ function M.tree_node( parent )
   item_highlight:SetPoint( "TOPLEFT", item_link_widget, "TOPLEFT", 0, 2 )
   item_highlight:SetPoint( "BOTTOMRIGHT", item_link_widget, "BOTTOMRIGHT", 0, -2 )
 
-  -- Lets clicking the label itself (not just the +/- icon) expand/collapse a dungeon or boss row.
-  -- Also drives the hover feedback (background + text color) for dungeon/boss rows.
+  -- Lets clicking the label itself (not just the +/- icon) expand/collapse a branch row. Also
+  -- drives the hover feedback (background + text color) for branch rows.
   local label_button = m.api.CreateFrame( "Button", nil, container )
   label_button:Hide()
 
@@ -1125,7 +1125,7 @@ function M.tree_node( parent )
   local expandable = false
   -- Whether this row renders as an item link or as a plain label. Decided by which of SetItem /
   -- SetText the caller reaches for, not by whether the row has children: a leaf that names a
-  -- quality rather than an item (see AutoLootTree.build_qualities) is childless and still a label.
+  -- quality rather than an item (see SelectionTree.build_qualities) is childless and still a label.
   local is_link = false
 
   local function layout()
@@ -1267,7 +1267,7 @@ function M.tree_node( parent )
   end
 
   -- item: { link, texture, count, quantity, hover_background_color } -- hover_background_color
-  -- ({r,g,b}) comes from AutoLootTree, the rest is consumed by item_link_with_icon.SetItem.
+  -- ({r,g,b}) comes from SelectionTree, the rest is consumed by item_link_with_icon.SetItem.
   container.SetItem = function( _, item, tooltip_link )
     -- Rows are recycled between refreshes, so an item row has to drop whatever a label row left
     -- behind: it renders through item_link_widget, which brings its own tooltip.

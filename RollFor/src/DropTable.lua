@@ -1,34 +1,22 @@
 RollFor = RollFor or {}
 local m = RollFor
 
-if m.AutoLootDb then return end
+if m.DropTable then return end
 
 local M = {}
 
+-- Which boss drops what: the item-to-boss catalogue, and nothing about anybody's selection.
+--
+-- Core's, because core reads it and core cannot depend on an extension: BossKilled names the
+-- boss an awarded item came from, and DropSimulator picks drops out of it. What the player
+-- ticked for auto-loot is a different question with a different lifetime, and lives in the
+-- auto-loot addon's own db.
+--
 -- Item ids sourced from AtlasLootClassic_DungeonsAndRaids (data-tbc.lua). AtlasLoot itself
 -- doesn't hardcode name/link/icon either -- it resolves those live via GetItemInfo, which the
 -- WoW client caches locally after the first server fetch. We do the same here instead of baking
 -- in name/link/icon strings that could go stale or be wrong.
--- Not a raid: two checkboxes that say "sweep up everything of this quality", whatever the master
--- loot threshold happens to be. It names qualities where every other entry names bosses, which is
--- the same shape the round-robin catalogue's Trash category uses, and the tree already draws.
---
--- First in the window (order 0), because it is the only part of the list that is not about a
--- particular raid.
-local GENERAL = "General"
-
 local ids = {
-  [ GENERAL ] = {
-    order = 0,
-    -- RollFor's own highlight colour, as RRGGBB the way a category names one (see the round-robin
-    -- catalogue). Every other row at this level is dungeon blue; this one is not a raid, and the
-    -- window is easier to read when the part that is about the loot itself says so.
-    color = "ff9f69",
-    qualities = {
-      [ 2 ] = { name = "Uncommon" },
-      [ 3 ] = { name = "Rare" }
-    }
-  },
   [ "Serpentshrine Cavern" ] = {
     order = 4,
     bosses = {
@@ -1291,194 +1279,13 @@ local ids = {
   }
 }
 
----@class AutoLootDbItem
+---@class DropTableItem
 ---@field name string
 ---@field icon number
 ---@field quality number
 
----@class ResolvedAutoLootDbItem: AutoLootDbItem
+---@class ResolvedDropTableItem: DropTableItem
 ---@field link string
-
--- Quality -> |cffXXXXXX prefix. 1 (Common), 2 (Uncommon), 3 (Rare) and 4 (Epic) were verified live
--- via /rf autolootdb against real items (Refreshing Spring Water, Glyph of Frost Warding, Manual
--- Crowd Pummeler, Hydross' drops). 0 (Poor) and 5 (Legendary) are the standard, unchanged-since-
--- vanilla Blizzard client constants.
-local QUALITY_COLOR_HEX = {
-  [ 0 ] = "|cff9d9d9d",
-  [ 1 ] = "|cffffffff",
-  [ 2 ] = "|cff1eff00",
-  [ 3 ] = "|cff0070dd",
-  [ 4 ] = "|cffa335ee",
-  [ 5 ] = "|cffff8000",
-}
-
----@param quality number
----@return string
-local function quality_color_hex( quality )
-  return QUALITY_COLOR_HEX[ quality or 0 ] or QUALITY_COLOR_HEX[ 0 ]
-end
-
--- Every entry uses the same item link shape, so it isn't stored per item -- callers (e.g.
--- AutoLootFrame) build it on demand from the id/quality/name they already have.
----@param item_id number
----@param quality number
----@param name string
----@return string
-function M.make_link( item_id, quality, name )
-  return string.format( "%s|Hitem:%d::::::::70::::::::::|h[%s]|h|r", quality_color_hex( quality ), item_id, name )
-end
-
--- The verified fact itself (see QUALITY_COLOR_HEX above), for callers that need the raw
--- |cffXXXXXX prefix rather than a fully-built item link.
----@param quality number
----@return string
-function M.quality_color_hex( quality )
-  return quality_color_hex( quality )
-end
-
--- Seeds db (the persisted autoloot_db SavedVariables table) with a copy of the static `ids`
--- above, with `enabled = false` added to every dungeon/boss/item -- the user's actual selection
--- state, which AutoLootTree reads and writes from here on so it survives a /reload.
---
--- Reconciles instead of bailing out when db.ids already exists: the catalogue grows between
--- releases (Mount Hyjal's "Patterns" node did), and a db seeded once and never revisited would
--- hide every later addition from anyone who has already opened the GUI. Anything missing is
--- added disabled -- new rows are an offer, not a change to what the user picked -- while
--- `enabled` on rows that already exist is never touched. Everything else (order, name, icon,
--- quality) is a fact about the game rather than a choice, so the catalogue overwrites it.
---
--- Entries no longer in the catalogue are left alone rather than pruned: they cost a row in the
--- GUI at worst, and dropping them would throw away a selection over what may well be a typo in
--- an item id.
----@param db table
-function M.ensure_seeded( db )
-  db.ids = db.ids or {}
-
-  for dungeon_name, dungeon_entry in pairs( ids ) do
-    local dungeon = db.ids[ dungeon_name ] or { enabled = false }
-    dungeon.order = dungeon_entry.order
-    -- Overwritten from the catalogue every login, like order and the names below: what colour a
-    -- category is drawn in is a fact of the catalogue, not of anybody's selection.
-    dungeon.color = dungeon_entry.color
-    dungeon.bosses = dungeon.bosses or {}
-
-    -- A catalogue entry names either encounters or qualities, never both. General is the only
-    -- one of the second kind; seeded the same way, so a row's `enabled` is its own and survives.
-    if dungeon_entry.qualities then
-      dungeon.qualities = dungeon.qualities or {}
-
-      for quality, quality_entry in pairs( dungeon_entry.qualities ) do
-        local row = dungeon.qualities[ quality ] or { enabled = false }
-        row.name = quality_entry.name
-
-        dungeon.qualities[ quality ] = row
-      end
-    end
-
-    for boss_name, boss_entry in pairs( dungeon_entry.bosses or {} ) do
-      local boss = dungeon.bosses[ boss_name ] or { enabled = false }
-      boss.order = boss_entry.order
-      boss.items = boss.items or {}
-
-      for item_id, item_entry in pairs( boss_entry.items or {} ) do
-        local item = boss.items[ item_id ] or { enabled = false }
-        item.quality = item_entry.quality
-        item.icon = item_entry.icon
-        item.name = item_entry.name
-
-        boss.items[ item_id ] = item
-      end
-
-      dungeon.bosses[ boss_name ] = boss
-    end
-
-    db.ids[ dungeon_name ] = dungeon
-  end
-end
-
--- The two queries below are what AutoLoot runs against the player's selection. Both read the
--- persisted db.ids (see ensure_seeded), never the static `ids` above -- that one is just the
--- catalogue and carries no selection state at all. An item only counts if it and both nodes above
--- it are enabled, the same rule AutoLootTree.is_leaf_enabled applies to the GUI's own rows.
---
--- Skipping disabled dungeons/bosses wholesale keeps these proportional to what's actually selected
--- rather than to the size of the catalogue, so no lookup index is maintained here.
-
--- Items that appear under more than one boss (shared trash drops) count as soon as any one of
--- those occurrences is enabled.
----@param db table the persisted autoloot_db
----@param item_id number
----@return boolean
-function M.is_enabled( db, item_id )
-  if not db or not db.ids then return false end
-
-  for _, dungeon_entry in pairs( db.ids ) do
-    if dungeon_entry.enabled then
-      for _, boss_entry in pairs( dungeon_entry.bosses or {} ) do
-        if boss_entry.enabled then
-          local item = boss_entry.items and boss_entry.items[ item_id ]
-          if item and item.enabled then return true end
-        end
-      end
-    end
-  end
-
-  return false
-end
-
--- Whether a whole quality is being swept up, which is what the General category's rows say. The
--- same rule as an item's: the row and the category above it both have to be ticked.
----@param db table the persisted autoloot_db
----@param quality number?
----@return boolean
-function M.is_quality_enabled( db, quality )
-  if not db or not db.ids or not quality then return false end
-
-  local general = db.ids[ GENERAL ]
-  if not general or not general.enabled then return false end
-
-  local row = general.qualities and general.qualities[ quality ]
-
-  return (row and row.enabled) and true or false
-end
-
--- Whether any quality row is ticked at all -- the General half of has_enabled_items.
----@param db table the persisted autoloot_db
----@return boolean
-function M.has_enabled_qualities( db )
-  if not db or not db.ids then return false end
-
-  local general = db.ids[ GENERAL ]
-  if not general or not general.enabled then return false end
-
-  for _, row in pairs( general.qualities or {} ) do
-    if row.enabled then return true end
-  end
-
-  return false
-end
-
--- Whether the player has anything at all selected -- i.e. whether M.is_enabled could ever return
--- true for this db. Stops at the first hit instead of counting.
----@param db table the persisted autoloot_db
----@return boolean
-function M.has_enabled_items( db )
-  if not db or not db.ids then return false end
-
-  for _, dungeon_entry in pairs( db.ids ) do
-    if dungeon_entry.enabled then
-      for _, boss_entry in pairs( dungeon_entry.bosses or {} ) do
-        if boss_entry.enabled then
-          for _, item in pairs( boss_entry.items or {} ) do
-            if item.enabled then return true end
-          end
-        end
-      end
-    end
-  end
-
-  return false
-end
 
 -- "Trash" and "Patterns" are not bosses. Every raid has a "Trash" node, Black Temple
 -- and Mount Hyjal share a "Patterns" one, and the same items are listed under several
@@ -1540,9 +1347,9 @@ end
 -- Only used by the fetch tool below (dump_to_db / on_item_info_received) -- its output is meant
 -- to be inspected/pasted back, so unlike the permanent `ids` entries it also includes a real,
 -- client-generated `link` (the whole point right now: reading the true |cffXXXXXX per quality off
--- of it, to replace the ITEM_QUALITY_COLORS lookup in make_link with verified values).
+-- of it, to replace the ITEM_QUALITY_COLORS lookup in ItemUtils.make_link with verified values).
 ---@param item_id number
----@return ResolvedAutoLootDbItem?
+---@return ResolvedDropTableItem?
 local function resolve_item( item_id )
   local name, _, quality, _, _, _, _, _, _, texture = m.api.GetItemInfo( item_id )
   if not name then return end
@@ -1624,12 +1431,12 @@ function M.on_command( db, on_done )
 
   if pending_count > 0 then
     m.print( string.format(
-      "AutoLootDb: resolved %d item(s), %d still uncached -- will keep retrying automatically as their info arrives.",
+      "DropTable: resolved %d item(s), %d still uncached -- will keep retrying automatically as their info arrives.",
       resolved_count, pending_count
     ) )
     on_all_resolved = on_done
   else
-    m.print( string.format( "AutoLootDb: resolved %d item(s), stored in the DB.", resolved_count ) )
+    m.print( string.format( "DropTable: resolved %d item(s), stored in the DB.", resolved_count ) )
     on_all_resolved = nil
     if on_done then on_done( resolved_count ) end
   end
@@ -1672,7 +1479,7 @@ function M.on_print_command()
   for _ in pairs( print_pending ) do pending_count = pending_count + 1 end
 
   m.print( string.format(
-    "AutoLootDb: printed %d item(s), %d still uncached -- will print as they resolve.",
+    "DropTable: printed %d item(s), %d still uncached -- will print as they resolve.",
     resolved_count, pending_count
   ) )
 end
@@ -1716,7 +1523,7 @@ function M.on_item_info_received( item_id )
   local remaining = count_pending()
 
   if remaining > 0 then
-    m.print( string.format( "AutoLootDb: resolved another item, %d still pending.", remaining ) )
+    m.print( string.format( "DropTable: resolved another item, %d still pending.", remaining ) )
     return
   end
 
@@ -1725,9 +1532,8 @@ function M.on_item_info_received( item_id )
   if callback then callback() end
 end
 
-M.GENERAL = GENERAL
 M.ids = ids
 M.non_bosses = NON_BOSSES
 
-m.AutoLootDb = M
+m.DropTable = M
 return M

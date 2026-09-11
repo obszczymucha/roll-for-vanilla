@@ -159,13 +159,13 @@ function CompatibilitySpec:should_treat_a_missing_api_version_as_incompatible()
   eq( Extensions.is_enabled( "vague" ), false )
 end
 
--- Context is now v4 (v2 added api, softres_source, softres_tap and minimap for the
+-- Context is now v5 (v2 added api, softres_source, softres_tap and minimap for the
 -- soft-res extraction; v3 added on_loot and on_dropped_item for the loot pipeline; v4 added
--- roll_modifier), but an extension built against v1 -- RollForNetherVortex among them --
--- must keep loading unchanged: the check only rejects a spec declaring a version *greater*
--- than the host's.
+-- roll_modifier; v5 added the selection tree components and softres_source.get_import_string),
+-- but an extension built against v1 -- RollForNetherVortex among them -- must keep loading
+-- unchanged: the check only rejects a spec declaring a version *greater* than the host's.
 function CompatibilitySpec:should_keep_accepting_an_extension_built_against_api_version_1()
-  eq( Extensions.API_VERSION, 4 )
+  eq( Extensions.API_VERSION, 5 )
   eq( Extensions.register( spec( "nether_vortex", { api_version = 1 } ) ), true )
 
   eq( Extensions.all()[ 1 ].incompatible, nil )

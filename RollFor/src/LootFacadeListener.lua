@@ -43,6 +43,20 @@ local EVENTS = {
   ChatMsgLoot = true
 }
 
+-- The positions themselves, in the order they run. Core declares them whether or not anyone
+-- occupies them, because who occupies one is not core's business: auto_loot is an extension's
+-- handler, and an extension's handlers exist only while it is enabled. A position with nobody
+-- in it would otherwise take down everything anchored to it -- placed_for drops a handler whose
+-- anchor is not registered -- and per this file's header, that hands the item to the wrong
+-- person rather than throwing.
+local POSITIONS = {
+  LootOpened = { "dropped_loot", "dropped_loot_announce", "auto_loot",
+                 "master_loot", "auto_group_loot", "roll_controller" },
+  LootSlotCleared = { "master_loot", "auto_group_loot" },
+  LootClosed = { "roll_controller" },
+  ChatMsgLoot = { "master_loot" }
+}
+
 ---@return LootFacadeListener
 function M.new()
   local handlers = {}
@@ -90,10 +104,56 @@ function M.new()
     } )
   end
 
+  ---@param event_handlers LootHandler[]
+  ---@param name string
+  ---@return number?
+  local function index_of( event_handlers, name )
+    for i, handler in ipairs( event_handlers ) do
+      if handler.name == name then return i end
+    end
+  end
+
+  -- The event's handlers with every declared position accounted for: anything in POSITIONS that
+  -- nobody registered gets a no-op standing in for it, so the name stays anchorable. Walking the
+  -- list in its declared order is what makes the previous name safe to anchor to -- it is already
+  -- there by then, real or a placeholder.
+  --
+  -- A placeholder is inserted behind the previous declared name rather than appended, because
+  -- registration order is not cosmetic: Ordering breaks a tie for the same slot by it, and
+  -- appending would hand the slot to whoever registered last. An extension anchored after a
+  -- vacant position would then lose it to core's own next handler and run a position too late --
+  -- auto_robin after master_loot instead of before it, which is the item gone. Keeping the spine
+  -- contiguous is what register_core does when it owns the name, so a vacant position places
+  -- exactly like an occupied one.
+  --
+  -- Built fresh rather than written back, so asking stays free of consequences: order() and the
+  -- subscription below resolve the same list, and neither changes what is registered.
+  ---@param event LootEventName
+  ---@return LootHandler[]
+  local function with_vacant_positions( event )
+    local result = {}
+    for _, handler in ipairs( handlers[ event ] or {} ) do table.insert( result, handler ) end
+
+    local previous_index, previous_name = 0, nil
+
+    for _, name in ipairs( POSITIONS[ event ] or {} ) do
+      local index = index_of( result, name )
+
+      if not index then
+        index = previous_index + 1
+        table.insert( result, index, { name = name, after = previous_name, callback = function() end } )
+      end
+
+      previous_index, previous_name = index, name
+    end
+
+    return result
+  end
+
   ---@param event LootEventName
   ---@return LootHandler[]
   local function placed_for( event )
-    local placed, unplaceable = m.Ordering.place( handlers[ event ] or {},
+    local placed, unplaceable = m.Ordering.place( with_vacant_positions( event ),
       { base = "base", noun = "handler" } )
 
     for _, rejected in ipairs( unplaceable ) do
@@ -107,7 +167,7 @@ function M.new()
   ---@param event LootEventName
   ---@return string[]
   local function order( event )
-    local placed = m.Ordering.place( handlers[ event ] or {}, { base = "base", noun = "handler" } )
+    local placed = m.Ordering.place( with_vacant_positions( event ), { base = "base", noun = "handler" } )
     local result = {}
     for _, handler in ipairs( placed ) do table.insert( result, handler.name ) end
     return result
@@ -121,8 +181,6 @@ function M.new()
     on_loot( "LootOpened", { name = "dropped_loot", callback = function() c.dropped_loot.on_loot_opened() end } )
     on_loot( "LootOpened", { name = "dropped_loot_announce", after = "dropped_loot",
       callback = function() c.dropped_loot_announce.on_loot_opened() end } )
-    on_loot( "LootOpened", { name = "auto_loot", after = "dropped_loot_announce",
-      callback = function() c.auto_loot.on_loot_opened() end } )
     on_loot( "LootOpened", { name = "master_loot", after = "auto_loot",
       callback = function() c.master_loot.on_loot_opened() end } )
     on_loot( "LootOpened", { name = "auto_group_loot", after = "master_loot",

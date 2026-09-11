@@ -26,11 +26,11 @@ src\Interface.lua
 src\WowApi.lua
 src\Config.lua
 src\ItemUtils.lua
-src\AutoLootDb.lua
+src\DropTable.lua
 src\RaidLockout.lua
 src\BossKilled.lua
 src\Tree.lua
-src\AutoLootTree.lua
+src\SelectionTree.lua
 src\EventFrame.lua
 src\LootFacade.lua
 src\RollingLogicUtils.lua
@@ -48,8 +48,8 @@ src\MasterLootCandidateSelectionFrame.lua
 src\OptionsFrame.lua
 src\InterfaceOptions.lua
 src\OptionsFrameContentTransformer.lua
-src\AutoLootFrame.lua
-src\AutoLootFrameContentTransformer.lua
+src\SelectionTreeFrame.lua
+src\SelectionTreeFrameContentTransformer.lua
 src\SoftResRollingLogic.lua
 src\NonSoftResRollingLogic.lua
 src\TieRollingLogic.lua
@@ -57,7 +57,6 @@ src\RaidRollRollingLogic.lua
 src\UsagePrinter.lua
 src\MinimapButton.lua
 src\MasterLootWarning.lua
-src\AutoLoot.lua
 src\WinnerTracker.lua
 src\FrameBuilder.lua
 src\PopupBuilder.lua
@@ -96,7 +95,6 @@ src\RollSimulator.lua
 src\DropSimulator.lua
 src\ModernLootFrameSkin.lua
 src\OgLootFrameSkin.lua
-src\GargulBridge.lua
 src\RollForBroadcast.lua
 src\RollForReceiver.lua
 

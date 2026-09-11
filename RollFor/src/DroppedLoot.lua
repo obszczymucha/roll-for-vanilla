@@ -54,10 +54,10 @@ function M.new( db, loot_list, player_info, boss_killed )
   end
 
   -- Whether an item is worth registering as dropped loot. Mirrors the
-  -- quality/bind criteria of the loot announcement, but NOT its auto-loot or
-  -- announce exclusions: an item that dropped must be registered so that
-  -- trading it later is recognised as awarding it, regardless of whether it was
-  -- auto-looted or announcements are turned off.
+  -- quality/bind criteria of the loot announcement, but none of the reasons an
+  -- item can be kept out of it: an item that dropped must be registered so that
+  -- trading it later is recognised as awarding it, whoever took it and whether
+  -- or not anybody was told.
   ---@param item DroppedItem|Coin
   local function is_registerable( item )
     local BindType = m.ItemUtils.BindType
@@ -90,9 +90,10 @@ function M.new( db, loot_list, player_info, boss_killed )
     return source and DROP_SOURCES[ source ] and true or false
   end
 
-  -- Registers every awardable item currently in the loot. Must run before
-  -- auto-loot clears the slots, so the loot is still present when we read it --
-  -- and so is the source, which is forgotten with the slot.
+  -- Registers every awardable item currently in the loot. Must run before anything
+  -- clears the slots, so the loot is still present when we read it -- and so is the
+  -- source, which is forgotten with the slot. That is what its position at the head
+  -- of the LootOpened pipeline is for.
   local function on_loot_opened()
     if not player_info.is_master_looter() then return end
 

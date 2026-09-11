@@ -334,5 +334,37 @@ function M.make_coin( texture, amount_text )
   }
 end
 
+-- Quality -> |cffXXXXXX prefix. 1 (Common), 2 (Uncommon), 3 (Rare) and 4 (Epic) were verified live
+-- against real items (Refreshing Spring Water, Glyph of Frost Warding, Manual Crowd Pummeler,
+-- Hydross' drops). 0 (Poor) and 5 (Legendary) are the standard, unchanged-since-vanilla Blizzard
+-- client constants.
+local QUALITY_COLOR_HEX = {
+  [ 0 ] = "|cff9d9d9d",
+  [ 1 ] = "|cffffffff",
+  [ 2 ] = "|cff1eff00",
+  [ 3 ] = "|cff0070dd",
+  [ 4 ] = "|cffa335ee",
+  [ 5 ] = "|cffff8000",
+}
+
+-- The verified fact itself (see QUALITY_COLOR_HEX above), for callers that need the raw
+-- |cffXXXXXX prefix rather than a fully-built item link.
+---@param quality number?
+---@return string
+function M.quality_color_hex( quality )
+  return QUALITY_COLOR_HEX[ quality or 0 ] or QUALITY_COLOR_HEX[ 0 ]
+end
+
+-- A catalogue holds an id, a quality and a name; a row that wants to show the item needs a link.
+-- Every entry builds the same shape, so it isn't stored per item -- callers build it on demand
+-- from what they already have.
+---@param item_id number
+---@param quality number
+---@param name string
+---@return string
+function M.make_link( item_id, quality, name )
+  return string.format( "%s|Hitem:%d::::::::70::::::::::|h[%s]|h|r", M.quality_color_hex( quality ), item_id, name )
+end
+
 m.ItemUtils = M
 return M

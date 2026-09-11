@@ -36,16 +36,9 @@ local softres = {
   is_item_hardressed = function() return false end
 }
 
-local auto_loot = {
-  is_auto_looted = function() return false end,
-  is_on_predefined_list = function() return false end
-}
-
-local config = { auto_loot_announce = function() return true end }
-
 ---@return string[] -- the names of the items that survived the filter
 local function announced( withhold )
-  local _, items = mod.process_dropped_items( loot_list( HEARTHSTONE, ROBE ), softres, auto_loot, config, withhold )
+  local _, items = mod.process_dropped_items( loot_list( HEARTHSTONE, ROBE ), softres, withhold )
 
   local names = {}
   for _, item in ipairs( items ) do table.insert( names, item.name ) end

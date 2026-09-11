@@ -210,14 +210,15 @@ end
 -- false, so a predicate is never quietly skipped because of the order it registered in.
 ---@param loot_list LootList
 ---@param softres GroupAwareSoftRes
----@param auto_loot AutoLoot
----@param config Config
 ---@param withhold (fun( item: table ): boolean?)[]?
-function M.process_dropped_items( loot_list, softres, auto_loot, config, withhold )
+function M.process_dropped_items( loot_list, softres, withhold )
   local source_guid = loot_list.get_source_guid()
   local threshold = m.api.GetLootThreshold()
   local items = filter( loot_list.get_items(), function( item )
-    if auto_loot.is_auto_looted( item ) and not auto_loot.is_on_predefined_list( item ) and not config.auto_loot_announce() or item.id == 29434 then return false end
+    -- Badge of Justice: everybody gets one, so announcing it says nothing (DroppedLoot carries
+    -- the same rule). Nothing to do with any extension's claim on an item -- those arrive as
+    -- withhold predicates below.
+    if item.id == 29434 then return false end
 
     local withheld = false
 
@@ -306,10 +307,8 @@ end
 ---@param softres GroupAwareSoftRes
 ---@param winner_tracker WinnerTracker
 ---@param player_info PlayerInfo
----@param auto_loot AutoLoot
----@param config Config
 ---@param withhold (fun( item: table ): boolean?)[]? -- see process_dropped_items
-function M.new( loot_list, chat, softres, winner_tracker, player_info, auto_loot, config, withhold )
+function M.new( loot_list, chat, softres, winner_tracker, player_info, withhold )
   local announcing = false
   local announced_source_ids = {}
 
@@ -324,7 +323,7 @@ function M.new( loot_list, chat, softres, winner_tracker, player_info, auto_loot
       return
     end
 
-    local source_guid, items, announcements = M.process_dropped_items( loot_list, softres, auto_loot, config, withhold )
+    local source_guid, items, announcements = M.process_dropped_items( loot_list, softres, withhold )
     local was_announced = announced_source_ids[ source_guid ]
     if was_announced then return end
 

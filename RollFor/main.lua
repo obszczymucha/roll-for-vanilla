@@ -24,8 +24,7 @@ local extension_hooks = { group_changed = {}, lockout_reset = {}, lockout_loss =
 local RF_COMMANDS = {
   debug = true,
   config = true,
-  options = true,
-  autoloot = true
+  options = true
 }
 ---@type fun( extension_name: string ): ExtensionContext
 local make_extension_context
@@ -312,9 +311,18 @@ local function create_components()
       popup_builder = popup_builder,
       frame_builder = m.FrameBuilder,
       gui_elements = m.GuiElements,
+      selection_tree = m.SelectionTree,
+      selection_tree_frame = m.SelectionTreeFrame,
       softres_chain = M.softres_chain,
       awarded_loot_chain = M.awarded_loot_chain,
-      softres_source = { register = m.SoftResSource.register },
+      softres_source = {
+        register = m.SoftResSource.register,
+        -- What the installed source would hand somebody asking for the raw import string.
+        -- Added in API 5, for an extension that speaks another addon's protocol and has to
+        -- answer such a request. nil when no source is installed, or when the one that is
+        -- offers none.
+        get_import_string = m.SoftResSource.get_import_string
+      },
       softres_tap = softres_tap,
       -- How an extension changes what a roll is worth. The sibling of roll_pools, which
       -- decides how many rolls a player gets: this one decides what one is worth, and core
@@ -507,23 +515,6 @@ local function create_components()
     M.roll_controller
   )
 
-  M.autoloot_db = db( "autoloot_db", {
-    -- 1 -> 2. Mark of the Illidari moved to the round-robin catalogue, and an item enabled in
-    -- both trees is taken by auto-loot, so a tick left behind here would go on claiming it.
-    -- ensure_seeded never prunes, deliberately, so the row has to be taken out of the saved
-    -- selection rather than just out of the catalogue.
-    function( store )
-      for _, dungeon in pairs( store.ids or {} ) do
-        for _, boss in pairs( dungeon.bosses or {} ) do
-          if boss.items then boss.items[ 32897 ] = nil end
-        end
-      end
-    end
-  } )
-
-  ---@type AutoLoot
-  M.auto_loot = m.AutoLoot.new( M.loot_list, M.api, M.autoloot_db, M.config, M.player_info, M.chat )
-
   ---@type DroppedLootAnnounce
   M.dropped_loot_announce = m.DroppedLootAnnounce.new(
     M.loot_list,
@@ -531,8 +522,6 @@ local function create_components()
     M.softres,
     M.winner_tracker,
     M.player_info,
-    M.auto_loot,
-    M.config,
     extension_hooks.dropped_item
   )
 
@@ -605,7 +594,6 @@ local function create_components()
   -- component that did not exist yet when the registry was made. Extensions anchored to
   -- these names long before now; Ordering does not care who arrived first.
   M.loot_facade_listener.register_core( {
-    auto_loot = M.auto_loot,
     dropped_loot = M.dropped_loot,
     dropped_loot_announce = M.dropped_loot_announce,
     master_loot = M.master_loot,
@@ -622,7 +610,6 @@ local function create_components()
 
   M.drop_simulator = m.DropSimulator.new( M.boss_killed, M.raid_lockout, confirm_lockout_reset )
 
-  M.gargul_bridge = m.GargulBridge.new( M.player_info, M.roll_controller, M.config, m.SoftResSource.get_import_string, M.softres )
 
   M.roll_for_broadcast = m.RollForBroadcast.new( M.roll_controller, M.config )
   M.roll_for_receiver = m.RollForReceiver.new( M.rolling_popup, db( "receiver" ) )
@@ -666,25 +653,6 @@ local function create_components()
 
     return M.options
   end )
-
-  ---@type AutoLootFrameContentTransformer
-  local autoloot_frame_content_transformer = m.AutoLootFrameContentTransformer.new()
-
-  -- The tree has to exist before the window that renders it: AutoLootFrame takes its roots
-  -- rather than reaching for the module-level singleton, now that a second window is built
-  -- from the same module.
-  m.AutoLootTree.init( M.autoloot_db )
-
-  ---@type AutoLootFrame
-  M.autoloot_frame = m.AutoLootFrame.new( {
-    popup_builder = popup_builder(),
-    content_transformer = autoloot_frame_content_transformer,
-    db = db( "autoloot_frame" ),
-    name = "RollForAutoLootFrame",
-    title = "RollFor Auto Loot",
-    roots = m.AutoLootTree.dungeons,
-    make_link = m.AutoLootDb.make_link
-  } )
 
   -- Construction phase. Everything above exists now, so extensions that build frames or
   -- register slash commands do it here rather than in on_enable.
@@ -746,11 +714,9 @@ local function subscribe_for_component_events()
     refresh_minimap()
 
     -- Only on an interactive (GUI) import -- not on the login reload re-importing the
-    -- saved string, which would otherwise re-broadcast to Gargul and fire auto-master-loot
-    -- on every login.
+    -- saved string, which would otherwise fire auto-master-loot on every login.
     if not event.interactive then return end
 
-    if M.gargul_bridge then M.gargul_bridge.broadcast_softres( event.raw ) end
     M.auto_master_loot.on_softres_import()
   end )
 
@@ -783,11 +749,6 @@ local function on_roll_command( roll_slash_command )
       return
     end
 
-    if string.find( args, "^autoloot" ) then
-      M.autoloot_frame.toggle()
-      return
-    end
-
     -- Extensions' own subcommands, matched after core's so an extension can never take one
     -- of core's over, and only on the first word -- the rest is theirs to parse.
     local subcommand, subcommand_args = string.match( args, "^(%S+)%s*(.*)$" )
@@ -806,18 +767,6 @@ local function on_roll_command( roll_slash_command )
       M.interface_options.open()
       return
     end
-
-    -- if string.find( args, "^autolootdb print" ) then
-    --   m.AutoLootDb.on_print_command()
-    --   return
-    -- end
-    --
-    -- if string.find( args, "^autolootdb" ) then
-    --   m.AutoLootDb.on_command( M.autoloot_db, function()
-    --     m.print( "AutoLootDb: all pending items resolved." )
-    --   end )
-    --   return
-    -- end
 
     if args == "versioncheck guild" then
       M.version_broadcast.guild_version_request()
@@ -1185,7 +1134,7 @@ end
 function M.on_item_info_received( item_id )
   M.roll_controller.on_item_info_received( item_id )
   M.roll_for_receiver.on_item_info_received( item_id )
-  m.AutoLootDb.on_item_info_received( item_id )
+  m.DropTable.on_item_info_received( item_id )
 end
 
 function M.on_group_changed()

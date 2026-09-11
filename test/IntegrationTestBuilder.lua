@@ -8,7 +8,7 @@ require( "src/AwardedLoot" )
 local SoftResSourceMock = require( "mocks/SoftResSource" )
 require( "src/Ordering" )
 local Chain = require( "src/Chain" )
-require( "src/AutoLootDb" )
+require( "src/DropTable" )
 require( "src/SoftRes" )
 local Db = require( "src/Db" )
 local RollingLogic = require( "src/RollingLogic" )
@@ -52,16 +52,6 @@ function M.mock_config( configuration )
   local config = configuration
 
   return {
-    auto_loot = function() return config and config.auto_loot end,
-    auto_loot_announce = function()
-      if config and config.auto_loot_announce ~= nil then return config.auto_loot_announce end
-      return true
-    end,
-    superwow_auto_loot_coins = function()
-      if config and config.superwow_auto_loot_coins ~= nil then return config.superwow_auto_loot_coins end
-      return true
-    end,
-    auto_loot_messages = function() return config and config.auto_loot_messages end,
     auto_raid_roll = function() return config and config.auto_raid_roll end,
     raid_roll_again = function() return config and config.raid_roll_again end,
     rolling_popup_lock = function() return config and config.rolling_popup_lock end,
@@ -114,77 +104,6 @@ end
 
 function M.mock_loot_facade()
   return require( "mocks/LootFacade" ).new()
-end
-
--- Test seam for the auto-loot GUI's predefined list. Test items aren't in AutoLootDb's real
--- catalogue, so instead of ticking rows in the tree this writes the exact db shape ticking them
--- would produce (see AutoLootDb.ensure_seeded and AutoLootTree.set_checked): the item enabled
--- under an enabled boss under an enabled dungeon. AutoLootTree's own write-through is covered in
--- AutoLootTree_test; what these specs care about is AutoLoot honouring the resulting selection.
----@param db table the autoloot_db the AutoLoot under test was built with
-function M.auto_loot_list( db )
-  local DUNGEON, BOSS = "Test Dungeon", "Test Boss"
-
-  local function boss_entry()
-    db.ids = db.ids or {}
-    db.ids[ DUNGEON ] = db.ids[ DUNGEON ] or { enabled = true, order = 1, bosses = {} }
-    db.ids[ DUNGEON ].bosses[ BOSS ] = db.ids[ DUNGEON ].bosses[ BOSS ] or { enabled = true, order = 1, items = {} }
-
-    return db.ids[ DUNGEON ].bosses[ BOSS ]
-  end
-
-  ---@param item DroppedItem
-  local function enable( item )
-    boss_entry().items[ item.id ] = { enabled = true, name = item.name, quality = item.quality, icon = 0 }
-  end
-
-  ---@param item DroppedItem
-  local function disable( item )
-    local entry = boss_entry().items[ item.id ]
-    if entry then entry.enabled = false end
-  end
-
-  ---@param enabled boolean
-  local function set_dungeon_enabled( enabled )
-    boss_entry()
-    db.ids[ DUNGEON ].enabled = enabled
-  end
-
-  ---@param enabled boolean
-  local function set_boss_enabled( enabled )
-    boss_entry().enabled = enabled
-  end
-
-  -- The General category, which names item qualities instead of a dungeon's bosses. Written the
-  -- same way and for the same reason as the boss entry above: the shape ticking the row in the
-  -- GUI would produce, so what these specs cover is AutoLoot honouring the selection.
-  ---@param quality number
-  ---@param enabled boolean
-  local function set_quality( quality, enabled )
-    local general = RollFor.AutoLootDb.GENERAL
-
-    db.ids = db.ids or {}
-    db.ids[ general ] = db.ids[ general ] or { enabled = true, order = 0, qualities = {} }
-    db.ids[ general ].qualities[ quality ] = { enabled = enabled, name = "Quality" }
-  end
-
-  ---@param enabled boolean
-  local function set_general_enabled( enabled )
-    local general = RollFor.AutoLootDb.GENERAL
-
-    set_quality( 2, db.ids and db.ids[ general ] and db.ids[ general ].qualities[ 2 ]
-      and db.ids[ general ].qualities[ 2 ].enabled or false )
-    db.ids[ general ].enabled = enabled
-  end
-
-  return {
-    enable = enable,
-    disable = disable,
-    set_quality = set_quality,
-    set_general_enabled = set_general_enabled,
-    set_dungeon_enabled = set_dungeon_enabled,
-    set_boss_enabled = set_boss_enabled
-  }
 end
 
 ---@param name string
@@ -395,10 +314,6 @@ function M.new_roll_for()
     local rolling_popup_content = require( "src/RollingPopupContentTransformer" ).new( config )
     deps[ "RollingPopupContent" ] = rolling_popup_content
 
-    local autoloot_db = db( "autoloot_db" )
-    local auto_loot = require( "mocks/AutoLoot" ).new( loot_list, u.modules().api, autoloot_db, config, player_info, chat )
-    deps[ "AutoLoot" ] = auto_loot
-
     require( "src/RollResultAnnouncer" ).new( chat, roll_controller, config )
     local boss_killed = deps[ "BossKilled" ] or require( "src/BossKilled" ).new( db( "boss_killed" ) )
     deps[ "BossKilled" ] = boss_killed
@@ -409,16 +324,13 @@ function M.new_roll_for()
       chat,
       softres,
       winner_tracker,
-      player_info,
-      auto_loot,
-      config
+      player_info
     )
 
     local auto_group_loot = require( "mocks/AutoGroupLoot" ).new()
     local loot_facade_listener = require( "src/LootFacadeListener" ).new()
 
     loot_facade_listener.register_core( {
-      auto_loot = auto_loot,
       dropped_loot = dropped_loot,
       dropped_loot_announce = dropped_loot_announce,
       master_loot = master_loot,
@@ -439,9 +351,6 @@ function M.new_roll_for()
       confirmation_popup = confirmation_popup,
       player_selection = player_selection_frame,
       loot_list = loot_list, ---@type LootList
-      auto_loot = auto_loot, ---@type AutoLoot
-      auto_loot_list = M.auto_loot_list( autoloot_db ),
-      autoloot_db = autoloot_db,
       dropped_loot = dropped_loot, ---@type DroppedLoot
       ace_timer = ace_timer,
       roll = rolling_logic.on_roll,

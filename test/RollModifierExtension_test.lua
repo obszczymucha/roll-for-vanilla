@@ -76,9 +76,11 @@ function ContextSpec:should_have_accepted_the_registration()
 end
 
 -- The API number an extension has to declare to see the field at all. Bumping it is what
--- keeps an extension written against this seam from half-loading on an older RollFor.
+-- keeps an extension written against this seam from half-loading on an older RollFor. The
+-- version only ever goes up, so what this pins is that 4 is still offered, not that it is
+-- the latest.
 function ContextSpec:should_have_arrived_in_api_version_4()
-  eq( Extensions.API_VERSION, 4 )
+  eq( Extensions.API_VERSION >= 4, true )
 end
 
 EffectSpec = {}

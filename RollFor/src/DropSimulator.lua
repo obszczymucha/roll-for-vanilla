@@ -38,7 +38,7 @@ local grey = m.colors.grey
 ---@param item_id number
 ---@return string? -- the item's name, nil when it isn't in the catalogue
 local function item_name( item_id )
-  for _, dungeon in pairs( m.AutoLootDb.ids ) do
+  for _, dungeon in pairs( m.DropTable.ids ) do
     for _, boss in pairs( dungeon.bosses or {} ) do
       local item = boss.items and boss.items[ item_id ]
       if item then return item.name end
@@ -64,9 +64,9 @@ local function matching_bosses( query )
   local needle = string.lower( query )
   local result = {}
 
-  for _, dungeon in pairs( m.AutoLootDb.ids ) do
+  for _, dungeon in pairs( m.DropTable.ids ) do
     for boss_name in pairs( dungeon.bosses or {} ) do
-      if not m.AutoLootDb.non_bosses[ boss_name ] and string.find( string.lower( boss_name ), needle, 1, true ) then
+      if not m.DropTable.non_bosses[ boss_name ] and string.find( string.lower( boss_name ), needle, 1, true ) then
         table.insert( result, boss_name )
       end
     end
@@ -85,11 +85,11 @@ end
 local function droppable_item( boss_name )
   local best
 
-  for _, dungeon in pairs( m.AutoLootDb.ids ) do
+  for _, dungeon in pairs( m.DropTable.ids ) do
     local boss = (dungeon.bosses or {})[ boss_name ]
 
     for item_id in pairs( boss and boss.items or {} ) do
-      if not m.BossKilled.ignored_items[ item_id ] and m.AutoLootDb.find_boss( item_id ) == boss_name then
+      if not m.BossKilled.ignored_items[ item_id ] and m.DropTable.find_boss( item_id ) == boss_name then
         if not best or item_id < best then best = item_id end
       end
     end
@@ -135,7 +135,7 @@ function M.new( boss_killed, raid_lockout, confirm_lockout_reset )
       return
     end
 
-    local boss_name = m.AutoLootDb.find_boss( item_id )
+    local boss_name = m.DropTable.find_boss( item_id )
 
     if not boss_name then
       m.info( string.format( "No boss in the catalogue drops %s. %s",

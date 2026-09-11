@@ -33,8 +33,6 @@ local function mock_config()
             str = "/roll"
           }
         end,
-        auto_loot = function() return true end,
-        superwow_auto_loot_coins = function() return false end,
         rolling_popup = function() return true end,
         raid_roll_again = function() return false end,
         default_rolling_time_seconds = function() return 8 end,

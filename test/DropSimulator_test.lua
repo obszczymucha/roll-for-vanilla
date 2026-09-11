@@ -9,7 +9,7 @@ require( "src/DebugBuffer" )
 require( "src/Module" )
 local Db = require( "src/Db" )
 require( "src/ItemUtils" )
-require( "src/AutoLootDb" )
+require( "src/DropTable" )
 local BossKilled = require( "src/BossKilled" )
 local RaidLockout = require( "src/RaidLockout" )
 local DropSimulator = require( "src/DropSimulator" )
@@ -142,7 +142,7 @@ function DropSimulatorSpec:should_drop_a_shift_clicked_item_link()
   -- A link has digits in it beyond the item id, so it can't be read with tonumber.
   -- Given
   local sut = simulator()
-  local link = RollFor.AutoLootDb.make_link( ROBE_OF_HATEFUL_ECHOES, 4, "Robe of Hateful Echoes" )
+  local link = RollFor.ItemUtils.make_link( ROBE_OF_HATEFUL_ECHOES, 4, "Robe of Hateful Echoes" )
 
   -- When
   sut.drop( link )

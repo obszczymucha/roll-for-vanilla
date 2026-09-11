@@ -27,10 +27,6 @@ function M.new( db, event_bus )
   local callbacks = {}
   ---@type table<string, ConfigToggle>
   local toggles = {
-    [ "auto_loot" ] = { cmd = "auto-loot", display = "Auto-loot", help = "toggle auto-loot" },
-    [ "superwow_auto_loot_coins" ] = { cmd = "superwow-auto-loot-coins", display = "Auto-loot coins with SuperWoW", help = "toggle auto-loot coins with SuperWoW" },
-    [ "auto_loot_messages" ] = { cmd = "auto-loot-messages", display = "Auto-loot messages", help = "toggle auto-loot messages" },
-    [ "auto_loot_announce" ] = { cmd = "auto-loot-announce", display = "Announce auto-looted items", help = "toggle announcements of auto-loot items" },
     [ "show_ml_warning" ] = { cmd = "ml", display = "Master loot warning", help = "toggle master loot warning" },
     [ "auto_raid_roll" ] = { cmd = "auto-rr", display = "Auto raid-roll", help = "toggle auto raid-roll" },
     [ "auto_group_loot" ] = { cmd = "auto-group-loot", display = "Auto group loot", help = "toggle auto group loot" },
@@ -52,14 +48,11 @@ function M.new( db, event_bus )
   local function init()
     if not db.ms_roll_threshold then db.ms_roll_threshold = 100 end
     if not db.os_roll_threshold then db.os_roll_threshold = 99 end
-    if not db.superwow_auto_loot_coins then db.superwow_auto_loot_coins = true end
     if db.show_ml_warning == nil then db.show_ml_warning = false end
     if db.default_rolling_time_seconds == nil then db.default_rolling_time_seconds = 8 end
     if db.master_loot_frame_rows == nil then db.master_loot_frame_rows = 5 end
     if db.auto_master_loot == nil then db.auto_master_loot = true end
     if db.master_loot_threshold == nil then db.master_loot_threshold = ItemQuality.Rare end
-    if db.auto_loot == nil then db.auto_loot = true end
-    if db.auto_loot_announce == nil then db.auto_loot_announce = true end
     if db.sr_roll_spacing == nil then db.sr_roll_spacing = 20 end
     -- Off deliberately: the command list is a dozen lines a user reads once and then scrolls
     -- past every time they hover the button. Written down rather than left absent so it reads
@@ -515,8 +508,8 @@ function M.new( db, event_bus )
   end
 
   -- The same for a number. Extensions get a value, a setter that validates against the
-  -- bounds they declared, and the subscribe() their frames already use to redraw -- which
-  -- is what the round-robin queue window wants for its row count.
+  -- bounds they declared, and the subscribe() their frames already use to redraw -- which is
+  -- what a window sized by one of its own settings needs.
   --
   -- Not folded into register_toggle: a toggle needs no bounds and a number has no
   -- cmd/display/help row in the toggles table, so one function doing both would be two

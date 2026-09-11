@@ -10,7 +10,7 @@ local getn = m.getn
 -- Which bosses this character has seen die, inferred from their loot. Nothing
 -- here watches combat: an item that only one boss drops is proof that boss is
 -- dead, and the loot window is the one moment the addon is guaranteed to be
--- looking. AutoLootDb owns the item-to-boss catalogue.
+-- looking. DropTable owns the item-to-boss catalogue.
 
 -- Items that don't identify what dropped them, so nothing can be concluded from
 -- seeing one. Karazhan's Opera event picks one of The Big Bad Wolf / The Wizard
@@ -80,7 +80,7 @@ function M.new( db )
 
     -- Trash, quest items, anything outside the catalogue: nothing that names a
     -- boss, so nothing to record.
-    local boss_name = m.AutoLootDb.find_boss( item_id )
+    local boss_name = m.DropTable.find_boss( item_id )
     if not boss_name then return end
 
     if db.bosses[ boss_name ] then return end

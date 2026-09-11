@@ -219,9 +219,6 @@ function M.new( popup_builder, content_transformer, config, parent, section, ext
         m.colors.grey( string.format( "v%s", m.get_addon_version().str ) ) )
     } )
 
-    add_toggle( settings, "auto_loot" )
-    add_toggle( settings, "auto_loot_announce" )
-    add_toggle( settings, "auto_loot_messages" )
     add_toggle( settings, "auto_group_loot" )
     add_toggle( settings, "auto_master_loot" )
     add_toggle( settings, "auto_raid_roll" )

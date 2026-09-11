@@ -1,16 +1,26 @@
 RollFor = RollFor or {}
 local m = RollFor
 
-if m.AutoLootTree then return end
+if m.SelectionTree then return end
 
 local M = {}
 local Tree = m.Tree
 
--- Builds a Dungeon -> Boss -> Item drops tree (using the generic Tree module for structure) from
--- AutoLootDb's hardcoded data (name/link/icon already resolved there). expanded/checked are
--- UI-only state AutoLootDb doesn't know about, so they get bolted on here as each node's `data`.
--- This whole file is the AutoLoot-domain layer: it's the only thing that knows nodes have a
--- `checked`/`expanded` concept at all -- Tree.lua itself doesn't.
+---@class SelectionTree
+---@field build fun( db: table, non_bosses: table<string, boolean> ): TreeNode[]
+---@field build_flat fun( db: table ): TreeNode[]
+---@field all_checked fun( node: TreeNode ): boolean
+---@field set_checked fun( node: TreeNode, checked: boolean )
+---@field visible_rows fun( nodes: TreeNode[] ): SelectionTreeVisibleRow[]
+
+-- A tree of things the player can tick, built out of a persisted selection db (using the generic
+-- Tree module for structure). The db holds the facts -- name, icon, quality -- and an `enabled`
+-- per node; expanded/checked are UI state the db knows nothing about, so they get bolted on here
+-- as each node's `data`.
+--
+-- This is the selection layer: the only thing that knows nodes have a `checked`/`expanded`
+-- concept at all -- Tree.lua itself doesn't. What is in the tree, and what ticking a row means,
+-- belongs to whoever owns the catalogue.
 local function sorted_keys( t )
   local keys = {}
   for key in pairs( t ) do table.insert( keys, key ) end
@@ -36,9 +46,9 @@ local function ordered_keys( t )
   return keys
 end
 
--- Presentation for the tree itself: which colors dungeons/bosses/items get. AutoLootDb only ever
--- holds real WoW facts (quality, icon, name) -- how THIS tree chooses to display those facts is
--- this module's decision, not AutoLootDb's.
+-- Presentation for the tree itself: which colors the levels get. A selection db only ever holds
+-- real WoW facts (quality, icon, name) -- how THIS tree chooses to display those facts is this
+-- module's decision, not the db's.
 local DUNGEON_COLOR = { 0.125, 0.624, 0.976 }
 local DUNGEON_HOVER_TEXT_COLOR = { 0.5, 0.8, 1 }
 local BOSS_HOVER_TEXT_COLOR = { 0.625, 0.624, 0.976 }
@@ -47,8 +57,8 @@ local BOSS_COLOR = { 1, 1, 1 }
 local TRASH_COLOR = { 0.45, 0.45, 0.45 }
 local TRASH_HOVER_TEXT_COLOR = { 0.65, 0.65, 0.65 }
 
--- A category names its colour as RRGGBB (see AutoRoundRobinDb); turning that into an
--- { r, g, b, a } highlight is this tree's own display decision, so the parsing lives here.
+-- A catalogue may name a node's colour as RRGGBB; turning that into an { r, g, b, a } highlight
+-- is this tree's own display decision, so the parsing lives here.
 ---@param hex string -- RRGGBB
 ---@param a number
 ---@return number[]
@@ -84,11 +94,10 @@ local function item_tooltip_position( x, y )
   return ITEM_TOOLTIP_ANCHOR, x + ITEM_TOOLTIP_OFFSET_X, y
 end
 
--- ids here is the persisted autoloot_db.ids (see AutoLootDb.ensure_seeded) -- every dungeon/boss/
--- item that exists in AutoLootDb's static data is always present and seeded with its own
--- `enabled`, which is this tree's initial checked state and the write-back target for toggling
--- (see set_checked below). No enabled-based filtering here: unlike the old AutoLootDb.ids gate,
--- a seeded entry always exists once seeded, it's just off (enabled = false) by default.
+-- The entries here come from the persisted selection db, already seeded: everything in the
+-- catalogue is present and carries its own `enabled`, which is this tree's initial checked state
+-- and the write-back target for toggling (see set_checked below). No enabled-based filtering:
+-- a seeded entry always exists, it is just off (enabled = false) by default.
 -- The leaves are the same in every catalogue: an item is an item.
 ---@param items table -- persisted item entries, keyed by item id
 ---@return TreeNode[]
@@ -111,14 +120,13 @@ local function build_items( items )
   return result
 end
 
--- The round-robin catalogue's Trash category names qualities instead of item ids (see
--- AutoRoundRobinDb), so its rows have a name and no item. That makes them label leaves -- a
--- checkbox and a coloured word, no icon and no item tooltip -- which is why they carry `name`
--- where an item row would carry `id`/`item`.
+-- A catalogue node may name qualities instead of item ids, in which case its rows have a name
+-- and no item. That makes them label leaves -- a checkbox and a coloured word, no icon and no
+-- item tooltip -- which is why they carry `name` where an item row would carry `id`/`item`.
 --
--- The quality is carried along too, unused here: the round-robin window reads it to work out
--- whether the master loot threshold has made the row inert. This tree has no business asking the
--- client anything, so it only passes the fact on.
+-- The quality is carried along too, unused here: a window may read it to work out whether the
+-- master loot threshold has made the row inert. This tree has no business asking the client
+-- anything, so it only passes the fact on.
 ---@param qualities table -- persisted quality entries, keyed by quality
 ---@return TreeNode[]
 local function build_qualities( qualities )
@@ -171,12 +179,11 @@ local function build_tree( ids, non_bosses )
     local dungeon_entry = ids[ dungeon_name ]
     local bosses = {}
 
-    -- A catalogue entry names either encounters or qualities, never both: General is the only one
-    -- of the second kind (see AutoLootDb). Its rows are quality leaves, which is the same thing
-    -- the round-robin catalogue's Trash category draws, so build_flat's leaves serve here too.
-    -- A catalogue entry may name the colour it is drawn in, as RRGGBB (see AutoLootDb's General
-    -- and the round-robin catalogue's categories). Everything that names none is a raid, and
-    -- raids are dungeon blue.
+    -- A catalogue entry names either encounters or qualities, never both. The second kind draws
+    -- quality leaves, the same ones build_flat's categories draw, so those serve here too.
+    --
+    -- An entry may name the colour it is drawn in, as RRGGBB. Everything that names none is a
+    -- raid, and raids are dungeon blue.
     local color = dungeon_entry.color and hex_color_rgb( dungeon_entry.color, 1 ) or DUNGEON_COLOR
     local hover_text_color = dungeon_entry.color and color or DUNGEON_HOVER_TEXT_COLOR
 
@@ -206,13 +213,10 @@ local function build_tree( ids, non_bosses )
   return dungeons
 end
 
----@type TreeNode[]
-M.dungeons = {}
-
 -- Builds a Dungeon -> Boss -> items tree out of an already-seeded selection db. Takes the
--- catalogue's own non-boss set rather than reaching for AutoLootDb's, and returns the roots
--- instead of assigning them anywhere: more than one window is built from this module now, so a
--- module-level singleton can only belong to one of them.
+-- catalogue's own non-boss set rather than reaching for one, and returns the roots instead of
+-- assigning them anywhere: more than one window is built from this module, so a module-level
+-- singleton could only belong to one of them.
 ---@param db table -- a persisted selection db, already seeded
 ---@param non_bosses table<string, boolean>
 ---@return TreeNode[]
@@ -220,10 +224,10 @@ function M.build( db, non_bosses )
   return build_tree( db.ids, non_bosses )
 end
 
--- Builds a Category -> items tree, which is the round-robin catalogue's shape. Every layer below
--- the top is the same as build's, and everything downstream -- visible_rows, set_checked,
--- is_leaf_enabled, the whole frame -- walks children rather than counting levels, so nothing
--- else has to know the tree is two deep instead of three.
+-- Builds a Category -> items tree: the same thing one level shallower, for a catalogue with no
+-- encounter layer. Every layer below the top is the same as build's, and everything downstream --
+-- visible_rows, set_checked, the whole frame -- walks children rather than counting levels, so
+-- nothing else has to know the tree is two deep instead of three.
 --
 -- Categories take the top-level colour for the same reason dungeons do: they are the top level.
 ---@param db table -- a persisted selection db, already seeded
@@ -239,9 +243,8 @@ function M.build_flat( db )
     -- ignorant of the difference: both branches return leaves.
     local children = entry.qualities and build_qualities( entry.qualities ) or build_items( entry.items )
 
-    -- A category names the colour it is drawn in (see AutoRoundRobinDb). Falls back to the
-    -- dungeon blue for a catalogue that names none, which is what the auto-loot tree draws the
-    -- node at this depth in.
+    -- A category may name the colour it is drawn in. Falls back to the dungeon blue every
+    -- top-level node gets when it names none.
     local color = entry.color and hex_color_rgb( entry.color, 1 ) or DUNGEON_COLOR
 
     table.insert( categories, build_group( category_name, entry,
@@ -251,32 +254,13 @@ function M.build_flat( db )
   return categories
 end
 
--- Seeds the auto-loot db (if needed) and builds its tree into M.dungeons. Called once from
--- main.lua once the SavedVariables-backed db is actually available -- can't happen at module load
--- time like the old AutoLootDb.ids-only version did, since db doesn't exist yet then.
----@param db table
-function M.init( db )
-  m.AutoLootDb.ensure_seeded( db )
-  M.dungeons = M.build( db, m.AutoLootDb.non_bosses )
-end
-
 -- Each node's own `data.checked` is independent and never touched by its parent/ancestors --
 -- toggling a dungeon or boss only ever sets that node's own flag, nothing cascades down. Children
 -- just render desaturated (see visible_rows below) while an ancestor is off, remembering their
 -- own state for whenever that ancestor is turned back on.
 
--- An item only actually counts as enabled (e.g. for auto-loot) if it and every node above it are
--- checked -- a checked item under an unchecked boss/dungeon is not effectively enabled.
----@param dungeon TreeNode
----@param boss TreeNode
----@param item TreeNode
----@return boolean
-function M.is_leaf_enabled( dungeon, boss, item )
-  return (dungeon.data.checked and boss.data.checked and item.data.checked) and true or false
-end
-
--- True only if this node and every descendant (recursively) are checked. AutoLoot's own selection
--- semantics (checked propagation) -- not a generic tree concept, so it lives here, not in Tree.lua.
+-- True only if this node and every descendant (recursively) are checked. Selection semantics
+-- (checked propagation) -- not a generic tree concept, so it lives here, not in Tree.lua.
 -- Built on Tree.walk: stops at the first unchecked node instead of visiting the whole tree.
 ---@param node TreeNode
 ---@return boolean
@@ -320,7 +304,7 @@ local function subtree_matches( node, value )
   return matches
 end
 
--- Toggling a row writes through to the persisted entry (see AutoLootDb.ensure_seeded) as well as
+-- Toggling a row writes through to the persisted entry as well as
 -- the node's own in-memory checked state, so the selection survives a /reload instead of resetting
 -- to whatever build_tree seeded it with. A dungeon/boss also cascades the new state down to every
 -- descendant, but only if the whole subtree currently shares its own (pre-toggle) checked state --
@@ -336,7 +320,7 @@ function M.set_checked( node, checked )
   end
 end
 
----@class AutoLootTreeRow
+---@class SelectionTreeVisibleRow
 ---@field depth number
 ---@field node TreeNode the node this row was built from -- callers wire click/check callbacks
 --- against it, mutating node.data.expanded directly and going through set_checked for checked.
@@ -349,11 +333,11 @@ end
 -- Flattens the tree into exactly the rows that should currently be visible (respecting each
 -- node's own `data.expanded`), with checked/desaturated already decided. Pure data in, pure data
 -- out -- no widgets, no callbacks, no rendering. The GUI layer's job is just to dumbly render this
--- list. This is AutoLoot-specific (desaturation/visibility are selection-tree concepts), unlike
+-- list. This is selection-specific (desaturation and visibility are selection concepts), unlike
 -- Tree.lua which only knows about children/data. Built on Tree.walk: only descends into expanded
 -- non-leaf nodes, threading "are all ancestors checked so far" down as the walk's context.
 ---@param nodes TreeNode[]
----@return AutoLootTreeRow[]
+---@return SelectionTreeVisibleRow[]
 function M.visible_rows( nodes )
   local rows = {}
 
@@ -385,5 +369,5 @@ function M.visible_rows( nodes )
   return rows
 end
 
-m.AutoLootTree = M
+m.SelectionTree = M
 return M

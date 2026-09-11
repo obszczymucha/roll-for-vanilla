@@ -161,21 +161,21 @@ end
 -- the page was last built has to be picked up rather than remembered.
 function OptionsFrameSpec:should_reread_the_config_every_time_it_is_shown()
   -- Given
-  local config, db = mock_config( { auto_loot = true } )
+  local config, db = mock_config( { auto_group_loot = true } )
   local options = new_options( config )
   options.show()
 
   -- When
-  db.auto_loot = false
+  db.auto_group_loot = false
   options.show()
 
   -- Then
-  options.should_display( default_popup( nil, checkbox( "auto_loot", false ) ) )
+  options.should_display( default_popup( nil, checkbox( "auto_group_loot", false ) ) )
 end
 
 function OptionsFrameSpec:should_display_boolean_config_settings_as_checkboxes_in_declaration_order()
   -- Given
-  local config = mock_config( { classic_look = true, auto_loot = false } )
+  local config = mock_config( { classic_look = true, auto_group_loot = false } )
   local options = new_options( config )
 
   -- When
@@ -184,7 +184,7 @@ function OptionsFrameSpec:should_display_boolean_config_settings_as_checkboxes_i
   -- Then
   options.should_display( default_popup(
     nil,
-    checkbox( "auto_loot", false ),
+    checkbox( "auto_group_loot", false ),
     checkbox( "classic_look", true )
   ) )
 end
@@ -234,42 +234,46 @@ end
 
 function OptionsFrameSpec:should_not_display_a_boolean_setting_the_config_does_not_define()
   -- Given
-  local config = mock_config( { auto_loot = false, not_a_real_setting = true } )
+  local config = mock_config( { auto_group_loot = false, not_a_real_setting = true } )
   local options = new_options( config )
 
   -- When
   options.show()
 
   -- Then
-  options.should_display( default_popup( nil, checkbox( "auto_loot", false ) ) )
+  options.should_display( default_popup( nil, checkbox( "auto_group_loot", false ) ) )
 end
 
 function OptionsFrameSpec:should_toggle_a_boolean_config_setting_when_its_checkbox_is_clicked()
   -- Given
-  local config = mock_config( { auto_loot = false } )
+  local config = mock_config( { auto_group_loot = false } )
   local options = new_options( config )
   options.show()
 
   -- Then
-  eq( config.auto_loot(), false )
+  eq( config.auto_group_loot(), false )
 
   -- When
-  options.toggle_setting( "auto_loot" )
+  options.toggle_setting( "auto_group_loot" )
 
   -- Then
-  eq( config.auto_loot(), true )
+  eq( config.auto_group_loot(), true )
 end
 
-function OptionsFrameSpec:should_not_display_superwow_auto_loot_coins_setting()
+-- An extension's settings go in core's config -- that is what register_toggle does, so /rf
+-- config answers for them -- but this page renders an explicit list of core's own and nothing
+-- else. That is the whole reason an extension carries an options page: it is the only place
+-- its settings are actually visible.
+function OptionsFrameSpec:should_not_display_a_setting_an_extension_registered()
   -- Given
-  local config = mock_config( { superwow_auto_loot_coins = true, auto_loot = false } )
+  local config = mock_config( { auto_loot = true, superwow_auto_loot_coins = true, auto_group_loot = false } )
   local options = new_options( config )
 
   -- When
   options.show()
 
   -- Then
-  options.should_display( default_popup( nil, checkbox( "auto_loot", false ) ) )
+  options.should_display( default_popup( nil, checkbox( "auto_group_loot", false ) ) )
 end
 
 function OptionsFrameSpec:should_display_slider_settings_with_their_bounds()

@@ -75,11 +75,11 @@ end
 
 function ExtensionToggleSpec:should_refuse_to_shadow_an_existing_setting()
   local config = new_config()
-  local original = config.toggles.auto_loot
+  local original = config.toggles.auto_group_loot
 
-  config.register_toggle( "auto_loot", { cmd = "hijack", display = "Hijacked" }, false )
+  config.register_toggle( "auto_group_loot", { cmd = "hijack", display = "Hijacked" }, false )
 
-  eq( config.toggles.auto_loot, original )
+  eq( config.toggles.auto_group_loot, original )
 end
 
 function ExtensionToggleSpec:should_ignore_a_registration_without_a_key()
