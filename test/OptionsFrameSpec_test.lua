@@ -266,7 +266,7 @@ end
 -- its settings are actually visible.
 function OptionsFrameSpec:should_not_display_a_setting_an_extension_registered()
   -- Given
-  local config = mock_config( { auto_loot = true, superwow_auto_loot_coins = true, auto_group_loot = false } )
+  local config = mock_config( { auto_loot = true, auto_group_loot = false } )
   local options = new_options( config )
 
   -- When

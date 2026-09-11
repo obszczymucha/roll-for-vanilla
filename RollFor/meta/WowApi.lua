@@ -9,10 +9,9 @@
 --
 -- Names come from actual api.* usage across core, its suite and the extension addons,
 -- checked against WowApiDump_20260822.txt so a name cannot get in merely by being written
--- down twice. Four are not in that dump and are here on purpose:
+-- down twice. Three are not in that dump and are here on purpose:
 --
 --   SetLootMethod      -- guarded at modules.lua:271; absent on anniversary clients.
---   SUPERWOW_VERSION   -- from the SuperWoW client extension, so also guarded.
 --   GetAddOnMetadata   -- only ever set as a harness mock; the real code reads it off
 --   GetLootMethod         C_AddOns / C_PartyInfo, which are in the dump.
 --
@@ -145,8 +144,6 @@ ReloadUI = nil
 RequestRaidInfo = nil
 ---@type any
 SOUNDKIT = nil
----@type any
-SUPERWOW_VERSION = nil
 ---@type any
 SendChatMessage = nil
 ---@type any
