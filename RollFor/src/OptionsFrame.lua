@@ -23,10 +23,11 @@ local button_defaults = {
 ---@param popup_builder PopupBuilder
 ---@param content_transformer OptionsFrameContentTransformer
 ---@param config Config
+---@param award_policies AwardPolicies
 ---@param parent Frame -- the settings panel canvas this renders into
 ---@param section OptionsSection? -- which subcategory's page this is; general by default
 ---@param extension_name string? -- which extension, when section is "extension"
-function M.new( popup_builder, content_transformer, config, parent, section, extension_name )
+function M.new( popup_builder, content_transformer, config, award_policies, parent, section, extension_name )
   ---@type Popup?
   local popup
   -- How far the page sits in from the settings panel's own edges, and the only top margin
@@ -91,6 +92,11 @@ function M.new( popup_builder, content_transformer, config, parent, section, ext
           frame:SetPrecision( v.precision )
           frame:SetValue( v.value )
           frame.on_change = v.on_change or function() end
+        elseif type == "priority_row" then
+          frame:SetText( v.label or "" )
+          frame:SetMoveable( v.can_move_up, v.can_move_down )
+          frame.on_up = v.on_up or function() end
+          frame.on_down = v.on_down or function() end
         elseif type == "text" or type == "section_header" or type == "paragraph" then
           frame:SetText( v.value )
         end
@@ -203,6 +209,46 @@ function M.new( popup_builder, content_transformer, config, parent, section, ext
     table.insert( settings, setting )
   end
 
+  -- Declared ahead of its definition below: moving a policy redraws the page, and the page is
+  -- built from this.
+  ---@type fun(): OptionsFrameData
+  local default_content
+
+  -- Which automatic claimant outranks which, as a list the user arranges.
+  --
+  -- This is the one thing phases deliberately cannot decide: two policies competing for one
+  -- slot are both in the Award phase, and ranking them is a judgement about what the user
+  -- wants rather than about when anything runs. It used to be a line inside one extension
+  -- saying it lost to another by name.
+  --
+  -- Hidden below two policies, because with one there is no question to answer. The rows are
+  -- read fresh every time the page is shown, so they reflect what has actually registered and
+  -- how the user has since arranged it.
+  ---@param settings OptionsSetting[]
+  local function add_priority_list( settings )
+    local policies = award_policies.all()
+    if getn( policies ) < 2 then return end
+
+    local entries = {}
+    for _, policy in ipairs( policies ) do
+      table.insert( entries, { name = policy.name, title = policy.title } )
+    end
+
+    ---@type PriorityListSetting
+    local setting = {
+      type = "priority_list",
+      label = "Loot priority",
+      value = entries,
+      -- Applied and persisted on the move -- no apply button and no reload. The page is
+      -- redrawn from the new order so the arrows at the ends are right again.
+      on_move = function( position, offset )
+        if award_policies.move( position, offset ) then refresh( nil, default_content() ) end
+      end
+    }
+
+    table.insert( settings, setting )
+  end
+
   ---@param settings OptionsSetting[]
   local function general_settings( settings )
     -- Which RollFor this is, above everything it configures. Same line the minimap tooltip
@@ -233,6 +279,7 @@ function M.new( popup_builder, content_transformer, config, parent, section, ext
     add_slider( settings, "master_loot_frame_rows", "Master loot frame rows", 5, 20, 0 )
     add_slider( settings, "sr_roll_spacing", "SR roll spacing", 16, 28, 1 )
     add_choice( settings, "master_loot_threshold", "Master loot threshold", master_loot_threshold_choices )
+    add_priority_list( settings )
   end
 
   -- The page core draws for an extension that supplies none of its own: the switch, and
@@ -275,7 +322,7 @@ function M.new( popup_builder, content_transformer, config, parent, section, ext
   -- No title and no Close button: the settings window supplies both. A Close button
   -- inside a settings page would close nothing anyone expects.
   ---@return OptionsFrameData
-  local function default_content()
+  function default_content()
     local settings = {}
 
     if section == "extension" then

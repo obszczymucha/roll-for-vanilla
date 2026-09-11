@@ -261,7 +261,7 @@ function M.new_roll_for()
     )
 
     local loot_award_callback = require( "src/LootAwardCallback" ).new( awarded_loot, roll_controller, winner_tracker, group_roster )
-    local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, loot_list, roll_controller )
+    local master_loot = require( "src/MasterLoot" ).new( ml_candidates, loot_award_callback, loot_list, roll_controller, player_info )
 
     -- Where main.lua registers them, and for its reason: an award by hand goes through the same
     -- callback master loot and trading do, so everything downstream hears it.
@@ -330,13 +330,18 @@ function M.new_roll_for()
     local auto_group_loot = require( "mocks/AutoGroupLoot" ).new()
     local loot_facade_listener = require( "src/LootFacadeListener" ).new()
 
-    loot_facade_listener.register_core( {
+    -- The real one, not a stand-in: an addon registering an award policy has to have somewhere
+    -- to register it, and core is what performs the award now.
+    local award_policies = require( "src/AwardPolicies" ).new( db( "award_order" ) )
+    award_policies.attach( loot_list, player_info, ml_candidates )
+
+    require( "src/CoreLootHandlers" ).register( loot_facade_listener, {
+      award_policies = award_policies,
       dropped_loot = dropped_loot,
       dropped_loot_announce = dropped_loot_announce,
       master_loot = master_loot,
       auto_group_loot = auto_group_loot,
-      roll_controller = roll_controller,
-      player_info = player_info
+      roll_controller = roll_controller
     } )
 
     loot_facade_listener.start( loot_facade )

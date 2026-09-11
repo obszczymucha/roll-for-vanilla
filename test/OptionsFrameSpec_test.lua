@@ -13,6 +13,7 @@ local popup_builder = require( "mocks/PopupBuilder" )
 local options_frame_mock = require( "mocks/OptionsFrame" )
 local gui = require( "test/gui_helpers" )
 local checkbox, slider, editbox, dropdown = gui.checkbox, gui.slider, gui.editbox, gui.dropdown
+local priority_row = gui.priority_row
 local ItemQuality = RollFor.Types.ItemQuality
 
 u.mock_wow_api()
@@ -56,11 +57,39 @@ local function mock_config( toggles, setting_overrides )
   return config, db
 end
 
+-- The registered award policies, in the order they run. Empty by default: the priority list
+-- only appears once there are two of them to rank, so every page that is not about it is
+-- drawn without one.
+---@param names string[]?
+local function mock_award_policies( names )
+  local policies = {}
+  local moves = {}
+
+  for _, name in ipairs( names or {} ) do
+    table.insert( policies, { name = string.lower( name ), title = name } )
+  end
+
+  return {
+    all = function() return policies end,
+    move = function( position, offset )
+      table.insert( moves, { position = position, offset = offset } )
+
+      local target = position + offset
+      if not policies[ position ] or not policies[ target ] then return false end
+
+      policies[ position ], policies[ target ] = policies[ target ], policies[ position ]
+      return true
+    end,
+    moves = moves
+  }
+end
+
 -- The settings panel canvas the options render into. A bare frame is enough: what the
 -- options do with it is anchor to it and parent to it.
-local function new_options( config, section )
+local function new_options( config, section, award_policies )
   local c = config or mock_config()
-  return options_frame_mock.new( popup_builder.new(), c, RollFor.api.CreateFrame( "Frame" ), section )
+  return options_frame_mock.new( popup_builder.new(), c, award_policies or mock_award_policies(),
+    RollFor.api.CreateFrame( "Frame" ), section )
 end
 
 local master_loot_threshold_options = {
@@ -120,8 +149,8 @@ end
 ---@param extension_name string
 local function new_extension_page( extension_name )
   local c = mock_config()
-  return options_frame_mock.new( popup_builder.new(), c, RollFor.api.CreateFrame( "Frame" ),
-    "extension", extension_name )
+  return options_frame_mock.new( popup_builder.new(), c, mock_award_policies(),
+    RollFor.api.CreateFrame( "Frame" ), "extension", extension_name )
 end
 
 ---@param lines table[]
@@ -198,7 +227,7 @@ function OptionsFrameSpec:should_display_the_minimap_tooltip_commands_checkbox_d
   -- flips one.
   ---@diagnostic disable-next-line: missing-fields
   local config = Config.new( db( "config" ), { notify = function() return 0 end } )
-  local options = options_frame_mock.new( popup_builder.new(), config, db( "options" ) )
+  local options = options_frame_mock.new( popup_builder.new(), config, mock_award_policies(), db( "options" ) )
 
   -- When
   options.show()
@@ -473,6 +502,82 @@ function ExtensionPageSpec:should_explain_itself_instead_of_offering_a_switch_wh
   local content = options.content()
   eq( content[ #content ].type, "paragraph" )
   eq( string.find( content[ #content ].value, "cannot be enabled", 1, true ) ~= nil, true )
+end
+
+PrioritySpec = {}
+
+-- Which automatic claimant outranks which, as a list the user arranges. It is the one thing
+-- phases deliberately cannot decide: two policies competing for one slot are both in the Award
+-- phase, and ranking them is a judgement about what the user wants rather than about when
+-- anything runs. It used to be a line inside one extension saying it lost to another by name.
+function PrioritySpec:should_list_the_registered_policies_in_the_order_they_run()
+  local options = new_options( nil, nil, mock_award_policies( { "Auto-loot", "Round robin" } ) )
+  options.show()
+
+  local content = options.content()
+
+  eq( content[ #content - 2 ], { type = "section_header", value = "Loot priority", padding = 13 } )
+  eq( content[ #content - 1 ], priority_row( "Auto-loot", false, true, 3 ) )
+  eq( content[ #content ], priority_row( "Round robin", true, false, 3 ) )
+end
+
+-- With one policy there is no question to answer, so there is nothing to draw.
+function PrioritySpec:should_draw_nothing_with_only_one_policy()
+  local options = new_options( nil, nil, mock_award_policies( { "Auto-loot" } ) )
+  options.show()
+
+  for _, line in ipairs( options.content() ) do
+    eq( line.type ~= "priority_row", true, "A one-policy page should have no priority rows." )
+  end
+end
+
+function PrioritySpec:should_draw_nothing_with_no_policies_at_all()
+  local options = new_options()
+  options.show()
+
+  for _, line in ipairs( options.content() ) do
+    eq( line.type ~= "priority_row", true, "A page with no policies should have no priority rows." )
+  end
+end
+
+-- A row reports the position it is at and the direction, which is what the ordering itself
+-- takes -- so the page never has to work out what the new order should be.
+function PrioritySpec:should_report_a_move_as_a_position_and_a_direction()
+  local policies = mock_award_policies( { "Auto-loot", "Round robin" } )
+  local options = new_options( nil, nil, policies )
+  options.show()
+
+  options.move_priority( "Round robin", -1 )
+
+  eq( policies.moves, { { position = 2, offset = -1 } } )
+end
+
+-- Applied immediately: no apply button, no reload. The page is redrawn from the new order, so
+-- the arrows at the ends are right again rather than pointing off the list.
+function PrioritySpec:should_redraw_the_list_from_the_new_order()
+  local options = new_options( nil, nil, mock_award_policies( { "Auto-loot", "Round robin" } ) )
+  options.show()
+
+  options.move_priority( "Round robin", -1 )
+
+  local content = options.content()
+
+  eq( content[ #content - 1 ], priority_row( "Round robin", false, true, 3 ) )
+  eq( content[ #content ], priority_row( "Auto-loot", true, false, 3 ) )
+end
+
+-- Deliberately no wrapping, so an arrow at the end of the list is drawn unavailable and a
+-- refused move changes nothing on screen.
+function PrioritySpec:should_leave_the_list_alone_when_a_move_is_refused()
+  local options = new_options( nil, nil, mock_award_policies( { "Auto-loot", "Round robin" } ) )
+  options.show()
+
+  options.move_priority( "Auto-loot", -1 )
+
+  local content = options.content()
+
+  eq( content[ #content - 1 ], priority_row( "Auto-loot", false, true, 3 ) )
+  eq( content[ #content ], priority_row( "Round robin", true, false, 3 ) )
 end
 
 os.exit( lu.LuaUnit.run() )

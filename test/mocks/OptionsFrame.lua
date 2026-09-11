@@ -37,13 +37,15 @@ end
 ---@field change_slider fun( label: string, value: number )
 ---@field change_editbox fun( label: string, value: number )
 ---@field change_dropdown fun( label: string, value: any )
+---@field move_priority fun( title: string, offset: number )
 
 ---@param popup_builder PopupBuilder
 ---@param config Config
+---@param award_policies AwardPolicies
 ---@param parent table -- the settings panel canvas the options render into
 ---@param section OptionsSection?
 ---@param extension_name string?
-function M.new( popup_builder, config, parent, section, extension_name )
+function M.new( popup_builder, config, award_policies, parent, section, extension_name )
   local transformed_content
   local model ---@type OptionsFrameData?
 
@@ -58,7 +60,8 @@ function M.new( popup_builder, config, parent, section, extension_name )
     end
   }
 
-  local options = OptionsFrame.new( popup_builder, spying_transformer, config, parent, section, extension_name )
+  local options = OptionsFrame.new( popup_builder, spying_transformer, config, award_policies, parent,
+    section, extension_name )
   options.content = function() return transformed_content and cleanse( transformed_content ) or {} end
 
   options.is_visible = function()
@@ -92,6 +95,21 @@ function M.new( popup_builder, config, parent, section, extension_name )
   options.change_slider = change_setting
   options.change_editbox = change_setting
   options.change_dropdown = change_setting
+
+  -- A priority list is addressed by the row rather than by the setting: what a test wants to
+  -- say is "move Round robin up", and the position is what the user is looking at, not
+  -- something they have to count.
+  options.move_priority = function( title, offset )
+    for _, setting in ipairs( model and model.settings or {} ) do
+      if setting.type == "priority_list" then
+        for position, entry in ipairs( setting.value ) do
+          if entry.title == title then return setting.on_move( position, offset ) end
+        end
+      end
+    end
+
+    error( string.format( "There was no priority row titled: %s", title ), 2 )
+  end
 
   local function should_be_visible( level )
     if not options.is_visible() then

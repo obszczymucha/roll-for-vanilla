@@ -4,6 +4,7 @@ local m = RollFor
 if m.MasterLoot then return end
 
 local M = m.Module.new( "MasterLoot" )
+local IU = m.ItemUtils
 local pretty_print = m.pretty_print
 local hl = m.colors.hl
 local clear_table = m.clear_table
@@ -16,12 +17,14 @@ local err = m.err
 ---@field on_unknown_error_message fun( message: string )
 ---@field on_loot_slot_cleared fun( slot: number )
 ---@field on_loot_received fun( player_name: string, item_id: number, item_link: string )
+---@field on_chat_msg_loot fun( message: string )
 
 ---@param master_loot_candidates MasterLootCandidates
 ---@param loot_award_callback LootAwardCallback
 ---@param loot_list LootList
 ---@param roll_controller RollController
-function M.new( master_loot_candidates, loot_award_callback, loot_list, roll_controller )
+---@param player_info PlayerInfo
+function M.new( master_loot_candidates, loot_award_callback, loot_list, roll_controller, player_info )
   ---@type { player: ItemCandidate|Winner, item: MasterLootDistributableItem }?
   local m_confirmed = nil
   local m_slot_cache = {}
@@ -104,6 +107,38 @@ function M.new( master_loot_candidates, loot_award_callback, loot_list, roll_con
     reset_confirmation()
   end
 
+  -- CHAT_MSG_LOOT, in the two shapes it arrives in. The parsing lives here rather than in the
+  -- dispatcher because on_loot_received is what acts on it: the dispatcher's job is to say when
+  -- a handler runs, and knowing how a loot message is spelled is not that.
+  --
+  -- Either branch returns after the first match: gmatch is a loop and one message describes one
+  -- pickup. A message with no item link -- coins, or a quantity the parser does not recognise --
+  -- yields no item id and there is nothing to reconcile an award against.
+  ---@param message string
+  local function on_chat_msg_loot( message )
+    for player_name, link_with_optional_quantity in string.gmatch( message, "(.-) receives loot: (.*)" ) do
+      local item_link = IU.parse_link( link_with_optional_quantity )
+      local item_id = item_link and IU.get_item_id( item_link )
+
+      if item_id and item_link then
+        on_loot_received( player_name, item_id, item_link )
+      end
+
+      return
+    end
+
+    for link_with_optional_quantity in string.gmatch( message, "You receive loot: (.*)" ) do
+      local item_link = IU.parse_link( link_with_optional_quantity )
+      local item_id = item_link and IU.get_item_id( item_link )
+
+      if item_id and item_link then
+        on_loot_received( player_info.get_name(), item_id, item_link )
+      end
+
+      return
+    end
+  end
+
   local function on_recipient_inventory_full()
     if m_confirmed then
       pretty_print( string.format( "%s%s bags are full.", hl( m_confirmed.player.name ), m.possesive_case( m_confirmed.player.name ) ), "red" )
@@ -137,7 +172,8 @@ function M.new( master_loot_candidates, loot_award_callback, loot_list, roll_con
     on_player_is_too_far = on_player_is_too_far,
     on_unknown_error_message = on_unknown_error_message,
     on_loot_slot_cleared = on_loot_slot_cleared,
-    on_loot_received = on_loot_received
+    on_loot_received = on_loot_received,
+    on_chat_msg_loot = on_chat_msg_loot
   }
 end
 

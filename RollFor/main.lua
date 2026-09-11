@@ -345,10 +345,19 @@ local function create_components()
       on_group_changed = function( callback ) table.insert( extension_hooks.group_changed, callback ) end,
       on_lockout_reset = function( callback ) table.insert( extension_hooks.lockout_reset, callback ) end,
       lockout_loss = function( describe ) table.insert( extension_hooks.lockout_loss, describe ) end,
-      -- Anchored by name into core's loot pipeline. What an extension's handler needs to
-      -- say is *when* it runs relative to core's -- "after auto_loot", not "sometime
-      -- during LootOpened" -- because the positions are what decide who gets the item.
+      -- Placed into a phase of core's loot pipeline. A handler says *when* it runs -- Loot,
+      -- PostLoot, Award, PostAward -- and nothing about who else is there, because who else
+      -- is there depends on which addons happen to be installed. after/before still order
+      -- siblings inside one phase.
       on_loot = function( event, handler ) M.loot_facade_listener.on_loot( event, handler ) end,
+      -- Hands items out automatically. Core runs the registered policies in order over every
+      -- slot and performs the award itself, so what a policy supplies is a decision and not a
+      -- GiveMasterLoot call -- which is what lets the next policy have its turn at a slot this
+      -- one wanted and could not take.
+      award_policy = function( spec ) return M.award_policies.register( spec ) end,
+      -- Who holds this slot. The loot list cannot answer it: GiveMasterLoot is asynchronous,
+      -- so a slot already taken is still sitting there.
+      loot_claim = function( slot ) return M.award_policies.claim_of( slot ) end,
       -- Answer false to keep a dropped item out of the announcement. For items an
       -- extension hands out itself: core has no way to ask whether an item is somebody
       -- else's, so whoever knows says so here.
@@ -408,6 +417,11 @@ local function create_components()
   -- Extensions.enable() below, which runs before the loot facade exists. start() resolves
   -- the order once and subscribes, the same way the chain is built after its links arrive.
   M.loot_facade_listener = m.LootFacadeListener.new()
+
+  -- Same story: extensions register their policies during Extensions.enable() below, long
+  -- before the loot list exists. attach(), further down, hands over the components it awards
+  -- with once they are built.
+  M.award_policies = m.AwardPolicies.new( db( "award_order" ) )
 
   -- Extensions declare themselves here: chain links, config settings, lifecycle hooks.
   -- First, so a source extension can contribute the backbone before core decides whether
@@ -512,7 +526,8 @@ local function create_components()
     M.master_loot_candidates,
     M.loot_award_callback,
     M.loot_list,
-    M.roll_controller
+    M.roll_controller,
+    M.player_info
   )
 
   ---@type DroppedLootAnnounce
@@ -593,13 +608,15 @@ local function create_components()
   -- Registered here rather than above, because every one of these is a method on a
   -- component that did not exist yet when the registry was made. Extensions anchored to
   -- these names long before now; Ordering does not care who arrived first.
-  M.loot_facade_listener.register_core( {
+  M.award_policies.attach( M.loot_list, M.player_info, M.master_loot_candidates )
+
+  m.CoreLootHandlers.register( M.loot_facade_listener, {
+    award_policies = M.award_policies,
     dropped_loot = M.dropped_loot,
     dropped_loot_announce = M.dropped_loot_announce,
     master_loot = M.master_loot,
     auto_group_loot = M.auto_group_loot,
-    roll_controller = M.roll_controller,
-    player_info = M.player_info
+    roll_controller = M.roll_controller
   } )
 
   -- The same facade everything else was built on, which is the simulator's wrapper: starting the
@@ -640,7 +657,8 @@ local function create_components()
       -- No page of its own, so core draws the one thing every extension has: its summary
       -- and the switch that turns it on.
       page = page or m.OptionsFrame.new(
-        popup_builder(), options_frame_content_transformer, M.config, parent, "extension", extension_name )
+        popup_builder(), options_frame_content_transformer, M.config, M.award_policies, parent,
+        "extension", extension_name )
 
       M.extension_options[ extension_name ] = page
 
@@ -649,7 +667,7 @@ local function create_components()
 
     ---@type OptionsFrame
     M.options = m.OptionsFrame.new(
-      popup_builder(), options_frame_content_transformer, M.config, parent, section )
+      popup_builder(), options_frame_content_transformer, M.config, M.award_policies, parent, section )
 
     return M.options
   end )

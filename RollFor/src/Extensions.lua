@@ -22,7 +22,16 @@ local function hl( text ) return m.colors.hl( text ) end
 
 -- Bumped when the context object or the chain contract changes in a way that would break
 -- an extension built against the previous number.
-M.API_VERSION = 5
+--
+-- 6: the loot pipeline runs on phases. A handler declares `phase` -- when it runs -- and
+-- `after`/`before` demoted to ordering siblings inside one. An extension anchored to another
+-- extension's handler name no longer has anything to anchor to, which is the point: a name
+-- is who a handler is, and it stopped doubling as where in the schedule it sits.
+--
+-- Also 6: handing items out automatically is an award_policy rather than a loot handler that
+-- calls GiveMasterLoot itself, and RollForAutoLoot.claims is gone with no replacement --
+-- loot_claim answers the same question, about the slot that was actually taken.
+M.API_VERSION = 6
 
 -- What an extension is allowed to see of RollFor. Built per extension by main.lua and
 -- handed to both phases. This is the surface we commit to across versions, so it stays
@@ -69,7 +78,15 @@ M.API_VERSION = 5
 ---@field on_group_changed fun( callback: fun() )
 ---@field on_lockout_reset fun( callback: fun() )
 ---@field lockout_loss fun( describe: fun(): { count: number, noun: string }[] )
----@field on_loot fun( event: LootEventName, handler: LootHandler ) -- anchors a handler into core's loot pipeline by name
+---@field on_loot fun( event: LootEventName, handler: LootHandler ) -- places a handler in a phase of core's loot pipeline
+-- Registers something that hands items out automatically. Added in API 6. A policy says who
+-- it wants a slot to go to and core performs the award, because GiveMasterLoot is
+-- asynchronous: a slot a policy has taken is still in the corpse when the next one looks, so
+-- only whoever sent the award can say it is spoken for. Which policy outranks which is the
+-- user's to decide, not a running order to be arranged by anchoring.
+---@field award_policy fun( spec: AwardPolicy ): boolean
+-- Which policy holds this slot, or nil for nobody. The answer a loot list cannot give.
+---@field loot_claim fun( slot: number ): string?
 ---@field on_dropped_item fun( predicate: fun( item: table ): boolean? ) -- answer false to keep an item out of the drop announcement
 ---@field on_rf_command fun( name: string, callback: fun( args: string ) ) -- a subcommand of core's /rf; args are unparsed
 ---@field is_enabled fun(): boolean -- this extension's own on/off state

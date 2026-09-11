@@ -699,6 +699,73 @@ function M.checkbox( parent )
   return container
 end
 
+-- A row of an ordered list the user rearranges: the name, then up and down.
+--
+-- The buttons are the client's own textured scroll arrows rather than text on a
+-- UIPanelButton. They already mean "move this up/down" everywhere else in the UI, and they
+-- carry Disabled artwork -- so the arrow at the end of a list looks unavailable rather than
+-- merely doing nothing when clicked.
+--
+-- The template is its own fixed size (18x16), so it is scaled into the row rather than
+-- resized: scaling keeps the artwork's proportions, where SetWidth on a textured button
+-- stretches it. Each offset is divided by the scale because it is expressed in the button's
+-- own coordinates, which keeps the pair a fixed distance apart on screen.
+local priority_row_height = 20
+local priority_label_gap = 6
+local priority_arrow_scale = 0.85
+local priority_arrows = {
+  { field = "down", template = "UIPanelScrollDownButtonTemplate", x = 0 },
+  { field = "up", template = "UIPanelScrollUpButtonTemplate", x = -17 }
+}
+
+function M.priority_row( parent )
+  local container = m.api.CreateFrame( "Frame", nil, parent )
+  container:SetHeight( priority_row_height )
+
+  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormal" )
+  label:SetTextColor( 1, 1, 1 )
+  label:SetJustifyH( "LEFT" )
+  label:SetPoint( "LEFT", container, "LEFT", 0, 0 )
+
+  local buttons = {}
+  local arrows = m.api.CreateFrame( "Frame", nil, container )
+  arrows:SetHeight( priority_row_height )
+
+  for _, definition in ipairs( priority_arrows ) do
+    local button = m.api.CreateFrame( "Button", nil, arrows, definition.template )
+    button:SetScale( priority_arrow_scale )
+    button:SetPoint( "RIGHT", arrows, "RIGHT", definition.x / priority_arrow_scale, 0 )
+
+    button:SetScript( "OnClick", function()
+      local callback = container[ "on_" .. definition.field ]
+      if callback then callback() end
+    end )
+
+    buttons[ definition.field ] = button
+  end
+
+  -- Wide enough for both arrows at the size they are actually drawn.
+  arrows:SetWidth( 34 * priority_arrow_scale )
+
+  -- The label sizes itself, so the arrows are anchored to it rather than to a fixed column:
+  -- a page of two rows would otherwise be as wide as the longest title anybody might have.
+  container.SetText = function( _, text )
+    label:SetText( text )
+    arrows:ClearAllPoints()
+    arrows:SetPoint( "LEFT", label, "RIGHT", priority_label_gap, 0 )
+    container:SetWidth( label:GetWidth() + priority_label_gap + arrows:GetWidth() )
+  end
+
+  -- Lines are cached per type and reused across refreshes, so both are written every time --
+  -- a frame left holding the previous row's closure would move the wrong policy.
+  container.SetMoveable = function( _, up, down )
+    if up then buttons.up:Enable() else buttons.up:Disable() end
+    if down then buttons.down:Enable() else buttons.down:Disable() end
+  end
+
+  return container
+end
+
 local slider_count = 0
 
 function M.slider( parent )

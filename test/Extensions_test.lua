@@ -212,13 +212,19 @@ function CompatibilitySpec:should_treat_a_missing_api_version_as_incompatible()
   eq( Extensions.is_enabled( "vague" ), false )
 end
 
--- Context is now v5 (v2 added api, softres_source, softres_tap and minimap for the
+-- Context is now v6 (v2 added api, softres_source, softres_tap and minimap for the
 -- soft-res extraction; v3 added on_loot and on_dropped_item for the loot pipeline; v4 added
--- roll_modifier; v5 added the selection tree components and softres_source.get_import_string),
--- but an extension built against v1 -- RollForNetherVortex among them -- must keep loading
--- unchanged: the check only rejects a spec declaring a version *greater* than the host's.
+-- roll_modifier; v5 added the selection tree components and softres_source.get_import_string;
+-- v6 put the loot pipeline on phases), but an extension built against v1 -- RollForNetherVortex
+-- among them -- must keep loading unchanged: the check only rejects a spec declaring a version
+-- *greater* than the host's.
+--
+-- Which is the honest shape of the v6 break: a pipeline extension still built for v5 loads and
+-- runs, and its handler simply has no phase. Nothing silently mis-orders, because a handler
+-- with no phase runs after every one that has one. What tells its author is the change itself,
+-- not this gate.
 function CompatibilitySpec:should_keep_accepting_an_extension_built_against_api_version_1()
-  eq( Extensions.API_VERSION, 5 )
+  eq( Extensions.API_VERSION, 6 )
   eq( Extensions.register( spec( "nether_vortex", { api_version = 1 } ) ), true )
 
   eq( Extensions.all()[ 1 ].incompatible, nil )

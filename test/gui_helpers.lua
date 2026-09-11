@@ -185,4 +185,21 @@ function M.dropdown( label, value, options, padding )
   return { type = "dropdown", label = label, value = value, options = options, padding = padding }
 end
 
+-- One row of an ordered list the user rearranges. The callbacks are stripped before a page is
+-- compared, so what is left to assert is the title and which arrows are live -- and the arrows
+-- are the part worth pinning: the first row cannot move up and the last cannot move down.
+---@param label string
+---@param can_move_up boolean
+---@param can_move_down boolean
+---@param padding number?
+function M.priority_row( label, can_move_up, can_move_down, padding )
+  return {
+    type = "priority_row",
+    label = label,
+    can_move_up = can_move_up,
+    can_move_down = can_move_down,
+    padding = padding
+  }
+end
+
 return M

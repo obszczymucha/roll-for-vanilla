@@ -6,6 +6,10 @@ if m.OptionsFrameContentTransformer then return end
 local M = {}
 
 local blue = m.colors.blue
+local getn = m.getn
+
+-- Rows of one list, so they sit closer together than two unrelated controls would.
+local priority_row_padding = 3
 
 ---@param label string
 ---@param width number
@@ -54,7 +58,7 @@ local function add_title( content, title )
   table.insert( content, { type = "text", value = blue( title ), padding = 6 } )
 end
 
----@alias OptionsSetting BooleanSetting|NumberSetting|ConstrainedNumberSetting|StringChoiceSetting|HeaderSetting|ParagraphSetting
+---@alias OptionsSetting BooleanSetting|NumberSetting|ConstrainedNumberSetting|StringChoiceSetting|HeaderSetting|ParagraphSetting|PriorityListSetting
 
 ---@class HeaderSetting
 ---@field type "header"
@@ -96,6 +100,19 @@ end
 ---@field value any
 ---@field choices ValueLabel[]
 ---@field on_change fun( value: any )
+
+---@class PriorityEntry
+---@field name string -- the id, for whoever is being ranked; not shown
+---@field title string -- what the user reads
+
+-- An ordered list the user rearranges, rather than a value they pick. Nothing about the list
+-- is stored here: `value` is whatever the current order is at the moment the page is drawn,
+-- and a move is reported straight back rather than collected and applied.
+---@class PriorityListSetting
+---@field type "priority_list"
+---@field label string
+---@field value PriorityEntry[]
+---@field on_move fun( position: number, offset: number ) -- offset is -1 for up, 1 for down
 
 ---@param content table
 ---@param setting BooleanSetting
@@ -154,6 +171,34 @@ local function add_dropdown( content, setting, padding )
   } )
 end
 
+-- One header and a row per entry, rather than one line holding the list: a line is a frame,
+-- and the rows have to be frames of their own to be clicked. Nothing scrolls here, so the
+-- list is however long it is.
+--
+-- The arrows come pre-answered rather than the row working out where it sits: the first row
+-- cannot move up and the last cannot move down, and a button that does nothing when clicked
+-- is worse than one that says it will not.
+---@param content table
+---@param setting PriorityListSetting
+---@param padding number
+local function add_priority_list( content, setting, padding )
+  table.insert( content, { type = "section_header", value = blue( setting.label ), padding = padding } )
+
+  local count = getn( setting.value )
+
+  for position, entry in ipairs( setting.value ) do
+    table.insert( content, {
+      type = "priority_row",
+      label = entry.title,
+      can_move_up = position > 1,
+      can_move_down = position < count,
+      on_up = function() setting.on_move( position, -1 ) end,
+      on_down = function() setting.on_move( position, 1 ) end,
+      padding = priority_row_padding
+    } )
+  end
+end
+
 ---@class OptionsFrameData
 ---@field title string?
 ---@field settings OptionsSetting[]
@@ -161,9 +206,10 @@ end
 
 ---@param data OptionsFrameData
 local function transform( data )
-  ---@param type "boolean"|"number"|"constrained_number"|"choice"|"header"|"paragraph"
+  ---@param type "boolean"|"number"|"constrained_number"|"choice"|"header"|"paragraph"|"priority_list"
   local function get_padding( type )
-    if type == "header" then
+    -- The list leads with its own heading, so it is spaced like one.
+    if type == "header" or type == "priority_list" then
       return 13
     elseif type == "paragraph" then
       return 9
@@ -208,6 +254,8 @@ local function transform( data )
       table.insert( content, { type = "section_header", value = blue( setting.label ), padding = padding } )
     elseif setting.type == "paragraph" then
       table.insert( content, { type = "paragraph", value = setting.value, padding = padding } )
+    elseif setting.type == "priority_list" then
+      add_priority_list( content, setting, padding )
     end
   end
 

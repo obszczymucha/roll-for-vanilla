@@ -3,36 +3,46 @@ local m = RollFor
 
 if m.LootFacadeListener then return end
 
-local IU = m.ItemUtils
-
 local M = {}
 local getn = m.getn
 
--- The loot pipeline, as a named registry.
+-- The loot pipeline, as a phased registry.
 --
 -- These handlers used to be positional arguments called in a fixed run, which meant an
--- extension could only join the pipeline by being edited into that run. The positions
--- were load-bearing and undocumented: auto_loot runs before anything decides an item is
--- still there, and roll_controller sees what the rest left behind. Getting one wrong
--- hands the item to the wrong person rather than throwing.
+-- extension could only join the pipeline by being edited into that run. Naming them and
+-- letting everyone anchor to each other by name fixed that and introduced a subtler
+-- problem: handler *identity* became the schedule *coordinate*. `name` answers "who am I";
+-- everybody else's `after` used it to answer "when do I run". A coordinate like that leaves
+-- when its owner does, so core ended up declaring positions for handlers it did not own and
+-- inserting placeholders to keep them anchorable -- because a missing anchor drops the
+-- handlers waiting on it, silently, and that hands items to the wrong person.
 --
--- So core names its handlers and anchors them to each other, and extensions anchor to
--- those names through ctx.on_loot -- the same vocabulary, failures and error messages as
--- the soft-res chain, because Ordering is what places both.
+-- Phases separate the two. Core declares when things run, because core owns the pipeline; a
+-- handler's name says only who it is. A phase is not a handler, so it cannot be vacant and
+-- nothing falls out of the chain because a name went missing. `after`/`before` survive as
+-- sibling ordering *within* a phase, and one naming nobody is vacuously true rather than
+-- fatal -- the phase has already pinned the coarse position.
+--
+-- This file knows no clients, core's included: CoreLootHandlers registers core's own
+-- through the same on_loot an extension uses. What is left here is the mechanism and
+-- nothing else -- when a handler runs, and what to do with one that cannot be placed.
+--
+-- Ordering still places the siblings, which is why an extension gets the same vocabulary,
+-- failures and error messages it already knows from the soft-res chain.
 --
 -- Registration happens before the loot facade exists (extensions declare during
 -- Extensions.enable, which runs first), so collecting and subscribing are separate:
 -- start() resolves the order once and subscribes, exactly like the chain being built.
 
 ---@class LootHandler
----@field name string
----@field after string?
+---@field name string -- who it is; no longer where in the schedule it sits
+---@field phase string -- when it runs; see PHASES
+---@field after string? -- a sibling, within the same phase
 ---@field before string?
 ---@field callback fun( ... )
 
 ---@class LootFacadeListener
 ---@field on_loot fun( event: LootEventName, handler: LootHandler )
----@field register_core fun( components: table )
 ---@field start fun( loot_facade: LootFacade )
 ---@field order fun( event: LootEventName ): string[]
 
@@ -43,19 +53,51 @@ local EVENTS = {
   ChatMsgLoot = true
 }
 
--- The positions themselves, in the order they run. Core declares them whether or not anyone
--- occupies them, because who occupies one is not core's business: auto_loot is an extension's
--- handler, and an extension's handlers exist only while it is enabled. A position with nobody
--- in it would otherwise take down everything anchored to it -- placed_for drops a handler whose
--- anchor is not registered -- and per this file's header, that hands the item to the wrong
--- person rather than throwing.
-local POSITIONS = {
-  LootOpened = { "dropped_loot", "dropped_loot_announce", "auto_loot",
-                 "master_loot", "auto_group_loot", "roll_controller" },
-  LootSlotCleared = { "master_loot", "auto_group_loot" },
-  LootClosed = { "roll_controller" },
-  ChatMsgLoot = { "master_loot" }
+-- When a handler runs, as a coarse position core owns, subdividing each event.
+--
+-- These are core's because core owns the pipeline, and they are stages rather than
+-- components: a phase cannot be vacant, so nothing anchors to a name that might not be
+-- installed and nothing falls out of the chain when one is not. That is the whole of what
+-- POSITIONS was for and could not do.
+--
+--   Loot      -- react to the event; change nothing in the corpse.
+--   PostLoot  -- the loot event has settled; nothing has been handed out yet.
+--   Award     -- hand items out.
+--   PostAward -- housekeeping, once awards have landed or been abandoned.
+--
+-- The names say *when*, not *what*: observe/announce/cleanup were considered and rejected,
+-- because a handler that does not announce has no home in a phase called announce, and the
+-- next stage anyone needed would be a freshly invented noun whose position you could not
+-- derive from its name. PreLoot sorts itself.
+--
+-- PreAward is deliberately absent: it and PostLoot are the same slot, and shipping both
+-- leaves nothing to tell a handler which to pick. PostLoot already is PreAward.
+--
+-- A phase is per event, not per component. roll_controller is Award on LootOpened -- the
+-- fallback that starts a roll for what nobody claimed -- and PostAward on LootClosed, where
+-- it is tearing an abandoned award down. Reading a component's phase off one event and
+-- assuming it holds on the others is the mistake this table is easiest to get wrong in.
+--
+-- Room costs nothing: a declared-but-empty phase is harmless, because nothing anchors to a
+-- phase's occupant. So a new one is a one-line change here on the day something needs it,
+-- not shipped speculatively.
+local PHASES = {
+  LootOpened = { "Loot", "PostLoot", "Award", "PostAward" },
+  LootSlotCleared = { "Loot", "Award", "PostAward" },
+  LootClosed = { "PostAward" },
+  ChatMsgLoot = { "Loot" }
 }
+
+---@param event LootEventName
+---@param phase string
+---@return boolean
+local function runs_phase( event, phase )
+  for _, name in ipairs( PHASES[ event ] or {} ) do
+    if name == phase then return true end
+  end
+
+  return false
+end
 
 ---@return LootFacadeListener
 function M.new()
@@ -82,6 +124,22 @@ function M.new()
       fail( string.format( "handler '%s' must have a 'callback' function.", handler.name ) )
     end
 
+    -- A phase is the only thing that says when a handler runs, so there is no placing one
+    -- without it. This is what POSITIONS used to answer for core's own handlers and could not
+    -- answer for anybody else's.
+    if handler.phase == nil then
+      fail( string.format( "handler '%s' must declare a 'phase'. %s runs: %s.",
+        handler.name, event, table.concat( PHASES[ event ] or {}, ", " ) ) )
+    end
+
+    -- Not every event runs every phase, and a phase the event does not run is a handler that
+    -- would never fire. Refused rather than dropped quietly, for the same reason registering
+    -- after start() is: silently doing nothing is the one outcome worth refusing outright.
+    if not runs_phase( event, handler.phase ) then
+      fail( string.format( "'%s' is not a phase of %s. It runs: %s.",
+        tostring( handler.phase ), event, table.concat( PHASES[ event ] or {}, ", " ) ) )
+    end
+
     -- Subscribing has already happened, so anything arriving now would never be called.
     -- Silently doing nothing is the one outcome worth refusing outright.
     if started then
@@ -98,131 +156,142 @@ function M.new()
 
     table.insert( handlers[ event ], {
       name = handler.name,
+      phase = handler.phase,
       after = handler.after,
       before = handler.before,
       callback = handler.callback
     } )
   end
 
-  ---@param event_handlers LootHandler[]
+  -- The event's handlers, one group per phase, in the order the phases run.
+  --
+  -- A phase that nobody registered for is an empty group and nothing else: declaring room is
+  -- free, because nothing anchors to a phase's *occupant*. That is the whole of what the
+  -- placeholder arithmetic here used to exist for, and why it could be deleted rather than
+  -- ported -- a position could be vacant, and a phase cannot.
+  ---@param event LootEventName
+  ---@return LootHandler[][]
+  local function grouped_for( event )
+    local by_phase = {}
+
+    for _, handler in ipairs( handlers[ event ] or {} ) do
+      by_phase[ handler.phase ] = by_phase[ handler.phase ] or {}
+      table.insert( by_phase[ handler.phase ], handler )
+    end
+
+    local groups = {}
+    for _, phase in ipairs( PHASES[ event ] or {} ) do
+      table.insert( groups, by_phase[ phase ] or {} )
+    end
+
+    return groups
+  end
+
+  ---@param group LootHandler[]
   ---@param name string
-  ---@return number?
-  local function index_of( event_handlers, name )
-    for i, handler in ipairs( event_handlers ) do
-      if handler.name == name then return i end
+  ---@return boolean
+  local function names_somebody( group, name )
+    for _, handler in ipairs( group ) do
+      if handler.name == name then return true end
+    end
+
+    return false
+  end
+
+  -- Which phase a name is registered in for this event, if any. Only asked about a name a
+  -- sibling constraint could not find in its own phase, to tell the two cases apart: nobody
+  -- registered it, or somebody did and they are not siblings.
+  ---@param event LootEventName
+  ---@param name string
+  ---@return string?
+  local function phase_of( event, name )
+    for _, handler in ipairs( handlers[ event ] or {} ) do
+      if handler.name == name then return handler.phase end
     end
   end
 
-  -- The event's handlers with every declared position accounted for: anything in POSITIONS that
-  -- nobody registered gets a no-op standing in for it, so the name stays anchorable. Walking the
-  -- list in its declared order is what makes the previous name safe to anchor to -- it is already
-  -- there by then, real or a placeholder.
+  -- A sibling constraint naming nobody in this phase is vacuously true, not fatal. The phase
+  -- has already pinned the coarse position, so there is nothing left for the constraint to
+  -- decide -- and an extension whose neighbour simply is not installed keeps its place
+  -- instead of falling out of the pipeline, which is the failure phases exist to end.
   --
-  -- A placeholder is inserted behind the previous declared name rather than appended, because
-  -- registration order is not cosmetic: Ordering breaks a tie for the same slot by it, and
-  -- appending would hand the slot to whoever registered last. An extension anchored after a
-  -- vacant position would then lose it to core's own next handler and run a position too late --
-  -- auto_robin after master_loot instead of before it, which is the item gone. Keeping the spine
-  -- contiguous is what register_core does when it owns the name, so a vacant position places
-  -- exactly like an occupied one.
+  -- A name that *is* registered, in another phase, is a different thing entirely: a phase
+  -- mistake wearing a sibling constraint. The constraint cannot hold -- the phases have already
+  -- decided which runs first, and they outrank it -- so it is dropped either way, but this one
+  -- is somebody's error and gets said out loud rather than passed over.
   --
-  -- Built fresh rather than written back, so asking stays free of consequences: order() and the
-  -- subscription below resolve the same list, and neither changes what is registered.
+  -- The handler itself still runs, in the phase it asked for. Dropping a handler over a
+  -- misplaced anchor is the exact failure this whole scheme exists to end, and a mistake in
+  -- one is no reason to reintroduce it.
+  --
+  -- Copies rather than clearing the handler, because order() and the subscription both
+  -- resolve and neither may change what is registered.
   ---@param event LootEventName
-  ---@return LootHandler[]
-  local function with_vacant_positions( event )
+  ---@param group LootHandler[]
+  ---@param complain boolean
+  ---@return OrderingEntry[]
+  local function siblings_only( event, group, complain )
     local result = {}
-    for _, handler in ipairs( handlers[ event ] or {} ) do table.insert( result, handler ) end
 
-    local previous_index, previous_name = 0, nil
+    ---@param handler LootHandler
+    ---@param relation string
+    ---@param name string?
+    ---@return string?
+    local function sibling( handler, relation, name )
+      if not name or names_somebody( group, name ) then return name end
 
-    for _, name in ipairs( POSITIONS[ event ] or {} ) do
-      local index = index_of( result, name )
+      local elsewhere = phase_of( event, name )
 
-      if not index then
-        index = previous_index + 1
-        table.insert( result, index, { name = name, after = previous_name, callback = function() end } )
+      if elsewhere and complain then
+        m.err( string.format(
+          "RollFor loot pipeline (%s): handler '%s' is %s '%s', which is in phase %s, not %s. Phases decide that; the constraint has been ignored.",
+          event, handler.name, relation, name, elsewhere, handler.phase ) )
       end
+    end
 
-      previous_index, previous_name = index, name
+    for _, handler in ipairs( group ) do
+      table.insert( result, {
+        name = handler.name,
+        after = sibling( handler, "after", handler.after ),
+        before = sibling( handler, "before", handler.before ),
+        callback = handler.callback
+      } )
     end
 
     return result
   end
 
+  -- Every group placed and concatenated. `complain` is what separates resolving from asking:
+  -- start() says out loud what it could not place, order() resolves the same list quietly.
   ---@param event LootEventName
+  ---@param complain boolean
   ---@return LootHandler[]
-  local function placed_for( event )
-    local placed, unplaceable = m.Ordering.place( with_vacant_positions( event ),
-      { base = "base", noun = "handler" } )
+  local function placed_for( event, complain )
+    local result = {}
 
-    for _, rejected in ipairs( unplaceable ) do
-      m.err( string.format( "RollFor loot pipeline (%s): %s It has been left out.", event, rejected.reason ) )
+    for _, group in ipairs( grouped_for( event ) ) do
+      local placed, unplaceable = m.Ordering.place( siblings_only( event, group, complain ),
+        { base = "base", noun = "handler" } )
+
+      for _, handler in ipairs( placed ) do table.insert( result, handler ) end
+
+      if complain then
+        for _, rejected in ipairs( unplaceable ) do
+          m.err( string.format( "RollFor loot pipeline (%s): %s It has been left out.", event, rejected.reason ) )
+        end
+      end
     end
 
-    return placed
+    return result
   end
 
   -- Chain order, for tests and diagnostics. Resolves quietly -- asking is not starting.
   ---@param event LootEventName
   ---@return string[]
   local function order( event )
-    local placed = m.Ordering.place( with_vacant_positions( event ), { base = "base", noun = "handler" } )
     local result = {}
-    for _, handler in ipairs( placed ) do table.insert( result, handler.name ) end
+    for _, handler in ipairs( placed_for( event, false ) ) do table.insert( result, handler.name ) end
     return result
-  end
-
-  -- Core's own handlers, named and anchored so they reproduce the order they fired in
-  -- when they were argument positions. The anchors are what an extension reads to decide
-  -- where its own handler belongs.
-  ---@param c table -- the components each handler is a method on
-  local function register_core( c )
-    on_loot( "LootOpened", { name = "dropped_loot", callback = function() c.dropped_loot.on_loot_opened() end } )
-    on_loot( "LootOpened", { name = "dropped_loot_announce", after = "dropped_loot",
-      callback = function() c.dropped_loot_announce.on_loot_opened() end } )
-    on_loot( "LootOpened", { name = "master_loot", after = "auto_loot",
-      callback = function() c.master_loot.on_loot_opened() end } )
-    on_loot( "LootOpened", { name = "auto_group_loot", after = "master_loot",
-      callback = function() c.auto_group_loot.on_loot_opened() end } )
-    on_loot( "LootOpened", { name = "roll_controller", after = "auto_group_loot",
-      callback = function() c.roll_controller.loot_opened() end } )
-
-    on_loot( "LootSlotCleared", { name = "master_loot",
-      callback = function( slot ) c.master_loot.on_loot_slot_cleared( slot ) end } )
-    on_loot( "LootSlotCleared", { name = "auto_group_loot", after = "master_loot",
-      callback = function() c.auto_group_loot.on_loot_slot_cleared() end } )
-
-    on_loot( "LootClosed", { name = "roll_controller", callback = function() c.roll_controller.loot_closed() end } )
-
-    -- This covers the scenario where the master looter assigns the loot and then moves immediately,
-    -- causing the loot frame to close. In normal circumstances, when the last item gets assigned,
-    -- the LOOT_SLOT_CLEARED fires and then LOOT_CLOSED event follows. In this case, however,
-    -- LOOT_CLOSED fires first, because of the player movement and the LOOT_SLOT_CLEARED doesn't
-    -- (because we're not looting anymore).
-    on_loot( "ChatMsgLoot", { name = "master_loot", callback = function( message )
-      for player_name, link_with_optional_quantity in string.gmatch( message, "(.-) receives loot: (.*)" ) do
-        local item_link = IU.parse_link( link_with_optional_quantity )
-        local item_id = item_link and IU.get_item_id( item_link )
-
-        if item_id and item_link then
-          c.master_loot.on_loot_received( player_name, item_id, item_link )
-        end
-
-        return
-      end
-
-      for link_with_optional_quantity in string.gmatch( message, "You receive loot: (.*)" ) do
-        local item_link = IU.parse_link( link_with_optional_quantity )
-        local item_id = item_link and IU.get_item_id( item_link )
-
-        if item_id and item_link then
-          c.master_loot.on_loot_received( c.player_info.get_name(), item_id, item_link )
-        end
-
-        return
-      end
-    end } )
   end
 
   ---@param loot_facade LootFacade
@@ -230,7 +299,7 @@ function M.new()
     started = true
 
     for event in pairs( EVENTS ) do
-      local placed = placed_for( event )
+      local placed = placed_for( event, true )
 
       if getn( placed ) > 0 then
         loot_facade.subscribe( event, function( ... )
@@ -245,7 +314,6 @@ function M.new()
   ---@type LootFacadeListener
   return {
     on_loot = on_loot,
-    register_core = register_core,
     start = start,
     order = order
   }
