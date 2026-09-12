@@ -699,7 +699,11 @@ function M.checkbox( parent )
   return container
 end
 
--- A row of an ordered list the user rearranges: the name, then up and down.
+-- A row of an ordered list the user rearranges: up and down, then the name.
+--
+-- The arrows lead rather than trail. They are the only part of the row anyone clicks, and a
+-- fixed-width column of them on the left puts every row's buttons -- and every row's title --
+-- at the same x, where anchoring them after a self-sizing label staggered both down the page.
 --
 -- The buttons are the client's own textured scroll arrows rather than text on a
 -- UIPanelButton. They already mean "move this up/down" everywhere else in the UI, and they
@@ -713,28 +717,28 @@ end
 local priority_row_height = 20
 local priority_label_gap = 6
 local priority_arrow_scale = 0.85
+local priority_arrow_width = 18 * priority_arrow_scale
+-- Left edge to left edge: a shade wider than an arrow is drawn, so the two do not touch.
+local priority_arrow_pitch = 17
 local priority_arrows = {
-  { field = "down", template = "UIPanelScrollDownButtonTemplate", x = 0 },
-  { field = "up", template = "UIPanelScrollUpButtonTemplate", x = -17 }
+  { field = "up",   template = "UIPanelScrollUpButtonTemplate",   x = 0 },
+  { field = "down", template = "UIPanelScrollDownButtonTemplate", x = priority_arrow_pitch }
 }
 
 function M.priority_row( parent )
   local container = m.api.CreateFrame( "Frame", nil, parent )
   container:SetHeight( priority_row_height )
 
-  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormal" )
-  label:SetTextColor( 1, 1, 1 )
-  label:SetJustifyH( "LEFT" )
-  label:SetPoint( "LEFT", container, "LEFT", 0, 0 )
-
   local buttons = {}
   local arrows = m.api.CreateFrame( "Frame", nil, container )
   arrows:SetHeight( priority_row_height )
+  arrows:SetWidth( priority_arrow_pitch + priority_arrow_width )
+  arrows:SetPoint( "LEFT", container, "LEFT", 0, 0 )
 
   for _, definition in ipairs( priority_arrows ) do
     local button = m.api.CreateFrame( "Button", nil, arrows, definition.template )
     button:SetScale( priority_arrow_scale )
-    button:SetPoint( "RIGHT", arrows, "RIGHT", definition.x / priority_arrow_scale, 0 )
+    button:SetPoint( "LEFT", arrows, "LEFT", definition.x / priority_arrow_scale, 0 )
 
     button:SetScript( "OnClick", function()
       local callback = container[ "on_" .. definition.field ]
@@ -744,16 +748,17 @@ function M.priority_row( parent )
     buttons[ definition.field ] = button
   end
 
-  -- Wide enough for both arrows at the size they are actually drawn.
-  arrows:SetWidth( 34 * priority_arrow_scale )
+  local label = container:CreateFontString( nil, "ARTWORK", "GameFontNormal" )
+  label:SetTextColor( 1, 1, 1 )
+  label:SetJustifyH( "LEFT" )
+  label:SetPoint( "LEFT", arrows, "RIGHT", priority_label_gap, 0 )
 
-  -- The label sizes itself, so the arrows are anchored to it rather than to a fixed column:
-  -- a page of two rows would otherwise be as wide as the longest title anybody might have.
+  -- The label sizes itself and the arrows do not, so only the row's own width follows the
+  -- title: a page of two rows would otherwise be as wide as the longest title anybody might
+  -- have.
   container.SetText = function( _, text )
     label:SetText( text )
-    arrows:ClearAllPoints()
-    arrows:SetPoint( "LEFT", label, "RIGHT", priority_label_gap, 0 )
-    container:SetWidth( label:GetWidth() + priority_label_gap + arrows:GetWidth() )
+    container:SetWidth( arrows:GetWidth() + priority_label_gap + label:GetWidth() )
   end
 
   -- Lines are cached per type and reused across refreshes, so both are written every time --
