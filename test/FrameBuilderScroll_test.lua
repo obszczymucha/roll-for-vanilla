@@ -131,6 +131,69 @@ function FrameBuilderScrollSpec:should_report_the_window_it_is_showing()
   eq( frame.get_scroll(), { offset = 4, total = 10, max_lines = 3 } )
 end
 
+FrameBuilderScrollDragSpec = {}
+
+-- A 100px track whose thumb is 20px tall, so 80px of travel, over 10 lines in a 3-line window:
+-- offsets 0..7. Track top at y = 500; y grows upwards.
+local function drag_to( cursor_y, grab_offset )
+  return FrameBuilder.scroll_drag_offset( cursor_y, 500, 80, grab_offset or 0, 10, 3 )
+end
+
+function FrameBuilderScrollDragSpec:should_put_the_window_at_the_top_when_the_thumb_is_at_the_top()
+  eq( drag_to( 500 ), 0 )
+end
+
+function FrameBuilderScrollDragSpec:should_put_the_window_at_the_end_when_the_thumb_is_at_the_bottom()
+  eq( drag_to( 420 ), 7 )
+end
+
+function FrameBuilderScrollDragSpec:should_move_in_proportion_to_the_thumb()
+  eq( drag_to( 460 ), 4 ) -- halfway: 3.5 lines, rounded
+end
+
+function FrameBuilderScrollDragSpec:should_round_to_the_nearest_line()
+  eq( drag_to( 500 - 80 / 7 * 2 - 5 ), 2 )
+  eq( drag_to( 500 - 80 / 7 * 2 - 6 ), 3 )
+end
+
+function FrameBuilderScrollDragSpec:should_not_go_above_the_start_when_dragged_past_the_top()
+  eq( drag_to( 900 ), 0 )
+end
+
+function FrameBuilderScrollDragSpec:should_not_go_past_the_end_when_dragged_below_the_track()
+  eq( drag_to( 0 ), 7 )
+end
+
+-- Taking hold of the thumb 10px below its top must not move anything until the cursor does.
+function FrameBuilderScrollDragSpec:should_keep_the_grabbed_spot_under_the_cursor()
+  eq( drag_to( 490, 10 ), 0 )
+  eq( drag_to( 410, 10 ), 7 )
+end
+
+function FrameBuilderScrollDragSpec:should_not_drag_a_thumb_as_tall_as_its_track()
+  eq( FrameBuilder.scroll_drag_offset( 450, 500, 0, 0, 10, 3 ), nil )
+end
+
+function FrameBuilderScrollDragSpec:should_not_drag_a_list_that_fits()
+  eq( FrameBuilder.scroll_drag_offset( 450, 500, 80, 0, 3, 3 ), nil )
+end
+
+function FrameBuilderScrollDragSpec:should_page_up_when_the_track_is_clicked_above_the_thumb()
+  eq( FrameBuilder.scroll_page_delta( 300, 250, 15 ), -15 )
+end
+
+function FrameBuilderScrollDragSpec:should_page_down_when_the_track_is_clicked_below_the_thumb()
+  eq( FrameBuilder.scroll_page_delta( 200, 250, 15 ), 15 )
+end
+
+-- The bar's mouse frames are built the first time the list is too long for the window, through the
+-- same mocked API every other frame uses.
+function FrameBuilderScrollDragSpec:should_build_the_scrollbar_when_the_list_overflows()
+  local frame = scrollable_frame( 3 )
+
+  eq( render( frame, 10, true ), { "title", 1, 2, 3 } )
+end
+
 FrameBuilderNoScrollSpec = {}
 
 function FrameBuilderNoScrollSpec:should_render_everything_when_no_viewport_was_asked_for()

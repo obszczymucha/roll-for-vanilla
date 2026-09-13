@@ -14,6 +14,18 @@ local type_of = type
 local scroll_bar_width = 4
 local scroll_thumb_min_height = 12
 local scroll_default_step = 3
+local scroll_thumb_alpha = 0.55
+local scroll_thumb_hot_alpha = 0.85
+
+-- The bar is drawn 4px wide but answers the mouse across this many, centred on it. Kept under the
+-- smallest gap between a row's end and the bar (ListPopup's inset of 11 against its 17.5px half
+-- margin), so the edge of it never sits over a row.
+local scroll_hit_width = 8
+
+-- How far above the popup the bar's mouse frames sit. Rows are the popup's children too, and some
+-- of them take the mouse themselves (the queue's buttons), so a tie in frame level would leave it
+-- to the client which of the two gets the click.
+local scroll_hit_frame_level = 10
 
 M.interface = {
 }
@@ -159,6 +171,42 @@ M.interface = {
 ---@field button fun(): FrameBuilder
 ---@field modern fun(): FrameBuilder
 ---@field classic fun(): FrameBuilder
+
+-- Where dragging the scrollbar's thumb puts the window, as a scroll offset. All positions are in
+-- the popup's own coordinates (cursor already divided by its effective scale), y growing upwards
+-- the way the client's does. `grab_offset` is how far below the thumb's top the cursor took hold
+-- of it, so the thumb keeps that spot under the cursor instead of jumping its top there.
+--
+-- Rounded to the nearest line: the window moves a line at a time, the way the wheel moves it.
+-- Nil when there is nowhere to drag to -- a thumb as tall as its track, or a list that fits.
+---@param cursor_y number
+---@param track_top number
+---@param travel number -- track height less thumb height
+---@param grab_offset number
+---@param total number
+---@param max_lines number
+---@return number?
+function M.scroll_drag_offset( cursor_y, track_top, travel, grab_offset, total, max_lines )
+  local max_offset = total - max_lines
+  if travel <= 0 or max_offset <= 0 then return nil end
+
+  local progress = (track_top - cursor_y - grab_offset) / travel
+  if progress < 0 then progress = 0 end
+  if progress > 1 then progress = 1 end
+
+  return math.floor( progress * max_offset + 0.5 )
+end
+
+-- How far a click on the scrollbar's track moves the window: a page towards the click, the way
+-- Blizzard's scroll bars do it. Never asked about a click on the thumb itself, which has its own
+-- frame over the track, so above its top is the only question.
+---@param cursor_y number -- in the popup's coordinates
+---@param thumb_top number
+---@param max_lines number
+---@return number
+function M.scroll_page_delta( cursor_y, thumb_top, max_lines )
+  return cursor_y > thumb_top and -max_lines or max_lines
+end
 
 ---@return FrameBuilder
 function M.new()
@@ -446,7 +494,58 @@ function M.new()
         if options.on_scroll then options.on_scroll() end
       end
 
-      local scroll_bar, scroll_thumb
+      local scroll_bar, scroll_thumb, track_hit, thumb_hit
+      local thumb_travel = 0
+      local thumb_hovered = false
+
+      -- Set while the thumb is held: { grab_offset = number }.
+      local drag
+
+      local function paint_thumb()
+        local alpha = (drag or thumb_hovered) and scroll_thumb_hot_alpha or scroll_thumb_alpha
+        scroll_thumb:SetVertexColor( 0.351, 0.553, 1.0, alpha )
+      end
+
+      local function cursor_y()
+        local _, y = m.api.GetCursorPosition()
+        return y / frame:GetEffectiveScale()
+      end
+
+      -- The bar's frames stand between the cursor and the popup, so whatever the popup does with
+      -- a click that isn't a left one -- right_click_hides, for one -- is handed back to it here,
+      -- the same way the row widgets do.
+      local function forward_other_buttons( _, button )
+        if button == "LeftButton" then return end
+
+        local handler = frame:GetScript( "OnMouseUp" )
+        if handler then handler( frame, button ) end
+      end
+
+      local function forward_wheel( _, delta )
+        local handler = frame:GetScript( "OnMouseWheel" )
+        if handler then handler( frame, delta ) end
+      end
+
+      local function stop_drag()
+        if not drag then return end
+
+        drag = nil
+        thumb_hit:SetScript( "OnUpdate", nil )
+        paint_thumb()
+      end
+
+      -- Runs every frame while the thumb is held, but only redraws when the cursor crosses into
+      -- another line: scroll_by returns early when the offset stays put. It never places the thumb
+      -- -- the redraw does that, from the offset, the same as after a wheel turn.
+      local function follow_cursor()
+        local track_top = track_hit:GetTop()
+        if not drag or not track_top then return end
+
+        local offset = M.scroll_drag_offset( cursor_y(), track_top, thumb_travel, drag.grab_offset,
+          scroll.total, options.scroll.max_lines )
+
+        if offset then frame.scroll_by( frame, offset - scroll.offset ) end
+      end
 
       local function create_scroll_bar()
         if scroll_bar then return end
@@ -458,22 +557,89 @@ function M.new()
 
         scroll_thumb = frame:CreateTexture( nil, "OVERLAY" )
         scroll_thumb:SetTexture( "Interface\\Buttons\\WHITE8x8" )
-        scroll_thumb:SetVertexColor( 0.351, 0.553, 1.0, 0.55 )
         scroll_thumb:SetWidth( scroll_bar_width )
+        paint_thumb()
+
+        -- The textures are what you see; these are what you click. Textures can't take the mouse,
+        -- and without a frame of its own under the cursor a press on the bar went to the popup and
+        -- dragged the window. Each is pinned top and bottom to its texture, so the two can never
+        -- disagree about where the bar is -- update_scrollbar places the textures and these follow.
+        track_hit = m.api.CreateFrame( "Frame", nil, frame )
+        track_hit:SetWidth( scroll_hit_width )
+        track_hit:SetPoint( "TOP", scroll_bar, "TOP", 0, 0 )
+        track_hit:SetPoint( "BOTTOM", scroll_bar, "BOTTOM", 0, 0 )
+        track_hit:SetFrameLevel( frame:GetFrameLevel() + scroll_hit_frame_level )
+        track_hit:EnableMouse( true )
+        track_hit:EnableMouseWheel( true )
+        track_hit:SetScript( "OnMouseWheel", forward_wheel )
+        track_hit:SetScript( "OnMouseUp", forward_other_buttons )
+        track_hit:SetScript( "OnMouseDown", function( _, button )
+          local thumb_top = thumb_hit:GetTop()
+          if button ~= "LeftButton" or not thumb_top then return end
+
+          frame.scroll_by( frame, M.scroll_page_delta( cursor_y(), thumb_top, options.scroll.max_lines ) )
+        end )
+
+        thumb_hit = m.api.CreateFrame( "Frame", nil, frame )
+        thumb_hit:SetWidth( scroll_hit_width )
+        thumb_hit:SetPoint( "TOP", scroll_thumb, "TOP", 0, 0 )
+        thumb_hit:SetPoint( "BOTTOM", scroll_thumb, "BOTTOM", 0, 0 )
+        thumb_hit:SetFrameLevel( frame:GetFrameLevel() + scroll_hit_frame_level + 1 )
+        thumb_hit:EnableMouse( true )
+        thumb_hit:EnableMouseWheel( true )
+        thumb_hit:SetScript( "OnMouseWheel", forward_wheel )
+
+        thumb_hit:SetScript( "OnMouseDown", function( _, button )
+          local thumb_top = thumb_hit:GetTop()
+          if button ~= "LeftButton" or not thumb_top then return end
+
+          drag = { grab_offset = thumb_top - cursor_y() }
+          thumb_hit:SetScript( "OnUpdate", follow_cursor )
+          paint_thumb()
+        end )
+
+        -- The frame that took the press gets the release wherever the cursor is by then, so
+        -- letting go off the bar still ends the drag.
+        thumb_hit:SetScript( "OnMouseUp", function( self, button )
+          if button == "LeftButton" then
+            stop_drag()
+          else
+            forward_other_buttons( self, button )
+          end
+        end )
+
+        -- Closing the window mid-drag, or the list shrinking until the bar goes away, hides this
+        -- frame without a release ever arriving.
+        thumb_hit:SetScript( "OnHide", stop_drag )
+
+        thumb_hit:SetScript( "OnEnter", function()
+          thumb_hovered = true
+          paint_thumb()
+        end )
+
+        thumb_hit:SetScript( "OnLeave", function()
+          thumb_hovered = false
+          paint_thumb()
+        end )
       end
 
+      -- The frames go with the textures: a hidden bar with its frames still up would leave an
+      -- invisible patch of the window that swallows clicks.
       local function hide_scroll_bar()
         if not scroll_bar then return end
 
         scroll_bar:Hide()
         scroll_thumb:Hide()
+        track_hit:Hide()
+        thumb_hit:Hide()
       end
 
       -- A slim track down the popup's right edge, spanning exactly the scrollable lines currently
-      -- on screen, with a thumb sized and placed by the window. Indicator only -- the wheel does
-      -- the scrolling. The track's own top/height are measured off the lines rather than anchored
-      -- to them: line frames are sized to their content, so anchoring to one would make the bar
-      -- shift sideways row by row.
+      -- on screen, with a thumb sized and placed by the window. The thumb can be dragged and the
+      -- track clicked to page (see create_scroll_bar); both only ever change the offset. The
+      -- track's own top/height are measured off the lines rather than anchored to them: line
+      -- frames are sized to their content, so anchoring to one would make the bar shift sideways
+      -- row by row.
       ---@param current_lines table
       frame.update_scrollbar = function( current_lines )
         local config = options.scroll
@@ -506,7 +672,13 @@ function M.new()
           end
         end
 
-        if not started or height <= 0 then
+        -- Lines above the rows (a title, a header) come first in every pass, and this runs after
+        -- each of them. Hiding the bar until the rows arrive would hide the thumb under a held
+        -- mouse on every redraw of a drag, and its OnHide ends the drag. The list is long enough
+        -- for a bar, so the rows are on their way; leave the bar where it was until they get here.
+        if not started then return end
+
+        if height <= 0 then
           hide_scroll_bar()
           return
         end
@@ -517,17 +689,19 @@ function M.new()
         scroll_bar:SetPoint( "TOPRIGHT", frame, "TOPRIGHT", -config.right_inset, -y )
         scroll_bar:SetHeight( height )
         scroll_bar:Show()
+        track_hit:Show()
 
         local thumb_height = height * config.max_lines / scroll.total
         if thumb_height < scroll_thumb_min_height then thumb_height = scroll_thumb_min_height end
 
-        local travel = height - thumb_height
+        thumb_travel = height - thumb_height
         local progress = scroll.offset / (scroll.total - config.max_lines)
 
         scroll_thumb:ClearAllPoints()
-        scroll_thumb:SetPoint( "TOP", scroll_bar, "TOP", 0, -(travel * progress) )
+        scroll_thumb:SetPoint( "TOP", scroll_bar, "TOP", 0, -(thumb_travel * progress) )
         scroll_thumb:SetHeight( thumb_height )
         scroll_thumb:Show()
+        thumb_hit:Show()
       end
 
       frame.backdrop_color = function( _, r, g, b, a )
