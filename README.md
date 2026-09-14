@@ -1,4 +1,8 @@
 # RollFor
+
+This repository is **deprecated**.
+RollFor now lives at https://github.com/rollfor/rollfor.
+
 A World of Warcraft (2.5.2) addon that manages rolling for items.  
 
 ## Demo
